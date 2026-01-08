@@ -4,26 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Label } from "@/components/ui/label";
+import { EditItemDialog } from '@/components/EditItemDialog';
+import { CommentDialog } from '@/components/CommentDialog';
 
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
-
-const MDEditor = dynamic(
-  () => import('@uiw/react-md-editor'),
-  { ssr: false }
-);
 
 const Markdown = dynamic(
   () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
@@ -52,45 +40,55 @@ interface Milestone {
   title: string;
 }
 
+interface Comment {
+  id: number;
+  content: string;
+  created_at: number;
+  updated_at: number | null;
+  creator_email?: string;
+  creator_avatar?: string;
+  created_by: number;
+}
+
 export default function ItemDetailPage({ 
   params 
 }: { 
   params: { id: string; itemId: string } 
 }) {
   const [item, setItem] = useState<Item | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  
-  // Edit state
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState<string>('');
-  const [status, setStatus] = useState('');
-  const [milestoneId, setMilestoneId] = useState<string>('none');
-  
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  
+  // Dialog states
+  const [editItemOpen, setEditItemOpen] = useState(false);
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [editingComment, setEditingComment] = useState<Comment | undefined>(undefined);
+
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
     try {
-      const [itemRes, milestonesRes] = await Promise.all([
+      const [itemRes, milestonesRes, commentsRes] = await Promise.all([
         fetch(`/api/projects/${params.id}/items/${params.itemId}`),
-        fetch(`/api/projects/${params.id}/milestones`)
+        fetch(`/api/projects/${params.id}/milestones`),
+        fetch(`/api/projects/${params.id}/items/${params.itemId}/comments`)
       ]);
 
       const itemData = await itemRes.json();
       const milestonesData = await milestonesRes.json();
+      const commentsData = await commentsRes.json();
 
       if (itemData.success) {
         setItem(itemData.item);
-        setTitle(itemData.item.title);
-        setContent(itemData.item.content || '');
-        setStatus(itemData.item.status);
-        setMilestoneId(itemData.item.milestone_id?.toString() || 'none');
       }
       
       if (milestonesData.success) {
         setMilestones(milestonesData.milestones);
+      }
+
+      if (commentsData.success) {
+        setComments(commentsData.comments);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -102,34 +100,6 @@ export default function ItemDetailPage({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const res = await fetch(
-        `/api/projects/${params.id}/items/${params.itemId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            title, 
-            content,
-            status,
-            milestoneId: milestoneId === 'none' ? null : Number(milestoneId)
-          }),
-        }
-      );
-      
-      if (res.ok) {
-        await fetchData(); // Refresh data
-        setIsEditing(false); // Exit edit mode
-      }
-    } catch (error) {
-      console.error('Failed to save:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const currentMilestone = milestones.find(m => m.id === item?.milestone_id);
 
@@ -152,84 +122,26 @@ export default function ItemDetailPage({
   }
 
   return (
-    <div className="min-h-screen p-8 bg-background">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen p-8 bg-background pb-32">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => router.push(`/project/${params.id}`)}>
             ← Back to Project
           </Button>
-          <div className="flex items-center gap-4">
-            {isEditing ? (
-              <>
-                <Button variant="outline" onClick={() => {
-                  setIsEditing(false);
-                  // Reset fields
-                  setTitle(item.title);
-                  setContent(item.content || '');
-                  setStatus(item.status);
-                  setMilestoneId(item.milestone_id?.toString() || 'none');
-                }}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setIsEditing(true)}>
-                Edit Item
-              </Button>
-            )}
-          </div>
         </div>
 
-        {/* Content Card */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg overflow-hidden">
-          <CardHeader className="border-b bg-secondary/20 pb-6">
-            {isEditing ? (
-              <div className="space-y-4">
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="text-2xl font-bold h-auto py-2"
-                  placeholder="Item title"
-                />
-                <div className="flex gap-4">
-                  <div className="w-48">
-                    <Label htmlFor="status" className="mb-2 block text-xs font-semibold text-muted-foreground uppercase">Status</Label>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-48">
-                    <Label htmlFor="milestone" className="mb-2 block text-xs font-semibold text-muted-foreground uppercase">Milestone</Label>
-                    <Select value={milestoneId} onValueChange={setMilestoneId}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select milestone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {milestones.map((m) => (
-                          <SelectItem key={m.id} value={m.id.toString()}>
-                            {m.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {/* Main Item Card */}
+        <Card className="bg-white/90 backdrop-blur-sm shadow-lg overflow-hidden border-l-4 border-l-primary">
+          <CardHeader className="border-b bg-secondary/10 pb-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs font-mono text-muted-foreground">
+                    #{item.id}
+                  </Badge>
+                  <h1 className="text-2xl font-bold text-foreground">{item.title}</h1>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <h1 className="text-3xl font-bold text-foreground">{item.title}</h1>
                 <div className="flex flex-wrap items-center gap-4">
                   <Badge variant="secondary" className={`text-sm px-3 py-1 ${statusColors[item.status as keyof typeof statusColors]}`}>
                     {item.status}
@@ -242,51 +154,121 @@ export default function ItemDetailPage({
                 </div>
                 
                 {/* Metadata */}
-                <div className="flex items-center gap-6 text-sm text-muted-foreground mt-4 pt-4 border-t border-border/50">
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={item.creator_avatar} />
                       <AvatarFallback>{item.creator_email?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span>Created by {item.creator_email} on {formatDate(item.created_at)}</span>
+                    <span>{item.creator_email} created on {formatDate(item.created_at)}</span>
                   </div>
                   {(item.updated_at > item.created_at || item.updated_by) && (
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={item.updater_avatar} />
-                        <AvatarFallback>{item.updater_email?.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span>Updated by {item.updater_email} on {formatDate(item.updated_at)}</span>
+                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                        Edited: {formatDate(item.updated_at)}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
-            )}
+              
+              <Button onClick={() => setEditItemOpen(true)} variant="outline" size="sm">
+                Edit
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            {isEditing ? (
-              <div data-color-mode="light" className="min-h-[500px]">
-                <MDEditor
-                  value={content}
-                  onChange={(val) => setContent(val || '')}
-                  height={500}
-                  preview="live"
-                  textareaProps={{
-                    placeholder: 'Write your item content here... (Markdown supported)'
-                  }}
-                />
-              </div>
-            ) : (
-              <div data-color-mode="light">
-                <Markdown 
-                  source={item.content || '*No content provided*'} 
-                  style={{ backgroundColor: 'transparent', color: 'inherit' }}
-                />
-              </div>
-            )}
+          <CardContent className="pt-6 min-h-[200px]">
+            <div data-color-mode="light">
+              <Markdown 
+                source={item.content || '*No description provided*'} 
+                style={{ backgroundColor: 'transparent', color: 'inherit' }}
+              />
+            </div>
           </CardContent>
         </Card>
+
+        {/* Comments Stream */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-muted-foreground ml-2">Discussion</h2>
+          
+          {comments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground bg-secondary/5 rounded-lg border border-dashed text-sm">
+              No comments yet. Start the conversation!
+            </div>
+          ) : (
+            comments.map((comment) => (
+              <Card key={comment.id} className="bg-white/80 hover:bg-white/95 transition-colors shadow-sm">
+                <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between bg-muted/10">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.creator_avatar} />
+                      <AvatarFallback>{comment.creator_email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold">{comment.creator_email}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
+                    </div>
+                  </div>
+                  
+                  {/* TODO: Add check for current user ownership */}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setEditingComment(comment);
+                      setCommentOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </CardHeader>
+                <CardContent className="py-4 px-6 text-sm">
+                  <div data-color-mode="light">
+                    <Markdown 
+                      source={comment.content} 
+                      style={{ backgroundColor: 'transparent', color: 'inherit', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Floating Action Button for Reply */}
+        <div className="fixed bottom-8 right-8">
+          <Button 
+            size="lg" 
+            className="shadow-xl rounded-full px-6 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg"
+            onClick={() => {
+              setEditingComment(undefined);
+              setCommentOpen(true);
+            }}
+          >
+            💬 Reply
+          </Button>
+        </div>
       </div>
+
+      {/* Dialogs */}
+      {item && (
+        <EditItemDialog
+          projectId={Number(params.id)}
+          item={item}
+          open={editItemOpen}
+          onOpenChange={setEditItemOpen}
+          onSuccess={fetchData}
+        />
+      )}
+
+      <CommentDialog
+        projectId={Number(params.id)}
+        itemId={Number(params.itemId)}
+        comment={editingComment}
+        open={commentOpen}
+        onOpenChange={setCommentOpen}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

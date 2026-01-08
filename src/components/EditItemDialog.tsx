@@ -34,34 +34,40 @@ interface Milestone {
   title: string;
 }
 
-interface NewItemDialogProps {
+interface Item {
+  id: number;
+  title: string;
+  content: string | null;
+  status: string;
+  milestone_id: number | null;
+}
+
+interface EditItemDialogProps {
   projectId: number;
+  item: Item;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
 
-export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewItemDialogProps) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [status, setStatus] = useState('New');
-  const [milestoneId, setMilestoneId] = useState<string>('none');
+export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess }: EditItemDialogProps) {
+  const [title, setTitle] = useState(item.title);
+  const [content, setContent] = useState(item.content || '');
+  const [status, setStatus] = useState(item.status);
+  const [milestoneId, setMilestoneId] = useState<string>(item.milestone_id?.toString() || 'none');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (open) {
+      setTitle(item.title);
+      setContent(item.content || '');
+      setStatus(item.status);
+      setMilestoneId(item.milestone_id?.toString() || 'none');
       fetchMilestones();
-    } else {
-      // Reset form
-      setTitle('');
-      setContent('');
-      setStatus('New');
-      setMilestoneId('none');
-      setError('');
     }
-  }, [open, projectId]);
+  }, [open, item, projectId]);
 
   const fetchMilestones = async () => {
     try {
@@ -81,8 +87,8 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
     setError('');
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/items`, {
-        method: 'POST',
+      const res = await fetch(`/api/projects/${projectId}/items/${item.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -97,7 +103,7 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create item');
+        throw new Error(data.error || 'Failed to update item');
       }
 
       onSuccess();
@@ -111,11 +117,11 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>Create New Item</DialogTitle>
+          <DialogTitle>Edit Item</DialogTitle>
           <DialogDescription>
-            Add a new item to your project. Click save when you're done.
+            Make changes to your item here. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -170,7 +176,7 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
                 <MDEditor
                   value={content}
                   onChange={(val) => setContent(val || '')}
-                  height={200}
+                  height={400}
                   preview="live"
                   textareaProps={{
                     placeholder: 'Item description... (Markdown supported)'
@@ -194,7 +200,7 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Item'}
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>
