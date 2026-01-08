@@ -24,6 +24,9 @@ export async function GET(
     const status = searchParams.get('status');
     const milestoneId = searchParams.get('milestoneId');
 
+    const sort = searchParams.get('sort');
+    const order = searchParams.get('order');
+
     const db = await getDb();
     
     // Check project ownership
@@ -35,32 +38,37 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    let query = 'SELECT * FROM ITEMS WHERE project_id = ?';
+    let query = `
+      SELECT ITEMS.*, USERS.email as creator_email, USERS.avatar_url as creator_avatar 
+      FROM ITEMS 
+      LEFT JOIN USERS ON ITEMS.created_by = USERS.id
+      WHERE ITEMS.project_id = ?
+    `;
     const queryParams: any[] = [id];
 
     if (search) {
-      query += ' AND (title LIKE ? OR content LIKE ?)';
+      query += ' AND (ITEMS.title LIKE ? OR ITEMS.content LIKE ?)';
       queryParams.push(`%${search}%`, `%${search}%`);
     }
 
     if (status) {
-      query += ' AND status = ?';
+      query += ' AND ITEMS.status = ?';
       queryParams.push(status);
     }
 
     if (milestoneId) {
-      query += ' AND milestone_id = ?';
+      query += ' AND ITEMS.milestone_id = ?';
       queryParams.push(Number(milestoneId));
     }
 
-    query += ' ORDER BY created_at DESC';
+    // Validate sort column
+    const allowedSortColumns = ['created_at', 'updated_at'];
+    const sortColumn = allowedSortColumns.includes(sort || '') ? sort : 'created_at';
+    const sortOrder = (order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    // Enhance query to fetch creator info
-    const items = await db.prepare(`
-        SELECT ITEMS.*, USERS.email as creator_email, USERS.avatar_url as creator_avatar 
-        FROM (${query}) as ITEMS
-        LEFT JOIN USERS ON ITEMS.created_by = USERS.id
-      `).bind(...queryParams).all();
+    query += ` ORDER BY ITEMS.${sortColumn} ${sortOrder}`;
+
+    const items = await db.prepare(query).bind(...queryParams).all();
 
     return NextResponse.json({ success: true, items: items.results });
     

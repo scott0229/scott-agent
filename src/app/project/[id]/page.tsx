@@ -58,6 +58,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [milestoneFilter, setMilestoneFilter] = useState('all');
+  
+  // Sort states
+  const [sortBy, setSortBy] = useState<'created_at' | 'updated_at'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const router = useRouter();
 
@@ -74,10 +78,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       if (search) queryParams.append('search', search);
       if (statusFilter !== 'all') queryParams.append('status', statusFilter);
       if (milestoneFilter !== 'all') queryParams.append('milestoneId', milestoneFilter);
+      queryParams.append('sort', sortBy);
+      queryParams.append('order', sortOrder);
 
       const [projectRes, itemsRes, milestonesRes] = await Promise.all([
         fetch(`/api/projects/${params.id}`),
-        fetch(`/api/projects/${params.id}/items?${queryParams.toString()}`),
+        fetch(`/api/projects/${params.id}/items?${queryParams.toString()}`, { cache: 'no-store' }),
         fetch(`/api/projects/${params.id}/milestones`)
       ]);
       
@@ -101,7 +107,16 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       fetchData();
     }, 300);
     return () => clearTimeout(timer);
-  }, [params.id, search, statusFilter, milestoneFilter]);
+  }, [params.id, search, statusFilter, milestoneFilter, sortBy, sortOrder]);
+
+  const toggleSort = (column: 'created_at' | 'updated_at') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  };
 
   const handleDeleteItem = async (itemId: number) => {
     if (!confirm('Delete this item?')) return;
@@ -119,11 +134,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    if (!timestamp) return '-';
+    // Format: 2026/1/8
+    const date = new Date(timestamp * 1000);
+    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
   };
 
   const statusColors = {
@@ -221,11 +235,21 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         ) : (
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
             <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-secondary border-b text-sm font-medium text-muted-foreground">
-              <div className="col-span-1">ID</div>
-              <div className="col-span-4">Title</div>
+              <div className="col-span-3">Title</div>
               <div className="col-span-2">Status</div>
               <div className="col-span-2">Milestone</div>
-              <div className="col-span-2">Created</div>
+              <div 
+                className="col-span-2 cursor-pointer hover:text-foreground flex items-center gap-1"
+                onClick={() => toggleSort('created_at')}
+              >
+                Created {sortBy === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </div>
+              <div 
+                className="col-span-2 cursor-pointer hover:text-foreground flex items-center gap-1"
+                onClick={() => toggleSort('updated_at')}
+              >
+                Updated {sortBy === 'updated_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </div>
               <div className="col-span-1 text-right">Action</div>
             </div>
             <div className="divide-y">
@@ -235,8 +259,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-primary/5 cursor-pointer transition-colors items-center group"
                   onClick={() => router.push(`/project/${params.id}/item/${item.id}`)}
                 >
-                  <div className="col-span-1 text-muted-foreground">#{item.id}</div>
-                  <div className="col-span-4">
+                  <div className="col-span-3 truncate">
                     <span className="font-medium text-foreground group-hover:text-primary transition-colors">
                       {item.title}
                     </span>
@@ -246,7 +269,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                       {item.status}
                     </Badge>
                   </div>
-                  <div className="col-span-2 text-sm">
+                  <div className="col-span-2 text-sm truncate">
                     {item.milestone_id ? (
                       <span className="flex items-center gap-1 text-muted-foreground">
                         🎯 {milestones.find(m => m.id === item.milestone_id)?.title}
@@ -255,6 +278,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   </div>
                   <div className="col-span-2 text-sm text-muted-foreground">
                     {formatDate(item.created_at)}
+                  </div>
+                  <div className="col-span-2 text-sm text-muted-foreground">
+                    {formatDate(item.updated_at)}
                   </div>
                   <div className="col-span-1 text-right">
                     <Button 

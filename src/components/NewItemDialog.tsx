@@ -111,15 +111,15 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[1000px] h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create New Item</DialogTitle>
           <DialogDescription>
             Add a new item to your project. Click save when you're done.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="grid gap-4 py-4 flex-1 overflow-y-auto">
             <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -164,13 +164,13 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
               </div>
             </div>
 
-            <div className="grid gap-2">
+            <div className="grid gap-2 flex-1">
               <Label htmlFor="content">Description</Label>
-              <div data-color-mode="light">
+              <div data-color-mode="light" className="h-[400px]">
                 <MDEditor
                   value={content}
                   onChange={(val) => setContent(val || '')}
-                  height={200}
+                  height="100%"
                   preview="live"
                   textareaProps={{
                     placeholder: 'Item description... (Markdown supported)'
@@ -185,7 +185,7 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-auto pt-4 border-t">
             <Button
               type="button"
               variant="outline"
