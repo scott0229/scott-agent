@@ -1,0 +1,54 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "scott-agent"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+main = ".open-next/worker.js"
+minify = true
+
+# Assets configuration for static files (OpenNext)
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Storage Bindings - Default (Staging)
+[[d1_databases]]
+binding = "DB"
+database_name = "scott-agent-staging"
+database_id = "74a8a0c6-840f-4f3c-ac44-cddec222bf4f" 
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "scott-agent-staging"
+
+# Staging Environment
+[env.staging]
+name = "scott-agent-staging"
+routes = [
+  { pattern = "staging.scott-agent.com", custom_domain = true }
+]
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "scott-agent-staging"
+database_id = "74a8a0c6-840f-4f3c-ac44-cddec222bf4f"
+
+[[env.staging.r2_buckets]]
+binding = "R2"
+bucket_name = "scott-agent-staging"
+
+# Production Environment
+[env.production]
+name = "scott-agent-production"
+routes = [
+  { pattern = "scott-agent.com", custom_domain = true },
+  { pattern = "www.scott-agent.com", custom_domain = true }
+]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "scott-agent-production"
+database_id = "15702662-aff7-4d53-ad2a-824a56882138"
+
+[[env.production.r2_buckets]]
+binding = "R2"
+bucket_name = "scott-agent-production"
