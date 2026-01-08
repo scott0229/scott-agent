@@ -21,8 +21,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Unauthenticated users trying to access protected routes -> Redirect to Login
-  // Protected routes: /project-list and anything under it
-  if (!isAuthenticated && pathname.startsWith('/project-list')) {
+  // Protected routes: /project-list, /project, and anything under them
+  if (!isAuthenticated && (pathname.startsWith('/project-list') || pathname.startsWith('/project/'))) {
       return NextResponse.redirect(new URL('/login', request.url));
   }
   
@@ -35,5 +35,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/project-list/:path*'],
+  matcher: ['/', '/login', '/project-list/:path*', '/project/:path*'],
 };

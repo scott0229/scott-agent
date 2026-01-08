@@ -1,0 +1,151 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDb } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
+
+export const runtime = 'edge';
+
+// GET: Get item details
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  try {
+    const token = req.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { id, itemId } = await params;
+    const db = await getDb();
+    
+    // Check project ownership
+    const project = await db.prepare(
+      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+    ).bind(id, payload.id).first();
+
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const item = await db.prepare(
+      'SELECT * FROM ITEMS WHERE id = ? AND project_id = ?'
+    ).bind(itemId, id).first();
+
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, item });
+    
+  } catch (error) {
+    console.error('Get item error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// PUT: Update item
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  try {
+    const token = req.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { id, itemId } = await params;
+    const { title, content } = await req.json() as { title?: string; content?: string };
+
+    const db = await getDb();
+    
+    // Check project ownership
+    const project = await db.prepare(
+      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+    ).bind(id, payload.id).first();
+
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const existing = await db.prepare(
+      'SELECT * FROM ITEMS WHERE id = ? AND project_id = ?'
+    ).bind(itemId, id).first();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    await db.prepare(
+      'UPDATE ITEMS SET title = ?, content = ?, updated_at = unixepoch() WHERE id = ?'
+    ).bind(
+      title || existing.title,
+      content !== undefined ? content : existing.content,
+      itemId
+    ).run();
+
+    const item = await db.prepare('SELECT * FROM ITEMS WHERE id = ?').bind(itemId).first();
+
+    return NextResponse.json({ success: true, item });
+    
+  } catch (error) {
+    console.error('Update item error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete item
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  try {
+    const token = req.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { id, itemId } = await params;
+    const db = await getDb();
+    
+    // Check project ownership
+    const project = await db.prepare(
+      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+    ).bind(id, payload.id).first();
+
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const existing = await db.prepare(
+      'SELECT * FROM ITEMS WHERE id = ? AND project_id = ?'
+    ).bind(itemId, id).first();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    await db.prepare('DELETE FROM ITEMS WHERE id = ?').bind(itemId).run();
+
+    return NextResponse.json({ success: true });
+    
+  } catch (error) {
+    console.error('Delete item error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

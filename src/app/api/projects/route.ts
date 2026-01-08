@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDb } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
+
+export const runtime = 'edge';
+
+// GET: List user's projects
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const db = await getDb();
+    const projects = await db.prepare(
+      'SELECT * FROM PROJECTS WHERE user_id = ? ORDER BY created_at DESC'
+    ).bind(payload.id).all();
+
+    return NextResponse.json({ success: true, projects: projects.results });
+    
+  } catch (error) {
+    console.error('Get projects error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// POST: Create new project
+export async function POST(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { name, description, avatarUrl } = await req.json() as { 
+      name?: string; 
+      description?: string; 
+      avatarUrl?: string;
+    };
+
+    if (!name) {
+      return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+    }
+
+    const db = await getDb();
+    const result = await db.prepare(
+      'INSERT INTO PROJECTS (user_id, name, description, avatar_url) VALUES (?, ?, ?, ?)'
+    ).bind(payload.id, name, description || null, avatarUrl || null).run();
+
+    if (!result.success) {
+      throw new Error('Failed to create project');
+    }
+
+    // Get the newly created project
+    const project = await db.prepare(
+      'SELECT * FROM PROJECTS WHERE id = ?'
+    ).bind(result.meta.last_row_id).first();
+
+    return NextResponse.json({ success: true, project });
+    
+  } catch (error) {
+    console.error('Create project error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
