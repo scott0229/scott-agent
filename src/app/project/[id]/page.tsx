@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NewItemDialog } from "@/components/NewItemDialog";
+import { NewMilestoneDialog } from "@/components/NewMilestoneDialog";
 
 interface Project {
   id: number;
@@ -18,8 +29,16 @@ interface Item {
   project_id: number;
   title: string;
   content: string | null;
+  status: string;
+  milestone_id: number | null;
   created_at: number;
   updated_at: number;
+}
+
+interface Milestone {
+  id: number;
+  title: string;
+  due_date: number | null;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -27,9 +46,19 @@ const ITEMS_PER_PAGE = 10;
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Dialog states
+  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [isNewMilestoneOpen, setIsNewMilestoneOpen] = useState(false);
+
+  // Filter states
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [milestoneFilter, setMilestoneFilter] = useState('all');
+
   const router = useRouter();
 
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
@@ -39,17 +68,26 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   );
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
-      const [projectRes, itemsRes] = await Promise.all([
+      const queryParams = new URLSearchParams();
+      if (search) queryParams.append('search', search);
+      if (statusFilter !== 'all') queryParams.append('status', statusFilter);
+      if (milestoneFilter !== 'all') queryParams.append('milestoneId', milestoneFilter);
+
+      const [projectRes, itemsRes, milestonesRes] = await Promise.all([
         fetch(`/api/projects/${params.id}`),
-        fetch(`/api/projects/${params.id}/items`),
+        fetch(`/api/projects/${params.id}/items?${queryParams.toString()}`),
+        fetch(`/api/projects/${params.id}/milestones`)
       ]);
       
-      const projectData = await projectRes.json() as { success: boolean; project: Project };
-      const itemsData = await itemsRes.json() as { success: boolean; items: Item[] };
+      const projectData = await projectRes.json();
+      const itemsData = await itemsRes.json();
+      const milestonesData = await milestonesRes.json();
       
       if (projectData.success) setProject(projectData.project);
       if (itemsData.success) setItems(itemsData.items);
+      if (milestonesData.success) setMilestones(milestonesData.milestones);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -58,30 +96,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [params.id]);
-
-  const handleCreateItem = async () => {
-    setIsCreating(true);
-    try {
-      // Create a new item with default title
-      const res = await fetch(`/api/projects/${params.id}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'Untitled', content: '' }),
-      });
-      
-      const data = await res.json() as { success: boolean; item: Item };
-      if (data.success) {
-        // Navigate to edit page
-        router.push(`/project/${params.id}/item/${data.item.id}`);
-      }
-    } catch (error) {
-      console.error('Failed to create item:', error);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    // Debounce search
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [params.id, search, statusFilter, milestoneFilter]);
 
   const handleDeleteItem = async (itemId: number) => {
     if (!confirm('Delete this item?')) return;
@@ -103,83 +123,111 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  const statusColors = {
+    'New': 'bg-blue-100 text-blue-800',
+    'In Progress': 'bg-yellow-100 text-yellow-800',
+    'Closed': 'bg-green-100 text-green-800',
+  };
 
-  if (!project) {
+  if (!project && !isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Project not found</div>;
   }
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <Button variant="ghost" onClick={() => router.push('/project-list')} className="mb-6">
           ← Back to Projects
         </Button>
 
         {/* Project Header Card */}
-        <Card className="mb-8 bg-white/90 backdrop-blur-sm shadow-lg">
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 ring-2 ring-primary/20">
-                <AvatarImage src={project.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                  {project.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-                <p className="text-muted-foreground mt-1">{project.description || 'No description'}</p>
+        {project && (
+          <Card className="mb-8 bg-white/90 backdrop-blur-sm shadow-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16 ring-2 ring-primary/20">
+                    <AvatarImage src={project.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                      {project.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+                    <p className="text-muted-foreground mt-1">{project.description || 'No description'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsNewMilestoneOpen(true)}>
+                    + New Milestone
+                  </Button>
+                  <Button onClick={() => setIsNewItemOpen(true)}>
+                    + New Item
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-        </Card>
+            </CardHeader>
+          </Card>
+        )}
 
-        {/* Items Section */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Items</h2>
-          <Button 
-            onClick={handleCreateItem} 
-            disabled={isCreating}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isCreating ? 'Creating...' : '+ Create Item'}
-          </Button>
+        {/* Filters Section */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          <Input 
+            placeholder="Search items..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-xs bg-white/50"
+          />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] bg-white/50">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="New">New</SelectItem>
+              <SelectItem value="In Progress">In Progress</SelectItem>
+              <SelectItem value="Closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={milestoneFilter} onValueChange={setMilestoneFilter}>
+            <SelectTrigger className="w-[180px] bg-white/50">
+              <SelectValue placeholder="Filter by milestone" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Milestones</SelectItem>
+              {milestones.map(m => (
+                <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Items List */}
-        {items.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">Loading...</div>
+        ) : items.length === 0 ? (
           <Card className="text-center py-12 bg-white/80">
             <CardContent>
               <div className="text-muted-foreground mb-4">
-                <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-lg">No items yet</p>
-                <p className="text-sm mt-1">Create your first item to get started</p>
+                <p className="text-lg">No items found</p>
+                <p className="text-sm mt-1">Try adjusting your filters or create a new item</p>
               </div>
-              <Button onClick={handleCreateItem} disabled={isCreating}>
-                {isCreating ? 'Creating...' : 'Create First Item'}
-              </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            {/* Table Header */}
             <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-secondary border-b text-sm font-medium text-muted-foreground">
-              <div className="col-span-5">Title</div>
-              <div className="col-span-3">Created</div>
-              <div className="col-span-2">Owner</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-1">ID</div>
+              <div className="col-span-4">Title</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Milestone</div>
+              <div className="col-span-2">Created</div>
+              <div className="col-span-1 text-right">Action</div>
             </div>
-            {/* Table Body */}
             <div className="divide-y">
               {paginatedItems.map((item) => (
                 <div 
@@ -187,26 +235,28 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-primary/5 cursor-pointer transition-colors items-center group"
                   onClick={() => router.push(`/project/${params.id}/item/${item.id}`)}
                 >
-                  <div className="col-span-5">
+                  <div className="col-span-1 text-muted-foreground">#{item.id}</div>
+                  <div className="col-span-4">
                     <span className="font-medium text-foreground group-hover:text-primary transition-colors">
-                      {item.title || 'Untitled'}
+                      {item.title}
                     </span>
-                    {item.content && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {item.content.substring(0, 60)}...
-                      </p>
-                    )}
                   </div>
-                  <div className="col-span-3 text-sm text-muted-foreground">
+                  <div className="col-span-2">
+                    <Badge variant="secondary" className={statusColors[item.status as keyof typeof statusColors]}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2 text-sm">
+                    {item.milestone_id ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        🎯 {milestones.find(m => m.id === item.milestone_id)?.title}
+                      </span>
+                    ) : '-'}
+                  </div>
+                  <div className="col-span-2 text-sm text-muted-foreground">
                     {formatDate(item.created_at)}
                   </div>
-                  <div className="col-span-2 text-sm text-muted-foreground flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-medium">
-                      Y
-                    </div>
-                    You
-                  </div>
-                  <div className="col-span-2 text-right">
+                  <div className="col-span-1 text-right">
                     <Button 
                       variant="ghost" 
                       size="sm"
@@ -216,9 +266,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                         handleDeleteItem(item.id);
                       }}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      ×
                     </Button>
                   </div>
                 </div>
@@ -255,8 +303,21 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             )}
           </div>
         )}
+
+        <NewItemDialog 
+          projectId={Number(params.id)} 
+          open={isNewItemOpen} 
+          onOpenChange={setIsNewItemOpen}
+          onSuccess={fetchData}
+        />
+
+        <NewMilestoneDialog 
+          projectId={Number(params.id)} 
+          open={isNewMilestoneOpen} 
+          onOpenChange={setIsNewMilestoneOpen}
+          onSuccess={fetchData} // Ideally just fetch milestones but full refresh works
+        />
       </div>
     </div>
   );
 }
-

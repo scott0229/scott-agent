@@ -1,0 +1,15 @@
+-- Create MILESTONES table
+CREATE TABLE IF NOT EXISTS MILESTONES (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date INTEGER,
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (project_id) REFERENCES PROJECTS(id) ON DELETE CASCADE
+);
+
+-- Add status and milestone_id columns to ITEMS
+ALTER TABLE ITEMS ADD COLUMN status TEXT DEFAULT 'New';
+ALTER TABLE ITEMS ADD COLUMN milestone_id INTEGER REFERENCES MILESTONES(id) ON DELETE SET NULL;

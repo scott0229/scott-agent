@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
-// GET: List items for project with search and filters
+// GET: List milestones for project
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,11 +19,6 @@ export async function GET(
     }
 
     const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get('search');
-    const status = searchParams.get('status');
-    const milestoneId = searchParams.get('milestoneId');
-
     const db = await getDb();
     
     // Check project ownership
@@ -35,42 +30,19 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    let query = 'SELECT * FROM ITEMS WHERE project_id = ?';
-    const queryParams: any[] = [id];
+    const milestones = await db.prepare(
+      'SELECT * FROM MILESTONES WHERE project_id = ? ORDER BY due_date ASC'
+    ).bind(id).all();
 
-    if (search) {
-      query += ' AND (title LIKE ? OR content LIKE ?)';
-      queryParams.push(`%${search}%`, `%${search}%`);
-    }
-
-    if (status) {
-      query += ' AND status = ?';
-      queryParams.push(status);
-    }
-
-    if (milestoneId) {
-      query += ' AND milestone_id = ?';
-      queryParams.push(Number(milestoneId));
-    }
-
-    query += ' ORDER BY created_at DESC';
-
-    // Enhance query to fetch creator info
-    const items = await db.prepare(`
-        SELECT ITEMS.*, USERS.email as creator_email, USERS.avatar_url as creator_avatar 
-        FROM (${query}) as ITEMS
-        LEFT JOIN USERS ON ITEMS.created_by = USERS.id
-      `).bind(...queryParams).all();
-
-    return NextResponse.json({ success: true, items: items.results });
+    return NextResponse.json({ success: true, milestones: milestones.results });
     
   } catch (error) {
-    console.error('Get items error:', error);
+    console.error('Get milestones error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// POST: Create new item
+// POST: Create new milestone
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -87,15 +59,14 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { title, content, status, milestoneId } = await req.json() as { 
-      title?: string; 
-      content?: string;
-      status?: string;
-      milestoneId?: number;
+    const { title, description, dueDate } = await req.json() as { 
+      title?: string;
+      description?: string;
+      dueDate?: number;
     };
 
     if (!title) {
-      return NextResponse.json({ error: 'Item title is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Milestone title is required' }, { status: 400 });
     }
 
     const db = await getDb();
@@ -110,27 +81,19 @@ export async function POST(
     }
 
     const result = await db.prepare(
-      'INSERT INTO ITEMS (project_id, title, content, status, milestone_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      id, 
-      title, 
-      content || '', 
-      status || 'New', 
-      milestoneId || null,
-      payload.id,
-      payload.id
-    ).run();
+      'INSERT INTO MILESTONES (project_id, title, description, due_date) VALUES (?, ?, ?, ?)'
+    ).bind(id, title, description || '', dueDate || null).run();
 
     if (!result.success) {
-      throw new Error('Failed to create item');
+      throw new Error('Failed to create milestone');
     }
 
-    const item = await db.prepare('SELECT * FROM ITEMS WHERE id = ?').bind(result.meta.last_row_id).first();
+    const milestone = await db.prepare('SELECT * FROM MILESTONES WHERE id = ?').bind(result.meta.last_row_id).first();
 
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({ success: true, milestone });
     
   } catch (error) {
-    console.error('Create item error:', error);
+    console.error('Create milestone error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
