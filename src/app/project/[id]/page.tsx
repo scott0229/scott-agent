@@ -22,12 +22,21 @@ interface Item {
   updated_at: number;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+
+  const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+  const paginatedItems = items.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const fetchData = async () => {
     try {
@@ -172,7 +181,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             </div>
             {/* Table Body */}
             <div className="divide-y">
-              {items.map((item) => (
+              {paginatedItems.map((item) => (
                 <div 
                   key={item.id} 
                   className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-primary/5 cursor-pointer transition-colors items-center group"
@@ -215,6 +224,35 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 </div>
               ))}
             </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
+                <span className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, items.length)} of {items.length} items
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

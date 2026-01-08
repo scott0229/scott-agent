@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
+import { EditProjectDialog } from "@/components/EditProjectDialog";
 
 interface Project {
   id: number;
@@ -15,11 +16,22 @@ interface Project {
   created_at: number;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function ProjectListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+
+  const totalPages = Math.ceil(projects.length / ITEMS_PER_PAGE);
+  const paginatedProjects = projects.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const fetchProjects = async () => {
     try {
@@ -51,6 +63,12 @@ export default function ProjectListPage() {
     } catch (error) {
       console.error('Failed to delete project:', error);
     }
+  };
+
+  const handleEdit = (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProject(project);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -95,7 +113,7 @@ export default function ProjectListPage() {
             </div>
             {/* Table Body */}
             <div className="divide-y">
-              {projects.map((project) => (
+              {paginatedProjects.map((project) => (
                 <div 
                   key={project.id} 
                   className="grid grid-cols-12 gap-4 px-4 py-4 hover:bg-primary/5 cursor-pointer transition-colors items-center group"
@@ -130,7 +148,17 @@ export default function ProjectListPage() {
                     </div>
                     You
                   </div>
-                  <div className="col-span-2 text-right">
+                  <div className="col-span-2 text-right flex items-center justify-end gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleEdit(project, e)}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
@@ -145,12 +173,47 @@ export default function ProjectListPage() {
                 </div>
               ))}
             </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
+                <span className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, projects.length)} of {projects.length} projects
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <NewProjectDialog 
           open={dialogOpen} 
           onOpenChange={setDialogOpen}
+          onSuccess={fetchProjects}
+        />
+        <EditProjectDialog 
+          project={editingProject}
+          open={editDialogOpen} 
+          onOpenChange={setEditDialogOpen}
           onSuccess={fetchProjects}
         />
       </div>
