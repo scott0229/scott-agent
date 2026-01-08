@@ -171,9 +171,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             </CardContent>
           </Card>
         ) : (
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
             {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-muted/30 border-b text-sm font-medium text-muted-foreground">
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-secondary border-b text-sm font-medium text-muted-foreground">
               <div className="col-span-5">Title</div>
               <div className="col-span-3">Created</div>
               <div className="col-span-2">Owner</div>
@@ -210,7 +210,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-muted-foreground hover:text-red-600"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteItem(item.id);

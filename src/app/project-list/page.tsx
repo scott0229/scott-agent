@@ -102,9 +102,9 @@ export default function ProjectListPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
             {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-muted/30 border-b text-sm font-medium text-muted-foreground">
+            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-secondary border-b text-sm font-medium text-muted-foreground">
               <div className="col-span-1"></div>
               <div className="col-span-4">Project</div>
               <div className="col-span-3">Created</div>
@@ -152,7 +152,7 @@ export default function ProjectListPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-muted-foreground hover:text-primary"
                       onClick={(e) => handleEdit(project, e)}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,7 +162,7 @@ export default function ProjectListPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-muted-foreground hover:text-red-600"
                       onClick={(e) => handleDelete(project.id, e)}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

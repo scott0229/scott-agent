@@ -38,10 +38,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Construct public URL (assuming public bucket or custom domain)
-    // For now, return the key - actual URL depends on R2 bucket configuration
     const url = `/${key}`;
-
     return NextResponse.json({ success: true, url, key });
     
   } catch (error) {
@@ -49,3 +46,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
