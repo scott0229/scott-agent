@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +23,7 @@ interface User {
   id: number;
   email: string;
   user_id: string | null;
+  avatar_url: string | null;
 }
 
 interface UserCardProps {
@@ -34,8 +35,11 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [editUserId, setEditUserId] = useState(user.user_id || '');
+  const [editAvatarUrl, setEditAvatarUrl] = useState(user.avatar_url || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -50,6 +54,36 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json() as { success: boolean; url?: string; error?: string };
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      setEditAvatarUrl(data.url || '');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -59,7 +93,7 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
       const res = await fetch('/api/auth/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: editUserId }),
+        body: JSON.stringify({ userId: editUserId, avatarUrl: editAvatarUrl || null }),
       });
 
       const data = await res.json() as { success: boolean; error?: string };
@@ -86,6 +120,7 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12">
+              <AvatarImage src={user.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                 {initials}
               </AvatarFallback>
@@ -104,6 +139,7 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
                 size="sm"
                 onClick={() => {
                   setEditUserId(user.user_id || '');
+                  setEditAvatarUrl(user.avatar_url || '');
                   setIsEditOpen(true);
                 }}
               >
@@ -145,6 +181,47 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
           </DialogHeader>
           <form onSubmit={handleUpdateProfile}>
             <div className="grid gap-4 py-4">
+              {/* Avatar Upload */}
+              <div className="grid gap-2">
+                <Label>Avatar</Label>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={editAvatarUrl || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload Photo'}
+                    </Button>
+                    {editAvatarUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditAvatarUrl('')}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -179,7 +256,7 @@ export function UserCard({ user, onUpdate }: UserCardProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isUpdating}>
+              <Button type="submit" disabled={isUpdating || isUploading}>
                 {isUpdating ? 'Saving...' : 'Save changes'}
               </Button>
             </DialogFooter>

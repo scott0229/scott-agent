@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const user = await db.prepare(
-      'SELECT id, email, user_id FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     if (!user) {
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { userId } = await req.json() as { userId?: string };
+    const { userId, avatarUrl } = await req.json() as { userId?: string; avatarUrl?: string };
 
     const db = await getDb();
 
@@ -59,11 +59,11 @@ export async function PUT(req: NextRequest) {
     }
 
     await db.prepare(
-      'UPDATE USERS SET user_id = ?, updated_at = unixepoch() WHERE id = ?'
-    ).bind(userId || null, payload.id).run();
+      'UPDATE USERS SET user_id = ?, avatar_url = ?, updated_at = unixepoch() WHERE id = ?'
+    ).bind(userId || null, avatarUrl !== undefined ? avatarUrl : null, payload.id).run();
 
     const user = await db.prepare(
-      'SELECT id, email, user_id FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     return NextResponse.json({ success: true, user });

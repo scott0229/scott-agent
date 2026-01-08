@@ -13,6 +13,7 @@ interface User {
   id: number;
   email: string;
   user_id: string | null;
+  avatar_url: string | null;
 }
 
 interface Project {
