@@ -35,6 +35,7 @@ database_id = "74a8a0c6-840f-4f3c-ac44-cddec222bf4f"
 [[env.staging.r2_buckets]]
 binding = "R2"
 bucket_name = "scott-agent-staging"
+preview_bucket_name = "scott-agent-staging"
 
 # Production Environment
 [env.production]

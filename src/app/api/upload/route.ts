@@ -3,8 +3,6 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { verifyToken } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 
-export const runtime = 'edge';
-
 export async function POST(req: NextRequest) {
   try {
     const token = req.cookies.get('token')?.value;

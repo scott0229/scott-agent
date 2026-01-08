@@ -2,36 +2,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Next.js: debug",
+      "name": "Dev: Cloudflare Local (Live Reload)",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev",
+      "command": "npm run dev:cf",
       "serverReadyAction": {
-        "pattern": "started server on .+, url: (https?://.+)",
+        "pattern": "Ready on (http://[^\\s]+)",
         "uriFormat": "%s",
-        "action": "debugWithChrome"
-      }
-    },
-    {
-      "name": "Wrangler: local (D1+R2)",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "npm run build && npx wrangler pages dev .open-next/assets --compatibility-date=2024-09-23 --compatibility-flag=nodejs_compat --d1=DB --r2=R2",
-      "serverReadyAction": {
-        "pattern": "Ready on (http://.+)",
-        "uriFormat": "%s",
-        "action": "debugWithChrome"
-      }
-    },
-    {
-      "name": "Wrangler: remote (staging)",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "npm run build && npx wrangler pages dev .open-next/assets --remote --compatibility-date=2024-09-23 --compatibility-flag=nodejs_compat --d1=DB --r2=R2",
-      "serverReadyAction": {
-        "pattern": "Ready on (http://.+)",
-        "uriFormat": "%s",
-        "action": "debugWithChrome"
+        "action": "openExternally"
       }
     }
   ]

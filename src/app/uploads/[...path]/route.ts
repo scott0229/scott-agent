@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-export const runtime = 'edge';
-
 export async function GET(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
   try {
     const { env } = await getCloudflareContext();
-    const key = params.path.join('/');
+    const key = `uploads/${params.path.join('/')}`;
 
     const object = await env.R2.get(key);
     

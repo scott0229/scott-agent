@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
-export const runtime = 'edge';
-
 // GET: Get item details
 export async function GET(
   req: NextRequest,

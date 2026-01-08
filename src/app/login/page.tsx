@@ -54,10 +54,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl text-primary font-bold">Login</CardTitle>
           <CardDescription>
             Enter your email below to login to your account.
           </CardDescription>
@@ -73,6 +73,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="bg-white/50"
               />
             </div>
             <div className="grid gap-2">
@@ -83,6 +84,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="bg-white/50"
               />
             </div>
             {error && (

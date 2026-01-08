@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:cf": "wrangler dev --live-reload",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "preview": "opennextjs-cloudflare build && wrangler dev",
-    "deploy:staging": "wrangler d1 migrations apply DB --remote --env staging && opennextjs-cloudflare build && wrangler deploy --env staging",
-    "deploy:production": "wrangler d1 migrations apply DB --remote --env production && opennextjs-cloudflare build && wrangler deploy --env production",
-    "cf-typegen": "wrangler types"
+    "build:cf": "opennextjs-cloudflare build",
+    "migrate:local": "wrangler d1 migrations apply DB --local",
+    "migrate:staging": "wrangler d1 migrations apply DB --remote --env staging",
+    "migrate:production": "wrangler d1 migrations apply DB --remote --env production",
+    "deploy:staging": "npm run migrate:staging && npm run build:cf && wrangler deploy --env staging",
+    "deploy:production": "npm run migrate:production && npm run build:cf && wrangler deploy --env production",
+    "cf-typegen": "wrangler types",
+    "lint": "next lint"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
