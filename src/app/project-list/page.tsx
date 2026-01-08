@@ -7,6 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
 import { EditProjectDialog } from "@/components/EditProjectDialog";
+import { UserCard } from "@/components/UserCard";
+
+interface User {
+  id: number;
+  email: string;
+  user_id: string | null;
+}
 
 interface Project {
   id: number;
@@ -20,6 +27,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function ProjectListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -47,8 +55,21 @@ export default function ProjectListPage() {
     }
   };
 
+  const fetchUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      const data = await res.json() as { success: boolean; user: User };
+      if (data.success) {
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+    }
+  };
+
   useEffect(() => {
     fetchProjects();
+    fetchUser();
   }, []);
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
@@ -74,6 +95,13 @@ export default function ProjectListPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
+        {/* User Card */}
+        {user && (
+          <div className="mb-6">
+            <UserCard user={user} onUpdate={fetchUser} />
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
