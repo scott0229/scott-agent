@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: debug",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "serverReadyAction": {
+        "pattern": "started server on .+, url: (https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+        "name": "Wrangler: preview",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceRoot}/node_modules/wrangler/bin/wrangler.js",
+        "args": [
+            "dev"
+        ],
+        "console": "integratedTerminal",
+        "env": {
+            "BROWSER": "none"
+        },
+        "serverReadyAction": {
+            "pattern": "Ready on (http://.+)",
+            "uriFormat": "%s",
+            "action": "debugWithChrome"
+        }
+    }
+  ]
+}
