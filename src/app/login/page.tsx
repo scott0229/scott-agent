@@ -36,15 +36,23 @@ export default function LoginPage() {
         body: JSON.stringify({ account, password }),
       });
 
-      const data = await res.json() as { success: boolean; error?: string };
+      const data = await res.json() as {
+        success: boolean;
+        error?: string;
+        user?: { role: string; user_id: string; id: number }
+      };
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || '登入失敗');
       }
 
       // Login successful - Cookie is set by the server.
-      // Redirect to project list.
-      router.push('/project-list');
+      if (data.user && data.user.role === 'customer') {
+        const targetId = data.user.user_id || data.user.id;
+        router.push(`/options/${targetId}`);
+      } else {
+        router.push('/project-list');
+      }
 
     } catch (err: any) {
       setError(err.message);
@@ -70,7 +78,7 @@ export default function LoginPage() {
               <Input
                 id="account"
                 type="text"
-                placeholder="Email 或 User ID"
+                placeholder=""
                 required
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
@@ -96,12 +104,7 @@ export default function LoginPage() {
             <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" type="submit" disabled={isLoading}>
               {isLoading ? '登入中...' : '登入'}
             </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              還沒有帳戶嗎？{' '}
-              <Link href="/register" className="text-primary hover:underline font-medium">
-                建立帳戶
-              </Link>
-            </div>
+
           </CardFooter>
         </form>
       </Card>

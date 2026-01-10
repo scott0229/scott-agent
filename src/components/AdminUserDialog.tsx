@@ -124,20 +124,6 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4" autoComplete="off">
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email" className="text-right">
-                            Email
-                        </Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="col-span-3"
-                            autoComplete="off"
-                            required
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="userId" className="text-right">
                             帳號
                         </Label>
@@ -166,6 +152,20 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             required={!userToEdit}
                             minLength={6}
                             placeholder={userToEdit ? '若不修改請留空' : ''}
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">
+                            郵件地址
+                        </Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className="col-span-3"
+                            autoComplete="off"
+                            required
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">

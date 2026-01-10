@@ -42,6 +42,7 @@ export async function GET(
       SELECT 
         ITEMS.*, 
         Creator.email as creator_email, 
+        Creator.user_id as creator_user_id,
         Creator.avatar_url as creator_avatar,
         Assignee.email as assignee_email,
         Assignee.user_id as assignee_user_id,

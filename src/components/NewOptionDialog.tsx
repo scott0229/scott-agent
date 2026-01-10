@@ -22,6 +22,8 @@ interface NewOptionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
+    userId: string; // Add userId prop
+    ownerId?: number | null; // Add ownerId prop
 }
 
 const getNextWorkday = () => {
@@ -33,7 +35,7 @@ const getNextWorkday = () => {
     return d.toISOString().split('T')[0];
 };
 
-export function NewOptionDialog({ open, onOpenChange, onSuccess }: NewOptionDialogProps) {
+export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId }: NewOptionDialogProps) {
     const [formData, setFormData] = useState({
         status: '未平倉',
         operation: '無',
@@ -79,6 +81,9 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess }: NewOptionDial
                 collateral: Math.abs(parseFloat(formData.quantity)) * parseFloat(formData.strike_price) * 100,
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
+
+                userId: userId, // Include userId in payload
+                ownerId: ownerId // Include ownerId in payload
             };
 
             const res = await fetch('/api/options', {

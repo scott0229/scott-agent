@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get('token')?.value;
+    console.log('API Auth Me: Token present?', !!token);
     if (!token) {
       return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
@@ -16,13 +19,15 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const user = await db.prepare(
-      'SELECT id, email, user_id, avatar_url FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url, role FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     if (!user) {
+      console.log('API Auth Me: User not found despite valid token');
       return NextResponse.json({ error: '找不到使用者' }, { status: 404 });
     }
 
+    console.log('API Auth Me: Returning user:', { id: user.id, role: user.role, userId: user.user_id });
     return NextResponse.json({ success: true, user });
 
   } catch (error) {

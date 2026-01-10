@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        user_id: user.user_id
       }
     });
 

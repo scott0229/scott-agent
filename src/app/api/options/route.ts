@@ -11,8 +11,25 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get('userId');
+        const ownerId = searchParams.get('ownerId');
+
         const db = await getDb();
-        const { results } = await db.prepare('SELECT * FROM OPTIONS ORDER BY open_date DESC').all();
+        let query = 'SELECT * FROM OPTIONS';
+        const params: any[] = [];
+
+        if (ownerId) {
+            query += ' WHERE owner_id = ?';
+            params.push(ownerId);
+        } else if (userId) {
+            query += ' WHERE user_id = ?';
+            params.push(userId);
+        }
+
+        query += ' ORDER BY open_date DESC';
+
+        const { results } = await db.prepare(query).bind(...params).all();
 
         return NextResponse.json({ options: results });
     } catch (error) {
@@ -42,7 +59,9 @@ export async function POST(req: NextRequest) {
             underlying,
             type,
             strike_price,
-            premium
+            premium,
+            userId,
+            ownerId // Add ownerId
         } = body;
 
         // Auto-calculate profit percent
@@ -64,8 +83,8 @@ export async function POST(req: NextRequest) {
                 status, operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
-                delta, iv, capital_efficiency, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                delta, iv, capital_efficiency, user_id, owner_id, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             status || 'Open',
             operation || '無',
@@ -82,7 +101,9 @@ export async function POST(req: NextRequest) {
             profit_percent || null,
             body.delta || null,
             body.iv || null,
-            body.capital_efficiency || null
+            body.capital_efficiency || null,
+            userId || null,
+            ownerId || null // Bind ownerId
         ).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });

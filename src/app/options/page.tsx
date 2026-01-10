@@ -1,433 +1,121 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
+import { useRouter } from 'next/navigation';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { NewOptionDialog } from "@/components/NewOptionDialog";
-import { EditOptionDialog } from "@/components/EditOptionDialog";
-import { Pencil, FilterX } from "lucide-react";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Loader2, Users } from "lucide-react";
 
-
-interface Option {
+interface User {
     id: number;
-    status: string;
-    operation: string | null;
-    open_date: number;
-    to_date: number | null;
-    settlement_date: number | null;
-    quantity: number;
-    underlying: string;
-    type: string;
-    strike_price: number;
-    collateral: number | null;
-    premium: number | null;
-    final_profit: number | null;
-    profit_percent: number | null;
-    delta: number | null;
-    iv: number | null;
-    capital_efficiency: number | null;
+    email: string;
+    user_id: string | null;
+    avatar_url: string | null;
+    ib_account?: string | null;
 }
 
-export default function OptionsPage() {
-    const [options, setOptions] = useState<Option[]>([]);
+export default function OptionsClientListPage() {
+    const [clients, setClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [optionToEdit, setOptionToEdit] = useState<Option | null>(null);
-    const [selectedYear, setSelectedYear] = useState<string>('All');
-    const [selectedMonth, setSelectedMonth] = useState<string>('All');
-    const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
-    const [selectedType, setSelectedType] = useState<string>('All');
-    const [selectedStatus, setSelectedStatus] = useState<string>('All');
-    const [selectedOperation, setSelectedOperation] = useState<string>('All');
-    const { toast } = useToast();
-
-    // Get unique years and underlyings from options
-    const years = Array.from(new Set(options.map(opt => new Date(opt.open_date * 1000).getFullYear()))).sort((a, b) => b - a);
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
-    const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
-    const operations = Array.from(new Set(options.map(opt => opt.operation || '無'))).sort();
-
-    const filteredOptions = options.filter(opt => {
-        const date = new Date(opt.open_date * 1000);
-        const yearMatch = selectedYear === 'All' || date.getFullYear().toString() === selectedYear;
-        const monthMatch = selectedMonth === 'All' || (date.getMonth() + 1).toString() === selectedMonth;
-        const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
-        const typeMatch = selectedType === 'All' || opt.type === selectedType;
-        const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
-        const operationMatch = selectedOperation === 'All' || (opt.operation || '無') === selectedOperation;
-        return yearMatch && monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
-    });
-
-    const handleEdit = (option: Option) => {
-        setOptionToEdit(option);
-        setEditDialogOpen(true);
-    };
-
-    const resetFilters = () => {
-        setSelectedYear('All');
-        setSelectedMonth('All');
-        setSelectedUnderlying('All');
-        setSelectedType('All');
-        setSelectedStatus('All');
-        setSelectedOperation('All');
-    };
-
-    const handleQuickUpdate = async (id: number, field: string, value: string) => {
-        try {
-            const option = options.find(o => o.id === id);
-            if (!option) return;
-
-            const payload = {
-                ...option,
-                [field]: value
-            };
-
-            const res = await fetch('/api/options', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (res.ok) {
-                fetchOptions();
-                toast({
-                    title: "更新成功",
-                    description: "交易狀態已更新",
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "更新失敗",
-                    description: "無法更新交易狀態",
-                });
-            }
-        } catch (error) {
-            console.error('Update failed', error);
-            toast({
-                variant: "destructive",
-                title: "錯誤",
-                description: "發生錯誤，請稍後再試",
-            });
-        }
-    };
-
-    const fetchOptions = async () => {
-        try {
-            const res = await fetch('/api/options');
-            const data = await res.json();
-            if (data.options) {
-                setOptions(data.options);
-            }
-        } catch (error) {
-            console.error('Failed to fetch options:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const router = useRouter();
 
     useEffect(() => {
-        fetchOptions();
-    }, []);
+        const checkUserAndFetchClients = async () => {
+            try {
+                // 1. Check current user role
+                const authRes = await fetch('/api/auth/me', { cache: 'no-store' });
+                if (authRes.ok) {
+                    const authData = await authRes.json();
+                    console.log('Options Check Role:', authData.user);
+                    if (authData.user && authData.user.role === 'customer') {
+                        // Redirect customer to their own page
+                        // Prefer user_id (string), fallback to id (number) if user_id is null
+                        const targetId = authData.user.user_id || authData.user.id;
+                        router.replace(`/options/${targetId}`);
+                        return; // Stop execution
+                    }
+                }
 
-    const formatDate = (timestamp: number | null) => {
-        if (!timestamp) return '';
-        const date = new Date(timestamp * 1000);
-        const year = date.getFullYear().toString().slice(-2);
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+                // 2. If not customer (admin/trader), fetch clients list
+                const res = await fetch('/api/users?mode=selection&roles=customer');
+                const data = await res.json();
+                if (data.users) {
+                    setClients(data.users);
+                }
+            } catch (error) {
+                console.error('Failed to init options page:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    const calculateDays = (start: number, end: number | null) => {
-        if (!end) return '';
-        const diffTime = Math.abs(end * 1000 - start * 1000);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    };
+        checkUserAndFetchClients();
+    }, [router]);
 
-    // Dynamic calculation for "days held" and "days until expiration"
-    // Note: Simple calculation for demo purposes. Real logic might need adjustment for timezones/market days.
-    const getDaysHeld = (opt: Option) => {
-        if (!opt.settlement_date) return '';
-        return calculateDays(opt.open_date, opt.settlement_date);
+    if (isLoading) {
+        return (
+            <div className="flex h-[50vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
     }
 
-    const getDaysToExpire = (opt: Option) => {
-        if (!opt.to_date) return '';
-        return calculateDays(opt.open_date, opt.to_date);
-    };
-
     return (
-        <div className="container mx-auto py-10 max-w-[1600px]">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">期權管理</h1>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={resetFilters}
-                                        className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
-                                    >
-                                        <FilterX className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>重置篩選</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+        <div className="container mx-auto py-10 max-w-[1200px]">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <Users className="h-8 w-8" />
+                    客戶列表
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                    選擇一位客戶以管理其期權交易紀錄
+                </p>
+            </div>
 
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="年份" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部年份</SelectItem>
-                                {years.map(year => (
-                                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="月份" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部月份</SelectItem>
-                                {months.map(month => (
-                                    <SelectItem key={month} value={month.toString()}>{month}月</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
-                            <SelectTrigger className="w-[120px]">
-                                <SelectValue placeholder="底層標的" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部標的</SelectItem>
-                                {underlyings.map(u => (
-                                    <SelectItem key={u} value={u}>{u}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedType} onValueChange={setSelectedType}>
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="多空" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部類型</SelectItem>
-                                <SelectItem value="CALL">CALL</SelectItem>
-                                <SelectItem value="PUT">PUT</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="狀態" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部狀態</SelectItem>
-                                {statuses.map(s => (
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedOperation} onValueChange={setSelectedOperation}>
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="操作" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部操作</SelectItem>
-                                {operations.map(op => (
-                                    <SelectItem key={op} value={op}>{op}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clients.map((client) => {
+                    const displayName = client.user_id || client.email.split('@')[0];
+                    const initials = displayName.charAt(0).toUpperCase();
+
+                    return (
+                        <Card
+                            key={client.id}
+                            className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50 group"
+                            onClick={() => router.push(`/options/${client.user_id || client.id}`)} // Use user_id if available, fallback to id if needed (though standardizing on user_id is better)
+                        >
+                            <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                                <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
+                                    <AvatarImage src={client.avatar_url || undefined} />
+                                    <AvatarFallback>{initials}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col overflow-hidden">
+                                    <CardTitle className="text-lg truncate">{displayName}</CardTitle>
+                                    <CardDescription className="truncate">
+                                        {client.ib_account || client.email}
+                                    </CardDescription>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-sm text-muted-foreground mt-2">
+                                    點擊查看交易紀錄 &rarr;
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+
+                {clients.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
+                        尚無客戶資料
                     </div>
-                    <Button
-                        onClick={() => setDialogOpen(true)}
-                        variant="secondary"
-                        className="hover:bg-accent hover:text-accent-foreground"
-                    >
-                        + 新增交易
-                    </Button>
-                </div>
+                )}
             </div>
-
-            <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-                <Table className="whitespace-nowrap">
-                    <TableHeader>
-                        <TableRow className="bg-secondary hover:bg-secondary">
-                            <TableHead className="text-center">No.</TableHead>
-                            <TableHead className="text-center">狀態</TableHead>
-                            <TableHead className="text-center">操作</TableHead>
-                            <TableHead className="text-center">開倉日</TableHead>
-                            <TableHead className="text-center">到期日</TableHead>
-                            <TableHead className="text-center">到期天數</TableHead>
-                            <TableHead className="text-center">結算日</TableHead>
-                            <TableHead className="text-center">持有天數</TableHead>
-                            <TableHead className="text-center">口數</TableHead>
-                            <TableHead className="text-center">底層標的</TableHead>
-                            <TableHead className="text-center">多空</TableHead>
-                            <TableHead className="text-center">行權價</TableHead>
-                            <TableHead className="text-center">備兌資金</TableHead>
-                            <TableHead className="text-center">權利金</TableHead>
-                            <TableHead className="text-center">最終損益</TableHead>
-                            <TableHead className="text-center">損益%</TableHead>
-                            <TableHead className="text-center">DELTA</TableHead>
-                            <TableHead className="text-center">隱含波動</TableHead>
-
-                            <TableHead className="text-center">資金效率</TableHead>
-                            <TableHead className="text-center"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
-                                    載入中...
-                                </TableCell>
-                            </TableRow>
-                        ) : filteredOptions.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={18} className="text-center py-8 text-muted-foreground">
-                                    尚無資料
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredOptions.map((opt, index) => (
-                                <TableRow key={opt.id} className="hover:bg-muted/50 text-center">
-                                    <TableCell>{filteredOptions.length - index}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={opt.status === '已關' ? 'secondary' : 'outline'} className={opt.status === '未平倉' ? 'text-blue-600 border-blue-200 bg-blue-50' : ''}>
-                                            {opt.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {opt.operation === '中途被行權' ? (
-                                            <span className="text-red-600 bg-red-50 px-2 py-1 rounded-sm">
-                                                {opt.operation}
-                                            </span>
-                                        ) : (
-                                            opt.operation || '無'
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{formatDate(opt.open_date)}</TableCell>
-                                    <TableCell>{formatDate(opt.to_date)}</TableCell>
-                                    <TableCell>{getDaysToExpire(opt)}</TableCell>
-                                    <TableCell>{formatDate(opt.settlement_date)}</TableCell>
-                                    <TableCell>{getDaysHeld(opt)}</TableCell>
-                                    <TableCell>{opt.quantity}</TableCell>
-                                    <TableCell className="font-medium">{opt.underlying}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={opt.type === 'CALL' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
-                                            {opt.type}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{opt.strike_price}</TableCell>
-                                    <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
-                                    <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
-                                    <TableCell className={opt.final_profit && opt.final_profit > 0 ? 'text-green-600' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}>
-                                        {opt.final_profit?.toLocaleString() || '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {(() => {
-                                            if (opt.final_profit !== null && opt.final_profit !== undefined && opt.premium) {
-                                                return `${((opt.final_profit / opt.premium) * 100).toFixed(1)}%`;
-                                            }
-                                            return opt.profit_percent ? `${(opt.profit_percent * 100).toFixed(1)}%` : '-';
-                                        })()}
-                                    </TableCell>
-                                    <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
-                                    <TableCell>{opt.iv ? `${opt.iv}%` : '-'}</TableCell>
-
-                                    <TableCell>
-                                        {(() => {
-                                            const daysHeld = typeof getDaysHeld(opt) === 'number' ? getDaysHeld(opt) : null;
-                                            if (
-                                                opt.final_profit !== null &&
-                                                opt.final_profit !== undefined &&
-                                                daysHeld &&
-                                                daysHeld > 0 &&
-                                                opt.collateral &&
-                                                opt.collateral > 0
-                                            ) {
-                                                const efficiency = opt.final_profit / (Number(daysHeld) * opt.collateral);
-                                                return `${(efficiency * 100).toFixed(3)}%`;
-                                            }
-                                            return opt.capital_efficiency ? `${(opt.capital_efficiency * 100).toFixed(3)}%` : '-';
-                                        })()}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex justify-center">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(opt)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>編輯</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            <NewOptionDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                onSuccess={fetchOptions}
-            />
-
-            <EditOptionDialog
-                open={editDialogOpen}
-                onOpenChange={(open) => {
-                    setEditDialogOpen(open);
-                    if (!open) setOptionToEdit(null);
-                }}
-                onSuccess={fetchOptions}
-                optionToEdit={optionToEdit}
-            />
         </div>
     );
 }

@@ -115,12 +115,10 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>編輯任務</DialogTitle>
-          <DialogDescription>
-            編輯您的任務資訊。完成後請點擊儲存。
-          </DialogDescription>
+
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -174,7 +172,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
                 <MDEditor
                   value={content}
                   onChange={(val) => setContent(val || '')}
-                  height={400}
+                  height={250}
                   preview="live"
                   textareaProps={{
                     placeholder: '任務描述... (支援 Markdown)'

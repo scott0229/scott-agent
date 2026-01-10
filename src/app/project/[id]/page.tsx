@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, FilterX } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -63,6 +63,9 @@ interface Item {
   assignee_avatar?: string;
   created_at: number;
   updated_at: number;
+  creator_email?: string;
+  creator_user_id?: string;
+  creator_avatar?: string;
 }
 
 interface Milestone {
@@ -99,6 +102,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   // Sort states
   const [sortBy, setSortBy] = useState<'created_at' | 'updated_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setAssigneeFilter('all');
+  };
 
   const router = useRouter();
 
@@ -229,52 +238,68 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           ← 返回專案列表
         </Button>
 
-        {/* Project Header */}
-        {project && (
-          <div className="flex items-center gap-4 mb-8">
-            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-          </div>
-        )}
-
-        {/* Filters and Actions */}
+        {/* Project Header & Filters */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex flex-wrap gap-4">
-            <Input
-              placeholder="搜尋任務..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-[200px] bg-white"
-            />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px] bg-white">
-                <SelectValue placeholder="依狀態篩選" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">所有狀態</SelectItem>
-                <SelectItem value="New">新建</SelectItem>
-                <SelectItem value="In Progress">進行中</SelectItem>
-                <SelectItem value="Closed">已關閉</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-[140px] bg-white">
-                <SelectValue placeholder="依指派人篩選" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">所有指派人</SelectItem>
-                {assignees.map(user => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.user_id || user.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
+          {project && (
+            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+          )}
+
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={resetFilters}
+                      className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
+                    >
+                      <FilterX className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>重置篩選</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <Input
+                placeholder="搜尋任務..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-[200px] bg-white"
+              />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] bg-white">
+                  <SelectValue placeholder="依狀態篩選" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">所有狀態</SelectItem>
+                  <SelectItem value="New">新建</SelectItem>
+                  <SelectItem value="In Progress">進行中</SelectItem>
+                  <SelectItem value="Closed">已關閉</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="w-[140px] bg-white">
+                  <SelectValue placeholder="依指派人篩選" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">所有指派人</SelectItem>
+                  {assignees.map(user => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.user_id || user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button
               variant="secondary"
               onClick={() => setIsNewItemOpen(true)}
-              className="flex-1 sm:flex-none hover:bg-accent hover:text-accent-foreground"
+              className="hover:bg-accent hover:text-accent-foreground"
             >
               + 新增任務
             </Button>
@@ -300,6 +325,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <TableRow className="bg-secondary hover:bg-secondary">
                   <TableHead className="w-[80px]">#</TableHead>
                   <TableHead className="w-[30%]">標題</TableHead>
+                  <TableHead>創建者</TableHead>
                   <TableHead>指派給</TableHead>
                   <TableHead>狀態</TableHead>
                   <TableHead
@@ -331,6 +357,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                       <span className="font-medium text-foreground group-hover:text-primary transition-colors block truncate max-w-[300px]">
                         {item.title}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{item.creator_user_id || item.creator_email}</span>
                     </TableCell>
                     <TableCell>
                       {item.assignee_id ? (

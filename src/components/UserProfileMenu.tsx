@@ -218,7 +218,7 @@ export function UserProfileMenu() {
                                 </div>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="edit-userId">使用者 ID (暱稱)</Label>
+                                <Label htmlFor="edit-userId">帳號</Label>
                                 <Input
                                     id="edit-userId"
                                     value={editUserId}

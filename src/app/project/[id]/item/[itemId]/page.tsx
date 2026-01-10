@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EditItemDialog } from '@/components/EditItemDialog';
-import { CommentDialog } from '@/components/CommentDialog';
+
 
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
@@ -41,15 +41,7 @@ interface Milestone {
   title: string;
 }
 
-interface Comment {
-  id: number;
-  content: string;
-  created_at: number;
-  updated_at: number | null;
-  creator_email?: string;
-  creator_avatar?: string;
-  created_by: number;
-}
+
 
 export default function ItemDetailPage({
   params
@@ -57,28 +49,25 @@ export default function ItemDetailPage({
   params: { id: string; itemId: string }
 }) {
   const [item, setItem] = useState<Item | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Dialog states
   const [editItemOpen, setEditItemOpen] = useState(false);
-  const [commentOpen, setCommentOpen] = useState(false);
-  const [editingComment, setEditingComment] = useState<Comment | undefined>(undefined);
+
 
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
     try {
-      const [itemRes, milestonesRes, commentsRes] = await Promise.all([
+      const [itemRes, milestonesRes] = await Promise.all([
         fetch(`/api/projects/${params.id}/items/${params.itemId}`),
-        fetch(`/api/projects/${params.id}/milestones`),
-        fetch(`/api/projects/${params.id}/items/${params.itemId}/comments`)
+        fetch(`/api/projects/${params.id}/milestones`)
       ]);
 
       const itemData = await itemRes.json();
       const milestonesData = await milestonesRes.json();
-      const commentsData = await commentsRes.json();
 
       if (itemData.success) {
         setItem(itemData.item);
@@ -86,10 +75,6 @@ export default function ItemDetailPage({
 
       if (milestonesData.success) {
         setMilestones(milestonesData.milestones);
-      }
-
-      if (commentsData.success) {
-        setComments(commentsData.comments);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -188,67 +173,9 @@ export default function ItemDetailPage({
           </CardContent>
         </Card>
 
-        {/* Comments Stream */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-muted-foreground ml-2">討論區</h2>
 
-          {comments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground bg-secondary/5 rounded-lg border border-dashed text-sm">
-              尚無留言。開始討論吧！
-            </div>
-          ) : (
-            comments.map((comment) => (
-              <Card key={comment.id} className="bg-white/80 hover:bg-white/95 transition-colors shadow-sm">
-                <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between bg-muted/10">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.creator_avatar} />
-                      <AvatarFallback>{comment.creator_email?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold">{comment.creator_email}</span>
-                      <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
-                    </div>
-                  </div>
 
-                  {/* TODO: Add check for current user ownership */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditingComment(comment);
-                      setCommentOpen(true);
-                    }}
-                  >
-                    編輯
-                  </Button>
-                </CardHeader>
-                <CardContent className="py-4 px-6 text-sm">
-                  <div data-color-mode="light">
-                    <Markdown
-                      source={comment.content}
-                      style={{ backgroundColor: 'transparent', color: 'inherit', fontSize: '0.95rem' }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
 
-        {/* Floating Action Button for Reply */}
-        <div className="fixed bottom-8 right-8">
-          <Button
-            size="lg"
-            className="shadow-xl rounded-full px-6 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg"
-            onClick={() => {
-              setEditingComment(undefined);
-              setCommentOpen(true);
-            }}
-          >
-            💬 回覆
-          </Button>
-        </div>
       </div>
 
       {/* Dialogs */}
@@ -262,14 +189,7 @@ export default function ItemDetailPage({
         />
       )}
 
-      <CommentDialog
-        projectId={Number(params.id)}
-        itemId={Number(params.itemId)}
-        comment={editingComment}
-        open={commentOpen}
-        onOpenChange={setCommentOpen}
-        onSuccess={fetchData}
-      />
+
     </div>
   );
 }

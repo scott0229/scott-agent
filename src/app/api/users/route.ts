@@ -14,17 +14,23 @@ async function checkAdmin(req: NextRequest) {
     return payload;
 }
 
+export const dynamic = 'force-dynamic'; // Ensure no caching
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const mode = searchParams.get('mode');
+        console.log('API Users GET:', { url: req.url, mode, roles: searchParams.get('roles') }); // Debug log
 
         if (mode === 'selection') {
             const token = req.cookies.get('token')?.value;
+            console.log('API Users: Token present?', !!token);
             if (!token) {
+                console.log('API Users: No token found in cookies');
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
             const payload = await verifyToken(token);
+            console.log('API Users: Token verification result:', !!payload);
             if (!payload) {
                 return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
             }
@@ -32,7 +38,7 @@ export async function GET(req: NextRequest) {
             const db = await getDb();
 
             const roles = searchParams.get('roles')?.split(',');
-            let query = 'SELECT id, email, user_id, avatar_url FROM USERS';
+            let query = 'SELECT id, email, user_id, avatar_url, ib_account FROM USERS';
             const params: any[] = [];
 
             if (roles && roles.length > 0) {
@@ -41,9 +47,16 @@ export async function GET(req: NextRequest) {
                 params.push(...roles);
             }
 
+            const userId = searchParams.get('userId');
+            if (userId) {
+                query += roles && roles.length > 0 ? ' AND user_id = ?' : ' WHERE user_id = ?';
+                params.push(userId);
+            }
+
             query += ' ORDER BY email ASC';
 
             // Return simplified user list for dropdowns
+            console.log('Executing query:', query, params); // Check SQL construction
             const { results } = await db.prepare(query).bind(...params).all();
             return NextResponse.json({ users: results });
         }
