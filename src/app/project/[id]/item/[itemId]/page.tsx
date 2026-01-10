@@ -25,6 +25,7 @@ interface Item {
   content: string | null;
   status: string;
   milestone_id: number | null;
+  assignee_id: number | null;
   created_at: number;
   updated_at: number;
   creator_email?: string;
@@ -50,16 +51,16 @@ interface Comment {
   created_by: number;
 }
 
-export default function ItemDetailPage({ 
-  params 
-}: { 
-  params: { id: string; itemId: string } 
+export default function ItemDetailPage({
+  params
+}: {
+  params: { id: string; itemId: string }
 }) {
   const [item, setItem] = useState<Item | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Dialog states
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
@@ -82,7 +83,7 @@ export default function ItemDetailPage({
       if (itemData.success) {
         setItem(itemData.item);
       }
-      
+
       if (milestonesData.success) {
         setMilestones(milestonesData.milestones);
       }
@@ -114,20 +115,20 @@ export default function ItemDetailPage({
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center">載入中...</div>;
   }
 
   if (!item) {
-    return <div className="min-h-screen flex items-center justify-center">Item not found</div>;
+    return <div className="min-h-screen flex items-center justify-center">找不到任務</div>;
   }
 
   return (
     <div className="min-h-screen p-8 bg-background pb-32">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="w-full mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => router.push(`/project/${params.id}`)}>
-            ← Back to Project
+            ← 返回專案
           </Button>
         </div>
 
@@ -152,7 +153,7 @@ export default function ItemDetailPage({
                     </Badge>
                   )}
                 </div>
-                
+
                 {/* Metadata */}
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
@@ -160,27 +161,27 @@ export default function ItemDetailPage({
                       <AvatarImage src={item.creator_avatar} />
                       <AvatarFallback>{item.creator_email?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <span>{item.creator_email} created on {formatDate(item.created_at)}</span>
+                    <span>{item.creator_email} 建立於 {formatDate(item.created_at)}</span>
                   </div>
                   {(item.updated_at > item.created_at || item.updated_by) && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                        Edited: {formatDate(item.updated_at)}
+                        編輯於: {formatDate(item.updated_at)}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
-              
+
               <Button onClick={() => setEditItemOpen(true)} variant="outline" size="sm">
-                Edit
+                編輯
               </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-6 min-h-[200px]">
             <div data-color-mode="light">
-              <Markdown 
-                source={item.content || '*No description provided*'} 
+              <Markdown
+                source={item.content || '*無描述*'}
                 style={{ backgroundColor: 'transparent', color: 'inherit' }}
               />
             </div>
@@ -189,11 +190,11 @@ export default function ItemDetailPage({
 
         {/* Comments Stream */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-muted-foreground ml-2">Discussion</h2>
-          
+          <h2 className="text-lg font-semibold text-muted-foreground ml-2">討論區</h2>
+
           {comments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground bg-secondary/5 rounded-lg border border-dashed text-sm">
-              No comments yet. Start the conversation!
+              尚無留言。開始討論吧！
             </div>
           ) : (
             comments.map((comment) => (
@@ -209,23 +210,23 @@ export default function ItemDetailPage({
                       <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
                     </div>
                   </div>
-                  
+
                   {/* TODO: Add check for current user ownership */}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setEditingComment(comment);
                       setCommentOpen(true);
                     }}
                   >
-                    Edit
+                    編輯
                   </Button>
                 </CardHeader>
                 <CardContent className="py-4 px-6 text-sm">
                   <div data-color-mode="light">
-                    <Markdown 
-                      source={comment.content} 
+                    <Markdown
+                      source={comment.content}
                       style={{ backgroundColor: 'transparent', color: 'inherit', fontSize: '0.95rem' }}
                     />
                   </div>
@@ -237,15 +238,15 @@ export default function ItemDetailPage({
 
         {/* Floating Action Button for Reply */}
         <div className="fixed bottom-8 right-8">
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="shadow-xl rounded-full px-6 h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg"
             onClick={() => {
               setEditingComment(undefined);
               setCommentOpen(true);
             }}
           >
-            💬 Reply
+            💬 回覆
           </Button>
         </div>
       </div>

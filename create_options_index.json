@@ -1,0 +1,3 @@
+{
+    "sql": "CREATE INDEX IF NOT EXISTS idx_options_open_date ON OPTIONS(open_date);"
+}

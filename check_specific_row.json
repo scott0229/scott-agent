@@ -1,0 +1,3 @@
+{
+    "sql": "SELECT id, underlying, strike_price, final_profit, premium, profit_percent FROM OPTIONS WHERE underlying = 'QQQ' AND strike_price = 630"
+}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { NewItemDialog } from "@/components/NewItemDialog";
-import { NewMilestoneDialog } from "@/components/NewMilestoneDialog";
+
+import { EditItemDialog } from "@/components/EditItemDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -31,6 +57,10 @@ interface Item {
   content: string | null;
   status: string;
   milestone_id: number | null;
+  assignee_id: number | null;
+  assignee_email?: string;
+  assignee_user_id?: string;
+  assignee_avatar?: string;
   created_at: number;
   updated_at: number;
 }
@@ -46,19 +76,26 @@ const ITEMS_PER_PAGE = 10;
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [assignees, setAssignees] = useState<{ id: number, email: string, user_id: string | null }[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Dialog states
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
-  const [isNewMilestoneOpen, setIsNewMilestoneOpen] = useState(false);
+
+  // Edit Dialog State
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [isEditItemOpen, setIsEditItemOpen] = useState(false);
+
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   // Filter states
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [milestoneFilter, setMilestoneFilter] = useState('all');
-  
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
+
   // Sort states
   const [sortBy, setSortBy] = useState<'created_at' | 'updated_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -78,22 +115,20 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       if (search) queryParams.append('search', search);
       if (statusFilter !== 'all') queryParams.append('status', statusFilter);
       if (milestoneFilter !== 'all') queryParams.append('milestoneId', milestoneFilter);
+      if (assigneeFilter !== 'all') queryParams.append('assigneeId', assigneeFilter);
       queryParams.append('sort', sortBy);
       queryParams.append('order', sortOrder);
 
-      const [projectRes, itemsRes, milestonesRes] = await Promise.all([
+      const [projectRes, itemsRes] = await Promise.all([
         fetch(`/api/projects/${params.id}`),
         fetch(`/api/projects/${params.id}/items?${queryParams.toString()}`, { cache: 'no-store' }),
-        fetch(`/api/projects/${params.id}/milestones`)
       ]);
-      
+
       const projectData = await projectRes.json();
       const itemsData = await itemsRes.json();
-      const milestonesData = await milestonesRes.json();
-      
+
       if (projectData.success) setProject(projectData.project);
       if (itemsData.success) setItems(itemsData.items);
-      if (milestonesData.success) setMilestones(milestonesData.milestones);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -101,13 +136,29 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  const fetchAssignees = async () => {
+    try {
+      const res = await fetch('/api/users?mode=selection&roles=admin,trader');
+      const data = await res.json();
+      if (data.users) {
+        setAssignees(data.users.filter((u: any) => u.email !== 'admin'));
+      }
+    } catch (error) {
+      console.error('Failed to fetch assignees:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssignees();
+  }, []);
+
   useEffect(() => {
     // Debounce search
     const timer = setTimeout(() => {
       fetchData();
     }, 300);
     return () => clearTimeout(timer);
-  }, [params.id, search, statusFilter, milestoneFilter, sortBy, sortOrder]);
+  }, [params.id, search, statusFilter, milestoneFilter, assigneeFilter, sortBy, sortOrder]);
 
   const toggleSort = (column: 'created_at' | 'updated_at') => {
     if (sortBy === column) {
@@ -118,18 +169,29 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
   };
 
-  const handleDeleteItem = async (itemId: number) => {
-    if (!confirm('Delete this item?')) return;
+  const handleEditItem = (item: Item) => {
+    setEditingItem(item);
+    setIsEditItemOpen(true);
+  };
+
+  const handleDeleteItem = (itemId: number) => {
+    setItemToDelete(itemId);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
 
     try {
-      const res = await fetch(`/api/projects/${params.id}/items/${itemId}`, {
+      const res = await fetch(`/api/projects/${params.id}/items/${itemToDelete}`, {
         method: 'DELETE',
       });
       if (res.ok) {
-        setItems(items.filter(i => i.id !== itemId));
+        setItems(items.filter(i => i.id !== itemToDelete));
       }
     } catch (error) {
       console.error('Failed to delete item:', error);
+    } finally {
+      setItemToDelete(null);
     }
   };
 
@@ -141,168 +203,207 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   };
 
   const statusColors = {
-    'New': 'bg-blue-100 text-blue-800',
+    'New': 'bg-blue-100 text-blue-800', // Assuming these status keys are from DB, might need logic or just UI mapping if displayed
     'In Progress': 'bg-yellow-100 text-yellow-800',
     'Closed': 'bg-green-100 text-green-800',
   };
 
   if (!project && !isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Project not found</div>;
+    if (!project && !isLoading) {
+      return <div className="min-h-screen flex items-center justify-center">找不到專案</div>;
+    }
   }
 
+  const handleCreateSuccess = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setAssigneeFilter('all');
+    fetchData();
+  };
+
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="container mx-auto py-10">
+      <div className="w-full">
         {/* Back Button */}
-        <Button variant="ghost" onClick={() => router.push('/project-list')} className="mb-6">
-          ← Back to Projects
+        <Button variant="ghost" onClick={() => router.push('/project-list')} className="mb-4 pl-0 hover:pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground">
+          ← 返回專案列表
         </Button>
 
-        {/* Project Header Card */}
+        {/* Project Header */}
         {project && (
-          <Card className="mb-8 bg-white/90 backdrop-blur-sm shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 ring-2 ring-primary/20">
-                    <AvatarImage src={project.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                      {project.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-                    <p className="text-muted-foreground mt-1">{project.description || 'No description'}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsNewMilestoneOpen(true)}>
-                    + New Milestone
-                  </Button>
-                  <Button onClick={() => setIsNewItemOpen(true)}>
-                    + New Item
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+          <div className="flex items-center gap-4 mb-8">
+            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+          </div>
         )}
 
-        {/* Filters Section */}
-        <div className="flex flex-wrap gap-4 mb-6">
-          <Input 
-            placeholder="Search items..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs bg-white/50"
-          />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] bg-white/50">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="New">New</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="Closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={milestoneFilter} onValueChange={setMilestoneFilter}>
-            <SelectTrigger className="w-[180px] bg-white/50">
-              <SelectValue placeholder="Filter by milestone" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Milestones</SelectItem>
-              {milestones.map(m => (
-                <SelectItem key={m.id} value={m.id.toString()}>{m.title}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Filters and Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex flex-wrap gap-4">
+            <Input
+              placeholder="搜尋任務..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-[200px] bg-white"
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] bg-white">
+                <SelectValue placeholder="依狀態篩選" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">所有狀態</SelectItem>
+                <SelectItem value="New">新建</SelectItem>
+                <SelectItem value="In Progress">進行中</SelectItem>
+                <SelectItem value="Closed">已關閉</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="w-[140px] bg-white">
+                <SelectValue placeholder="依指派人篩選" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">所有指派人</SelectItem>
+                {assignees.map(user => (
+                  <SelectItem key={user.id} value={user.id.toString()}>
+                    {user.user_id || user.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() => setIsNewItemOpen(true)}
+              className="flex-1 sm:flex-none hover:bg-accent hover:text-accent-foreground"
+            >
+              + 新增任務
+            </Button>
+          </div>
         </div>
 
         {/* Items List */}
         {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">載入中...</div>
         ) : items.length === 0 ? (
           <Card className="text-center py-12 bg-white/80">
             <CardContent>
               <div className="text-muted-foreground mb-4">
-                <p className="text-lg">No items found</p>
-                <p className="text-sm mt-1">Try adjusting your filters or create a new item</p>
+                <p className="text-lg">找不到任務</p>
+                <p className="text-sm mt-1">請嘗試調整篩選條件或新增任務</p>
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-secondary border-b text-sm font-medium text-muted-foreground">
-              <div className="col-span-3">Title</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-2">Milestone</div>
-              <div 
-                className="col-span-2 cursor-pointer hover:text-foreground flex items-center gap-1"
-                onClick={() => toggleSort('created_at')}
-              >
-                Created {sortBy === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </div>
-              <div 
-                className="col-span-2 cursor-pointer hover:text-foreground flex items-center gap-1"
-                onClick={() => toggleSort('updated_at')}
-              >
-                Updated {sortBy === 'updated_at' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </div>
-              <div className="col-span-1 text-right">Action</div>
-            </div>
-            <div className="divide-y">
-              {paginatedItems.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-primary/5 cursor-pointer transition-colors items-center group"
-                  onClick={() => router.push(`/project/${params.id}/item/${item.id}`)}
-                >
-                  <div className="col-span-3 truncate">
-                    <span className="font-medium text-foreground group-hover:text-primary transition-colors">
-                      {item.title}
-                    </span>
-                  </div>
-                  <div className="col-span-2">
-                    <Badge variant="secondary" className={statusColors[item.status as keyof typeof statusColors]}>
-                      {item.status}
-                    </Badge>
-                  </div>
-                  <div className="col-span-2 text-sm truncate">
-                    {item.milestone_id ? (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        🎯 {milestones.find(m => m.id === item.milestone_id)?.title}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary hover:bg-secondary">
+                  <TableHead className="w-[80px]">#</TableHead>
+                  <TableHead className="w-[30%]">標題</TableHead>
+                  <TableHead>指派給</TableHead>
+                  <TableHead>狀態</TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:text-foreground"
+                    onClick={() => toggleSort('created_at')}
+                  >
+                    建立時間 {sortBy === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer hover:text-foreground"
+                    onClick={() => toggleSort('updated_at')}
+                  >
+                    更新時間 {sortBy === 'updated_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </TableHead>
+                  <TableHead className="text-right"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.map((item, index) => (
+                  <TableRow
+                    key={item.id}
+                    className="cursor-pointer hover:bg-muted/50 group"
+                    onClick={() => router.push(`/project/${params.id}/item/${item.id}`)}
+                  >
+                    <TableCell className="text-muted-foreground font-mono">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-foreground group-hover:text-primary transition-colors block truncate max-w-[300px]">
+                        {item.title}
                       </span>
-                    ) : '-'}
-                  </div>
-                  <div className="col-span-2 text-sm text-muted-foreground">
-                    {formatDate(item.created_at)}
-                  </div>
-                  <div className="col-span-2 text-sm text-muted-foreground">
-                    {formatDate(item.updated_at)}
-                  </div>
-                  <div className="col-span-1 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-muted-foreground hover:text-red-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteItem(item.id);
-                      }}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.assignee_id ? (
+                        <span className="text-sm">{item.assignee_user_id || item.assignee_email}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={statusColors[item.status as keyof typeof statusColors]}>
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(item.created_at)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(item.updated_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditItem(item);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>編輯</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteItem(item.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>刪除</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
                 <span className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, items.length)} of {items.length} items
+                  顯示 {(currentPage - 1) * ITEMS_PER_PAGE + 1} 到 {Math.min(currentPage * ITEMS_PER_PAGE, items.length)} 筆，共 {items.length} 筆任務
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -311,7 +412,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => p - 1)}
                   >
-                    Previous
+                    上一頁
                   </Button>
                   <span className="text-sm text-muted-foreground px-2">
                     {currentPage} / {totalPages}
@@ -322,7 +423,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(p => p + 1)}
                   >
-                    Next
+                    下一頁
                   </Button>
                 </div>
               </div>
@@ -330,19 +431,39 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         )}
 
-        <NewItemDialog 
-          projectId={Number(params.id)} 
-          open={isNewItemOpen} 
+        <NewItemDialog
+          projectId={Number(params.id)}
+          open={isNewItemOpen}
           onOpenChange={setIsNewItemOpen}
-          onSuccess={fetchData}
+          onSuccess={handleCreateSuccess}
         />
 
-        <NewMilestoneDialog 
-          projectId={Number(params.id)} 
-          open={isNewMilestoneOpen} 
-          onOpenChange={setIsNewMilestoneOpen}
-          onSuccess={fetchData} // Ideally just fetch milestones but full refresh works
-        />
+        {editingItem && (
+          <EditItemDialog
+            projectId={Number(params.id)}
+            item={editingItem}
+            open={isEditItemOpen}
+            onOpenChange={setIsEditItemOpen}
+            onSuccess={fetchData}
+          />
+        )}
+
+        <AlertDialog open={!!itemToDelete} onOpenChange={(open: boolean) => !open && setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>您確定要刪除嗎？</AlertDialogTitle>
+              <AlertDialogDescription>
+                此操作無法復原。這將永久刪除此任務。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>
+                刪除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -29,17 +29,13 @@ const MDEditor = dynamic(
   { ssr: false }
 );
 
-interface Milestone {
-  id: number;
-  title: string;
-}
-
 interface Item {
   id: number;
   title: string;
   content: string | null;
   status: string;
   milestone_id: number | null;
+  assignee_id: number | null;
 }
 
 interface EditItemDialogProps {
@@ -54,8 +50,8 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content || '');
   const [status, setStatus] = useState(item.status);
-  const [milestoneId, setMilestoneId] = useState<string>(item.milestone_id?.toString() || 'none');
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [assigneeId, setAssigneeId] = useState<string>(item.assignee_id?.toString() || 'none');
+  const [assignees, setAssignees] = useState<{ id: number, email: string, user_id: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -64,20 +60,22 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
       setTitle(item.title);
       setContent(item.content || '');
       setStatus(item.status);
-      setMilestoneId(item.milestone_id?.toString() || 'none');
-      fetchMilestones();
+      setAssigneeId(item.assignee_id?.toString() || 'none');
+      fetchAssignees();
     }
   }, [open, item, projectId]);
 
-  const fetchMilestones = async () => {
+
+
+  const fetchAssignees = async () => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/milestones`);
+      const res = await fetch('/api/users?mode=selection&roles=admin,trader');
       const data = await res.json();
-      if (data.success) {
-        setMilestones(data.milestones);
+      if (data.users) {
+        setAssignees(data.users.filter((u: any) => u.email !== 'admin'));
       }
     } catch (error) {
-      console.error('Failed to fetch milestones:', error);
+      console.error('Failed to fetch assignees:', error);
     }
   };
 
@@ -96,7 +94,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
           title,
           content,
           status,
-          milestoneId: milestoneId === 'none' ? null : Number(milestoneId)
+          assigneeId: assigneeId === 'none' ? null : Number(assigneeId)
         }),
       });
 
@@ -119,50 +117,50 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>Edit Item</DialogTitle>
+          <DialogTitle>編輯任務</DialogTitle>
           <DialogDescription>
-            Make changes to your item here. Click save when you're done.
+            編輯您的任務資訊。完成後請點擊儲存。
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">標題</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Item title"
+                placeholder="任務標題"
                 required
               />
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">狀態</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="選擇狀態" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="New">New</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
+                    <SelectItem value="New">新建</SelectItem>
+                    <SelectItem value="In Progress">進行中</SelectItem>
+                    <SelectItem value="Closed">已關閉</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid gap-2">
-                <Label htmlFor="milestone">Milestone</Label>
-                <Select value={milestoneId} onValueChange={setMilestoneId}>
+                <Label htmlFor="assignee">指派給</Label>
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select milestone" />
+                    <SelectValue placeholder="選擇成員" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {milestones.map((milestone) => (
-                      <SelectItem key={milestone.id} value={milestone.id.toString()}>
-                        {milestone.title}
+                    <SelectItem value="none">未指派</SelectItem>
+                    {assignees.map((user) => (
+                      <SelectItem key={user.id} value={user.id.toString()}>
+                        {user.user_id || user.email}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -171,7 +169,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="content">Description</Label>
+              <Label htmlFor="content">描述</Label>
               <div data-color-mode="light">
                 <MDEditor
                   value={content}
@@ -179,7 +177,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
                   height={400}
                   preview="live"
                   textareaProps={{
-                    placeholder: 'Item description... (Markdown supported)'
+                    placeholder: '任務描述... (支援 Markdown)'
                   }}
                 />
               </div>
@@ -197,10 +195,10 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
+              {isLoading ? '儲存中...' : '儲存變更'}
             </Button>
           </DialogFooter>
         </form>

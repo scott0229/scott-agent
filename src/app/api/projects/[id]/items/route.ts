@@ -12,7 +12,7 @@ export async function GET(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -22,13 +22,13 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
     const status = searchParams.get('status');
-    const milestoneId = searchParams.get('milestoneId');
+    const assigneeId = searchParams.get('assigneeId');
 
     const sort = searchParams.get('sort');
     const order = searchParams.get('order');
 
     const db = await getDb();
-    
+
     // Check project ownership
     const project = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -39,9 +39,16 @@ export async function GET(
     }
 
     let query = `
-      SELECT ITEMS.*, USERS.email as creator_email, USERS.avatar_url as creator_avatar 
+      SELECT 
+        ITEMS.*, 
+        Creator.email as creator_email, 
+        Creator.avatar_url as creator_avatar,
+        Assignee.email as assignee_email,
+        Assignee.user_id as assignee_user_id,
+        Assignee.avatar_url as assignee_avatar
       FROM ITEMS 
-      LEFT JOIN USERS ON ITEMS.created_by = USERS.id
+      LEFT JOIN USERS as Creator ON ITEMS.created_by = Creator.id
+      LEFT JOIN USERS as Assignee ON ITEMS.assignee_id = Assignee.id
       WHERE ITEMS.project_id = ?
     `;
     const queryParams: any[] = [id];
@@ -56,9 +63,9 @@ export async function GET(
       queryParams.push(status);
     }
 
-    if (milestoneId) {
-      query += ' AND ITEMS.milestone_id = ?';
-      queryParams.push(Number(milestoneId));
+    if (assigneeId) {
+      query += ' AND ITEMS.assignee_id = ?';
+      queryParams.push(Number(assigneeId));
     }
 
     // Validate sort column
@@ -71,7 +78,7 @@ export async function GET(
     const items = await db.prepare(query).bind(...queryParams).all();
 
     return NextResponse.json({ success: true, items: items.results });
-    
+
   } catch (error) {
     console.error('Get items error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -88,18 +95,19 @@ export async function POST(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const { id } = await params;
-    const { title, content, status, milestoneId } = await req.json() as { 
-      title?: string; 
+    const { title, content, status, milestoneId, assigneeId } = await req.json() as {
+      title?: string;
       content?: string;
       status?: string;
       milestoneId?: number;
+      assigneeId?: number;
     };
 
     if (!title) {
@@ -107,7 +115,7 @@ export async function POST(
     }
 
     const db = await getDb();
-    
+
     // Check project ownership
     const project = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -118,13 +126,14 @@ export async function POST(
     }
 
     const result = await db.prepare(
-      'INSERT INTO ITEMS (project_id, title, content, status, milestone_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO ITEMS (project_id, title, content, status, milestone_id, assignee_id, created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(
-      id, 
-      title, 
-      content || '', 
-      status || 'New', 
+      id,
+      title,
+      content || '',
+      status || 'New',
       milestoneId || null,
+      assigneeId || null,
       payload.id,
       payload.id
     ).run();
@@ -136,7 +145,7 @@ export async function POST(
     const item = await db.prepare('SELECT * FROM ITEMS WHERE id = ?').bind(result.meta.last_row_id).first();
 
     return NextResponse.json({ success: true, item });
-    
+
   } catch (error) {
     console.error('Create item error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -4,36 +4,44 @@ import { verifyPassword, signToken } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json() as { email?: string; password?: string };
+    const { account, password } = await req.json() as { account?: string; password?: string };
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    if (!account || !password) {
+      return NextResponse.json({ error: '請輸入帳號和密碼' }, { status: 400 });
     }
 
     const db = await getDb();
-    
-    // Query user by email
-    const stmt = db.prepare('SELECT * FROM USERS WHERE email = ?');
-    const user = await stmt.bind(email).first();
+
+    // Query user by email or user_id
+    const stmt = db.prepare('SELECT * FROM USERS WHERE email = ? OR user_id = ?');
+    const user = await stmt.bind(account, account).first();
 
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
     }
 
     const isValid = await verifyPassword(password, user.password as string);
 
     if (!isValid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
     }
 
     // Generate JWT
     const token = await signToken({
       id: user.id,
       email: user.email,
+      role: user.role,
     });
 
     // Create response
-    const response = NextResponse.json({ success: true, user: { id: user.id, email: user.email } });
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      }
+    });
 
     // Set HttpOnly Cookie
     response.cookies.set('token', token, {
@@ -45,9 +53,9 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-    
+
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
   }
 }

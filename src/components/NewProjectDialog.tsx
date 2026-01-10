@@ -59,12 +59,12 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
       if (avatarFile) {
         const formData = new FormData();
         formData.append('file', avatarFile);
-        
+
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
-        
+
         const uploadData = await uploadRes.json() as { success: boolean; url: string };
         if (uploadRes.ok && uploadData.success) {
           avatarUrl = uploadData.url;
@@ -89,10 +89,10 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
       setDescription('');
       setAvatarPreview(null);
       setAvatarFile(null);
-      
+
       onSuccess();
       onOpenChange(false);
-      
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -104,23 +104,23 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>建立新專案</DialogTitle>
           <DialogDescription>
-            Set up a new project with a name, description, and avatar.
+            設定新專案的名稱、描述與頭像。
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {/* Avatar Upload */}
             <div className="flex items-center justify-center">
-              <div 
+              <div
                 className="cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Avatar className="h-20 w-20 border-2 border-dashed border-gray-300 hover:border-primary transition-colors">
                   <AvatarImage src={avatarPreview || undefined} />
                   <AvatarFallback className="text-xs text-gray-400">
-                    Click to upload
+                    點擊上傳
                   </AvatarFallback>
                 </Avatar>
                 <input
@@ -135,10 +135,10 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
 
             {/* Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">Project Name *</Label>
+              <Label htmlFor="name">專案名稱 *</Label>
               <Input
                 id="name"
-                placeholder="My Awesome Project"
+                placeholder="我的精彩專案"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -147,10 +147,10 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
 
             {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">描述</Label>
               <Input
                 id="description"
-                placeholder="A brief description of your project"
+                placeholder="專案簡述"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -164,10 +164,10 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Project'}
+              {isLoading ? '建立中...' : '建立專案'}
             </Button>
           </DialogFooter>
         </form>

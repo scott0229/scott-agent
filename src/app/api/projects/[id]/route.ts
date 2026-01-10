@@ -12,7 +12,7 @@ export async function GET(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -29,7 +29,7 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, project });
-    
+
   } catch (error) {
     console.error('Get project error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -46,21 +46,21 @@ export async function PUT(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const { id } = await params;
-    const { name, description, avatarUrl } = await req.json() as { 
-      name?: string; 
-      description?: string; 
+    const { name, description, avatarUrl } = await req.json() as {
+      name?: string;
+      description?: string;
       avatarUrl?: string;
     };
 
     const db = await getDb();
-    
+
     // Check ownership
     const existing = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -82,7 +82,7 @@ export async function PUT(
     const project = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
 
     return NextResponse.json({ success: true, project });
-    
+
   } catch (error) {
     console.error('Update project error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -99,7 +99,7 @@ export async function DELETE(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -107,7 +107,7 @@ export async function DELETE(
 
     const { id } = await params;
     const db = await getDb();
-    
+
     // Check ownership
     const existing = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -121,7 +121,7 @@ export async function DELETE(
     await db.prepare('DELETE FROM PROJECTS WHERE id = ?').bind(id).run();
 
     return NextResponse.json({ success: true });
-    
+
   } catch (error) {
     console.error('Delete project error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id, itemId } = await params;
     const db = await getDb();
-    
+
     // Check project ownership (optional but good for security)
     // const project = ... 
 
@@ -20,10 +20,14 @@ export async function GET(
         Creator.email as creator_email, 
         Creator.avatar_url as creator_avatar,
         Updater.email as updater_email, 
-        Updater.avatar_url as updater_avatar
+        Updater.avatar_url as updater_avatar,
+        Assignee.email as assignee_email,
+        Assignee.user_id as assignee_user_id,
+        Assignee.avatar_url as assignee_avatar
       FROM ITEMS
       LEFT JOIN USERS as Creator ON ITEMS.created_by = Creator.id
       LEFT JOIN USERS as Updater ON ITEMS.updated_by = Updater.id
+      LEFT JOIN USERS as Assignee ON ITEMS.assignee_id = Assignee.id
       WHERE ITEMS.id = ? AND ITEMS.project_id = ?
     `).bind(itemId, id).first();
 
@@ -48,22 +52,23 @@ export async function PUT(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const { id, itemId } = await params;
-    const { title, content, status, milestoneId } = await req.json() as { 
-      title?: string; 
+    const { title, content, status, milestoneId, assigneeId } = await req.json() as {
+      title?: string;
       content?: string;
       status?: string;
       milestoneId?: number;
+      assigneeId?: number;
     };
 
     const db = await getDb();
-    
+
     // Check project ownership
     const project = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -82,12 +87,12 @@ export async function PUT(
     }
 
     await db.prepare(
-      'UPDATE ITEMS SET title = ?, content = ?, status = ?, milestone_id = ?, updated_by = ?, updated_at = unixepoch() WHERE id = ?'
+      'UPDATE ITEMS SET title = ?, content = ?, status = ?, assignee_id = ?, updated_by = ?, updated_at = unixepoch() WHERE id = ?'
     ).bind(
       title || existing.title,
       content !== undefined ? content : existing.content,
       status || existing.status,
-      milestoneId !== undefined ? milestoneId : existing.milestone_id,
+      assigneeId === null ? null : (assigneeId !== undefined ? assigneeId : existing.assignee_id),
       payload.id,
       itemId
     ).run();
@@ -95,7 +100,7 @@ export async function PUT(
     const item = await db.prepare('SELECT * FROM ITEMS WHERE id = ?').bind(itemId).first();
 
     return NextResponse.json({ success: true, item });
-    
+
   } catch (error) {
     console.error('Update item error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -112,7 +117,7 @@ export async function DELETE(
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -120,7 +125,7 @@ export async function DELETE(
 
     const { id, itemId } = await params;
     const db = await getDb();
-    
+
     // Check project ownership
     const project = await db.prepare(
       'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
@@ -141,7 +146,7 @@ export async function DELETE(
     await db.prepare('DELETE FROM ITEMS WHERE id = ?').bind(itemId).run();
 
     return NextResponse.json({ success: true });
-    
+
   } catch (error) {
     console.error('Delete item error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -1,0 +1,3 @@
+{
+    "sql": "CREATE TABLE IF NOT EXISTS OPTIONS (id INTEGER PRIMARY KEY AUTOINCREMENT, status TEXT NOT NULL DEFAULT 'Open', operation TEXT, open_date INTEGER NOT NULL, to_date INTEGER, settlement_date INTEGER, days_to_expire INTEGER, days_held INTEGER, quantity REAL NOT NULL, underlying TEXT NOT NULL, type TEXT NOT NULL, strike_price REAL NOT NULL, collateral REAL, premium REAL, final_profit REAL, profit_percent REAL, delta REAL, iv REAL, capital_efficiency REAL, created_at INTEGER DEFAULT (unixepoch()), updated_at INTEGER DEFAULT (unixepoch()));"
+}

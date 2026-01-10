@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { GeometricBackground } from "@/components/GeometricBackground";
+import { Navbar } from "@/components/Navbar";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Scott Agent",
-  description: "Project Management",
+  description: "專案管理系統",
 };
 
 export default function RootLayout({
@@ -16,12 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-TW">
       <body
         className={`${inter.className} antialiased relative`}
       >
         <GeometricBackground />
+        <Navbar />
         {children}
+        <Toaster />
       </body>
     </html>
   );

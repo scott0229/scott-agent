@@ -1,0 +1,3 @@
+{
+    "sql": "PRAGMA table_info(OPTIONS)"
+}

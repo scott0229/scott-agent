@@ -6,12 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get('token')?.value;
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
     const db = await getDb();
@@ -20,14 +20,14 @@ export async function GET(req: NextRequest) {
     ).bind(payload.id).first();
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: '找不到使用者' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true, user });
-    
+
   } catch (error) {
     console.error('Get user error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
   }
 }
 
@@ -35,12 +35,12 @@ export async function PUT(req: NextRequest) {
   try {
     const token = req.cookies.get('token')?.value;
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
-    
+
     const payload = await verifyToken(token);
     if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
     const { userId, avatarUrl } = await req.json() as { userId?: string; avatarUrl?: string };
@@ -54,7 +54,7 @@ export async function PUT(req: NextRequest) {
       ).bind(userId, payload.id).first();
 
       if (existing) {
-        return NextResponse.json({ error: 'User ID already taken' }, { status: 409 });
+        return NextResponse.json({ error: '此使用者 ID 已被使用' }, { status: 409 });
       }
     }
 
@@ -67,9 +67,9 @@ export async function PUT(req: NextRequest) {
     ).bind(payload.id).first();
 
     return NextResponse.json({ success: true, user });
-    
+
   } catch (error) {
     console.error('Update user error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
   }
 }

@@ -1,0 +1,3 @@
+{
+    "sql": "SELECT id, final_profit, premium, profit_percent FROM OPTIONS LIMIT 5"
+}

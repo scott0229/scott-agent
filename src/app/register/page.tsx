@@ -29,7 +29,7 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('密碼不符');
       return;
     }
 
@@ -47,13 +47,13 @@ export default function RegisterPage() {
       const data = await res.json() as { success: boolean; error?: string };
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || '註冊失敗');
       }
 
       // Registration successful - Cookie is set by the server (auto-login).
       // Redirect to project list.
       router.push('/project-list');
-      
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -65,15 +65,16 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
         <CardHeader>
-          <CardTitle className="text-2xl text-primary font-bold">Create Account</CardTitle>
+          <CardTitle className="text-2xl text-primary font-bold">建立帳戶</CardTitle>
           <CardDescription>
-            Join us to manage your projects effectively.
+            使用電子郵件註冊。
           </CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">電子郵件</Label>
               <Input
                 id="email"
                 type="email"
@@ -85,11 +86,11 @@ export default function RegisterPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="userId">User ID (Handle)</Label>
+              <Label htmlFor="userId">帳號</Label>
               <Input
                 id="userId"
                 type="text"
-                placeholder="unique_handle"
+                placeholder=""
                 required
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
@@ -97,7 +98,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密碼</Label>
               <Input
                 id="password"
                 type="password"
@@ -108,7 +109,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">確認密碼</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -124,17 +125,17 @@ export default function RegisterPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-4">
             <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? '建立帳戶中...' : '建立帳戶'}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
+              已經有帳戶了嗎？{' '}
               <Link href="/login" className="text-primary hover:underline font-medium">
-                Sign in
+                登入
               </Link>
             </div>
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </div >
   );
 }

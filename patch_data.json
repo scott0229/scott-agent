@@ -1,0 +1,3 @@
+{
+    "sql": "UPDATE OPTIONS SET profit_percent = final_profit / premium WHERE final_profit IS NOT NULL AND premium IS NOT NULL AND premium != 0 AND profit_percent IS NULL;"
+}

@@ -1,0 +1,3 @@
+{
+    "sql": "ALTER TABLE OPTIONS ADD COLUMN profit_percent REAL; ALTER TABLE OPTIONS ADD COLUMN final_profit REAL;"
+}

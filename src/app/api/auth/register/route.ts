@@ -7,34 +7,34 @@ export async function POST(req: NextRequest) {
     const { email, password, userId } = await req.json() as { email?: string; password?: string; userId?: string };
 
     if (!email || !password || !userId) {
-      return NextResponse.json({ error: 'Email, User ID, and password are required' }, { status: 400 });
+      return NextResponse.json({ error: '請輸入電子郵件、使用者 ID 及密碼' }, { status: 400 });
     }
 
     const db = await getDb();
-    
+
     // Check if email or user_id already exists
     const existing = await db.prepare('SELECT * FROM USERS WHERE email = ? OR user_id = ?')
-        .bind(email, userId)
-        .first();
+      .bind(email, userId)
+      .first();
 
     if (existing) {
-        if (existing.email === email) {
-            return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
-        }
-        if (existing.user_id === userId) {
-            return NextResponse.json({ error: 'User ID already taken' }, { status: 409 });
-        }
+      if (existing.email === email) {
+        return NextResponse.json({ error: '此電子郵件已被註冊' }, { status: 409 });
+      }
+      if (existing.user_id === userId) {
+        return NextResponse.json({ error: '此使用者 ID 已被使用' }, { status: 409 });
+      }
     }
 
     const hashedPassword = await hashPassword(password);
 
     // Insert new user
     const result = await db.prepare(
-        'INSERT INTO USERS (email, user_id, password) VALUES (?, ?, ?)'
+      'INSERT INTO USERS (email, user_id, password) VALUES (?, ?, ?)'
     ).bind(email, userId, hashedPassword).run();
 
     if (!result.success) {
-        throw new Error('Failed to create user');
+      throw new Error('Failed to create user');
     }
 
     // Get the newly created user (or usage lastID if predictable, but safe to fetch or just use info)
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const newUser = await db.prepare('SELECT * FROM USERS WHERE email = ?').bind(email).first();
 
     if (!newUser) {
-        throw new Error('User created but not found');
+      throw new Error('User created but not found');
     }
 
     // Generate JWT
@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-    
+
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
   }
 }

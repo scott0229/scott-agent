@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,19 +33,19 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ account, password }),
       });
 
       const data = await res.json() as { success: boolean; error?: string };
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || '登入失敗');
       }
 
       // Login successful - Cookie is set by the server.
       // Redirect to project list.
       router.push('/project-list');
-      
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -57,27 +57,28 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
         <CardHeader>
-          <CardTitle className="text-2xl text-primary font-bold">Login</CardTitle>
+          <CardTitle className="text-2xl text-primary font-bold">登入</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account.
+            使用帳號密碼登入。
           </CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="account">帳號</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
+                id="account"
+                type="text"
+                placeholder="Email 或 User ID"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
                 className="bg-white/50"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密碼</Label>
               <Input
                 id="password"
                 type="password"
@@ -93,17 +94,17 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-4">
             <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" type="submit" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? '登入中...' : '登入'}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{' '}
+              還沒有帳戶嗎？{' '}
               <Link href="/register" className="text-primary hover:underline font-medium">
-                Create an account
+                建立帳戶
               </Link>
             </div>
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </div >
   );
 }

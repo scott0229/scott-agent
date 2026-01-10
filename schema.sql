@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS USERS (
     user_id TEXT UNIQUE,
     password TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    role TEXT NOT NULL DEFAULT 'customer'
 );
 
 CREATE TABLE PROJECTS (
@@ -25,5 +26,10 @@ CREATE TABLE ITEMS (
   content TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
+  status TEXT DEFAULT 'New',
+  milestone_id INTEGER,
+  created_by INTEGER REFERENCES USERS(id),
+  updated_by INTEGER REFERENCES USERS(id),
+  assignee_id INTEGER REFERENCES USERS(id),
   FOREIGN KEY (project_id) REFERENCES PROJECTS(id) ON DELETE CASCADE
 );
