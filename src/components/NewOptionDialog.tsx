@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useYearFilter } from '@/contexts/YearFilterContext';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -36,6 +37,7 @@ const getNextWorkday = () => {
 };
 
 export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId }: NewOptionDialogProps) {
+    const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
         status: '未平倉',
         operation: '無',
@@ -83,7 +85,8 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 delta: formData.delta ? parseFloat(formData.delta) : null,
 
                 userId: userId, // Include userId in payload
-                ownerId: ownerId // Include ownerId in payload
+                ownerId: ownerId, // Include ownerId in payload
+                year: selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear) // Include year
             };
 
             const res = await fetch('/api/options', {

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
+import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface User {
     id: number;
@@ -52,6 +53,7 @@ export default function AdminUsersPage() {
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
     const { toast } = useToast();
     const router = useRouter();
+    const { selectedYear } = useYearFilter();
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
@@ -61,7 +63,9 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/users');
+            // Fetch users filtered by year
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/users?year=${year}`);
             if (res.status === 403) {
                 toast({
                     variant: "destructive",
@@ -84,7 +88,7 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         fetchUsers();
-    }, []);
+    }, [selectedYear]); // Add selectedYear dependency
 
     const handleDelete = async (id: number) => {
         setUserToDelete(id);
@@ -94,7 +98,8 @@ export default function AdminUsersPage() {
         if (!userToDelete) return;
 
         try {
-            const res = await fetch(`/api/users?id=${userToDelete}`, {
+            // Delete all transactions for this user in the selected year
+            const res = await fetch(`/api/users/transactions?userId=${userToDelete}&year=${selectedYear}`, {
                 method: 'DELETE',
             });
 
@@ -104,8 +109,10 @@ export default function AdminUsersPage() {
             }
 
             toast({
-                title: "已刪除",
-                description: "使用者已成功刪除",
+                title: "已移除",
+                description: selectedYear === 'All'
+                    ? "該客戶的所有交易紀錄已刪除"
+                    : `該客戶在 ${selectedYear} 年的交易紀錄已刪除`,
             });
             fetchUsers();
         } catch (error: any) {
@@ -236,9 +243,15 @@ export default function AdminUsersPage() {
                 <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>確定要刪除此使用者嗎？</AlertDialogTitle>
+                            <AlertDialogTitle>
+                                {selectedYear === 'All'
+                                    ? '確定要刪除該客戶的所有交易記錄嗎？'
+                                    : `確定要刪除該客戶在 ${selectedYear} 年的交易記錄嗎？`}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                                此操作無法復原。這將永久刪除該使用者的帳號及相關資料。
+                                {selectedYear === 'All'
+                                    ? '此操作將刪除該客戶的所有交易記錄，客戶將從所有年份中移除。'
+                                    : `此操作將刪除該客戶在 ${selectedYear} 年的所有交易記錄，客戶將從 ${selectedYear} 年列表中移除，但其他年份的記錄不受影響。`}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

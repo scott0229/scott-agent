@@ -38,18 +38,29 @@ export async function GET(req: NextRequest) {
             const db = await getDb();
 
             const roles = searchParams.get('roles')?.split(',');
+            const year = searchParams.get('year');
+
             let query = 'SELECT id, email, user_id, avatar_url, ib_account FROM USERS';
             const params: any[] = [];
+            let whereAdded = false;
+
+            // Add year filter (except for admin/trader)
+            if (year && year !== 'All') {
+                query += ' WHERE (year = ? OR role IN (\'admin\', \'trader\'))';
+                params.push(parseInt(year));
+                whereAdded = true;
+            }
 
             if (roles && roles.length > 0) {
                 const placeholders = roles.map(() => '?').join(',');
-                query += ` WHERE role IN (${placeholders})`;
+                query += whereAdded ? ` AND role IN (${placeholders})` : ` WHERE role IN (${placeholders})`;
                 params.push(...roles);
+                whereAdded = true;
             }
 
             const userId = searchParams.get('userId');
             if (userId) {
-                query += roles && roles.length > 0 ? ' AND user_id = ?' : ' WHERE user_id = ?';
+                query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
                 params.push(userId);
             }
 
@@ -67,9 +78,21 @@ export async function GET(req: NextRequest) {
         }
 
         const db = await getDb();
-        const { results } = await db.prepare(`
+        const year = searchParams.get('year');
+
+        let query = `
             SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at 
             FROM USERS 
+        `;
+        const params: any[] = [];
+
+        // Add year filter (except for admin/trader)
+        if (year && year !== 'All') {
+            query += ' WHERE (year = ? OR role IN (\'admin\', \'trader\'))';
+            params.push(parseInt(year));
+        }
+
+        query += `
             ORDER BY 
                 CASE 
                     WHEN role = 'admin' THEN 1 
@@ -78,7 +101,9 @@ export async function GET(req: NextRequest) {
                     ELSE 4 
                 END ASC,
                 created_at DESC
-        `).all();
+        `;
+
+        const { results } = await db.prepare(query).bind(...params).all();
 
         return NextResponse.json({ users: results });
     } catch (error) {
@@ -94,7 +119,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -102,6 +127,7 @@ export async function POST(req: NextRequest) {
             managementFee?: number;
             ibAccount?: string;
             phone?: string;
+            year?: number;
         };
 
         if (!email || !userId || !password || !role) {
@@ -128,9 +154,10 @@ export async function POST(req: NextRequest) {
         const hashedPassword = await hashPassword(password);
         const fee = role === 'customer' ? (managementFee || 0) : 0;
         const ib = role === 'customer' ? (ibAccount || '') : '';
+        const userYear = year || new Date().getFullYear();
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null)
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear)
             .run();
 
         return NextResponse.json({ success: true });

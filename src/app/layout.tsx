@@ -4,6 +4,7 @@ import "./globals.css";
 import { GeometricBackground } from "@/components/GeometricBackground";
 import { Navbar } from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
+import { YearFilterProvider } from "@/contexts/YearFilterContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,8 +24,10 @@ export default function RootLayout({
         className={`${inter.className} antialiased relative`}
       >
         <GeometricBackground />
-        <Navbar />
-        {children}
+        <YearFilterProvider>
+          <Navbar />
+          {children}
+        </YearFilterProvider>
         <Toaster />
       </body>
     </html>

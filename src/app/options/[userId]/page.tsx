@@ -38,7 +38,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface Option {
     id: number;
@@ -69,8 +70,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [optionToEdit, setOptionToEdit] = useState<Option | null>(null);
     const [optionToDelete, setOptionToDelete] = useState<number | null>(null);
 
-    // Filters
-    const [selectedYear, setSelectedYear] = useState<string>('All');
+    // Use global year filter instead of local state
+    const { selectedYear, setSelectedYear } = useYearFilter();
     const [selectedMonth, setSelectedMonth] = useState<string>('All');
     const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
     const [selectedType, setSelectedType] = useState<string>('All');
@@ -102,7 +103,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const fetchOptions = async () => {
         if (!ownerId) return;
         try {
-            const res = await fetch(`/api/options?ownerId=${ownerId}`);
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/options?ownerId=${ownerId}&year=${year}`);
             const data = await res.json();
             if (data.options) {
                 setOptions(data.options);

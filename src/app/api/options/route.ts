@@ -14,16 +14,26 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get('userId');
         const ownerId = searchParams.get('ownerId');
+        const year = searchParams.get('year');
 
         const db = await getDb();
         let query = 'SELECT * FROM OPTIONS';
         const params: any[] = [];
+        let whereAdded = false;
+
+        // Add year filter
+        if (year && year !== 'All') {
+            query += ' WHERE year = ?';
+            params.push(parseInt(year));
+            whereAdded = true;
+        }
 
         if (ownerId) {
-            query += ' WHERE owner_id = ?';
+            query += whereAdded ? ' AND owner_id = ?' : ' WHERE owner_id = ?';
             params.push(ownerId);
+            whereAdded = true;
         } else if (userId) {
-            query += ' WHERE user_id = ?';
+            query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
             params.push(userId);
         }
 
@@ -61,7 +71,8 @@ export async function POST(req: NextRequest) {
             strike_price,
             premium,
             userId,
-            ownerId // Add ownerId
+            ownerId, // Add ownerId
+            year // Add year
         } = body;
 
         // Auto-calculate profit percent
@@ -77,14 +88,15 @@ export async function POST(req: NextRequest) {
         }
 
         const db = await getDb();
+        const optionYear = year || new Date().getFullYear();
 
         const result = await db.prepare(`
             INSERT INTO OPTIONS (
                 status, operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
-                delta, iv, capital_efficiency, user_id, owner_id, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                delta, iv, capital_efficiency, user_id, owner_id, year, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             status || 'Open',
             operation || '無',
@@ -103,7 +115,8 @@ export async function POST(req: NextRequest) {
             body.iv || null,
             body.capital_efficiency || null,
             userId || null,
-            ownerId || null // Bind ownerId
+            ownerId || null, // Bind ownerId
+            optionYear
         ).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });

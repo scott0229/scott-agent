@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Users } from "lucide-react";
+import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface User {
     id: number;
@@ -24,6 +25,7 @@ export default function OptionsClientListPage() {
     const [clients, setClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
+    const { selectedYear } = useYearFilter();
 
     useEffect(() => {
         const checkUserAndFetchClients = async () => {
@@ -42,8 +44,9 @@ export default function OptionsClientListPage() {
                     }
                 }
 
-                // 2. If not customer (admin/trader), fetch clients list
-                const res = await fetch('/api/users?mode=selection&roles=customer');
+                // 2. If not customer (admin/trader), fetch clients filtered by year
+                const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+                const res = await fetch(`/api/users?mode=selection&roles=customer&year=${year}`);
                 const data = await res.json();
                 if (data.users) {
                     setClients(data.users);
@@ -56,7 +59,7 @@ export default function OptionsClientListPage() {
         };
 
         checkUserAndFetchClients();
-    }, [router]);
+    }, [router, selectedYear]); // Add selectedYear dependency
 
     if (isLoading) {
         return (
@@ -71,7 +74,7 @@ export default function OptionsClientListPage() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold flex items-center gap-3">
                     <Users className="h-8 w-8" />
-                    客戶列表
+                    {selectedYear} 客戶列表
                 </h1>
                 <p className="text-muted-foreground mt-2">
                     選擇一位客戶以管理其期權交易紀錄

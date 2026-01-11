@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface AdminUserDialogProps {
     open: boolean;
@@ -30,6 +31,7 @@ interface AdminUserDialogProps {
 export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: AdminUserDialogProps) {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
+    const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
         email: '',
         userId: '',
@@ -81,7 +83,8 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         try {
             const url = '/api/users';
             const method = userToEdit ? 'PUT' : 'POST';
-            const body = userToEdit ? { ...formData, id: userToEdit.id } : formData;
+            const year = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
+            const body = userToEdit ? { ...formData, id: userToEdit.id } : { ...formData, year };
 
             const res = await fetch(url, {
                 method: method,
