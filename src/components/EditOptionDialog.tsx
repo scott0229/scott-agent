@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useYearFilter } from '@/contexts/YearFilterContext';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -54,6 +55,7 @@ const formatDateForInput = (timestamp: number | null) => {
 };
 
 export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }: EditOptionDialogProps) {
+    const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
         status: '未平倉',
         operation: '無',
@@ -100,6 +102,15 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
 
         if (parseFloat(formData.quantity) === 0) {
             setError('口數不能為 0');
+            return;
+        }
+
+        // Validate year consistency
+        const openDateYear = new Date(formData.open_date).getFullYear();
+        const expectedYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
+
+        if (openDateYear !== expectedYear) {
+            setError(`開倉日期的年份 (${openDateYear}) 與當前選擇的年份 (${expectedYear}) 不一致，請修正後再儲存。`);
             return;
         }
 
@@ -298,7 +309,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             step="0.1"
                             value={formData.iv}
                             onChange={(e) => setFormData({ ...formData, iv: e.target.value })}
-                            required
                         />
                     </div>
 
@@ -310,7 +320,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             step="0.001"
                             value={formData.delta}
                             onChange={(e) => setFormData({ ...formData, delta: e.target.value })}
-                            required
                         />
                     </div>
 

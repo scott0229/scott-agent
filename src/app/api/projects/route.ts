@@ -20,13 +20,20 @@ export async function GET(req: NextRequest) {
 
     // Admin and manager see all projects
     if (payload.role === 'admin' || payload.role === 'manager') {
-      projects = await db.prepare(
-        'SELECT * FROM PROJECTS ORDER BY created_at DESC'
-      ).all();
+      projects = await db.prepare(`
+        SELECT p.*, u.user_id as owner_user_id, u.email as owner_email,
+        (SELECT COUNT(*) FROM ITEMS WHERE project_id = p.id) as task_count
+        FROM PROJECTS p
+        LEFT JOIN USERS u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+      `).all();
     } else {
       // Customer and trader see only assigned projects
       projects = await db.prepare(`
-        SELECT p.* FROM PROJECTS p
+        SELECT p.*, u.user_id as owner_user_id, u.email as owner_email,
+        (SELECT COUNT(*) FROM ITEMS WHERE project_id = p.id) as task_count
+        FROM PROJECTS p
+        LEFT JOIN USERS u ON p.user_id = u.id
         INNER JOIN PROJECT_USERS pu ON p.id = pu.project_id
         WHERE pu.user_id = ?
         ORDER BY p.created_at DESC

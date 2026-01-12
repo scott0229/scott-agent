@@ -113,7 +113,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         if (!ownerId) return;
         try {
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/options?ownerId=${ownerId}&year=${year}`);
+            const res = await fetch(`/api/options?ownerId=${ownerId}&year=${year}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.options) {
                 setOptions(data.options);
@@ -129,7 +129,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         if (ownerId) {
             fetchOptions();
         }
-    }, [ownerId]);
+    }, [ownerId, selectedYear]);
 
     const handleEdit = (option: Option) => {
         setOptionToEdit(option);
@@ -218,13 +218,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const filteredOptions = options.filter(opt => {
         const date = new Date(opt.open_date * 1000);
-        const yearMatch = selectedYear === 'All' || date.getFullYear().toString() === selectedYear;
+        // Year filter is handled by API query based on selectedYear
         const monthMatch = selectedMonth === 'All' || (date.getMonth() + 1).toString() === selectedMonth;
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
         const typeMatch = selectedType === 'All' || opt.type === selectedType;
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || '無') === selectedOperation;
-        return yearMatch && monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
+        return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     });
 
     return (

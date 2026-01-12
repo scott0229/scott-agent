@@ -98,8 +98,8 @@ export default function AdminUsersPage() {
         if (!userToDelete) return;
 
         try {
-            // Delete all transactions for this user in the selected year
-            const res = await fetch(`/api/users/transactions?userId=${userToDelete}&year=${selectedYear}`, {
+            // Delete user
+            const res = await fetch(`/api/users/${userToDelete}`, {
                 method: 'DELETE',
             });
 
@@ -109,10 +109,8 @@ export default function AdminUsersPage() {
             }
 
             toast({
-                title: "已移除",
-                description: selectedYear === 'All'
-                    ? "該客戶的所有交易紀錄已刪除"
-                    : `該客戶在 ${selectedYear} 年的交易紀錄已刪除`,
+                title: "已刪除",
+                description: "使用者已成功刪除",
             });
             fetchUsers();
         } catch (error: any) {
@@ -246,14 +244,10 @@ export default function AdminUsersPage() {
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>
-                                {selectedYear === 'All'
-                                    ? '確定要刪除該客戶的所有交易記錄嗎？'
-                                    : `確定要刪除該客戶在 ${selectedYear} 年的交易記錄嗎？`}
+                                確定要刪除 {users.find(u => u.id === userToDelete)?.user_id || users.find(u => u.id === userToDelete)?.email || '此使用者'} 帳戶嗎？
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                {selectedYear === 'All'
-                                    ? '此操作將刪除該客戶的所有交易記錄，客戶將從所有年份中移除。'
-                                    : `此操作將刪除該客戶在 ${selectedYear} 年的所有交易記錄，客戶將從 ${selectedYear} 年列表中移除，但其他年份的記錄不受影響。`}
+                                此操作無法復原。這將永久刪除此使用者帳號及其所有相關資料。
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

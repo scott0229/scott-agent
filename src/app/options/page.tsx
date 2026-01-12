@@ -19,7 +19,9 @@ interface User {
     user_id: string | null;
     avatar_url: string | null;
     ib_account?: string | null;
+    options_count?: number;
 }
+
 
 export default function OptionsClientListPage() {
     const [clients, setClients] = useState<User[]>([]);
@@ -106,7 +108,7 @@ export default function OptionsClientListPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-sm text-muted-foreground mt-2">
-                                    點擊查看交易紀錄 &rarr;
+                                    查看{client.options_count || 0}筆交易記錄 &rarr;
                                 </div>
                             </CardContent>
                         </Card>

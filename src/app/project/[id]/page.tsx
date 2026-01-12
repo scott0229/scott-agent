@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, FilterX } from 'lucide-react';
+import { Pencil, Trash2, FilterX, ArrowLeft } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -76,7 +76,8 @@ interface Milestone {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage() {
+  const params = useParams() as { id: string };
   const [project, setProject] = useState<Project | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [assignees, setAssignees] = useState<{ id: number, email: string, user_id: string | null }[]>([]);
@@ -150,7 +151,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
       const data = await res.json();
       if (data.users) {
-        setAssignees(data.users.filter((u: any) => u.email !== 'admin'));
+        setAssignees(data.users);
       }
     } catch (error) {
       console.error('Failed to fetch assignees:', error);
@@ -233,16 +234,16 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   return (
     <div className="container mx-auto py-10">
       <div className="w-full">
-        {/* Back Button */}
-        <Button variant="ghost" onClick={() => router.push('/project-list')} className="mb-4 pl-0 hover:pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground">
-          ← 返回專案列表
-        </Button>
-
         {/* Project Header & Filters */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          {project && (
-            <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
-          )}
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/project-list')}>
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            {project && (
+              <h1 className="text-3xl font-bold text-foreground">{project.name}</h1>
+            )}
+          </div>
 
           <div className="flex items-center gap-4">
             <div className="flex flex-wrap gap-2">
@@ -287,6 +288,8 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">所有指派人</SelectItem>
+                  <SelectItem value="me">指派給我</SelectItem>
+                  <SelectItem value="unassigned">未指派</SelectItem>
                   {assignees.map(user => (
                     <SelectItem key={user.id} value={user.id.toString()}>
                       {user.user_id || user.email}

@@ -40,15 +40,23 @@ export async function GET(req: NextRequest) {
             const roles = searchParams.get('roles')?.split(',');
             const year = searchParams.get('year');
 
-            let query = 'SELECT id, email, user_id, avatar_url, ib_account, role FROM USERS';
+            let query = '';
             const params: any[] = [];
             let whereAdded = false;
 
             // Add year filter (only admin crosses years)
             if (year && year !== 'All') {
+                query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count 
+                        FROM USERS`;
                 query += ' WHERE (year = ? OR role = \'admin\')';
-                params.push(parseInt(year));
+                params.push(parseInt(year)); // For subquery
+                params.push(parseInt(year)); // For main query
                 whereAdded = true;
+            } else {
+                query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count 
+                        FROM USERS`;
             }
 
             if (roles && roles.length > 0) {

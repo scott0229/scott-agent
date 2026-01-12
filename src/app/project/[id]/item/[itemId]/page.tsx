@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EditItemDialog } from '@/components/EditItemDialog';
+import { ArrowLeft } from "lucide-react";
 
 
 import '@uiw/react-md-editor/markdown-editor.css';
@@ -36,10 +37,17 @@ interface Item {
   updated_by?: number;
 }
 
+interface Project {
+  id: number;
+  name: string;
+}
+
 interface Milestone {
   id: number;
   title: string;
 }
+
+
 
 
 
@@ -49,6 +57,7 @@ export default function ItemDetailPage({
   params: { id: string; itemId: string }
 }) {
   const [item, setItem] = useState<Item | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
 
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,13 +70,15 @@ export default function ItemDetailPage({
 
   const fetchData = useCallback(async () => {
     try {
-      const [itemRes, milestonesRes] = await Promise.all([
+      const [itemRes, milestonesRes, projectRes] = await Promise.all([
         fetch(`/api/projects/${params.id}/items/${params.itemId}`),
-        fetch(`/api/projects/${params.id}/milestones`)
+        fetch(`/api/projects/${params.id}/milestones`),
+        fetch(`/api/projects/${params.id}`)
       ]);
 
       const itemData = await itemRes.json();
       const milestonesData = await milestonesRes.json();
+      const projectData = await projectRes.json();
 
       if (itemData.success) {
         setItem(itemData.item);
@@ -75,6 +86,10 @@ export default function ItemDetailPage({
 
       if (milestonesData.success) {
         setMilestones(milestonesData.milestones);
+      }
+
+      if (projectData.success) {
+        setProject(projectData.project);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -108,12 +123,12 @@ export default function ItemDetailPage({
   }
 
   return (
-    <div className="min-h-screen p-8 bg-background pb-32">
-      <div className="w-full mx-auto space-y-8">
+    <div className="container mx-auto py-10">
+      <div className="w-full space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => router.push(`/project/${params.id}`)}>
-            ← 返回專案
+            <ArrowLeft className="mr-2 h-4 w-4" /> 返回 {project?.name || '專案'}
           </Button>
         </div>
 

@@ -72,7 +72,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
       const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
       const data = await res.json();
       if (data.users) {
-        setAssignees(data.users.filter((u: any) => u.email !== 'admin'));
+        setAssignees(data.users);
       }
     } catch (error) {
       console.error('Failed to fetch assignees:', error);

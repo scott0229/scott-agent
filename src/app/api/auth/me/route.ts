@@ -48,9 +48,38 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
-    const { userId, avatarUrl } = await req.json() as { userId?: string; avatarUrl?: string };
+    const { userId, avatarUrl, currentPassword, newPassword } = await req.json() as {
+      userId?: string;
+      avatarUrl?: string;
+      currentPassword?: string;
+      newPassword?: string;
+    };
 
     const db = await getDb();
+
+    // If changing password, verify current password first
+    if (currentPassword && newPassword) {
+      const bcrypt = await import('bcryptjs');
+
+      const currentUser = await db.prepare(
+        'SELECT password FROM USERS WHERE id = ?'
+      ).bind(payload.id).first();
+
+      if (!currentUser) {
+        return NextResponse.json({ error: '用戶不存在' }, { status: 404 });
+      }
+
+      const isValid = await bcrypt.compare(currentPassword, currentUser.password as string);
+      if (!isValid) {
+        return NextResponse.json({ error: '當前密碼不正確' }, { status: 400 });
+      }
+
+      // Hash new password and update
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await db.prepare(
+        'UPDATE USERS SET password = ?, updated_at = unixepoch() WHERE id = ?'
+      ).bind(hashedPassword, payload.id).run();
+    }
 
     // Check if user_id is already taken by another user
     if (userId) {

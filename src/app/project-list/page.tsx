@@ -44,10 +44,14 @@ interface User {
 
 interface Project {
   id: number;
+  user_id: number;
   name: string;
   description: string | null;
   avatar_url: string | null;
   created_at: number;
+  owner_user_id: string | null;
+  owner_email: string | null;
+  task_count?: number;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -71,7 +75,7 @@ export default function ProjectListPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch('/api/projects');
+      const res = await fetch('/api/projects', { cache: 'no-store' });
       const data = await res.json() as { success: boolean; projects: Project[] };
       if (data.success) {
         setProjects(data.projects);
@@ -134,11 +138,6 @@ export default function ProjectListPage() {
               <h1 className="text-3xl font-bold text-foreground">專案列表</h1>
             </div>
             <div className="flex gap-4">
-              {user?.role === 'admin' && (
-                <Button variant="outline" onClick={() => router.push('/admin/users')}>
-                  使用者管理
-                </Button>
-              )}
               {/* Only admin and manager can create projects */}
               {(user?.role === 'admin' || user?.role === 'manager') && (
                 <Button
@@ -181,6 +180,7 @@ export default function ProjectListPage() {
                   <TableRow className="bg-secondary hover:bg-secondary">
                     <TableHead className="w-[50px] text-center">#</TableHead>
                     <TableHead>專案名稱</TableHead>
+                    <TableHead className="text-center">任務數量</TableHead>
                     <TableHead>建立時間</TableHead>
                     <TableHead>擁有者</TableHead>
                     <TableHead className="text-right"></TableHead>
@@ -204,6 +204,11 @@ export default function ProjectListPage() {
 
                         </div>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center min-w-[30px] px-2 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded-full">
+                          {project.task_count || 0}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(project.created_at * 1000).toLocaleDateString('zh-TW', {
                           year: 'numeric',
@@ -212,9 +217,15 @@ export default function ProjectListPage() {
                         })}
                       </TableCell>
                       <TableCell>
-                        <div className="w-fit px-2 py-0.5 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-medium">
-                          你
-                        </div>
+                        {project.user_id === user?.id ? (
+                          <div className="w-fit px-2 py-0.5 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-medium">
+                            你
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {project.owner_user_id || project.owner_email || '未知'}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {/* Only admin and manager can edit/delete projects */}
@@ -299,7 +310,10 @@ export default function ProjectListPage() {
           <NewProjectDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
-            onSuccess={fetchProjects}
+            onSuccess={() => {
+              router.refresh();
+              fetchProjects();
+            }}
           />
           <EditProjectDialog
             project={editingProject}

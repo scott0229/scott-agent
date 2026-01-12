@@ -39,6 +39,9 @@ export function UserProfileMenu() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [editUserId, setEditUserId] = useState('');
     const [editAvatarUrl, setEditAvatarUrl] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
@@ -113,13 +116,45 @@ export function UserProfileMenu() {
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        // Validate password fields if any are filled
+        if (currentPassword || newPassword || confirmPassword) {
+            if (!currentPassword) {
+                setError('請輸入當前密碼');
+                return;
+            }
+            if (!newPassword) {
+                setError('請輸入新密碼');
+                return;
+            }
+            if (newPassword.length < 6) {
+                setError('新密碼至少需要 6 個字元');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                setError('新密碼與確認密碼不一致');
+                return;
+            }
+        }
+
         setIsUpdating(true);
 
         try {
+            const payload: any = {
+                userId: editUserId,
+                avatarUrl: editAvatarUrl || null
+            };
+
+            // Include password fields if changing password
+            if (currentPassword && newPassword) {
+                payload.currentPassword = currentPassword;
+                payload.newPassword = newPassword;
+            }
+
             const res = await fetch('/api/auth/me', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: editUserId, avatarUrl: editAvatarUrl || null }),
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json() as { success: boolean; error?: string; user?: User };
@@ -131,6 +166,11 @@ export function UserProfileMenu() {
             if (data.user) {
                 setUser(data.user);
             }
+
+            // Clear password fields and close dialog
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
             setIsEditOpen(false);
         } catch (err: any) {
             setError(err.message);
@@ -172,9 +212,6 @@ export function UserProfileMenu() {
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>編輯個人資料</DialogTitle>
-                        <DialogDescription>
-                            更新您的頭像與顯示名稱。
-                        </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleUpdateProfile}>
                         <div className="grid gap-4 py-4">
@@ -224,10 +261,48 @@ export function UserProfileMenu() {
                                     value={editUserId}
                                     onChange={(e) => setEditUserId(e.target.value)}
                                     placeholder="設定您的暱稱"
+                                    disabled={user.user_id === 'admin'}
                                 />
                             </div>
+
+                            <div className="col-span-full">
+                                <div className="grid gap-3">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="current-password">當前密碼</Label>
+                                        <Input
+                                            id="current-password"
+                                            type="password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            placeholder="輸入當前密碼"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="new-password">新密碼</Label>
+                                        <Input
+                                            id="new-password"
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="至少 6 個字元"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="confirm-password">確認新密碼</Label>
+                                        <Input
+                                            id="confirm-password"
+                                            type="password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            placeholder="再次輸入新密碼"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+
                             {error && (
-                                <div className="text-sm text-red-500 font-medium bg-red-50 p-2 rounded">
+                                <div className="text-sm text-red-500 font-medium bg-red-50 p-2 rounded col-span-full">
                                     {error}
                                 </div>
                             )}
@@ -249,7 +324,7 @@ export function UserProfileMenu() {
                         </DialogFooter>
                     </form>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
         </>
     );
 }

@@ -65,8 +65,15 @@ export async function GET(
     }
 
     if (assigneeId) {
-      query += ' AND ITEMS.assignee_id = ?';
-      queryParams.push(Number(assigneeId));
+      if (assigneeId === 'unassigned') {
+        query += ' AND ITEMS.assignee_id IS NULL';
+      } else if (assigneeId === 'me') {
+        query += ' AND ITEMS.assignee_id = ?';
+        queryParams.push(payload.id);
+      } else {
+        query += ' AND ITEMS.assignee_id = ?';
+        queryParams.push(Number(assigneeId));
+      }
     }
 
     // Validate sort column
