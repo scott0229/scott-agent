@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8080",
     "dev:cf": "wrangler dev --live-reload",
     "build": "next build",
     "build:cf": "cross-env opennextjs-cloudflare build",
