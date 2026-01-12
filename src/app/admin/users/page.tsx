@@ -129,6 +129,8 @@ export default function AdminUsersPage() {
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
+                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">系統管理員</Badge>;
+            case 'manager':
                 return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">管理者</Badge>;
             case 'trader':
                 return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">交易員</Badge>;

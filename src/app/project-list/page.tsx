@@ -139,13 +139,16 @@ export default function ProjectListPage() {
                   使用者管理
                 </Button>
               )}
-              <Button
-                onClick={() => setDialogOpen(true)}
-                variant="secondary"
-                className="hover:bg-accent hover:text-accent-foreground"
-              >
-                + 新增專案
-              </Button>
+              {/* Only admin and manager can create projects */}
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <Button
+                  onClick={() => setDialogOpen(true)}
+                  variant="secondary"
+                  className="hover:bg-accent hover:text-accent-foreground"
+                >
+                  + 新增專案
+                </Button>
+              )}
             </div>
           </div>
 
@@ -159,10 +162,16 @@ export default function ProjectListPage() {
                   <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                   </svg>
-                  <p className="text-lg">尚無專案</p>
-                  <p className="text-sm mt-1">建立您的第一個專案以開始使用</p>
+                  {(user?.role === 'admin' || user?.role === 'manager') ? (
+                    <p className="text-lg">建立您的第一個專案以開始使用</p>
+                  ) : (
+                    <p className="text-lg">目前沒有可用的專案</p>
+                  )}
                 </div>
-                <Button onClick={() => setDialogOpen(true)}>建立專案</Button>
+                {/* Only admin and manager can create projects */}
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <Button onClick={() => setDialogOpen(true)}>建立專案</Button>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -208,45 +217,48 @@ export default function ProjectListPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(project);
-                                }}
-                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>編輯</p>
-                            </TooltipContent>
-                          </Tooltip>
+                        {/* Only admin and manager can edit/delete projects */}
+                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                          <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(project);
+                                  }}
+                                  className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>編輯</p>
+                              </TooltipContent>
+                            </Tooltip>
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(project.id);
-                                }}
-                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>刪除</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(project.id);
+                                  }}
+                                  className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>刪除</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

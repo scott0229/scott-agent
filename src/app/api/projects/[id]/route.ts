@@ -20,9 +20,20 @@ export async function GET(
 
     const { id } = await params;
     const db = await getDb();
-    const project = await db.prepare(
-      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
-    ).bind(id, payload.id).first();
+
+    // Check if user has access (owner, admin, manager, or assigned user)
+    let project;
+    if (payload.role === 'admin' || payload.role === 'manager') {
+      // Admin and manager can access all projects
+      project = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
+    } else {
+      // Customer/Trader can only access assigned projects
+      project = await db.prepare(`
+        SELECT p.* FROM PROJECTS p
+        INNER JOIN PROJECT_USERS pu ON p.id = pu.project_id
+        WHERE p.id = ? AND pu.user_id = ?
+      `).bind(id, payload.id).first();
+    }
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -53,10 +64,11 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { name, description, avatarUrl } = await req.json() as {
+    const { name, description, avatarUrl, userIds } = await req.json() as {
       name?: string;
       description?: string;
       avatarUrl?: string;
+      userIds?: number[];
     };
 
     const db = await getDb();
@@ -78,6 +90,21 @@ export async function PUT(
       avatarUrl !== undefined ? avatarUrl : existing.avatar_url,
       id
     ).run();
+
+    // Update user assignments if provided
+    if (userIds !== undefined) {
+      // Delete existing assignments
+      await db.prepare('DELETE FROM PROJECT_USERS WHERE project_id = ?').bind(id).run();
+
+      // Insert new assignments
+      if (userIds.length > 0) {
+        for (const userId of userIds) {
+          await db.prepare(
+            'INSERT INTO PROJECT_USERS (project_id, user_id) VALUES (?, ?)'
+          ).bind(id, userId).run();
+        }
+      }
+    }
 
     const project = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
 

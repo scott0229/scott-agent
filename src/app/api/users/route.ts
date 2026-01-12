@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken, hashPassword } from '@/lib/auth';
 
-// Helper to check for admin role
+// Helper to check for admin or manager role
 async function checkAdmin(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
     if (!token) return null;
 
     const payload = await verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
+    if (!payload || (payload.role !== 'admin' && payload.role !== 'manager')) {
         return null;
     }
     return payload;
@@ -40,13 +40,13 @@ export async function GET(req: NextRequest) {
             const roles = searchParams.get('roles')?.split(',');
             const year = searchParams.get('year');
 
-            let query = 'SELECT id, email, user_id, avatar_url, ib_account FROM USERS';
+            let query = 'SELECT id, email, user_id, avatar_url, ib_account, role FROM USERS';
             const params: any[] = [];
             let whereAdded = false;
 
-            // Add year filter (except for admin/trader)
+            // Add year filter (only admin crosses years)
             if (year && year !== 'All') {
-                query += ' WHERE (year = ? OR role IN (\'admin\', \'trader\'))';
+                query += ' WHERE (year = ? OR role = \'admin\')';
                 params.push(parseInt(year));
                 whereAdded = true;
             }
@@ -86,9 +86,9 @@ export async function GET(req: NextRequest) {
         `;
         const params: any[] = [];
 
-        // Add year filter (except for admin/trader)
+        // Add year filter (only admin crosses years)
         if (year && year !== 'All') {
-            query += ' WHERE (year = ? OR role IN (\'admin\', \'trader\'))';
+            query += ' WHERE (year = ? OR role = \'admin\')';
             params.push(parseInt(year));
         }
 
@@ -96,9 +96,10 @@ export async function GET(req: NextRequest) {
             ORDER BY 
                 CASE 
                     WHEN role = 'admin' THEN 1 
-                    WHEN role = 'trader' THEN 2 
-                    WHEN role = 'customer' THEN 3 
-                    ELSE 4 
+                    WHEN role = 'manager' THEN 2 
+                    WHEN role = 'trader' THEN 3 
+                    WHEN role = 'customer' THEN 4 
+                    ELSE 5 
                 END ASC,
                 created_at DESC
         `;
@@ -134,27 +135,31 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 });
         }
 
-        if (!['admin', 'trader', 'customer'].includes(role)) {
+        if (!['admin', 'manager', 'trader', 'customer'].includes(role)) {
             return NextResponse.json({ error: '無效的角色' }, { status: 400 });
         }
 
         const db = await getDb();
 
-        // Check existing email or user_id
-        const existing = await db.prepare('SELECT * FROM USERS WHERE email = ? OR user_id = ?').bind(email, userId).first();
+        const userYear = year || new Date().getFullYear();
+
+        // Check existing email or user_id in the same year
+        const existing = await db.prepare('SELECT * FROM USERS WHERE (email = ? OR user_id = ?) AND year = ?')
+            .bind(email, userId, userYear)
+            .first();
         if (existing) {
             if (existing.email === email) {
-                return NextResponse.json({ error: '此 Email 已被註冊' }, { status: 409 });
+                return NextResponse.json({ error: '此 Email 已在該年度被註冊' }, { status: 409 });
             }
             if (existing.user_id === userId) {
-                return NextResponse.json({ error: '此 User ID 已被使用' }, { status: 409 });
+                return NextResponse.json({ error: '此 User ID 已在該年度被使用' }, { status: 409 });
             }
         }
 
         const hashedPassword = await hashPassword(password);
         const fee = role === 'customer' ? (managementFee || 0) : 0;
         const ib = role === 'customer' ? (ibAccount || '') : '';
-        const userYear = year || new Date().getFullYear();
+        // userYear is already defined above
 
         await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
             .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear)
@@ -227,19 +232,20 @@ export async function PUT(req: NextRequest) {
         }
 
         // Validate Role
-        if (role && !['admin', 'trader', 'customer'].includes(role)) {
+        if (role && !['admin', 'manager', 'trader', 'customer'].includes(role)) {
             return NextResponse.json({ error: '無效的角色' }, { status: 400 });
         }
 
         // Check for duplicates if email/userId changed
         if ((email && email !== currentUser.email) || (userId && userId !== currentUser.user_id)) {
-            const existing = await db.prepare('SELECT * FROM USERS WHERE (email = ? OR user_id = ?) AND id != ?')
-                .bind(email || currentUser.email, userId || currentUser.user_id, id)
+            // Check only within the same year
+            const existing = await db.prepare('SELECT * FROM USERS WHERE (email = ? OR user_id = ?) AND year = ? AND id != ?')
+                .bind(email || currentUser.email, userId || currentUser.user_id, currentUser.year, id)
                 .first();
 
             if (existing) {
-                if (existing.email === email) return NextResponse.json({ error: 'Email 已被使用' }, { status: 409 });
-                if (existing.user_id === userId) return NextResponse.json({ error: 'User ID 已被使用' }, { status: 409 });
+                if (existing.email === email) return NextResponse.json({ error: 'Email 已在該年度被使用' }, { status: 409 });
+                if (existing.user_id === userId) return NextResponse.json({ error: 'User ID 已在該年度被使用' }, { status: 409 });
             }
         }
 

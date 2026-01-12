@@ -69,7 +69,7 @@ export function EditItemDialog({ projectId, item, open, onOpenChange, onSuccess 
 
   const fetchAssignees = async () => {
     try {
-      const res = await fetch('/api/users?mode=selection&roles=admin,trader');
+      const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
       const data = await res.json();
       if (data.users) {
         setAssignees(data.users.filter((u: any) => u.email !== 'admin'));

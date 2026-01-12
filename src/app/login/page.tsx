@@ -47,11 +47,12 @@ export default function LoginPage() {
       }
 
       // Login successful - Cookie is set by the server.
+      // Redirect all users to options page
       if (data.user && data.user.role === 'customer') {
         const targetId = data.user.user_id || data.user.id;
         router.push(`/options/${targetId}`);
       } else {
-        router.push('/project-list');
+        router.push('/options');
       }
 
     } catch (err: any) {

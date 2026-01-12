@@ -199,7 +199,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             <SelectContent>
                                 <SelectItem value="customer">客戶</SelectItem>
                                 <SelectItem value="trader">交易員</SelectItem>
-                                <SelectItem value="admin">管理者</SelectItem>
+                                <SelectItem value="manager">管理者</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -79,13 +79,22 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchUserAndCheckRole = async () => {
             try {
+                // Fetch current user role
+                const authRes = await fetch('/api/auth/me');
+                if (authRes.ok) {
+                    const authData = await authRes.json();
+                    setCurrentUserRole(authData.user?.role || null);
+                }
+
+                // Fetch page owner user
                 const res = await fetch(`/api/users?mode=selection&userId=${params.userId}`, {
                     credentials: 'include' // Ensure cookies are sent
                 });
@@ -97,7 +106,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 console.error('Failed to fetch user:', error);
             }
         };
-        fetchUser();
+        fetchUserAndCheckRole();
     }, [params.userId]);
 
     const fetchOptions = async () => {
@@ -221,9 +230,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     return (
         <div className="container mx-auto py-10 max-w-[1600px]">
             <div className="flex items-center gap-4 mb-6">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/options')}>
-                    <ArrowLeft className="h-6 w-6" />
-                </Button>
+                {/* Only show back button for non-customer roles */}
+                {currentUserRole && currentUserRole !== 'customer' && (
+                    <Button variant="ghost" size="icon" onClick={() => router.push('/options')}>
+                        <ArrowLeft className="h-6 w-6" />
+                    </Button>
+                )}
                 <h1 className="text-3xl font-bold">期權管理 - {params.userId}</h1>
                 <div className="ml-auto flex items-center gap-4">
                     {/* Filter Controls */}
@@ -285,13 +297,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         </Select>
                     </div>
 
-                    <Button
-                        onClick={() => setDialogOpen(true)}
-                        variant="secondary"
-                        className="hover:bg-accent hover:text-accent-foreground"
-                    >
-                        + 新增交易
-                    </Button>
+                    {/* Only non-customer roles can add options */}
+                    {currentUserRole && currentUserRole !== 'customer' && (
+                        <Button
+                            onClick={() => setDialogOpen(true)}
+                            variant="secondary"
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            + 新增交易
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -399,43 +414,46 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         })()}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex justify-center gap-1">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(opt)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>編輯</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                        {/* Only non-customer roles can edit/delete */}
+                                        {currentUserRole && currentUserRole !== 'customer' && (
+                                            <div className="flex justify-center gap-1">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEdit(opt)}
+                                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>編輯</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
 
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(opt.id)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>刪除</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDelete(opt.id)}
+                                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>刪除</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))

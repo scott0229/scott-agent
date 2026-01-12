@@ -53,7 +53,7 @@ export function Navbar() {
         return null;
     }
 
-    const canAccessAdmin = role === 'admin' || role === 'trader';
+    const canAccessAdmin = role === 'admin' || role === 'manager';
     const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users');
 
     // Generate year options from 2025 (when the website started) to current year
@@ -86,27 +86,28 @@ export function Navbar() {
             {!isOptionsPage && <div />}
 
             <div className="flex gap-2 items-center">
+                {/* Projects - visible for all logged-in users */}
+                <Link href="/project-list">
+                    <Button
+                        variant={pathname.startsWith('/project') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <FolderKanban className="h-4 w-4" />
+                        專案管理
+                    </Button>
+                </Link>
+
+                {/* Admin panel - only for admin/manager */}
                 {canAccessAdmin && (
-                    <>
-                        <Link href="/project-list">
-                            <Button
-                                variant={pathname.startsWith('/project') ? "default" : "ghost"}
-                                className="gap-2"
-                            >
-                                <FolderKanban className="h-4 w-4" />
-                                專案管理
-                            </Button>
-                        </Link>
-                        <Link href="/admin/users">
-                            <Button
-                                variant={pathname.startsWith('/admin') ? "default" : "ghost"}
-                                className="gap-2"
-                            >
-                                <Users className="h-4 w-4" />
-                                使用者管理
-                            </Button>
-                        </Link>
-                    </>
+                    <Link href="/admin/users">
+                        <Button
+                            variant={pathname.startsWith('/admin') ? "default" : "ghost"}
+                            className="gap-2"
+                        >
+                            <Users className="h-4 w-4" />
+                            使用者管理
+                        </Button>
+                    </Link>
                 )}
                 <Link href="/options">
                     <Button

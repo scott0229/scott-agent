@@ -147,7 +147,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   const fetchAssignees = async () => {
     try {
-      const res = await fetch('/api/users?mode=selection&roles=admin,trader');
+      const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
       const data = await res.json();
       if (data.users) {
         setAssignees(data.users.filter((u: any) => u.email !== 'admin'));
