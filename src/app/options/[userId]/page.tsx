@@ -192,7 +192,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     };
 
     const resetFilters = () => {
-        setSelectedYear('All');
+        // Note: selectedYear is managed globally via navbar, not reset here
         setSelectedMonth('All');
         setSelectedUnderlying('All');
         setSelectedType('All');
@@ -246,14 +246,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </Tooltip>
                         </TooltipProvider>
 
-                        {/* Dropdowns logic same as original page */}
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-[100px]"><SelectValue placeholder="年份" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部年份</SelectItem>
-                                {years.map(year => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        {/* Year filter removed - using global navbar year selector */}
                         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                             <SelectTrigger className="w-[100px]"><SelectValue placeholder="月份" /></SelectTrigger>
                             <SelectContent>

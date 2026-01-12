@@ -31,14 +31,21 @@ export function Navbar() {
                     console.log('Navbar: Auth data received:', data);
                     if (data.user && data.user.role) {
                         setRole(data.user.role);
+                    } else {
+                        // If no user data, clear role (user logged out)
+                        setRole(null);
                     }
+                } else {
+                    // If fetch fails (e.g., 401 Unauthorized), clear role
+                    setRole(null);
                 }
             } catch (error) {
                 console.error('Failed to fetch user role:', error);
+                setRole(null);
             }
         };
         fetchUserRole();
-    }, []);
+    }, [pathname]); // Re-fetch when pathname changes (e.g., after login/logout navigation)
 
     console.log('Navbar: Current role:', role, 'isCustomer:', role === 'customer');
 

@@ -74,7 +74,7 @@ export default function OptionsClientListPage() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold flex items-center gap-3">
                     <Users className="h-8 w-8" />
-                    {selectedYear} 客戶列表
+                    {selectedYear} 期權管理
                 </h1>
                 <p className="text-muted-foreground mt-2">
                     選擇一位客戶以管理其期權交易紀錄
