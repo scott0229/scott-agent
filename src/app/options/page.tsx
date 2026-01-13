@@ -10,26 +10,39 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Users, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Users, TrendingUp, BarChart3 } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
+import { UserAnalysisDialog } from '@/components/UserAnalysisDialog';
+
+interface UserStats {
+    month: string;
+    total_profit: number;
+    put_profit: number;
+    call_profit: number;
+}
 
 interface User {
     id: number;
+    user_id: string;
     email: string;
-    user_id: string | null;
     avatar_url: string | null;
-    ib_account?: string | null;
-    options_count?: number;
+    ib_account: string | null;
+    options_count: number;
+    monthly_stats?: UserStats[];
+    total_profit?: number;
 }
 
 
-export default function OptionsClientListPage() {
+export default function OptionsPage() {
     const [clients, setClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
-    const router = useRouter();
     const { selectedYear } = useYearFilter();
+    const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         const checkUserAndFetchClients = async () => {
@@ -98,10 +111,9 @@ export default function OptionsClientListPage() {
                     return (
                         <Card
                             key={client.id}
-                            className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50 group"
-                            onClick={() => router.push(`/options/${client.user_id || client.id}`)} // Use user_id if available, fallback to id if needed (though standardizing on user_id is better)
+                            className="hover:shadow-lg transition-all hover:border-primary/50"
                         >
-                            <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                            <CardHeader className="flex flex-row items-center gap-4 pb-1">
                                 <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
                                     <AvatarImage src={client.avatar_url || undefined} />
                                     <AvatarFallback>{initials}</AvatarFallback>
@@ -113,9 +125,76 @@ export default function OptionsClientListPage() {
                                     </CardDescription>
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-sm text-muted-foreground mt-2">
-                                    查看{client.options_count || 0}筆交易記錄 &rarr;
+                            <CardContent className="pt-0">
+                                {client.monthly_stats && client.monthly_stats.length > 0 ? (
+                                    <div>
+                                        <div className="border rounded-md overflow-hidden">
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-secondary/50">
+                                                    <tr>
+                                                        <th className="text-center py-1 px-2 font-medium">月份</th>
+                                                        <th className="text-center py-1 px-2 font-medium">總損益</th>
+                                                        <th className="text-center py-1 px-2 font-medium">PUT</th>
+                                                        <th className="text-center py-1 px-2 font-medium">CALL</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="text-xs">
+                                                    {client.monthly_stats.map((stat) => (
+                                                        <tr key={stat.month} className="border-t hover:bg-secondary/20">
+                                                            <td className="py-1 px-2 text-center">{stat.month}月</td>
+                                                            <td className="py-1 px-2 text-center font-medium">
+                                                                {stat.total_profit.toLocaleString()}
+                                                            </td>
+                                                            <td className="py-1 px-2 text-center">
+                                                                {stat.put_profit.toLocaleString()}
+                                                            </td>
+                                                            <td className="py-1 px-2 text-center">
+                                                                {stat.call_profit.toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr className="border-t-2 bg-secondary/30 font-bold">
+                                                        <td className="py-1 px-2 text-center">總計</td>
+                                                        <td className="py-1 px-2 text-center">
+                                                            {(client.total_profit ?? 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="py-1 px-2 text-center">
+                                                            {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="py-1 px-2 text-center">
+                                                            {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-muted-foreground mt-2">
+                                        查看{client.options_count || 0}筆交易記錄 &rarr;
+                                    </div>
+                                )}
+                                <div className="flex gap-2 mt-3">
+                                    <Button
+                                        onClick={() => router.push(`/options/${client.user_id || client.id}`)}
+                                        className="flex-1"
+                                        size="sm"
+                                    >
+                                        交易記錄
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedUser(client);
+                                            setAnalysisDialogOpen(true);
+                                        }}
+                                        className="flex-1"
+                                        size="sm"
+                                    >
+                                        <BarChart3 className="h-4 w-4 mr-1" />
+                                        分析
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -128,6 +207,14 @@ export default function OptionsClientListPage() {
                     </div>
                 )}
             </div>
+
+            <UserAnalysisDialog
+                user={selectedUser}
+                year={selectedYear}
+                open={analysisDialogOpen}
+                onOpenChange={setAnalysisDialogOpen}
+            />
         </div>
     );
 }
+

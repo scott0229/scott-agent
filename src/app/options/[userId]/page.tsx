@@ -496,7 +496,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         })()}
                                     </TableCell>
                                     <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
-                                    <TableCell>{opt.iv ? `${opt.iv}%` : '-'}</TableCell>
+                                    <TableCell>{opt.iv || '-'}</TableCell>
                                     <TableCell>
                                         {(() => {
                                             const daysHeld = typeof getDaysHeld(opt) === 'number' ? getDaysHeld(opt) : null;
