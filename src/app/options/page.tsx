@@ -30,6 +30,7 @@ interface User {
     avatar_url: string | null;
     ib_account: string | null;
     options_count: number;
+    open_count: number;
     monthly_stats?: UserStats[];
     total_profit?: number;
 }
@@ -119,9 +120,11 @@ export default function OptionsPage() {
                                     <AvatarFallback>{initials}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col overflow-hidden">
-                                    <CardTitle className="text-lg truncate">{displayName}</CardTitle>
+                                    <CardTitle className="text-lg truncate">
+                                        {displayName}{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
+                                    </CardTitle>
                                     <CardDescription className="truncate">
-                                        {client.ib_account || client.email}
+                                        總共{client.options_count || 0}筆交易, {client.open_count || 0}筆未平倉
                                     </CardDescription>
                                 </div>
                             </CardHeader>

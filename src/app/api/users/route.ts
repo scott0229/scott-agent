@@ -47,15 +47,18 @@ export async function GET(req: NextRequest) {
             // Add year filter (only admin crosses years)
             if (year && year !== 'All') {
                 query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count 
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count
                         FROM USERS`;
                 query += ' WHERE (year = ? OR role = \'admin\')';
-                params.push(parseInt(year)); // For subquery
+                params.push(parseInt(year)); // For options_count subquery
+                params.push(parseInt(year)); // For open_count subquery
                 params.push(parseInt(year)); // For main query
                 whereAdded = true;
             } else {
                 query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count 
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count
                         FROM USERS`;
             }
 
@@ -76,8 +79,72 @@ export async function GET(req: NextRequest) {
 
             // Return simplified user list for dropdowns
             console.log('Executing query:', query, params); // Check SQL construction
-            const { results } = await db.prepare(query).bind(...params).all();
-            return NextResponse.json({ users: results });
+            const { results: users } = await db.prepare(query).bind(...params).all();
+
+            // Get monthly statistics for each user if year is specified
+            if (year && year !== 'All') {
+                const statsQuery = `
+                    SELECT 
+                        owner_id as user_id,
+                        strftime('%m', datetime(open_date, 'unixepoch')) as month,
+                        type,
+                        SUM(COALESCE(final_profit, 0)) as profit
+                    FROM OPTIONS
+                    WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
+                    GROUP BY owner_id, month, type
+                `;
+
+                const { results: statsResults } = await db.prepare(statsQuery).bind(year).all();
+
+                // Aggregate statistics by user
+                const userStatsMap = new Map();
+
+                (statsResults as any[]).forEach((row: any) => {
+                    if (!userStatsMap.has(row.user_id)) {
+                        userStatsMap.set(row.user_id, {});
+                    }
+
+                    const userStats = userStatsMap.get(row.user_id);
+                    if (!userStats[row.month]) {
+                        userStats[row.month] = { total: 0, put: 0, call: 0 };
+                    }
+
+                    userStats[row.month].total += row.profit;
+                    if (row.type === 'PUT') {
+                        userStats[row.month].put += row.profit;
+                    } else if (row.type === 'CALL') {
+                        userStats[row.month].call += row.profit;
+                    }
+                });
+
+                // Attach monthly_stats to each user
+                (users as any[]).forEach((user: any) => {
+                    const userMonthlyData = userStatsMap.get(user.id);
+
+                    // Create all 12 months with default zero values
+                    const allMonths = [];
+                    for (let i = 1; i <= 12; i++) {
+                        const monthStr = i.toString().padStart(2, '0');
+                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0 };
+                        allMonths.push({
+                            month: monthStr,
+                            total_profit: monthData.total,
+                            put_profit: monthData.put,
+                            call_profit: monthData.call
+                        });
+                    }
+
+                    user.monthly_stats = allMonths;
+
+                    // Calculate total profit
+                    user.total_profit = allMonths.reduce(
+                        (sum: number, stat: any) => sum + stat.total_profit,
+                        0
+                    );
+                });
+            }
+
+            return NextResponse.json({ users });
         }
 
         const admin = await checkAdmin(req);
