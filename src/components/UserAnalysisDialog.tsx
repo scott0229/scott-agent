@@ -108,7 +108,7 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
     };
 
     const formatPercent = (value: number) => {
-        return value > 0 ? `${value.toFixed(3)}%` : '';
+        return value > 0 ? `${value.toFixed(1)}%` : '';
     };
 
     const formatDecimal = (value: number) => {
@@ -121,7 +121,7 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
 
     // Calculate totals
     const totals = analysis.reduce((acc, month) => {
-        // For weighted averages
+        // Sum values
         acc.put_win_rate_sum += month.put_win_rate;
         acc.call_win_rate_sum += month.call_win_rate;
         acc.total_win_rate_sum += month.total_win_rate;
@@ -132,7 +132,15 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
         acc.capital_efficiency_sum += month.capital_efficiency;
         acc.capital_flow_total += month.capital_flow;
 
-        acc.count += month.put_win_rate > 0 || month.call_win_rate > 0 || month.total_win_rate > 0 ? 1 : 0;
+        // Count months with data for each metric
+        if (month.put_win_rate > 0) acc.put_win_rate_count++;
+        if (month.call_win_rate > 0) acc.call_win_rate_count++;
+        if (month.total_win_rate > 0) acc.total_win_rate_count++;
+        if (month.put_delta > 0) acc.put_delta_count++;
+        if (month.call_delta > 0) acc.call_delta_count++;
+        if (month.total_delta > 0) acc.total_delta_count++;
+        if (month.avg_iv > 0) acc.avg_iv_count++;
+        if (month.capital_efficiency > 0) acc.capital_efficiency_count++;
 
         return acc;
     }, {
@@ -145,7 +153,14 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
         avg_iv_sum: 0,
         capital_efficiency_sum: 0,
         capital_flow_total: 0,
-        count: 0
+        put_win_rate_count: 0,
+        call_win_rate_count: 0,
+        total_win_rate_count: 0,
+        put_delta_count: 0,
+        call_delta_count: 0,
+        total_delta_count: 0,
+        avg_iv_count: 0,
+        capital_efficiency_count: 0
     });
 
     const displayName = user?.user_id || user?.email || '';
@@ -156,7 +171,8 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
                 className="p-0 gap-0 bg-[#fbf9f6] flex flex-col"
                 style={{
                     maxWidth: '85vw',
-                    width: 'auto',
+                    width: 'fit-content',
+                    minWidth: '800px',
                     maxHeight: '90vh',
                     marginLeft: `${offset.x}px`,
                     marginTop: `${offset.y}px`
@@ -199,7 +215,7 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
                                         <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap text-[#4a4038]">{formatDecimal(month.call_delta)}</td>
                                         <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap border-r-4 border-r-[#d6c2b1] text-[#4a4038]">{formatDecimal(month.total_delta)}</td>
                                         <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap text-[#4a4038]">{formatDecimal(month.avg_iv)}</td>
-                                        <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap text-[#4a4038]">{formatPercent(month.capital_efficiency)}</td>
+                                        <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap text-[#4a4038]">{month.capital_efficiency > 0 ? `${month.capital_efficiency.toFixed(3)}%` : ''}</td>
                                         <td className="border border-[#e6d8ce] py-1.5 px-4 text-center whitespace-nowrap text-[#4a4038]">{formatNumber(month.capital_flow)}</td>
                                     </tr>
                                 ))}
@@ -207,14 +223,14 @@ export function UserAnalysisDialog({ user, year, open, onOpenChange }: UserAnaly
                             <tfoot>
                                 <tr className="bg-[#f0e8e0] font-bold text-[#5d4d42]">
                                     <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">總結</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatPercent(totals.put_win_rate_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatPercent(totals.call_win_rate_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap border-r-4 border-r-[#d6c2b1]">{totals.count > 0 ? formatPercent(totals.total_win_rate_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatDecimal(totals.put_delta_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatDecimal(totals.call_delta_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap border-r-4 border-r-[#d6c2b1]">{totals.count > 0 ? formatDecimal(totals.total_delta_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatDecimal(totals.avg_iv_sum / 12) : ''}</td>
-                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.count > 0 ? formatPercent(totals.capital_efficiency_sum / 12) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.put_win_rate_count > 0 ? formatPercent(totals.put_win_rate_sum / totals.put_win_rate_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.call_win_rate_count > 0 ? formatPercent(totals.call_win_rate_sum / totals.call_win_rate_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap border-r-4 border-r-[#d6c2b1]">{totals.total_win_rate_count > 0 ? formatPercent(totals.total_win_rate_sum / totals.total_win_rate_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.put_delta_count > 0 ? formatDecimal(totals.put_delta_sum / totals.put_delta_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.call_delta_count > 0 ? formatDecimal(totals.call_delta_sum / totals.call_delta_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap border-r-4 border-r-[#d6c2b1]">{totals.total_delta_count > 0 ? formatDecimal(totals.total_delta_sum / totals.total_delta_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.avg_iv_count > 0 ? formatDecimal(totals.avg_iv_sum / totals.avg_iv_count) : ''}</td>
+                                    <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{totals.capital_efficiency_count > 0 ? `${(totals.capital_efficiency_sum / totals.capital_efficiency_count).toFixed(3)}%` : ''}</td>
                                     <td className="border border-[#decabb] py-1.5 px-4 text-center whitespace-nowrap">{formatNumber(totals.capital_flow_total)}</td>
                                 </tr>
                             </tfoot>

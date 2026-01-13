@@ -124,7 +124,7 @@ export default function OptionsPage() {
                                         {displayName}{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
                                     </CardTitle>
                                     <CardDescription className="truncate">
-                                        總共{client.options_count || 0}筆交易, {client.open_count || 0}筆未平倉
+                                        總共{client.options_count || 0}筆交易, <span className="text-green-600">{client.open_count || 0}</span>筆未平倉
                                     </CardDescription>
                                 </div>
                             </CardHeader>
@@ -142,8 +142,8 @@ export default function OptionsPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-xs">
-                                                    {client.monthly_stats.map((stat) => (
-                                                        <tr key={stat.month} className="border-t hover:bg-secondary/20">
+                                                    {client.monthly_stats.map((stat, index) => (
+                                                        <tr key={stat.month} className={`border-t hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                             <td className="py-1 px-2 text-center">{stat.month}月</td>
                                                             <td className="py-1 px-2 text-center font-medium">
                                                                 {stat.total_profit.toLocaleString()}
@@ -179,6 +179,7 @@ export default function OptionsPage() {
                                 )}
                                 <div className="flex gap-2 mt-3">
                                     <Button
+                                        variant="outline"
                                         onClick={() => router.push(`/options/${client.user_id || client.id}`)}
                                         className="flex-1"
                                         size="sm"
