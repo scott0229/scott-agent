@@ -62,7 +62,7 @@ export function Navbar() {
     const years = Array.from(
         { length: currentYear - startYear + 1 },
         (_, i) => currentYear - i
-    ).reverse(); // Show in ascending order: 2025, 2026, ...
+    ); // Show in descending order: 2026, 2025, ...
 
     return (
         <nav className="sticky top-0 w-full z-50 p-4 flex justify-between gap-2 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-white/20 shadow-sm items-center">

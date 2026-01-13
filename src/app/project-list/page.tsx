@@ -21,7 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download, Upload } from "lucide-react";
 
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: number;
@@ -64,8 +65,10 @@ export default function ProjectListPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
+  const [importing, setImporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+  const { toast } = useToast();
 
   const totalPages = Math.ceil(projects.length / ITEMS_PER_PAGE);
   const paginatedProjects = projects.slice(
@@ -128,6 +131,79 @@ export default function ProjectListPage() {
     setEditDialogOpen(true);
   };
 
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/projects/export');
+      if (!res.ok) {
+        throw new Error('匯出失敗');
+      }
+
+      const data = await res.json();
+
+      const blob = new Blob([JSON.stringify(data.projects, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.download = `projects_export_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "匯出成功",
+        description: `已匯出 ${data.count} 個專案`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "匯出失敗",
+        description: error.message,
+      });
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+
+      const text = await file.text();
+      const projects = JSON.parse(text);
+
+      const res = await fetch('/api/projects/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projects }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || '匯入失敗');
+      }
+
+      toast({
+        title: "匯入完成",
+        description: `成功匯入 ${result.importedProjects} 個專案、${result.importedTasks} 個任務、${result.importedMembers} 個成員`,
+      });
+
+      fetchProjects();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "匯入失敗",
+        description: error.message,
+      });
+    } finally {
+      setImporting(false);
+      event.target.value = '';
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="min-h-screen container mx-auto py-10">
@@ -140,13 +216,38 @@ export default function ProjectListPage() {
             <div className="flex gap-4">
               {/* Only admin and manager can create projects */}
               {(user?.role === 'admin' || user?.role === 'manager') && (
-                <Button
-                  onClick={() => setDialogOpen(true)}
-                  variant="secondary"
-                  className="hover:bg-accent hover:text-accent-foreground"
-                >
-                  + 新增專案
-                </Button>
+                <>
+                  <Button
+                    onClick={handleExport}
+                    variant="outline"
+                    className="hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    匯出
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById('projects-file-input')?.click()}
+                    disabled={importing}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {importing ? '匯入中...' : '匯入'}
+                    <input
+                      type="file"
+                      id="projects-file-input"
+                      accept=".json"
+                      style={{ display: 'none' }}
+                      onChange={handleImport}
+                    />
+                  </Button>
+                  <Button
+                    onClick={() => setDialogOpen(true)}
+                    variant="secondary"
+                    className="hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <span className="mr-0.5">+</span>新增
+                  </Button>
+                </>
               )}
             </div>
           </div>

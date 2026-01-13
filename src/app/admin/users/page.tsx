@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Download, Upload } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface User {
@@ -51,6 +51,8 @@ export default function AdminUsersPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
     const { selectedYear } = useYearFilter();
@@ -85,6 +87,10 @@ export default function AdminUsersPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         fetchUsers();
@@ -124,6 +130,81 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleExport = async () => {
+        try {
+            const res = await fetch('/api/users/export');
+            if (!res.ok) {
+                throw new Error('匯出失敗');
+            }
+
+            const data = await res.json();
+
+            // Create JSON blob and download
+            const blob = new Blob([JSON.stringify(data.users, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.download = `users_export_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast({
+                title: "匯出成功",
+                description: `已匯出 ${data.count} 位使用者`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "匯出失敗",
+                description: error.message,
+            });
+        }
+    };
+
+    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setImporting(true);
+
+            const text = await file.text();
+            const users = JSON.parse(text);
+
+            const res = await fetch('/api/users/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ users }),
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.error || '匯入失敗');
+            }
+
+            toast({
+                title: "匯入完成",
+                description: `成功匯入 ${result.imported} 位使用者，跳過 ${result.skipped} 位`,
+            });
+
+            fetchUsers();
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "匯入失敗",
+                description: error.message,
+            });
+        } finally {
+            setImporting(false);
+            // Reset file input
+            event.target.value = '';
+        }
+    };
+
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
@@ -155,14 +236,41 @@ export default function AdminUsersPage() {
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold">使用者管理</h1>
-                    <Button
-                        onClick={() => { setEditingUser(null); setDialogOpen(true); }}
-                        variant="secondary"
-                        className="hover:bg-accent hover:text-accent-foreground"
-                    >
-                        新增使用者
-                    </Button>
+                    <h1 className="text-3xl font-bold">
+                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 使用者管理
+                    </h1>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleExport}
+                            variant="outline"
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            匯出
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="hover:bg-accent hover:text-accent-foreground relative"
+                            disabled={importing}
+                        >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {importing ? '匯入中...' : '匯入'}
+                            <input
+                                type="file"
+                                accept=".json"
+                                onChange={handleImport}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                disabled={importing}
+                            />
+                        </Button>
+                        <Button
+                            onClick={() => { setEditingUser(null); setDialogOpen(true); }}
+                            variant="secondary"
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            <span className="mr-0.5">+</span>新增
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -170,8 +278,8 @@ export default function AdminUsersPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
-                                <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
+                                <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
                                 <TableHead className="text-center">交易帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
@@ -183,8 +291,8 @@ export default function AdminUsersPage() {
                             {users.filter(u => u.email !== 'admin').map((user, index) => (
                                 <TableRow key={user.id}>
                                     <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
-                                    <TableCell className="text-center">{user.user_id || '-'}</TableCell>
                                     <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
+                                    <TableCell className="text-center">{user.user_id || '-'}</TableCell>
                                     <TableCell className="text-center">{user.role === 'customer' ? `${user.management_fee}%` : '-'}</TableCell>
                                     <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                     <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>

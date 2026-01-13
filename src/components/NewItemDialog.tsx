@@ -60,13 +60,13 @@ export function NewItemDialog({ projectId, open, onOpenChange, onSuccess }: NewI
 
   const fetchAssignees = async () => {
     try {
-      const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
+      const res = await fetch(`/api/projects/${projectId}/members`);
       const data = await res.json();
-      if (data.users) {
-        setAssignees(data.users);
+      if (data.success && data.members) {
+        setAssignees(data.members);
       }
     } catch (error) {
-      console.error('Failed to fetch assignees:', error);
+      console.error('Failed to fetch project members:', error);
     }
   };
 

@@ -148,13 +148,13 @@ export default function ProjectDetailPage() {
 
   const fetchAssignees = async () => {
     try {
-      const res = await fetch('/api/users?mode=selection&roles=admin,manager,trader');
+      const res = await fetch(`/api/projects/${params.id}/members`);
       const data = await res.json();
-      if (data.users) {
-        setAssignees(data.users);
+      if (data.success && data.members) {
+        setAssignees(data.members);
       }
     } catch (error) {
-      console.error('Failed to fetch assignees:', error);
+      console.error('Failed to fetch project members:', error);
     }
   };
 
@@ -304,7 +304,7 @@ export default function ProjectDetailPage() {
               onClick={() => setIsNewItemOpen(true)}
               className="hover:bg-accent hover:text-accent-foreground"
             >
-              + 新增任務
+              <span className="mr-0.5">+</span>新增
             </Button>
           </div>
         </div>
@@ -327,10 +327,10 @@ export default function ProjectDetailPage() {
               <TableHeader>
                 <TableRow className="bg-secondary hover:bg-secondary">
                   <TableHead className="w-[80px]">#</TableHead>
+                  <TableHead>狀態</TableHead>
                   <TableHead className="w-[30%]">標題</TableHead>
                   <TableHead>創建者</TableHead>
                   <TableHead>指派給</TableHead>
-                  <TableHead>狀態</TableHead>
                   <TableHead
                     className="cursor-pointer hover:text-foreground"
                     onClick={() => toggleSort('created_at')}
@@ -354,7 +354,12 @@ export default function ProjectDetailPage() {
                     onClick={() => router.push(`/project/${params.id}/item/${item.id}`)}
                   >
                     <TableCell className="text-muted-foreground font-mono">
-                      {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                      {items.length - (currentPage - 1) * ITEMS_PER_PAGE - index}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={statusColors[item.status as keyof typeof statusColors]}>
+                        {item.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium text-foreground group-hover:text-primary transition-colors block truncate max-w-[300px]">
@@ -370,11 +375,6 @@ export default function ProjectDetailPage() {
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={statusColors[item.status as keyof typeof statusColors]}>
-                        {item.status}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(item.created_at)}

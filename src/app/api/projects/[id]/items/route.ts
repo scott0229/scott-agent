@@ -29,10 +29,31 @@ export async function GET(
 
     const db = await getDb();
 
-    // Check project ownership
-    const project = await db.prepare(
-      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
-    ).bind(id, payload.id).first();
+    // Check if user can view items (admin, manager, project owner, or assigned user)
+    let project;
+
+    if (payload.role === 'admin' || payload.role === 'manager') {
+      // Admin and manager can view any project
+      project = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
+    } else {
+      // Check if user is project owner OR assigned to project
+      project = await db.prepare(
+        'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+      ).bind(id, payload.id).first();
+
+      // If not owner, check if user is assigned to project
+      if (!project) {
+        const assignedProject = await db.prepare(`
+          SELECT p.* FROM PROJECTS p
+          INNER JOIN PROJECT_USERS pu ON p.id = pu.project_id
+          WHERE p.id = ? AND pu.user_id = ?
+        `).bind(id, payload.id).first();
+
+        if (assignedProject) {
+          project = assignedProject;
+        }
+      }
+    }
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -124,10 +145,31 @@ export async function POST(
 
     const db = await getDb();
 
-    // Check project ownership
-    const project = await db.prepare(
-      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
-    ).bind(id, payload.id).first();
+    // Check if user can create items (admin, manager, project owner, or assigned user)
+    let project;
+
+    if (payload.role === 'admin' || payload.role === 'manager') {
+      // Admin and manager can create items in any project
+      project = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
+    } else {
+      // Check if user is project owner OR assigned to project
+      project = await db.prepare(
+        'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+      ).bind(id, payload.id).first();
+
+      // If not owner, check if user is assigned to project
+      if (!project) {
+        const assignedProject = await db.prepare(`
+          SELECT p.* FROM PROJECTS p
+          INNER JOIN PROJECT_USERS pu ON p.id = pu.project_id
+          WHERE p.id = ? AND pu.user_id = ?
+        `).bind(id, payload.id).first();
+
+        if (assignedProject) {
+          project = assignedProject;
+        }
+      }
+    }
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

@@ -54,6 +54,16 @@ const formatDateForInput = (timestamp: number | null) => {
     return d.toISOString().split('T')[0];
 };
 
+// Adjust date to next workday if it's a weekend
+const adjustToWorkday = (dateStr: string): string => {
+    if (!dateStr) return dateStr;
+    const d = new Date(dateStr);
+    while (d.getDay() === 0 || d.getDay() === 6) {
+        d.setDate(d.getDate() + 1);
+    }
+    return d.toISOString().split('T')[0];
+};
+
 export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }: EditOptionDialogProps) {
     const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
@@ -212,7 +222,14 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="open_date"
                             type="date"
                             value={formData.open_date}
-                            onChange={(e) => setFormData({ ...formData, open_date: e.target.value })}
+                            onChange={(e) => {
+                                const newDate = adjustToWorkday(e.target.value);
+                                if (newDate !== e.target.value) {
+                                    setError('開倉日不能選擇週末，已自動調整至下一個工作日');
+                                    setTimeout(() => setError(null), 3000);
+                                }
+                                setFormData({ ...formData, open_date: newDate });
+                            }}
                             required
                         />
                     </div>
@@ -223,7 +240,14 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="to_date"
                             type="date"
                             value={formData.to_date}
-                            onChange={(e) => setFormData({ ...formData, to_date: e.target.value })}
+                            onChange={(e) => {
+                                const newDate = adjustToWorkday(e.target.value);
+                                if (newDate !== e.target.value) {
+                                    setError('到期日不能選擇週末，已自動調整至下一個工作日');
+                                    setTimeout(() => setError(null), 3000);
+                                }
+                                setFormData({ ...formData, to_date: newDate });
+                            }}
                             required
                         />
                     </div>
@@ -236,7 +260,14 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="settlement_date"
                             type="date"
                             value={formData.settlement_date}
-                            onChange={(e) => setFormData({ ...formData, settlement_date: e.target.value })}
+                            onChange={(e) => {
+                                const newDate = adjustToWorkday(e.target.value);
+                                if (newDate !== e.target.value) {
+                                    setError('結算日不能選擇週末，已自動調整至下一個工作日');
+                                    setTimeout(() => setError(null), 3000);
+                                }
+                                setFormData({ ...formData, settlement_date: newDate });
+                            }}
                         />
                     </div>
 

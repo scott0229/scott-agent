@@ -1,0 +1,76 @@
+
+    const handleExport = async () => {
+        if (!ownerId) return;
+        
+        try {
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/options/export?ownerId=${ownerId}&year=${year}`);
+            if (!res.ok) {
+                throw new Error('匯出失敗');
+            }
+
+            const data = await res.json();
+            
+            const blob = new Blob([JSON.stringify(data.options, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.download = `options_export_${params.userId}_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast({
+                title: "匯出成功",
+                description: `已匯出 ${data.count} 筆交易紀錄`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "匯出失敗",
+                description: error.message,
+            });
+        }
+    };
+
+    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setImporting(true);
+            
+            const text = await file.text();
+            const options = JSON.parse(text);
+
+            const res = await fetch('/api/options/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ options }),
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.error || '匯入失敗');
+            }
+
+            toast({
+                title: "匯入完成",
+                description: `成功匯入 ${result.imported} 筆，跳過 ${result.skipped} 筆`,
+            });
+
+            fetchOptions();
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "匯入失敗",
+                description: error.message,
+            });
+        } finally {
+            setImporting(false);
+            event.target.value = '';
+        }
+    };

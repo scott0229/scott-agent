@@ -1,0 +1,36 @@
+                    </div>
+
+                    {currentUserRole && currentUserRole !== 'customer' && (
+                        <>
+                            <Button
+                                onClick={handleExport}
+                                variant="outline"
+                                className="hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <Download className="h-4 w-4 mr-2" />
+                                匯出
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => document.getElementById('options-file-input')?.click()}
+                                disabled={importing}
+                            >
+                                <Upload className="h-4 w-4 mr-2" />
+                                {importing ? '匯入中...' : '匯入'}
+                                <input
+                                    type="file"
+                                    id="options-file-input"
+                                    accept=".json"
+                                    style={{ display: 'none' }}
+                                    onChange={handleImport}
+                                />
+                            </Button>
+                            <Button
+                                onClick={() => setDialogOpen(true)}
+                                variant="secondary"
+                                className="hover:bg-accent hover:text-accent-foreground"
+                            >
+                                + 新增
+                            </Button>
+                        </>
+                    )}

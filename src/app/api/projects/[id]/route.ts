@@ -73,10 +73,17 @@ export async function PUT(
 
     const db = await getDb();
 
-    // Check ownership
-    const existing = await db.prepare(
-      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
-    ).bind(id, payload.id).first();
+    // Check if user can edit (admin, manager, or project owner)
+    let existing;
+    if (payload.role === 'admin' || payload.role === 'manager') {
+      // Admin and manager can edit any project
+      existing = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
+    } else {
+      // Others can only edit their own projects
+      existing = await db.prepare(
+        'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+      ).bind(id, payload.id).first();
+    }
 
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -135,10 +142,17 @@ export async function DELETE(
     const { id } = await params;
     const db = await getDb();
 
-    // Check ownership
-    const existing = await db.prepare(
-      'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
-    ).bind(id, payload.id).first();
+    // Check if user can delete (admin, manager, or project owner)
+    let existing;
+    if (payload.role === 'admin' || payload.role === 'manager') {
+      // Admin and manager can delete any project
+      existing = await db.prepare('SELECT * FROM PROJECTS WHERE id = ?').bind(id).first();
+    } else {
+      // Others can only delete their own projects
+      existing = await db.prepare(
+        'SELECT * FROM PROJECTS WHERE id = ? AND user_id = ?'
+      ).bind(id, payload.id).first();
+    }
 
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

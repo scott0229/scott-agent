@@ -26,6 +26,7 @@ interface User {
 export default function OptionsClientListPage() {
     const [clients, setClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
     const router = useRouter();
     const { selectedYear } = useYearFilter();
 
@@ -63,6 +64,10 @@ export default function OptionsClientListPage() {
         checkUserAndFetchClients();
     }, [router, selectedYear]); // Add selectedYear dependency
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     if (isLoading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
@@ -76,7 +81,7 @@ export default function OptionsClientListPage() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold flex items-center gap-3">
                     <Users className="h-8 w-8" />
-                    {selectedYear} 期權管理
+                    {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權管理
                 </h1>
                 <p className="text-muted-foreground mt-2">
                     選擇一位客戶以管理其期權交易紀錄
