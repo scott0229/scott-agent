@@ -1,1 +1,1 @@
-UPDATE USERS SET password = '$2b$10$YgKUgwNOmv8kaDgGMxWz7e1AY33UvoFyjTdq47ICumpDg5J2FvvIu', updated_at = unixepoch() WHERE user_id = 'scott';
+UPDATE USERS SET password = '$2a$10$leBpZjsb/2U/FdHZLncJteFwhwHT6HFGO4UrU5KXmOAjdqT1SjrcC', updated_at = unixepoch() WHERE user_id = 'admin';

@@ -1,5 +1,7 @@
 'use client';
 
+import { ProjectListSkeleton } from "@/components/LoadingSkeletons";
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -254,7 +256,7 @@ export default function ProjectListPage() {
 
           {/* Projects List */}
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground">載入中...</div>
+            <ProjectListSkeleton />
           ) : projects.length === 0 ? (
             <Card className="text-center py-12 bg-white/80">
               <CardContent>

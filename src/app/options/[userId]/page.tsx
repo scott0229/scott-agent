@@ -313,7 +313,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <ArrowLeft className="h-6 w-6" />
                     </Button>
                 )}
-                <h1 className="text-3xl font-bold">期權管理 - {params.userId}</h1>
+                <h1 className="text-3xl font-bold">期權交易 - {params.userId}</h1>
                 <div className="ml-auto flex items-center gap-4">
                     {/* Filter Controls */}
                     <div className="flex items-center gap-2">

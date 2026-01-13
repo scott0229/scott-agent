@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, Wallet } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -25,27 +25,45 @@ export function Navbar() {
     useEffect(() => {
         const fetchUserRole = async () => {
             try {
+                // Check session storage cache first
+                const cachedRole = sessionStorage.getItem('userRole');
+                if (cachedRole && cachedRole !== 'null') {
+                    setRole(cachedRole);
+                    // Still validate in background but don't block UI
+                    fetch('/api/auth/me', { cache: 'no-store' }).then(res => {
+                        if (!res.ok) {
+                            sessionStorage.removeItem('userRole');
+                            setRole(null);
+                        }
+                    });
+                    return;
+                }
+
                 const res = await fetch('/api/auth/me', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     console.log('Navbar: Auth data received:', data);
                     if (data.user && data.user.role) {
                         setRole(data.user.role);
+                        sessionStorage.setItem('userRole', data.user.role);
                     } else {
                         // If no user data, clear role (user logged out)
                         setRole(null);
+                        sessionStorage.removeItem('userRole');
                     }
                 } else {
                     // If fetch fails (e.g., 401 Unauthorized), clear role
                     setRole(null);
+                    sessionStorage.removeItem('userRole');
                 }
             } catch (error) {
                 console.error('Failed to fetch user role:', error);
                 setRole(null);
+                sessionStorage.removeItem('userRole');
             }
         };
         fetchUserRole();
-    }, [pathname]); // Re-fetch when pathname changes (e.g., after login/logout navigation)
+    }, []); // Only run once on mount
 
     console.log('Navbar: Current role:', role, 'isCustomer:', role === 'customer');
 
@@ -87,7 +105,7 @@ export function Navbar() {
 
             <div className="flex gap-2 items-center">
                 {/* Projects - visible for all logged-in users */}
-                <Link href="/project-list">
+                <Link href="/project-list" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/project') ? "default" : "ghost"}
                         className="gap-2"
@@ -99,23 +117,32 @@ export function Navbar() {
 
                 {/* Admin panel - only for admin/manager */}
                 {canAccessAdmin && (
-                    <Link href="/admin/users">
+                    <Link href="/admin/users" prefetch={true}>
                         <Button
                             variant={pathname.startsWith('/admin') ? "default" : "ghost"}
                             className="gap-2"
                         >
                             <Users className="h-4 w-4" />
-                            使用者管理
+                            帳號管理
                         </Button>
                     </Link>
                 )}
-                <Link href="/options">
+                <Link href="/options" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/options') ? "default" : "ghost"}
                         className="gap-2"
                     >
                         <TrendingUp className="h-4 w-4" />
-                        期權管理
+                        期權交易
+                    </Button>
+                </Link>
+                <Link href="/deposits" prefetch={true}>
+                    <Button
+                        variant={pathname.startsWith('/deposits') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <Wallet className="h-4 w-4" />
+                        入金記錄
                     </Button>
                 </Link>
                 <div className="ml-2">

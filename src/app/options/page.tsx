@@ -10,8 +10,9 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, TrendingUp } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
 
 interface User {
     id: number;
@@ -70,8 +71,13 @@ export default function OptionsClientListPage() {
 
     if (isLoading) {
         return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="container mx-auto py-10 max-w-[1200px]">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold">
+                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權交易
+                    </h1>
+                </div>
+                <OptionsClientSkeleton />
             </div>
         );
     }
@@ -79,13 +85,9 @@ export default function OptionsClientListPage() {
     return (
         <div className="container mx-auto py-10 max-w-[1200px]">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <Users className="h-8 w-8" />
-                    {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權管理
+                <h1 className="text-3xl font-bold">
+                    {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權交易
                 </h1>
-                <p className="text-muted-foreground mt-2">
-                    選擇一位客戶以管理其期權交易紀錄
-                </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

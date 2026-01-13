@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">
-                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 使用者管理
+                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 帳號管理
                     </h1>
                     <div className="flex gap-2">
                         <Button
