@@ -15,12 +15,14 @@ import { Loader2, Users, TrendingUp, BarChart3 } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
 import { UserAnalysisDialog } from '@/components/UserAnalysisDialog';
+import { InterestDialog } from '@/components/InterestDialog';
 
 interface UserStats {
     month: string;
     total_profit: number;
     put_profit: number;
     call_profit: number;
+    interest: number;
 }
 
 interface User {
@@ -43,39 +45,43 @@ export default function OptionsPage() {
     const { selectedYear } = useYearFilter();
     const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [interestDialogOpen, setInterestDialogOpen] = useState(false);
+    const [interestUser, setInterestUser] = useState<User | null>(null);
     const router = useRouter();
 
-    useEffect(() => {
-        const checkUserAndFetchClients = async () => {
-            try {
-                // 1. Check current user role
-                const authRes = await fetch('/api/auth/me', { cache: 'no-store' });
-                if (authRes.ok) {
-                    const authData = await authRes.json();
-                    console.log('Options Check Role:', authData.user);
-                    if (authData.user && authData.user.role === 'customer') {
-                        // Redirect customer to their own page
-                        // Prefer user_id (string), fallback to id (number) if user_id is null
-                        const targetId = authData.user.user_id || authData.user.id;
-                        router.replace(`/options/${targetId}`);
-                        return; // Stop execution
-                    }
+    const checkUserAndFetchClients = async () => {
+        try {
+            // 1. Check current user role
+            const authRes = await fetch('/api/auth/me', { cache: 'no-store' });
+            if (authRes.ok) {
+                const authData = await authRes.json();
+                console.log('Options Check Role:', authData.user);
+                if (authData.user && authData.user.role === 'customer') {
+                    // Redirect customer to their own page
+                    // Prefer user_id (string), fallback to id (number) if user_id is null
+                    const targetId = authData.user.user_id || authData.user.id;
+                    router.replace(`/options/${targetId}`);
+                    return; // Stop execution
                 }
-
-                // 2. If not customer (admin/trader), fetch clients filtered by year
-                const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-                const res = await fetch(`/api/users?mode=selection&roles=customer&year=${year}`);
-                const data = await res.json();
-                if (data.users) {
-                    setClients(data.users);
-                }
-            } catch (error) {
-                console.error('Failed to init options page:', error);
-            } finally {
-                setIsLoading(false);
             }
-        };
 
+            // 2. If not customer (admin/trader), fetch clients filtered by year
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/users?mode=selection&roles=customer&year=${year}`, {
+                cache: 'no-store'
+            });
+            const data = await res.json();
+            if (data.users) {
+                setClients(data.users);
+            }
+        } catch (error) {
+            console.error('Failed to init options page:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
         checkUserAndFetchClients();
     }, [router, selectedYear]); // Add selectedYear dependency
 
@@ -139,6 +145,7 @@ export default function OptionsPage() {
                                                         <th className="text-center py-1 px-2 font-medium">總損益</th>
                                                         <th className="text-center py-1 px-2 font-medium">PUT</th>
                                                         <th className="text-center py-1 px-2 font-medium">CALL</th>
+                                                        <th className="text-center py-1 px-2 font-medium">利息</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-xs">
@@ -154,6 +161,9 @@ export default function OptionsPage() {
                                                             <td className="py-1 px-2 text-center">
                                                                 {stat.call_profit.toLocaleString()}
                                                             </td>
+                                                            <td className="py-1 px-2 text-center">
+                                                                {(stat.interest || 0).toLocaleString()}
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                     <tr className="border-t-2 bg-secondary/30 font-bold">
@@ -166,6 +176,9 @@ export default function OptionsPage() {
                                                         </td>
                                                         <td className="py-1 px-2 text-center">
                                                             {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="py-1 px-2 text-center">
+                                                            {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
                                                         </td>
                                                     </tr>
                                                 </tbody>
@@ -199,6 +212,18 @@ export default function OptionsPage() {
                                         <BarChart3 className="h-4 w-4 mr-1" />
                                         分析
                                     </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setInterestUser(client);
+                                            setInterestDialogOpen(true);
+                                        }}
+                                        className="flex-1"
+                                        size="sm"
+                                    >
+                                        利息
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -218,7 +243,17 @@ export default function OptionsPage() {
                 open={analysisDialogOpen}
                 onOpenChange={setAnalysisDialogOpen}
             />
+
+            <InterestDialog
+                userId={interestUser?.id}
+                year={selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear)}
+                open={interestDialogOpen}
+                onOpenChange={setInterestDialogOpen}
+                onSuccess={() => {
+                    // Refresh data after saving interest
+                    checkUserAndFetchClients();
+                }}
+            />
         </div>
     );
 }
-

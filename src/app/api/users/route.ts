@@ -96,6 +96,17 @@ export async function GET(req: NextRequest) {
 
                 const { results: statsResults } = await db.prepare(statsQuery).bind(year).all();
 
+                // Fetch interest data for the year
+                const interestQuery = `
+                    SELECT 
+                        user_id,
+                        month,
+                        interest
+                    FROM monthly_interest
+                    WHERE year = ?
+                `;
+                const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
+
                 // Aggregate statistics by user
                 const userStatsMap = new Map();
 
@@ -106,7 +117,7 @@ export async function GET(req: NextRequest) {
 
                     const userStats = userStatsMap.get(row.user_id);
                     if (!userStats[row.month]) {
-                        userStats[row.month] = { total: 0, put: 0, call: 0 };
+                        userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0 };
                     }
 
                     userStats[row.month].total += row.profit;
@@ -117,6 +128,20 @@ export async function GET(req: NextRequest) {
                     }
                 });
 
+                // Add interest data to userStatsMap
+                (interestResults as any[]).forEach((row: any) => {
+                    if (!userStatsMap.has(row.user_id)) {
+                        userStatsMap.set(row.user_id, {});
+                    }
+                    const userStats = userStatsMap.get(row.user_id);
+                    const monthStr = row.month.toString().padStart(2, '0');
+                    if (!userStats[monthStr]) {
+                        userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0 };
+                    }
+                    userStats[monthStr].interest = row.interest;
+                    userStats[monthStr].total += row.interest; // Add interest to total
+                });
+
                 // Attach monthly_stats to each user
                 (users as any[]).forEach((user: any) => {
                     const userMonthlyData = userStatsMap.get(user.id);
@@ -125,18 +150,19 @@ export async function GET(req: NextRequest) {
                     const allMonths = [];
                     for (let i = 1; i <= 12; i++) {
                         const monthStr = i.toString().padStart(2, '0');
-                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0 };
+                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0 };
                         allMonths.push({
                             month: monthStr,
                             total_profit: monthData.total,
                             put_profit: monthData.put,
-                            call_profit: monthData.call
+                            call_profit: monthData.call,
+                            interest: monthData.interest
                         });
                     }
 
                     user.monthly_stats = allMonths;
 
-                    // Calculate total profit
+                    // Calculate total profit (including interest)
                     user.total_profit = allMonths.reduce(
                         (sum: number, stat: any) => sum + stat.total_profit,
                         0
