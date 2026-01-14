@@ -12,7 +12,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Star, Download, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, Star, Download, Upload, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
 import { useToast } from "@/hooks/use-toast";
@@ -58,10 +58,34 @@ export default function NetEquityDetailPage() {
             }
 
             // Fetch user details for header name
-            // (Optional optimization: API could return user name in meta)
-            // For now, let's just fetch records, maybe name is separate.
-            // Actually, we can fetch user profile? 
-            // Let's assume we want to show "User X Performance".
+            try {
+                // Determine year - defaulting to current year or all doesn't matter much for basic profile
+                // But we need to use a query that gets the user. 
+                // Using selection mode with role filtering might be overkill but works if we can filter by ID.
+                // Or just use the bulk fetch from net-equity API if we add user info there.
+                // A better way: fetch from /api/users?mode=selection&userId=XXX if supported?
+                // The API supports userId param in selection mode.
+                // A better way: fetch from /api/users?mode=selection if specific ID fetch isn't supported by ID column
+                // Removing userId param to fetch all selection candidates (customers) and then find by ID.
+                const userRes = await fetch(`/api/users?mode=selection&roles=customer`);
+                if (userRes.ok) {
+                    const userData = await userRes.json();
+                    if (userData.users && userData.users.length > 0) {
+                        // Find by DB ID (params.userId is ID)
+                        const targetId = parseInt(userId);
+                        const user = userData.users.find((u: any) => u.id === targetId);
+
+                        if (user) {
+                            const displayName = user.user_id || user.email.split('@')[0];
+                            setUserName(displayName);
+                        } else {
+                            console.log("User not found in selection list", targetId);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch user name", e);
+            }
 
             await fetchRecords();
 
@@ -227,13 +251,23 @@ export default function NetEquityDetailPage() {
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     )}
-                    <h1 className="text-3xl font-bold">帳戶績效詳細記錄</h1>
+                    <h1 className="text-3xl font-bold">
+                        {userName ? `帳戶績效 - ${userName}` : '帳戶績效詳細記錄'}
+                    </h1>
                 </div>
 
                 {isAdmin && (
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="gap-2" onClick={() => document.getElementById('import-equity')?.click()}>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => window.open(`/api/net-equity/export?userId=${userId}`, '_blank')}
+                        >
                             <Download className="h-4 w-4" />
+                            匯出
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={() => document.getElementById('import-equity')?.click()}>
+                            <Upload className="h-4 w-4" />
                             匯入
                             <input
                                 id="import-equity"
@@ -244,11 +278,11 @@ export default function NetEquityDetailPage() {
                             />
                         </Button>
                         <Button
-                            className="gap-2"
+                            className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
                             onClick={() => setIsNewDialogOpen(true)}
                         >
                             <Plus className="h-4 w-4" />
-                            新增記錄
+                            新增
                         </Button>
                     </div>
                 )}
@@ -258,13 +292,13 @@ export default function NetEquityDetailPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                            <TableHead className="w-[100px] text-center font-bold text-foreground">分析表</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">帳戶淨值</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">當日入金</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">當日報酬率</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">淨值率</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">running peak</TableHead>
-                            <TableHead className="text-right font-bold text-foreground">drawdown</TableHead>
+                            <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">當日入金</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">running peak</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">drawdown</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -281,22 +315,22 @@ export default function NetEquityDetailPage() {
                                     <TableCell className="text-center font-mono font-medium">
                                         {formatDate(record.date)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-base">
+                                    <TableCell className="text-center font-mono text-base">
                                         {formatMoney(record.net_equity)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-muted-foreground">
+                                    <TableCell className="text-center font-mono text-muted-foreground">
                                         {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
                                     </TableCell>
-                                    <TableCell className={cn("text-right font-mono", getReturnColor(record.daily_return))}>
+                                    <TableCell className={cn("text-center font-mono", getReturnColor(record.daily_return))}>
                                         {formatPercent(record.daily_return)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono">
+                                    <TableCell className="text-center font-mono">
                                         {formatPercent(record.nav_ratio)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-muted-foreground">
+                                    <TableCell className="text-center font-mono text-muted-foreground">
                                         {formatPercent(record.running_peak)}
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-red-600">
+                                    <TableCell className="text-center font-mono text-red-600">
                                         {formatPercent(record.drawdown)}
                                     </TableCell>
                                     <TableCell className="text-center">

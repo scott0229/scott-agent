@@ -85,17 +85,17 @@ export default function NetEquityPage() {
     }
 
     return (
-        <div className="container mx-auto py-8">
-            <h1 className="text-3xl font-bold mb-8">帳戶績效總覽</h1>
+        <div className="container mx-auto py-10 max-w-[1200px]">
+            <h1 className="text-3xl font-bold mb-8">帳戶績效</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {summaries.map((user) => (
                     <Card
                         key={user.id}
-                        className="hover:shadow-lg transition-shadow cursor-pointer border-t-4 border-t-primary/20"
+                        className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer"
                         onClick={() => router.push(`/net-equity/${user.id}`)}
                     >
-                        <CardHeader className="pb-2 bg-secondary/5">
+                        <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{user.user_id || user.email}</span>
                             </CardTitle>

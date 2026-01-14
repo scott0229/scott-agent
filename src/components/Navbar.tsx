@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, Wallet } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, Wallet, LineChart } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -151,7 +151,7 @@ export function Navbar() {
                             variant={pathname.startsWith('/net-equity') ? "default" : "ghost"}
                             className="gap-2"
                         >
-                            <TrendingUp className="h-4 w-4" />
+                            <LineChart className="h-4 w-4" />
                             帳戶績效
                         </Button>
                     </Link>

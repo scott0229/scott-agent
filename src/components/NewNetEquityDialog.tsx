@@ -21,7 +21,21 @@ interface NewNetEquityDialogProps {
 }
 
 export function NewNetEquityDialog({ open, onOpenChange, userId, onSuccess }: NewNetEquityDialogProps) {
-    const [date, setDate] = useState('');
+    const getDefaultDate = () => {
+        const d = new Date();
+        const day = d.getDay();
+        if (day === 6) { // Saturday -> Monday
+            d.setDate(d.getDate() + 2);
+        } else if (day === 0) { // Sunday -> Monday
+            d.setDate(d.getDate() + 1);
+        }
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${dayStr}`;
+    };
+
+    const [date, setDate] = useState(getDefaultDate);
     const [equity, setEquity] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
@@ -64,7 +78,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, onSuccess }: Ne
             onSuccess();
             onOpenChange(false);
             setEquity('');
-            setDate('');
+            setDate(getDefaultDate()); // Reset to default date instead of empty
         } catch (error: any) {
             toast({
                 variant: "destructive",
@@ -82,10 +96,10 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, onSuccess }: Ne
                 <DialogHeader>
                     <DialogTitle>新增帳戶淨值</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="date" className="text-right">
-                            日期
+                            交易日
                         </Label>
                         <Input
                             id="date"
