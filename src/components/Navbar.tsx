@@ -115,8 +115,8 @@ export function Navbar() {
                     </Button>
                 </Link>
 
-                {/* Admin panel - only for admin/manager */}
-                {canAccessAdmin && (
+                {/* Admin panel - visible for admin/manager and now customer (read-only) */}
+                {(canAccessAdmin || role === 'customer') && (
                     <Link href="/admin/users" prefetch={true}>
                         <Button
                             variant={pathname.startsWith('/admin') ? "default" : "ghost"}
@@ -142,7 +142,7 @@ export function Navbar() {
                         className="gap-2"
                     >
                         <Wallet className="h-4 w-4" />
-                        入金記錄
+                        匯款記錄
                     </Button>
                 </Link>
                 <div className="ml-2">

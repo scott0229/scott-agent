@@ -174,7 +174,25 @@ export async function GET(req: NextRequest) {
         }
 
         const admin = await checkAdmin(req);
-        if (!admin) {
+
+        // If not admin/manager/trader/admin-like, check if it is a customer
+        // We need to verify token again if checkAdmin failed or returned null (it returns payload)
+        // Actually checkAdmin verifies token and checks for admin/manager/trader.
+        // If it returns null, it might be a customer or invalid.
+
+        let userPayload = admin;
+        if (!userPayload) {
+            // Check if it's a customer
+            const token = req.cookies.get('token')?.value;
+            if (token) {
+                const payload = await verifyToken(token);
+                if (payload && payload.role === 'customer') {
+                    userPayload = payload;
+                }
+            }
+        }
+
+        if (!userPayload) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
@@ -186,11 +204,28 @@ export async function GET(req: NextRequest) {
             FROM USERS 
         `;
         const params: any[] = [];
+        let whereClauses = [];
 
-        // Add year filter (only admin crosses years)
+        // If customer, restrict to self
+        if (userPayload.role === 'customer') {
+            whereClauses.push('id = ?');
+            params.push(userPayload.id);
+        }
+
+        // Add year filter (only admin crosses years, but if customer is restricted to self, does year matter?
+        // User table has 'year' column? Yes.
+        // If customer wants to see their account for a specific year?
+        // The user request is "Unable to see other users".
+        // Usually User Management shows the user account records.
+        // If the user table has a 'year' column, it means user records are year-specific?
+        // Yes, existing code: "SELECT ... WHERE (year = ? OR role = 'admin')"
         if (year && year !== 'All') {
-            query += ' WHERE (year = ? OR role = \'admin\')';
+            whereClauses.push(`(year = ? OR role = 'admin')`);
             params.push(parseInt(year));
+        }
+
+        if (whereClauses.length > 0) {
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
         }
 
         query += `

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,11 +9,22 @@ export async function PUT(
     { params }: { params: { id: string } }
 ) {
     try {
+        // Permission check: only admin and manager can edit deposits
+        const token = request.cookies.get('token')?.value;
+        const user = token ? await verifyToken(token) : null;
+
+        if (!user || !['admin', 'manager'].includes(user.role)) {
+            return NextResponse.json(
+                { success: false, error: 'Insufficient permissions' },
+                { status: 403 }
+            );
+        }
+
         const db = await getDb();
         const body = await request.json();
         const depositId = params.id;
 
-        const { deposit_date, user_id, amount, note, deposit_type } = body;
+        const { deposit_date, user_id, amount, note, deposit_type, transaction_type } = body;
 
         if (!deposit_date || !user_id || amount === undefined) {
             return NextResponse.json(
@@ -28,10 +40,10 @@ export async function PUT(
         const result = await db
             .prepare(
                 `UPDATE DEPOSITS 
-         SET deposit_date = ?, user_id = ?, amount = ?, year = ?, note = ?, deposit_type = ?, updated_at = unixepoch()
+         SET deposit_date = ?, user_id = ?, amount = ?, year = ?, note = ?, deposit_type = ?, transaction_type = ?, updated_at = unixepoch()
          WHERE id = ?`
             )
-            .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash', depositId)
+            .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash', transaction_type || 'deposit', depositId)
             .run();
 
         if (!result.success) {
@@ -53,6 +65,17 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
+        // Permission check: only admin and manager can delete deposits
+        const token = request.cookies.get('token')?.value;
+        const user = token ? await verifyToken(token) : null;
+
+        if (!user || !['admin', 'manager'].includes(user.role)) {
+            return NextResponse.json(
+                { success: false, error: 'Insufficient permissions' },
+                { status: 403 }
+            );
+        }
+
         const db = await getDb();
         const depositId = params.id;
 

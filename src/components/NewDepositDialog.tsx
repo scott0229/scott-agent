@@ -39,6 +39,7 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
     const [amount, setAmount] = useState('');
     const [note, setNote] = useState('');
     const [depositType, setDepositType] = useState('cash');
+    const [transactionType, setTransactionType] = useState('deposit');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Set today's date when dialog opens
@@ -69,6 +70,7 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                     amount: parseFloat(amount),
                     note: note || null,
                     deposit_type: depositType,
+                    transaction_type: transactionType,
                 }),
             });
 
@@ -81,6 +83,7 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                 setAmount('');
                 setNote('');
                 setDepositType('cash');
+                setTransactionType('deposit');
             }
         } catch (error) {
             console.error('Failed to create deposit:', error);
@@ -93,25 +96,30 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>新增入金記錄</DialogTitle>
+                    <DialogTitle>新增匯款記錄</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="depositDate">入金日期 *</Label>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="depositDate" className="text-right">
+                                入金日期
+                            </Label>
                             <Input
                                 id="depositDate"
                                 type="date"
                                 value={depositDate}
                                 onChange={(e) => setDepositDate(e.target.value)}
                                 required
+                                className="col-span-3"
                             />
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="user">用戶 *</Label>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="user" className="text-right">
+                                用戶
+                            </Label>
                             <Select value={userId} onValueChange={setUserId} required>
-                                <SelectTrigger>
+                                <SelectTrigger className="col-span-3">
                                     <SelectValue placeholder="選擇用戶" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -124,8 +132,40 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                             </Select>
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="amount">金額 *</Label>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="transactionType" className="text-right">
+                                資金流動
+                            </Label>
+                            <Select value={transactionType} onValueChange={setTransactionType} required>
+                                <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="選擇資金流動" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="deposit">入金</SelectItem>
+                                    <SelectItem value="withdrawal">出金</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="depositType" className="text-right">
+                                類型
+                            </Label>
+                            <Select value={depositType} onValueChange={setDepositType} required>
+                                <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="選擇類型" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cash">現金</SelectItem>
+                                    <SelectItem value="stock">股票</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="amount" className="text-right">
+                                等價金額
+                            </Label>
                             <Input
                                 id="amount"
                                 type="text"
@@ -133,31 +173,21 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 required
+                                className="col-span-3"
                             />
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="depositType">類型 *</Label>
-                            <Select value={depositType} onValueChange={setDepositType} required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="選擇類型" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="cash">現金</SelectItem>
-                                    <SelectItem value="stock">股票</SelectItem>
-                                    <SelectItem value="both">股票+現金</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="note">備註</Label>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="note" className="text-right">
+                                備註
+                            </Label>
                             <Textarea
                                 id="note"
                                 placeholder="選填"
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
                                 rows={3}
+                                className="col-span-3"
                             />
                         </div>
                     </div>

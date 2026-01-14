@@ -254,7 +254,8 @@ export default function AdminUsersPage() {
                         {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 帳號管理
                     </h1>
                     <div className="flex gap-2">
-                        {currentUser?.role !== 'trader' && (
+                        {/* Only show actions for admin/manager/trader, NOT customer */}
+                        {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
                                 <Button
                                     onClick={handleExport}
@@ -316,7 +317,7 @@ export default function AdminUsersPage() {
                                     <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell className="text-right">
-                                        {currentUser?.role !== 'trader' && (
+                                        {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
                                             <div className="flex justify-end gap-1">
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>

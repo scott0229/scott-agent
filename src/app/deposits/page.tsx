@@ -10,12 +10,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { Pencil, Trash2, Download, Upload } from 'lucide-react';
 import {
     AlertDialog,
@@ -37,6 +39,7 @@ import {
 import { NewDepositDialog } from '@/components/NewDepositDialog';
 import { EditDepositDialog } from '@/components/EditDepositDialog';
 import { useToast } from "@/hooks/use-toast";
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface Deposit {
     id: number;
@@ -46,6 +49,7 @@ interface Deposit {
     year: number;
     note: string | null;
     deposit_type: string;
+    transaction_type: 'deposit' | 'withdrawal';
     depositor_user_id: string | null;
     depositor_email: string;
     created_at: number;
@@ -68,23 +72,54 @@ export default function DepositsPage() {
     const [depositToDelete, setDepositToDelete] = useState<number | null>(null);
     const [mounted, setMounted] = useState(false);
     const [selectedYear, setSelectedYear] = useState('All');
-    const [selectedUserId, setSelectedUserId] = useState('All');
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+    const [selectedTransactionType, setSelectedTransactionType] = useState('All');
+    const [selectedDepositType, setSelectedDepositType] = useState('All');
     const [importing, setImporting] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
     const { toast } = useToast();
 
     useEffect(() => {
         setMounted(true);
+        fetchCurrentUser();
     }, []);
+
+    const fetchCurrentUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.user) {
+                    setUserRole(data.user.role);
+                    setCurrentUserId(data.user.id);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch current user:', error);
+        }
+    };
 
     const fetchDeposits = async () => {
         try {
-            const yearParam = selectedYear === 'All' ? '' : selectedYear;
-            const userParam = selectedUserId === 'All' ? '' : selectedUserId;
-
             const params = new URLSearchParams();
-            if (yearParam) params.append('year', yearParam);
-            if (userParam) params.append('userId', userParam);
+
+            if (selectedYear && selectedYear !== 'All') {
+                params.append('year', selectedYear);
+            }
+
+            if (selectedUserIds.length > 0) {
+                params.append('userId', selectedUserIds.join(','));
+            }
+
+            if (selectedTransactionType && selectedTransactionType !== 'All') {
+                params.append('transaction_type', selectedTransactionType);
+            }
+
+            if (selectedDepositType && selectedDepositType !== 'All') {
+                params.append('deposit_type', selectedDepositType);
+            }
 
             const url = params.toString() ? `/api/deposits?${params.toString()}` : '/api/deposits';
             const res = await fetch(url, { cache: 'no-store' });
@@ -100,9 +135,17 @@ export default function DepositsPage() {
     };
 
     const fetchUsers = async () => {
+        console.log('Fetching users...');
         try {
-            const res = await fetch('/api/users?mode=selection&roles=customer', { cache: 'no-store' });
+            const url = '/api/users?mode=selection&roles=customer';
+            console.log('Fetching URL:', url);
+            const res = await fetch(url, { cache: 'no-store' });
+            if (!res.ok) {
+                console.error('Fetch users failed status:', res.status, res.statusText);
+                return;
+            }
             const data = await res.json();
+            console.log('Fetch users response:', data);
             if (data.users) {
                 setUsers(data.users);
             }
@@ -114,7 +157,7 @@ export default function DepositsPage() {
     useEffect(() => {
         fetchDeposits();
         fetchUsers();
-    }, [selectedYear, selectedUserId]);
+    }, [selectedYear, selectedUserIds, selectedTransactionType, selectedDepositType]);
 
     const handleEdit = (deposit: Deposit) => {
         setEditingDeposit(deposit);
@@ -144,12 +187,19 @@ export default function DepositsPage() {
 
     const handleExport = async () => {
         try {
-            const yearParam = selectedYear === 'All' ? '' : selectedYear;
-            const userParam = selectedUserId === 'All' ? '' : selectedUserId;
-
             const params = new URLSearchParams();
-            if (yearParam) params.append('year', yearParam);
-            if (userParam) params.append('userId', userParam);
+
+            if (selectedYear && selectedYear !== 'All') {
+                params.append('year', selectedYear);
+            }
+
+            if (selectedUserIds.length > 0) {
+                params.append('userId', selectedUserIds.join(','));
+            }
+
+            if (selectedTransactionType && selectedTransactionType !== 'All') {
+                params.append('transaction_type', selectedTransactionType);
+            }
 
             const url = params.toString() ? `/api/deposits/export?${params.toString()}` : '/api/deposits/export';
             const res = await fetch(url);
@@ -172,7 +222,7 @@ export default function DepositsPage() {
 
             toast({
                 title: "匯出成功",
-                description: `已匯出 ${data.count} 筆入金記錄`,
+                description: `已匯出 ${data.count} 筆出入金記錄`,
             });
         } catch (error: any) {
             toast({
@@ -232,14 +282,13 @@ export default function DepositsPage() {
         return new Intl.NumberFormat('zh-TW').format(amount);
     };
 
-    // Calculate total by user
-    const userTotals = deposits.reduce((acc, deposit) => {
-        const key = deposit.user_id;
-        acc[key] = (acc[key] || 0) + deposit.amount;
-        return acc;
-    }, {} as Record<number, number>);
-
-    const grandTotal = deposits.reduce((sum, d) => sum + d.amount, 0);
+    // Calculate net total (deposits - withdrawals)
+    const grandTotal = deposits.reduce((sum, d) => {
+        if (d.transaction_type === 'withdrawal') {
+            return sum - d.amount;
+        }
+        return sum + d.amount;
+    }, 0);
 
     return (
         <TooltipProvider delayDuration={300}>
@@ -247,9 +296,7 @@ export default function DepositsPage() {
                 <div className="w-full">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
-                        <h1 className="text-3xl font-bold">
-                            入金記錄
-                        </h1>
+                        <h1 className="text-3xl font-bold tracking-tight">匯款記錄</h1>
                         <div className="flex items-center gap-4">
                             <Select value={selectedYear} onValueChange={setSelectedYear}>
                                 <SelectTrigger className="w-[120px]">
@@ -262,49 +309,79 @@ export default function DepositsPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="選擇用戶" />
+
+                            {/* Transaction Type Filter */}
+                            <Select value={selectedTransactionType} onValueChange={setSelectedTransactionType}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="資金流動" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="All">全部用戶</SelectItem>
-                                    {users.map((user) => (
-                                        <SelectItem key={user.id} value={user.id.toString()}>
-                                            {user.user_id || user.email}
-                                        </SelectItem>
-                                    ))}
+                                    <SelectItem value="All">全部匯款</SelectItem>
+                                    <SelectItem value="deposit">入金</SelectItem>
+                                    <SelectItem value="withdrawal">出金</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button
-                                onClick={handleExport}
-                                variant="outline"
-                                className="hover:bg-accent hover:text-accent-foreground"
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                匯出
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => document.getElementById('deposits-file-input')?.click()}
-                                disabled={importing}
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                {importing ? '匯入中...' : '匯入'}
-                                <input
-                                    type="file"
-                                    id="deposits-file-input"
-                                    accept=".json"
-                                    style={{ display: 'none' }}
-                                    onChange={handleImport}
+
+                            <Select value={selectedDepositType} onValueChange={setSelectedDepositType}>
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="資產類型" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">全部類型</SelectItem>
+                                    <SelectItem value="cash">現金</SelectItem>
+                                    <SelectItem value="stock">股票</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            {/* Multi-Select User Filter - Hidden for customers */}
+                            {userRole && userRole !== 'customer' && (
+                                <MultiSelect
+                                    options={users.map(user => ({
+                                        value: user.id.toString(),
+                                        label: user.user_id || user.email
+                                    }))}
+                                    selected={selectedUserIds}
+                                    onChange={setSelectedUserIds}
+                                    placeholder="選擇用戶"
+                                    className="w-[200px]"
                                 />
-                            </Button>
-                            <Button
-                                onClick={() => setNewDialogOpen(true)}
-                                variant="secondary"
-                                className="hover:bg-accent hover:text-accent-foreground"
-                            >
-                                <span className="mr-0.5">+</span>新增
-                            </Button>
+                            )}
+
+                            {/* Admin/Manager only buttons */}
+                            {userRole && ['admin', 'manager'].includes(userRole) && (
+                                <>
+                                    <Button
+                                        onClick={handleExport}
+                                        variant="outline"
+                                        className="hover:bg-accent hover:text-accent-foreground"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        匯出
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => document.getElementById('deposits-file-input')?.click()}
+                                        disabled={importing}
+                                    >
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        {importing ? '匯入中...' : '匯入'}
+                                        <input
+                                            type="file"
+                                            id="deposits-file-input"
+                                            accept=".json"
+                                            style={{ display: 'none' }}
+                                            onChange={handleImport}
+                                        />
+                                    </Button>
+                                    <Button
+                                        onClick={() => setNewDialogOpen(true)}
+                                        variant="secondary"
+                                        className="hover:bg-accent hover:text-accent-foreground"
+                                    >
+                                        <span className="mr-0.5">+</span>新增
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -313,7 +390,7 @@ export default function DepositsPage() {
                         <div className="text-center py-12 text-muted-foreground">載入中...</div>
                     ) : deposits.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
-                            尚無入金記錄
+                            尚無出入金記錄
                         </div>
                     ) : (
                         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -323,10 +400,13 @@ export default function DepositsPage() {
                                         <TableHead className="w-[70px] text-center">#</TableHead>
                                         <TableHead className="w-[140px] text-center">日期</TableHead>
                                         <TableHead className="w-[180px] text-center">用戶</TableHead>
-                                        <TableHead className="w-[160px] text-center">金額</TableHead>
+                                        <TableHead className="w-[120px] text-center">資金流動</TableHead>
+                                        <TableHead className="w-[160px] text-center">等價金額</TableHead>
                                         <TableHead className="w-[160px] text-center">類型</TableHead>
                                         <TableHead className="text-center">備註</TableHead>
-                                        <TableHead className="w-[100px] text-center"></TableHead>
+                                        {userRole && ['admin', 'manager'].includes(userRole) && (
+                                            <TableHead className="w-[100px] text-center"></TableHead>
+                                        )}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -341,7 +421,20 @@ export default function DepositsPage() {
                                             <TableCell className="text-center">
                                                 {deposit.depositor_user_id || deposit.depositor_email}
                                             </TableCell>
-                                            <TableCell className="text-center font-semibold">
+                                            <TableCell className="text-center">
+                                                <Badge
+                                                    variant="secondary"
+                                                    className={cn(
+                                                        "font-normal",
+                                                        deposit.transaction_type === 'withdrawal'
+                                                            ? "bg-red-100 text-red-700 hover:bg-red-100"
+                                                            : "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                                    )}
+                                                >
+                                                    {deposit.transaction_type === 'withdrawal' ? '出金' : '入金'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
                                                 ${formatAmount(deposit.amount)}
                                             </TableCell>
                                             <TableCell className="text-center">
@@ -350,48 +443,50 @@ export default function DepositsPage() {
                                             <TableCell className="text-center text-muted-foreground">
                                                 {deposit.note || '-'}
                                             </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                                onClick={() => handleEdit(deposit)}
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>編輯</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
+                                            {userRole && ['admin', 'manager'].includes(userRole) && (
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                                    onClick={() => handleEdit(deposit)}
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>編輯</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
 
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                                onClick={() => handleDelete(deposit.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>刪除</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </div>
-                                            </TableCell>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                                    onClick={() => handleDelete(deposit.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>刪除</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     ))}
                                     {/* Summary Row */}
                                     <TableRow className="bg-primary/5 font-semibold border-t-2">
-                                        <TableCell colSpan={6}></TableCell>
-                                        <TableCell className="text-right text-primary">
-                                            總計 ${formatAmount(grandTotal)}
+                                        <TableCell colSpan={userRole && ['admin', 'manager'].includes(userRole) ? 7 : 6}></TableCell>
+                                        <TableCell className="text-right font-semibold text-primary">
+                                            總計 {grandTotal >= 0 ? '$' : '-$'}{formatAmount(Math.abs(grandTotal))}
                                         </TableCell>
                                     </TableRow>
                                 </TableBody>

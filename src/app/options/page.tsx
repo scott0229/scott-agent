@@ -9,6 +9,13 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, TrendingUp, BarChart3 } from "lucide-react";
@@ -47,6 +54,7 @@ export default function OptionsPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [interestDialogOpen, setInterestDialogOpen] = useState(false);
     const [interestUser, setInterestUser] = useState<User | null>(null);
+    const [sortOrder, setSortOrder] = useState('alphabetical');
     const router = useRouter();
 
     const checkUserAndFetchClients = async () => {
@@ -92,7 +100,7 @@ export default function OptionsPage() {
     if (isLoading) {
         return (
             <div className="container mx-auto py-10 max-w-[1200px]">
-                <div className="mb-8">
+                <div className="mb-8 flex justify-between items-center">
                     <h1 className="text-3xl font-bold">
                         {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權交易
                     </h1>
@@ -102,16 +110,35 @@ export default function OptionsPage() {
         );
     }
 
+    const sortedClients = [...clients].sort((a, b) => {
+        if (sortOrder === 'alphabetical') {
+            const nameA = a.user_id || a.email;
+            const nameB = b.user_id || b.email;
+            return nameA.localeCompare(nameB);
+        }
+        return 0;
+    });
+
     return (
         <div className="container mx-auto py-10 max-w-[1200px]">
-            <div className="mb-8">
+            <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
                     {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權交易
                 </h1>
+                <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="排序方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="alphabetical">按字母</SelectItem>
+                        <SelectItem value="profit-desc">按淨值-從大到小</SelectItem>
+                        <SelectItem value="profit-asc">按淨值-從小到大</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {clients.map((client) => {
+                {sortedClients.map((client) => {
                     const displayName = client.user_id || client.email.split('@')[0];
                     const initials = displayName.charAt(0).toUpperCase();
 

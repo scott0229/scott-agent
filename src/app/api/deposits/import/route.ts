@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
     try {
+        // Permission check: only admin and manager can import
+        const token = request.cookies.get('token')?.value;
+        const user = token ? await verifyToken(token) : null;
+
+        if (!user || !['admin', 'manager'].includes(user.role)) {
+            return NextResponse.json(
+                { success: false, error: 'Insufficient permissions' },
+                { status: 403 }
+            );
+        }
+
         const db = await getDb();
         const body = await request.json();
         const { deposits } = body;
@@ -21,7 +33,7 @@ export async function POST(request: NextRequest) {
 
         for (const deposit of deposits) {
             try {
-                const { deposit_date, user_id, amount, note, deposit_type } = deposit;
+                const { deposit_date, user_id, amount, note, deposit_type, transaction_type } = deposit;
 
                 if (!deposit_date || !user_id || amount === undefined) {
                     skipped++;
@@ -46,10 +58,10 @@ export async function POST(request: NextRequest) {
 
                 await db
                     .prepare(
-                        `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                        `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                     )
-                    .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash')
+                    .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash', transaction_type || 'deposit')
                     .run();
 
                 imported++;
