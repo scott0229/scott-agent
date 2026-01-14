@@ -145,6 +145,17 @@ export function Navbar() {
                         匯款記錄
                     </Button>
                 </Link>
+                {(canAccessAdmin || role === 'customer') && (
+                    <Link href="/net-equity" prefetch={true}>
+                        <Button
+                            variant={pathname.startsWith('/net-equity') ? "default" : "ghost"}
+                            className="gap-2"
+                        >
+                            <TrendingUp className="h-4 w-4" />
+                            帳戶績效
+                        </Button>
+                    </Link>
+                )}
                 <div className="ml-2">
                     <UserProfileMenu />
                 </div>
