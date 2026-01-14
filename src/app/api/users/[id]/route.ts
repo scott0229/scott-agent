@@ -59,3 +59,37 @@ export async function DELETE(
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
     }
 }
+// PUT: Update user details
+export async function PUT(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const admin = await checkAdmin(req);
+        if (!admin) {
+            return NextResponse.json({ error: '權限不足' }, { status: 403 });
+        }
+
+        const { id } = await params;
+        if (!id) {
+            return NextResponse.json({ error: '缺少使用者 ID' }, { status: 400 });
+        }
+
+        const body = await req.json();
+        const { initial_cost } = body;
+
+        const db = await getDb();
+
+        // Update initial_cost if provided
+        if (initial_cost !== undefined) {
+            await db.prepare('UPDATE USERS SET initial_cost = ? WHERE id = ?')
+                .bind(initial_cost, id)
+                .run();
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Update user error:', error);
+        return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
+    }
+}

@@ -25,6 +25,7 @@ interface User {
     management_fee?: number;
     ib_account?: string;
     phone?: string;
+    initial_cost?: number;
     created_at: number;
 }
 
@@ -246,6 +247,11 @@ export default function AdminUsersPage() {
         return phone;
     };
 
+    const formatMoney = (val?: number) => {
+        if (val === undefined || val === null) return '-';
+        return new Intl.NumberFormat('en-US').format(Math.round(val));
+    };
+
     return (
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
@@ -300,7 +306,8 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
-                                <TableHead className="text-center">交易帳號</TableHead>
+                                <TableHead className="text-center">年初淨值</TableHead>
+                                <TableHead className="text-center">證券帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
                                 <TableHead>郵件地址</TableHead>
                                 <TableHead className="text-right"></TableHead>
@@ -313,6 +320,7 @@ export default function AdminUsersPage() {
                                     <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
                                     <TableCell className="text-center">{user.user_id || '-'}</TableCell>
                                     <TableCell className="text-center">{user.role === 'customer' ? `${user.management_fee}%` : '-'}</TableCell>
+                                    <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
                                     <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                     <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
                                     <TableCell>{user.email}</TableCell>
@@ -388,6 +396,6 @@ export default function AdminUsersPage() {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
-        </TooltipProvider>
+        </TooltipProvider >
     );
 }

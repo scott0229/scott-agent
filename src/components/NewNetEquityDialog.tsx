@@ -17,10 +17,11 @@ interface NewNetEquityDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     userId: number;
+    year: string | number;
     onSuccess: () => void;
 }
 
-export function NewNetEquityDialog({ open, onOpenChange, userId, onSuccess }: NewNetEquityDialogProps) {
+export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedYear, onSuccess }: NewNetEquityDialogProps) {
     const getDefaultDate = () => {
         const d = new Date();
         const day = d.getDay();
@@ -61,7 +62,8 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, onSuccess }: Ne
                 body: JSON.stringify({
                     user_id: userId,
                     date: timestamp,
-                    net_equity: parseFloat(equity)
+                    net_equity: parseFloat(equity),
+                    year: selectedYear !== 'All' ? selectedYear : undefined
                 }),
             });
 

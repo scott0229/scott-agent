@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
             // Add year filter (only admin crosses years)
             if (year && year !== 'All') {
-                query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
+                query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count
                         FROM USERS`;
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
                 params.push(parseInt(year)); // For main query
                 whereAdded = true;
             } else {
-                query = `SELECT id, email, user_id, avatar_url, ib_account, role, 
+                query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count
                         FROM USERS`;
@@ -200,7 +200,7 @@ export async function GET(req: NextRequest) {
         const year = searchParams.get('year');
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at 
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost 
             FROM USERS 
         `;
         const params: any[] = [];
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone, year } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -265,6 +265,7 @@ export async function POST(req: NextRequest) {
             ibAccount?: string;
             phone?: string;
             year?: number;
+            initialCost?: number;
         };
 
         if (!email || !userId || !password || !role) {
@@ -295,10 +296,11 @@ export async function POST(req: NextRequest) {
         const hashedPassword = await hashPassword(password);
         const fee = role === 'customer' ? (managementFee || 0) : 0;
         const ib = role === 'customer' ? (ibAccount || '') : '';
+        const initCost = role === 'customer' ? (initialCost || 0) : 0;
         // userYear is already defined above
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear)
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost)
             .run();
 
         return NextResponse.json({ success: true });
@@ -344,7 +346,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -353,6 +355,7 @@ export async function PUT(req: NextRequest) {
             managementFee?: number;
             ibAccount?: string;
             phone?: string;
+            initialCost?: number;
         };
 
         if (!id) {
@@ -418,6 +421,13 @@ export async function PUT(req: NextRequest) {
         if (typeof phone !== 'undefined') {
             updateQuery += ', phone = ?';
             params.push(phone);
+        }
+
+        if (typeof initialCost !== 'undefined') {
+            updateQuery += ', initial_cost = ?';
+            params.push(initialCost);
+        } else if (role && role !== 'customer') {
+            updateQuery += ', initial_cost = 0';
         }
 
         if (password && password.trim() !== '') {

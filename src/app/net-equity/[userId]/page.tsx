@@ -12,10 +12,28 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Star, Download, Upload, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, Star, Download, Upload, Plus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
+import { EditNetEquityDialog } from '@/components/EditNetEquityDialog';
 import { useToast } from "@/hooks/use-toast";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface PerformanceRecord {
     id: number;
@@ -37,8 +55,12 @@ export default function NetEquityDetailPage() {
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string>('');
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [recordToEdit, setRecordToEdit] = useState<PerformanceRecord | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const { toast } = useToast();
+    const { selectedYear } = useYearFilter();
 
     // Safe parsing of userId
     const userId = typeof params.userId === 'string' ? params.userId : '';
@@ -47,7 +69,7 @@ export default function NetEquityDetailPage() {
         if (userId) {
             checkAuthAndFetch();
         }
-    }, [userId]);
+    }, [userId, selectedYear]);
 
     const checkAuthAndFetch = async () => {
         try {
@@ -98,7 +120,8 @@ export default function NetEquityDetailPage() {
 
     const fetchRecords = async () => {
         try {
-            const res = await fetch(`/api/net-equity?userId=${userId}`);
+            const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
+            const res = await fetch(`/api/net-equity?userId=${userId}${yearParam}`);
             const data = await res.json();
             if (data.success) {
                 setRecords(data.data);
@@ -131,11 +154,7 @@ export default function NetEquityDetailPage() {
         return `${(val * 100).toFixed(2)}%`;
     };
 
-    const getReturnColor = (val: number) => {
-        if (val > 0) return "text-emerald-600 font-medium";
-        if (val < 0) return "text-red-600 font-medium";
-        return "text-muted-foreground";
-    };
+
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -202,7 +221,10 @@ export default function NetEquityDetailPage() {
                 const res = await fetch('/api/net-equity/import', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ records }),
+                    body: JSON.stringify({
+                        records,
+                        year: selectedYear !== 'All' ? selectedYear : undefined
+                    }),
                 });
 
                 const data = await res.json();
@@ -232,6 +254,50 @@ export default function NetEquityDetailPage() {
         reader.readAsText(file);
     };
 
+    const handleEdit = (record: PerformanceRecord) => {
+        setRecordToEdit(record);
+        setEditDialogOpen(true);
+    };
+
+    const handleDelete = (id: number) => {
+        setRecordToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!recordToDelete) return;
+
+        try {
+            const res = await fetch('/api/net-equity', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: recordToDelete }),
+            });
+
+            if (res.ok) {
+                toast({
+                    title: "刪除成功",
+                    description: "淨值記錄已刪除",
+                });
+                fetchRecords();
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "刪除失敗",
+                    description: "無法刪除淨值記錄",
+                });
+            }
+        } catch (error) {
+            console.error('Delete failed', error);
+            toast({
+                variant: "destructive",
+                title: "錯誤",
+                description: "發生錯誤，請稍後再試",
+            });
+        } finally {
+            setRecordToDelete(null);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
@@ -252,7 +318,7 @@ export default function NetEquityDetailPage() {
                         </Button>
                     )}
                     <h1 className="text-3xl font-bold">
-                        {userName ? `帳戶績效 - ${userName}` : '帳戶績效詳細記錄'}
+                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `帳戶績效 - ${userName}` : '帳戶績效詳細記錄'}
                     </h1>
                 </div>
 
@@ -300,6 +366,7 @@ export default function NetEquityDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">running peak</TableHead>
                             <TableHead className="text-center font-bold text-foreground">drawdown</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
+                            {isAdmin && <TableHead className="text-center font-bold text-foreground">操作</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -315,22 +382,22 @@ export default function NetEquityDetailPage() {
                                     <TableCell className="text-center font-mono font-medium">
                                         {formatDate(record.date)}
                                     </TableCell>
-                                    <TableCell className="text-center font-mono text-base">
+                                    <TableCell className="text-center font-mono">
                                         {formatMoney(record.net_equity)}
                                     </TableCell>
-                                    <TableCell className="text-center font-mono text-muted-foreground">
+                                    <TableCell className="text-center font-mono">
                                         {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
                                     </TableCell>
-                                    <TableCell className={cn("text-center font-mono", getReturnColor(record.daily_return))}>
+                                    <TableCell className="text-center font-mono">
                                         {formatPercent(record.daily_return)}
                                     </TableCell>
                                     <TableCell className="text-center font-mono">
                                         {formatPercent(record.nav_ratio)}
                                     </TableCell>
-                                    <TableCell className="text-center font-mono text-muted-foreground">
+                                    <TableCell className="text-center font-mono">
                                         {formatPercent(record.running_peak)}
                                     </TableCell>
-                                    <TableCell className="text-center font-mono text-red-600">
+                                    <TableCell className="text-center font-mono">
                                         {formatPercent(record.drawdown)}
                                     </TableCell>
                                     <TableCell className="text-center">
@@ -340,6 +407,47 @@ export default function NetEquityDetailPage() {
                                             </div>
                                         )}
                                     </TableCell>
+                                    {isAdmin && (
+                                        <TableCell className="text-center">
+                                            <div className="flex justify-center gap-1">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEdit(record)}
+                                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>編輯</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDelete(record.id)}
+                                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>刪除</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}
@@ -351,8 +459,36 @@ export default function NetEquityDetailPage() {
                 open={isNewDialogOpen}
                 onOpenChange={setIsNewDialogOpen}
                 userId={parseInt(userId)}
+                year={selectedYear}
                 onSuccess={fetchRecords}
             />
+
+            <EditNetEquityDialog
+                open={editDialogOpen}
+                onOpenChange={(open) => {
+                    setEditDialogOpen(open);
+                    if (!open) setRecordToEdit(null);
+                }}
+                recordToEdit={recordToEdit}
+                onSuccess={fetchRecords}
+            />
+
+            <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            此動作無法復原。這將永久刪除此淨值記錄，並影響績效指標的計算。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                            刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

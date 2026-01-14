@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        // Expecting { records: [{ user_id, date, net_equity }] } or Array
-        // Let's support an array directly or wrapper
+        // Expecting { records: [...], year: 2025 } or just Array (legacy)
         const records = Array.isArray(body) ? body : body.records;
+        const globalYear = !Array.isArray(body) ? body.year : undefined; // Environment year
 
         if (!Array.isArray(records) || records.length === 0) {
             return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
@@ -22,10 +22,11 @@ export async function POST(request: NextRequest) {
 
         const db = await getDb();
         const stmt = db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, updated_at)
-            VALUES (?, ?, ?, unixepoch())
+            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, year, updated_at)
+            VALUES (?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
             net_equity = excluded.net_equity,
+            year = excluded.year,
             updated_at = unixepoch()
         `);
 
@@ -35,14 +36,29 @@ export async function POST(request: NextRequest) {
             // Validate
             if (!r.user_id || !r.date || r.net_equity === undefined) continue;
 
-            // Normailize date (if string YYYY-MM-DD -> timestamp)
+            // Normalize date (if string YYYY-MM-DD -> timestamp)
             let timestamp = r.date;
             if (typeof r.date === 'string') {
                 const d = new Date(r.date);
                 timestamp = d.getTime() / 1000;
             }
 
-            batch.push(stmt.bind(r.user_id, timestamp, r.net_equity));
+            // Determine year: 
+            // 1. Logic enforcement: If globalYear (Environment Year) is set, USE IT.
+            // 2. Otherwise use record-level year if provided.
+            // 3. Fallback to deriving from date.
+
+            let year = globalYear; // Priority 1
+
+            if (!year) {
+                year = r.year; // Priority 2
+            }
+
+            if (!year) {
+                const d = new Date(timestamp * 1000);
+                year = d.getUTCFullYear(); // Priority 3
+            }
+            batch.push(stmt.bind(r.user_id, timestamp, r.net_equity, year));
         }
 
         if (batch.length > 0) {

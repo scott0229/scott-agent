@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 8080",
     "dev:cf": "wrangler dev --live-reload",
+    "start": "npm run migrate:local && npm run build:cf && npm run dev",
     "build": "next build",
     "build:cf": "cross-env opennextjs-cloudflare build",
     "migrate:local": "wrangler d1 migrations apply DB --local",

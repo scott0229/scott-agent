@@ -25,7 +25,7 @@ interface AdminUserDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string } | null;
+    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; initial_cost?: number } | null;
 }
 
 export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: AdminUserDialogProps) {
@@ -39,7 +39,8 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         role: 'customer',
         managementFee: '4.0',
         ibAccount: '',
-        phone: ''
+        phone: '',
+        initialCost: ''
     });
 
     // Reset or populate form when opening
@@ -52,7 +53,8 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
-                phone: userToEdit.phone || ''
+                phone: userToEdit.phone || '',
+                initialCost: userToEdit.initial_cost?.toString() || ''
             });
         }
     });
@@ -69,10 +71,11 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
-                phone: userToEdit.phone || ''
+                phone: userToEdit.phone || '',
+                initialCost: userToEdit.initial_cost?.toString() || ''
             });
         } else {
-            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '' });
+            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', initialCost: '' });
         }
     }
 
@@ -106,7 +109,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '' });
+                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', initialCost: '' });
             }
         } catch (error: any) {
             toast({
@@ -233,7 +236,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="ibAccount" className="text-right">
-                                    交易帳號
+                                    證券帳號
                                 </Label>
                                 <Input
                                     id="ibAccount"
@@ -243,6 +246,22 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     className="col-span-3"
                                     autoComplete="off"
                                     placeholder="U12345678"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="initialCost" className="text-right">
+                                    年初淨值
+                                </Label>
+                                <Input
+                                    id="initialCost"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="0"
+                                    value={formData.initialCost}
+                                    onChange={(e) => setFormData({ ...formData, initialCost: e.target.value })}
+                                    className="col-span-3"
+                                    autoComplete="off"
                                 />
                             </div>
                         </>

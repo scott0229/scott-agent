@@ -72,7 +72,7 @@ export function Navbar() {
     }
 
     const canAccessAdmin = role === 'admin' || role === 'manager';
-    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users');
+    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity');
 
     // Generate year options from 2025 (when the website started) to current year
     const currentYear = new Date().getFullYear();

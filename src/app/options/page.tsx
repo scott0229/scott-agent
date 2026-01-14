@@ -147,7 +147,7 @@ export default function OptionsPage() {
                             key={client.id}
                             className="hover:shadow-lg transition-all hover:border-primary/50"
                         >
-                            <CardHeader className="flex flex-row items-center gap-4 pb-1">
+                            <CardHeader className="flex flex-row items-center gap-4 pb-0">
                                 <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
                                     <AvatarImage src={client.avatar_url || undefined} />
                                     <AvatarFallback>{initials}</AvatarFallback>
@@ -161,11 +161,11 @@ export default function OptionsPage() {
                                     </CardDescription>
                                 </div>
                             </CardHeader>
-                            <CardContent className="pt-0">
+                            <CardContent className="-mt-2">
                                 {client.monthly_stats && client.monthly_stats.length > 0 ? (
                                     <div>
                                         <div className="border rounded-md overflow-hidden">
-                                            <table className="w-full text-xs">
+                                            <table className="w-full text-sm">
                                                 <thead className="bg-secondary/50">
                                                     <tr>
                                                         <th className="text-center py-1 px-2 font-medium">月份</th>
@@ -175,7 +175,7 @@ export default function OptionsPage() {
                                                         <th className="text-center py-1 px-2 font-medium">利息</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="text-xs">
+                                                <tbody className="text-sm">
                                                     {client.monthly_stats.map((stat, index) => (
                                                         <tr key={stat.month} className={`border-t hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                             <td className="py-1 px-2 text-center">{stat.month}月</td>
