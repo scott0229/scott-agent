@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken, hashPassword } from '@/lib/auth';
 
-// Helper to check for admin or manager role
+// Helper to check for admin, manager, or trader role
 async function checkAdmin(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
     if (!token) return null;
 
     const payload = await verifyToken(token);
-    if (!payload || (payload.role !== 'admin' && payload.role !== 'manager')) {
+    if (!payload || !['admin', 'manager', 'trader'].includes(payload.role)) {
         return null;
     }
     return payload;
@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const admin = await checkAdmin(req);
-        if (!admin) {
+        if (!admin || admin.role === 'trader') {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     try {
         const admin = await checkAdmin(req);
-        if (!admin) {
+        if (!admin || admin.role === 'trader') {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
@@ -279,7 +279,7 @@ export async function DELETE(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     try {
         const admin = await checkAdmin(req);
-        if (!admin) {
+        if (!admin || admin.role === 'trader') {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 

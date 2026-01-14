@@ -53,9 +53,22 @@ export default function AdminUsersPage() {
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
     const [importing, setImporting] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
     const { toast } = useToast();
     const router = useRouter();
     const { selectedYear } = useYearFilter();
+
+    const fetchCurrentUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentUser(data.user);
+            }
+        } catch (error) {
+            console.error('Failed to fetch current user', error);
+        }
+    };
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
@@ -90,6 +103,7 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         setMounted(true);
+        fetchCurrentUser();
     }, []);
 
     useEffect(() => {
@@ -240,36 +254,40 @@ export default function AdminUsersPage() {
                         {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 帳號管理
                     </h1>
                     <div className="flex gap-2">
-                        <Button
-                            onClick={handleExport}
-                            variant="outline"
-                            className="hover:bg-accent hover:text-accent-foreground"
-                        >
-                            <Download className="h-4 w-4 mr-2" />
-                            匯出
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="hover:bg-accent hover:text-accent-foreground relative"
-                            disabled={importing}
-                        >
-                            <Upload className="h-4 w-4 mr-2" />
-                            {importing ? '匯入中...' : '匯入'}
-                            <input
-                                type="file"
-                                accept=".json"
-                                onChange={handleImport}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                disabled={importing}
-                            />
-                        </Button>
-                        <Button
-                            onClick={() => { setEditingUser(null); setDialogOpen(true); }}
-                            variant="secondary"
-                            className="hover:bg-accent hover:text-accent-foreground"
-                        >
-                            <span className="mr-0.5">+</span>新增
-                        </Button>
+                        {currentUser?.role !== 'trader' && (
+                            <>
+                                <Button
+                                    onClick={handleExport}
+                                    variant="outline"
+                                    className="hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    匯出
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="hover:bg-accent hover:text-accent-foreground relative"
+                                    disabled={importing}
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    {importing ? '匯入中...' : '匯入'}
+                                    <input
+                                        type="file"
+                                        accept=".json"
+                                        onChange={handleImport}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        disabled={importing}
+                                    />
+                                </Button>
+                                <Button
+                                    onClick={() => { setEditingUser(null); setDialogOpen(true); }}
+                                    variant="secondary"
+                                    className="hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    <span className="mr-0.5">+</span>新增
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -298,39 +316,41 @@ export default function AdminUsersPage() {
                                     <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1">
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEdit(user)}
-                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>編輯</p>
-                                                </TooltipContent>
-                                            </Tooltip>
+                                        {currentUser?.role !== 'trader' && (
+                                            <div className="flex justify-end gap-1">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEdit(user)}
+                                                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>編輯</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
 
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDelete(user.id)}
-                                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>刪除</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </div>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDelete(user.id)}
+                                                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>刪除</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}

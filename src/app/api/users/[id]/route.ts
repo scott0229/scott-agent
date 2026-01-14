@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
-// Helper to check for admin or manager role
+// Helper to check for admin or manager role (trader excluded from modifications)
 async function checkAdmin(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
     if (!token) return null;
