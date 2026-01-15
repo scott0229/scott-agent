@@ -25,6 +25,7 @@ interface UserSummary {
     user_id: string;
     email: string;
     initial_cost: number;
+    current_net_equity: number;
     stats: {
         startDate: number;
         returnPercentage: number;
@@ -170,50 +171,56 @@ export default function NetEquityPage() {
                             <div>
                                 <div className="border rounded-md overflow-hidden">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-secondary/50">
-                                            <tr>
-                                                <th className="text-center py-1 px-2 font-medium">指標</th>
-                                                <th className="text-center py-1 px-2 font-medium">數值</th>
-                                            </tr>
-                                        </thead>
                                         <tbody className="text-sm">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="py-1 px-2">年初淨值</td>
+                                                <td className="py-1 px-2 text-center">
+                                                    {formatMoney(user.initial_cost || 0)}
+                                                </td>
+                                            </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="py-1 px-2">當前淨值</td>
+                                                <td className="py-1 px-2 text-center">
+                                                    {formatMoney(user.current_net_equity || 0)}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="py-1 px-2">報酬率</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.returnPercentage || 0)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="py-1 px-2">最大回撤</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.maxDrawdown || 0)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="py-1 px-2">年化報酬率</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedReturn || 0)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="py-1 px-2">年化標準差</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedStdDev || 0)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="py-1 px-2">夏普值</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {(user.stats?.sharpeRatio || 0).toFixed(2)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="py-1 px-2">新高次數</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {user.stats?.newHighCount || 0}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="py-1 px-2">新高頻率</td>
                                                 <td className="py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.newHighFreq || 0)}

@@ -54,6 +54,7 @@ export default function NetEquityDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string>('');
+    const [initialCost, setInitialCost] = useState<number>(0);
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<PerformanceRecord | null>(null);
@@ -100,6 +101,7 @@ export default function NetEquityDetailPage() {
                         if (user) {
                             const displayName = user.user_id || user.email.split('@')[0];
                             setUserName(displayName);
+                            setInitialCost((user as any).initial_cost || 0);
                         } else {
                             console.log("User not found in selection list", targetId);
                         }
@@ -370,87 +372,102 @@ export default function NetEquityDetailPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {records.length === 0 ? (
+                        {records.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            records.map((record) => (
-                                <TableRow key={record.id} className="hover:bg-muted/50">
-                                    <TableCell className="text-center font-mono font-medium">
-                                        {formatDate(record.date)}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {formatMoney(record.net_equity)}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {formatPercent(record.daily_return)}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {formatPercent(record.nav_ratio)}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {formatPercent(record.running_peak)}
-                                    </TableCell>
-                                    <TableCell className="text-center font-mono">
-                                        {formatPercent(record.drawdown)}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        {record.is_new_high && (
-                                            <div className="flex justify-center">
-                                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    {isAdmin && (
-                                        <TableCell className="text-center">
-                                            <div className="flex justify-center gap-1">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEdit(record)}
-                                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>編輯</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleDelete(record.id)}
-                                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>刪除</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        </TableCell>
-                                    )}
-                                </TableRow>
-                            ))
                         )}
+                        {records.map((record) => (
+                            <TableRow key={record.id} className="hover:bg-muted/50">
+                                <TableCell className="text-center font-mono font-medium">
+                                    {formatDate(record.date)}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {formatMoney(record.net_equity)}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {formatPercent(record.daily_return)}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {formatPercent(record.nav_ratio)}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {formatPercent(record.running_peak)}
+                                </TableCell>
+                                <TableCell className="text-center font-mono">
+                                    {formatPercent(record.drawdown)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    {record.is_new_high && (
+                                        <div className="flex justify-center">
+                                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
+                                        </div>
+                                    )}
+                                </TableCell>
+                                {isAdmin && (
+                                    <TableCell className="text-center">
+                                        <div className="flex justify-center gap-1">
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEdit(record)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>編輯</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDelete(record.id)}
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>刪除</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </TableCell>
+                                )}
+                            </TableRow>
+                        ))}
+                        {/* Initial Cost Row - Always Visible */}
+                        <TableRow className="bg-muted/30 hover:bg-muted/50 font-medium">
+                            <TableCell className="text-center font-mono">
+                                年初淨值
+                            </TableCell>
+                            <TableCell className="text-center font-mono">
+                                {formatMoney(initialCost)}
+                            </TableCell>
+                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            {isAdmin && <TableCell className="text-center"></TableCell>}
+                        </TableRow>
                     </TableBody>
                 </Table>
             </div>

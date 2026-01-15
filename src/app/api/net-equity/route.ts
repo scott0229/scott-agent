@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
             // We need to fetch Users to return basic info too (name/email)
             // Filter users by year? USERS has year column.
-            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
+            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer'`).all();
 
             // ... (rest of the map logic) ...
 
@@ -82,7 +82,11 @@ export async function GET(request: NextRequest) {
                 // (Optimized: Filter deposits for this user efficiently)
                 const uDep = (deposits.results as any[]).filter(d => d.user_id === u.id);
 
-                if (uEq.length === 0) return { ...u, stats: null };
+                if (uEq.length === 0) return {
+                    ...u,
+                    current_net_equity: (u as any).initial_cost || 0,
+                    stats: null
+                };
 
                 // ... (Calculation Logic) ...
                 // 1. Map Deposits
@@ -258,9 +262,12 @@ export async function GET(request: NextRequest) {
 
                 const sharpe = annualizedStdDev !== 0 ? (annualizedReturn - 0.02) / annualizedStdDev : 0;
 
+                const currentNetEquity = uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0);
+
                 return {
                     ...u,
                     initial_cost: (u as any).initial_cost || 0,
+                    current_net_equity: currentNetEquity,
                     stats: {
                         startDate: uEq[0].date,
                         returnPercentage: totalReturn,
@@ -313,6 +320,10 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ success: true, data: [] });
         }
 
+        // Fetch user's initial cost
+        const userRecord = await db.prepare('SELECT initial_cost FROM USERS WHERE id = ?').bind(targetUserId).first();
+        const initialCost = (userRecord?.initial_cost as number) || 0;
+
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const date = row.date;
@@ -325,7 +336,12 @@ export async function GET(request: NextRequest) {
             let dailyReturn = 0;
 
             if (i === 0) {
-                dailyReturn = 0;
+                // For the first record, compare with Initial Cost if available
+                if (initialCost !== 0) {
+                    dailyReturn = (equity - dailyDeposit - initialCost) / initialCost;
+                } else {
+                    dailyReturn = 0;
+                }
             } else {
                 if (prevEquity !== 0) {
                     dailyReturn = (equity - dailyDeposit - prevEquity) / prevEquity;
