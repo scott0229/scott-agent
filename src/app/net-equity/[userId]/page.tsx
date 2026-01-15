@@ -365,8 +365,8 @@ export default function NetEquityDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">當日入金</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">running peak</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">drawdown</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">前高</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">回撤</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
                             {isAdmin && <TableHead className="text-center font-bold text-foreground">操作</TableHead>}
                         </TableRow>
