@@ -25,45 +25,27 @@ export function Navbar() {
     useEffect(() => {
         const fetchUserRole = async () => {
             try {
-                // Check session storage cache first
-                const cachedRole = sessionStorage.getItem('userRole');
-                if (cachedRole && cachedRole !== 'null') {
-                    setRole(cachedRole);
-                    // Still validate in background but don't block UI
-                    fetch('/api/auth/me', { cache: 'no-store' }).then(res => {
-                        if (!res.ok) {
-                            sessionStorage.removeItem('userRole');
-                            setRole(null);
-                        }
-                    });
-                    return;
-                }
-
                 const res = await fetch('/api/auth/me', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     console.log('Navbar: Auth data received:', data);
                     if (data.user && data.user.role) {
                         setRole(data.user.role);
-                        sessionStorage.setItem('userRole', data.user.role);
                     } else {
                         // If no user data, clear role (user logged out)
                         setRole(null);
-                        sessionStorage.removeItem('userRole');
                     }
                 } else {
                     // If fetch fails (e.g., 401 Unauthorized), clear role
                     setRole(null);
-                    sessionStorage.removeItem('userRole');
                 }
             } catch (error) {
                 console.error('Failed to fetch user role:', error);
                 setRole(null);
-                sessionStorage.removeItem('userRole');
             }
         };
         fetchUserRole();
-    }, []); // Only run once on mount
+    }, [pathname]); // Re-fetch when pathname changes to ensure role is up to date
 
     console.log('Navbar: Current role:', role, 'isCustomer:', role === 'customer');
 
