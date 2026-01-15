@@ -160,15 +160,20 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     fetchAssignees();
+    // Initial data fetch without debounce
+    fetchData();
   }, []);
 
   useEffect(() => {
-    // Debounce search
+    // Skip on initial mount (already fetched above)
+    if (!project) return;
+
+    // Debounce search and filter changes
     const timer = setTimeout(() => {
       fetchData();
     }, 300);
     return () => clearTimeout(timer);
-  }, [params.id, search, statusFilter, milestoneFilter, assigneeFilter, sortBy, sortOrder]);
+  }, [search, statusFilter, milestoneFilter, assigneeFilter, sortBy, sortOrder]);
 
   const toggleSort = (column: 'created_at' | 'updated_at') => {
     if (sortBy === column) {
@@ -269,10 +274,10 @@ export default function ProjectDetailPage() {
                 placeholder="搜尋任務..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-[200px] bg-white"
+                className="w-[200px] h-10 bg-white"
               />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-white">
+                <SelectTrigger className="w-[140px] bg-white focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="依狀態篩選" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,7 +288,7 @@ export default function ProjectDetailPage() {
                 </SelectContent>
               </Select>
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="w-[140px] bg-white">
+                <SelectTrigger className="w-[140px] bg-white focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="依指派人篩選" />
                 </SelectTrigger>
                 <SelectContent>
@@ -328,7 +333,7 @@ export default function ProjectDetailPage() {
                 <TableRow className="bg-secondary hover:bg-secondary">
                   <TableHead className="w-[80px]">#</TableHead>
                   <TableHead>狀態</TableHead>
-                  <TableHead className="w-[30%]">標題</TableHead>
+                  <TableHead className="w-[45%]">標題</TableHead>
                   <TableHead>創建者</TableHead>
                   <TableHead>指派給</TableHead>
                   <TableHead
@@ -362,7 +367,7 @@ export default function ProjectDetailPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-foreground group-hover:text-primary transition-colors block truncate max-w-[300px]">
+                      <span className="font-medium text-foreground group-hover:text-primary transition-colors">
                         {item.title}
                       </span>
                     </TableCell>

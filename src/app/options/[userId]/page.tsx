@@ -337,21 +337,21 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                         {/* Year filter removed - using global navbar year selector */}
                         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                            <SelectTrigger className="w-[100px]"><SelectValue placeholder="月份" /></SelectTrigger>
+                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="月份" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部月份</SelectItem>
                                 {months.map(month => <SelectItem key={month} value={month.toString()}>{month}月</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
-                            <SelectTrigger className="w-[120px]"><SelectValue placeholder="底層標的" /></SelectTrigger>
+                            <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="底層標的" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部標的</SelectItem>
                                 {underlyings.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={selectedType} onValueChange={setSelectedType}>
-                            <SelectTrigger className="w-[100px]"><SelectValue placeholder="多空" /></SelectTrigger>
+                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="多空" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部類型</SelectItem>
                                 <SelectItem value="CALL">CALL</SelectItem>
@@ -359,14 +359,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </SelectContent>
                         </Select>
                         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                            <SelectTrigger className="w-[100px]"><SelectValue placeholder="狀態" /></SelectTrigger>
+                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="狀態" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部狀態</SelectItem>
                                 {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <Select value={selectedOperation} onValueChange={setSelectedOperation}>
-                            <SelectTrigger className="w-[100px]"><SelectValue placeholder="操作" /></SelectTrigger>
+                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="操作" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部操作</SelectItem>
                                 {operations.map(op => <SelectItem key={op} value={op}>{op}</SelectItem>)}

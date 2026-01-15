@@ -18,7 +18,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Pencil, Trash2, Download, Upload } from 'lucide-react';
+import { Pencil, Trash2, Download, Upload, FilterX } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -282,6 +282,13 @@ export default function DepositsPage() {
         return new Intl.NumberFormat('zh-TW').format(amount);
     };
 
+    const handleClearFilters = () => {
+        setSelectedYear('All');
+        setSelectedUserIds([]);
+        setSelectedTransactionType('All');
+        setSelectedDepositType('All');
+    };
+
     // Calculate net total (deposits - withdrawals)
     const grandTotal = deposits.reduce((sum, d) => {
         if (d.transaction_type === 'withdrawal') {
@@ -298,8 +305,25 @@ export default function DepositsPage() {
                     <div className="flex items-center justify-between mb-6">
                         <h1 className="text-3xl font-bold tracking-tight">匯款記錄</h1>
                         <div className="flex items-center gap-4">
+                            {/* Clear Filters Button */}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={handleClearFilters}
+                                        className="h-10 w-10 rounded-lg text-muted-foreground hover:text-primary"
+                                    >
+                                        <FilterX className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>清除所有過濾器</p>
+                                </TooltipContent>
+                            </Tooltip>
+
                             <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                <SelectTrigger className="w-[120px]">
+                                <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0">
                                     <SelectValue placeholder="選擇年份" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -312,7 +336,7 @@ export default function DepositsPage() {
 
                             {/* Transaction Type Filter */}
                             <Select value={selectedTransactionType} onValueChange={setSelectedTransactionType}>
-                                <SelectTrigger className="w-[120px]">
+                                <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0">
                                     <SelectValue placeholder="資金流動" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -323,7 +347,7 @@ export default function DepositsPage() {
                             </Select>
 
                             <Select value={selectedDepositType} onValueChange={setSelectedDepositType}>
-                                <SelectTrigger className="w-[120px]">
+                                <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0">
                                     <SelectValue placeholder="資產類型" />
                                 </SelectTrigger>
                                 <SelectContent>
