@@ -251,7 +251,7 @@ export async function GET(req: NextRequest) {
                     WHEN role = 'customer' THEN 4 
                     ELSE 5 
                 END ASC,
-                created_at DESC
+                user_id ASC
         `;
 
         const { results } = await db.prepare(query).bind(...params).all();
@@ -332,6 +332,29 @@ export async function DELETE(req: NextRequest) {
         }
 
         const { searchParams } = new URL(req.url);
+        const mode = searchParams.get('mode');
+
+        const db = await getDb();
+
+        if (mode === 'all') {
+            const year = searchParams.get('year');
+            if (!year || year === 'All') {
+                return NextResponse.json({ error: '請指定要刪除的年份' }, { status: 400 });
+            }
+
+            // Count users first to give accurate report (excluding cascades)
+            const { count } = await db.prepare('SELECT count(*) as count FROM USERS WHERE year = ? AND id != ?')
+                .bind(parseInt(year), admin.id)
+                .first();
+
+            // Delete all users in that year except the current admin (self)
+            await db.prepare('DELETE FROM USERS WHERE year = ? AND id != ?')
+                .bind(parseInt(year), admin.id)
+                .run();
+
+            return NextResponse.json({ success: true, count: count });
+        }
+
         const id = searchParams.get('id');
 
         if (!id) {
@@ -343,7 +366,6 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: '不能刪除自己' }, { status: 400 });
         }
 
-        const db = await getDb();
         await db.prepare('DELETE FROM USERS WHERE id = ?').bind(id).run();
 
         return NextResponse.json({ success: true });

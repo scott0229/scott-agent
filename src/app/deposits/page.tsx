@@ -121,7 +121,13 @@ function DepositsPageContent() {
             }
 
             if (selectedUserIds.length > 0) {
-                params.append('userId', selectedUserIds.join(','));
+                // Map selected string identifiers (user_id/email) back to all matching integer IDs
+                const allMatchingIds = users
+                    .filter(u => selectedUserIds.includes(u.user_id || u.email))
+                    .map(u => u.id);
+                if (allMatchingIds.length > 0) {
+                    params.append('userId', allMatchingIds.join(','));
+                }
             }
 
             if (selectedTransactionType && selectedTransactionType !== 'All') {
@@ -220,6 +226,9 @@ function DepositsPageContent() {
         return sum + d.amount;
     }, 0);
 
+    // Derive unique users for filter dropdown
+    const uniqueUsers = Array.from(new Map(users.map(u => [u.user_id || u.email, u])).values());
+
     return (
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
@@ -288,8 +297,8 @@ function DepositsPageContent() {
                             {/* Multi-Select User Filter - Hidden for customers */}
                             {userRole && userRole !== 'customer' && (
                                 <MultiSelect
-                                    options={users.map(user => ({
-                                        value: user.id.toString(),
+                                    options={uniqueUsers.map(user => ({
+                                        value: user.user_id || user.email,
                                         label: user.user_id || user.email
                                     }))}
                                     selected={selectedUserIds}

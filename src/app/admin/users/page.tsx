@@ -224,6 +224,35 @@ export default function AdminUsersPage() {
         }
     };
 
+    const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+
+    const confirmDeleteAll = async () => {
+        try {
+            const res = await fetch(`/api/users?mode=all&year=${selectedYear}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || '刪除失敗');
+            }
+
+            const data = await res.json();
+            toast({
+                title: "已刪除全部",
+                description: `已成功刪除 ${data.count} 位使用者`,
+            });
+            fetchUsers();
+            setDeleteAllDialogOpen(false);
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "錯誤",
+                description: error.message,
+            });
+        }
+    };
+
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
@@ -301,6 +330,16 @@ export default function AdminUsersPage() {
                                         disabled={importing}
                                     />
                                 </Button>
+                                {selectedYear !== 'All' && (
+                                    <Button
+                                        onClick={() => setDeleteAllDialogOpen(true)}
+                                        variant="outline"
+                                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        刪除全部
+                                    </Button>
+                                )}
                                 <Button
                                     onClick={() => { setEditingUser(null); setDialogOpen(true); }}
                                     variant="secondary"
@@ -433,6 +472,25 @@ export default function AdminUsersPage() {
                             <AlertDialogCancel>取消</AlertDialogCancel>
                             <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
                                 刪除
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                確定要刪除 {selectedYear} 年度的所有使用者嗎？
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                此操作無法復原。這將永久刪除該年度的所有使用者資料（除了您自己的帳號）。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDeleteAll} className="bg-red-600 hover:bg-red-700">
+                                確認刪除全部
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
