@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
                     user.email,
                     passwordHash,
                     user.role,
-                    user.management_fee || null,
+                    user.management_fee ?? null,
                     user.ib_account || null,
                     user.phone || null,
                     user.avatar_url || null,
