@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
                 });
 
                 let prevNavRatio = 1.0;
-                let prevEquity = 0;
+                let prevEquity = (u as any).initial_cost || 0;  // Start with initial cost (year-start equity)
                 let peakNavRatio = 1.0;
                 let minDrawdown = 0;
                 let newHighCount = 0;
@@ -118,16 +118,13 @@ export async function GET(request: NextRequest) {
                     const dailyDeposit = depositMap.get(midnight) || 0;
 
                     let dailyReturn = 0;
-                    // Special handling for first day of the year? 
-                    // If we don't have previous year data, we start fresh.
-                    // If i=0, prevEquity=0. dailyReturn=0.
-
-                    if (i > 0 && prevEquity !== 0) {
+                    // Calculate daily return (now includes first trading day)
+                    if (prevEquity !== 0) {
                         dailyReturn = (equity - dailyDeposit - prevEquity) / prevEquity;
                     }
 
-                    // Log Daily Return
-                    if (i > 0) dailyReturns.push(dailyReturn);
+                    // Log Daily Return (includes all trading days)
+                    dailyReturns.push(dailyReturn);
 
                     const navRatio = prevNavRatio * (1 + dailyReturn);
 
@@ -244,25 +241,28 @@ export async function GET(request: NextRequest) {
 
                 const startTime = uEq[0].date;
                 const endTime = uEq[uEq.length - 1].date;
-                const daySpan = Math.max(1, (endTime - startTime) / 86400);
+                const daySpan = uEq.length; // Use actual record count (matching Excel)
 
-                const annualizedReturn = daySpan > 0 ? (Math.pow(prevNavRatio, 365 / daySpan) - 1) : 0;
+                // Calculate simple return and annualized return (matching Excel formula)
+                // Excel formula: (Total Return / Days) × 252
+                const currentNetEquity = uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0);
+                const initialEquity = (u as any).initial_cost || 0;
+                const simpleReturn = initialEquity > 0 ? (currentNetEquity / initialEquity) - 1 : 0;
+
+                // Annualized Return: Average daily return × 252
+                const annualizedReturn = daySpan > 0 ? (simpleReturn / daySpan) * 252 : 0;
 
                 // Std Dev
                 let stdDev = 0;
                 let annualizedStdDev = 0;
                 if (dailyReturns.length > 0) {
                     const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
-                    const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / dailyReturns.length;
-                    stdDev = Math.sqrt(variance);
+                    const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (dailyReturns.length - 1);  // Sample std dev (n-1)
+                    const stdDev = Math.sqrt(variance);
                     annualizedStdDev = stdDev * Math.sqrt(252);
                 }
 
-                const totalReturn = prevNavRatio - 1;
-
-                const sharpe = annualizedStdDev !== 0 ? (annualizedReturn - 0.02) / annualizedStdDev : 0;
-
-                const currentNetEquity = uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0);
+                const sharpe = annualizedStdDev !== 0 ? (annualizedReturn - 0.04) / annualizedStdDev : 0;  // 4% risk-free rate
 
                 return {
                     ...u,
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
                     current_net_equity: currentNetEquity,
                     stats: {
                         startDate: uEq[0].date,
-                        returnPercentage: totalReturn,
+                        returnPercentage: simpleReturn,  // Changed to simple return
                         maxDrawdown: minDrawdown,
                         annualizedReturn,
                         annualizedStdDev,
