@@ -12,7 +12,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Star, Download, Upload, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
 import { EditNetEquityDialog } from '@/components/EditNetEquityDialog';
@@ -59,7 +59,7 @@ export default function NetEquityDetailPage() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<PerformanceRecord | null>(null);
     const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
+
     const { toast } = useToast();
     const { selectedYear } = useYearFilter();
 
@@ -158,103 +158,7 @@ export default function NetEquityDetailPage() {
 
 
 
-    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
 
-        setIsImporting(true);
-        const reader = new FileReader();
-
-        reader.onload = async (event) => {
-            try {
-                const text = event.target?.result as string;
-                if (!text) return;
-
-                const lines = text.split(/\r?\n/);
-                const records: any[] = [];
-                let headers: string[] = [];
-
-                // Simple CSV Parser
-                lines.forEach((line, index) => {
-                    const cleanLine = line.trim();
-                    if (!cleanLine) return;
-
-                    const cols = cleanLine.split(',').map(c => c.trim());
-
-                    if (index === 0) {
-                        // Check for headers or assume format?
-                        // Let's assume headers exist if first col is not a date number
-                        // Or just skip first line if it looks like header
-                        if (isNaN(Date.parse(cols[0])) && cols[0].toLowerCase().includes('date')) {
-                            headers = cols.map(h => h.toLowerCase());
-                            return; // Skip header
-                        }
-                    }
-
-                    // Assume format: Date, NetEquity
-                    // Or Map specific headers
-                    let dateStr = cols[0];
-                    let equityStr = cols[1];
-
-                    if (headers.length > 0) {
-                        // Try to find by name
-                        const dateIdx = headers.findIndex(h => h.includes('date') || h.includes('日期'));
-                        const eqIdx = headers.findIndex(h => h.includes('equity') || h.includes('net') || h.includes('淨值'));
-                        if (dateIdx !== -1) dateStr = cols[dateIdx];
-                        if (eqIdx !== -1) equityStr = cols[eqIdx];
-                    }
-
-                    if (dateStr && equityStr) {
-                        const val = parseFloat(equityStr);
-                        if (!isNaN(val)) {
-                            records.push({
-                                user_id: parseInt(userId),
-                                date: dateStr, // API handles string parsing
-                                net_equity: val
-                            });
-                        }
-                    }
-                });
-
-                if (records.length === 0) {
-                    throw new Error("無法解析 CSV 内容。請確保格式為：日期,淨值 (例如 2026-01-01,100000)");
-                }
-
-                const res = await fetch('/api/net-equity/import', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        records,
-                        year: selectedYear !== 'All' ? selectedYear : undefined
-                    }),
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    toast({
-                        title: "匯入成功",
-                        description: `成功匯入 ${data.count} 筆記錄`,
-                    });
-                    fetchRecords();
-                } else {
-                    throw new Error(data.error || "匯入失敗");
-                }
-
-            } catch (error: any) {
-                toast({
-                    variant: "destructive",
-                    title: "匯入錯誤",
-                    description: error.message,
-                });
-            } finally {
-                setIsImporting(false);
-                // Reset input
-                e.target.value = '';
-            }
-        };
-
-        reader.readAsText(file);
-    };
 
     const handleEdit = (record: PerformanceRecord) => {
         setRecordToEdit(record);
@@ -326,25 +230,6 @@ export default function NetEquityDetailPage() {
 
                 {isAdmin && (
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            className="gap-2"
-                            onClick={() => window.open(`/api/net-equity/export?userId=${userId}`, '_blank')}
-                        >
-                            <Download className="h-4 w-4" />
-                            匯出
-                        </Button>
-                        <Button variant="outline" className="gap-2" onClick={() => document.getElementById('import-equity')?.click()}>
-                            <Upload className="h-4 w-4" />
-                            匯入
-                            <input
-                                id="import-equity"
-                                type="file"
-                                className="hidden"
-                                accept=".csv,.json"
-                                onChange={handleImport}
-                            />
-                        </Button>
                         <Button
                             className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
                             onClick={() => setIsNewDialogOpen(true)}
@@ -460,11 +345,11 @@ export default function NetEquityDetailPage() {
                             <TableCell className="text-center font-mono">
                                 {formatMoney(initialCost)}
                             </TableCell>
-                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
-                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
-                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
-                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
-                            <TableCell className="text-center font-mono text-muted-foreground">-</TableCell>
+                            <TableCell className="text-center font-mono"></TableCell>
+                            <TableCell className="text-center font-mono"></TableCell>
+                            <TableCell className="text-center font-mono"></TableCell>
+                            <TableCell className="text-center font-mono"></TableCell>
+                            <TableCell className="text-center font-mono"></TableCell>
                             <TableCell className="text-center"></TableCell>
                             {isAdmin && <TableCell className="text-center"></TableCell>}
                         </TableRow>

@@ -66,6 +66,24 @@ export async function GET(req: NextRequest) {
 
             const { results: deposits } = await db.prepare(depositQuery).bind(...depositParams).all();
             (user as any).deposits = deposits || [];
+
+            // Fetch net equity records for each user
+            let netEquityQuery = `
+                SELECT date, net_equity, year
+                FROM DAILY_NET_EQUITY
+                WHERE user_id = ?
+            `;
+            const netEquityParams: any[] = [user.id];
+
+            if (year && year !== 'All') {
+                netEquityQuery += ` AND year = ?`;
+                netEquityParams.push(parseInt(year));
+            }
+
+            netEquityQuery += ` ORDER BY date DESC`;
+
+            const { results: netEquityRecords } = await db.prepare(netEquityQuery).bind(...netEquityParams).all();
+            (user as any).net_equity_records = netEquityRecords || [];
         }
 
         return NextResponse.json({

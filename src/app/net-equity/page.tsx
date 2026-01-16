@@ -163,7 +163,7 @@ export default function NetEquityPage() {
                                     {user.user_id || user.email}
                                 </CardTitle>
                                 <CardDescription className="truncate">
-                                    年初淨值: {formatMoney(user.initial_cost || 0)}
+                                    當前淨值: {formatMoney(user.current_net_equity || 0)}
                                 </CardDescription>
                             </div>
                         </CardHeader>
@@ -178,12 +178,7 @@ export default function NetEquityPage() {
                                                     {formatMoney(user.initial_cost || 0)}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="py-1 px-2">當前淨值</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatMoney(user.current_net_equity || 0)}
-                                                </td>
-                                            </tr>
+
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="py-1 px-2">報酬率</td>
                                                 <td className="py-1 px-2 text-center">

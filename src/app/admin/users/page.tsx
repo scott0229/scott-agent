@@ -373,7 +373,7 @@ export default function AdminUsersPage() {
                                 const filteredUsers = users.filter(u => u.email !== 'admin');
                                 if (filteredUsers.length === 0) {
                                     return (
-                                        <TableRow>
+                                        <TableRow className="hover:bg-transparent">
                                             <TableCell colSpan={9} className="p-4">
                                                 <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
                                                     尚無客戶資料

@@ -124,12 +124,12 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[380px]">
                 <DialogHeader>
                     <DialogTitle>{userToEdit ? '編輯使用者' : '新增使用者'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4" autoComplete="off">
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="userId" className="text-right">
                             帳號
                         </Label>
@@ -138,12 +138,12 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             type="text"
                             value={formData.userId}
                             onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                            className="col-span-3"
+                            className="col-span-2"
                             autoComplete="off"
                             required
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="password" className="text-right">
                             密碼
                         </Label>
@@ -153,14 +153,14 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             autoComplete="off"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="col-span-3"
+                            className="col-span-2"
                             // Password only required when creating new user
                             required={!userToEdit}
                             minLength={6}
                             placeholder={userToEdit ? '若不修改請留空' : ''}
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="email" className="text-right">
                             郵件地址
                         </Label>
@@ -169,12 +169,12 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="col-span-3"
+                            className="col-span-2"
                             autoComplete="off"
                             required
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="phone" className="text-right">
                             手機號碼
                         </Label>
@@ -183,12 +183,12 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             type="tel"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="col-span-3"
+                            className="col-span-2"
                             autoComplete="off"
                             placeholder="0912345678"
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="role" className="text-right">
                             角色
                         </Label>
@@ -196,7 +196,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             value={formData.role}
                             onValueChange={(val) => setFormData({ ...formData, role: val })}
                         >
-                            <SelectTrigger className="col-span-3">
+                            <SelectTrigger className="col-span-2">
                                 <SelectValue placeholder="選擇角色" />
                             </SelectTrigger>
                             <SelectContent>
@@ -209,11 +209,11 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
 
                     {formData.role === 'customer' && (
                         <>
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-3 items-center gap-4">
                                 <Label htmlFor="managementFee" className="text-right">
                                     管理費
                                 </Label>
-                                <div className="col-span-3 relative">
+                                <div className="col-span-2 relative">
                                     <Input
                                         id="managementFee"
                                         type="number"
@@ -234,7 +234,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     </span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-3 items-center gap-4">
                                 <Label htmlFor="ibAccount" className="text-right">
                                     證券帳號
                                 </Label>
@@ -243,12 +243,12 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     type="text"
                                     value={formData.ibAccount}
                                     onChange={(e) => setFormData({ ...formData, ibAccount: e.target.value })}
-                                    className="col-span-3"
+                                    className="col-span-2"
                                     autoComplete="off"
                                     placeholder="U12345678"
                                 />
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
+                            <div className="grid grid-cols-3 items-center gap-4">
                                 <Label htmlFor="initialCost" className="text-right">
                                     年初淨值
                                 </Label>
@@ -260,7 +260,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     placeholder="0"
                                     value={formData.initialCost}
                                     onChange={(e) => setFormData({ ...formData, initialCost: e.target.value })}
-                                    className="col-span-3"
+                                    className="col-span-2"
                                     autoComplete="off"
                                 />
                             </div>

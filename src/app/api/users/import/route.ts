@@ -26,6 +26,7 @@ interface ImportUser {
     initial_cost?: number | null;
     year?: number | null;
     deposits?: any[];
+    net_equity_records?: any[];
 }
 
 // POST: Import users from JSON array
@@ -142,6 +143,46 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 }
+
+                // Import nested net equity records
+                if (user.net_equity_records && Array.isArray(user.net_equity_records) && targetUserId) {
+                    for (const record of user.net_equity_records) {
+                        if (!record.date || record.net_equity === undefined) continue;
+
+                        const recordYear = record.year || targetYear;
+
+                        // Parse date if string
+                        let dateTimestamp: number;
+                        if (typeof record.date === 'string') {
+                            dateTimestamp = Math.floor(new Date(record.date).getTime() / 1000);
+                        } else {
+                            dateTimestamp = record.date;
+                        }
+
+                        // Check duplicate record (user_id + date + year)
+                        const existingRecord = await db.prepare(
+                            `SELECT id FROM DAILY_NET_EQUITY 
+                             WHERE user_id = ? AND date = ? AND year = ?`
+                        ).bind(targetUserId, dateTimestamp, recordYear).first();
+
+                        if (!existingRecord) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    targetUserId,
+                                    dateTimestamp,
+                                    record.net_equity,
+                                    recordYear
+                                ).run();
+                            } catch (netErr) {
+                                console.error(`Failed to import net equity record for user ${user.email}:`, netErr);
+                            }
+                        }
+                    }
+                }
+
 
             } catch (error: any) {
                 errors.push(`匯入失敗 (${user.user_id || user.email}): ${error.message}`);
