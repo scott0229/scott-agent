@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
         const db = await getDb();
 
-        let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url 
+        let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost 
              FROM USERS 
              WHERE email != 'admin'`;
 

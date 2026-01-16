@@ -23,6 +23,7 @@ interface ImportUser {
     ib_account?: string | null;
     phone?: string | null;
     avatar_url?: string | null;
+    initial_cost?: number | null;
 }
 
 // POST: Import users from JSON array
@@ -70,8 +71,8 @@ export async function POST(req: NextRequest) {
 
                 // Insert new user with default password
                 await db.prepare(
-                    `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                    `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 ).bind(
                     user.user_id || null,
                     user.email,
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
                     user.ib_account || null,
                     user.phone || null,
                     user.avatar_url || null,
+                    user.initial_cost || 0,
                     Date.now()
                 ).run();
 
