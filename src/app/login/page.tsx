@@ -52,7 +52,7 @@ export default function LoginPage() {
         const targetId = data.user.user_id || data.user.id;
         router.push(`/options/${targetId}`);
       } else {
-        router.push('/options');
+        router.push('/admin/users');
       }
 
     } catch (err: any) {
