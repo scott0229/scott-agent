@@ -243,14 +243,12 @@ export async function GET(request: NextRequest) {
                 const endTime = uEq[uEq.length - 1].date;
                 const daySpan = uEq.length; // Use actual record count (matching Excel)
 
-                // Calculate simple return and annualized return (matching Excel formula)
-                // Excel formula: (Total Return / Days) × 252
-                const currentNetEquity = uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0);
-                const initialEquity = (u as any).initial_cost || 0;
-                const simpleReturn = initialEquity > 0 ? (currentNetEquity / initialEquity) - 1 : 0;
+                // Use TWR (Time-Weighted Return) from navRatio
+                // This excludes deposit/withdrawal impacts and reflects true investment performance
+                const timeWeightedReturn = prevNavRatio - 1;
 
                 // Annualized Return: Average daily return × 252
-                const annualizedReturn = daySpan > 0 ? (simpleReturn / daySpan) * 252 : 0;
+                const annualizedReturn = daySpan > 0 ? (timeWeightedReturn / daySpan) * 252 : 0;
 
                 // Std Dev
                 let stdDev = 0;
@@ -264,13 +262,16 @@ export async function GET(request: NextRequest) {
 
                 const sharpe = annualizedStdDev !== 0 ? (annualizedReturn - 0.04) / annualizedStdDev : 0;  // 4% risk-free rate
 
+                // Get current net equity for display
+                const currentNetEquity = uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0);
+
                 return {
                     ...u,
                     initial_cost: (u as any).initial_cost || 0,
                     current_net_equity: currentNetEquity,
                     stats: {
                         startDate: uEq[0].date,
-                        returnPercentage: simpleReturn,  // Changed to simple return
+                        returnPercentage: timeWeightedReturn,  // TWR (Time-Weighted Return)
                         maxDrawdown: minDrawdown,
                         annualizedReturn,
                         annualizedStdDev,
