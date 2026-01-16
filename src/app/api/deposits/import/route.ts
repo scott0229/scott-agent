@@ -33,21 +33,37 @@ export async function POST(request: NextRequest) {
 
         for (const deposit of deposits) {
             try {
-                const { deposit_date, user_id, amount, note, deposit_type, transaction_type } = deposit;
+                const { deposit_date, user_id, amount, note, deposit_type, transaction_type, depositor_user_id, depositor_email } = deposit;
 
-                if (!deposit_date || !user_id || amount === undefined) {
+                if (!deposit_date || amount === undefined) {
                     skipped++;
                     continue;
                 }
 
-                // Check if user exists
-                const userCheck = await db
-                    .prepare(`SELECT id FROM USERS WHERE id = ?`)
-                    .bind(user_id)
-                    .first();
+                // Verify user exists - prioritize email/string_id lookup over integer ID
+                let targetUserId = null;
 
-                if (!userCheck) {
+                // 1. Try by Email
+                if (depositor_email) {
+                    const u = await db.prepare('SELECT id FROM USERS WHERE email = ?').bind(depositor_email).first();
+                    if (u) targetUserId = u.id;
+                }
+
+                // 2. Try by String User ID
+                if (!targetUserId && depositor_user_id) {
+                    const u = await db.prepare('SELECT id FROM USERS WHERE user_id = ?').bind(depositor_user_id).first();
+                    if (u) targetUserId = u.id;
+                }
+
+                // 3. Fallback to Integer ID (legacy/same-db support)
+                if (!targetUserId && user_id) {
+                    const u = await db.prepare('SELECT id FROM USERS WHERE id = ?').bind(user_id).first();
+                    if (u) targetUserId = u.id;
+                }
+
+                if (!targetUserId) {
                     // User doesn't exist, skip this deposit
+                    console.log(`Skipping deposit: User not found (ID: ${user_id}, Email: ${depositor_email})`);
                     skipped++;
                     continue;
                 }
@@ -61,7 +77,7 @@ export async function POST(request: NextRequest) {
                         `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                     )
-                    .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash', transaction_type || 'deposit')
+                    .bind(deposit_date, targetUserId, amount, year, note || null, deposit_type || 'cash', transaction_type || 'deposit')
                     .run();
 
                 imported++;

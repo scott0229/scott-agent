@@ -223,7 +223,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             const res = await fetch('/api/options/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ options }),
+                body: JSON.stringify({ options, ownerId }),
             });
 
             const result = await res.json();

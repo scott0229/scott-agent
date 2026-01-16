@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { options } = body;
+        const { options, ownerId: overwriteOwnerId } = body;
 
         if (!Array.isArray(options)) {
             return NextResponse.json({ error: '無效的資料格式' }, { status: 400 });
@@ -48,10 +48,13 @@ export async function POST(req: NextRequest) {
 
         for (const option of options as ImportOption[]) {
             try {
+                // Determine target owner (override if provided by frontend)
+                const targetOwnerId = overwriteOwnerId || option.owner_id;
+
                 // Validate required fields
                 if (!option.status || !option.open_date || !option.quantity ||
-                    !option.underlying || !option.type || !option.strike_price || !option.owner_id) {
-                    errors.push(`跳過：缺少必要欄位`);
+                    !option.underlying || !option.type || !option.strike_price || !targetOwnerId) {
+                    errors.push(`跳過：缺少必要欄位 (Owner ID: ${targetOwnerId})`);
                     skipped++;
                     continue;
                 }
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
                      WHERE owner_id = ? AND underlying = ? AND type = ? 
                      AND strike_price = ? AND open_date = ?`
                 ).bind(
-                    option.owner_id,
+                    targetOwnerId,
                     option.underlying,
                     option.type,
                     option.strike_price,
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
                     option.delta || null,
                     option.iv || null,
                     option.capital_efficiency || null,
-                    option.owner_id,
+                    targetOwnerId,
                     optionYear
                 ).run();
 
