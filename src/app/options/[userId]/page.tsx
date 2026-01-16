@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { NewOptionDialog } from "@/components/NewOptionDialog";
 import { EditOptionDialog } from "@/components/EditOptionDialog";
-import { Pencil, FilterX, Trash2, ArrowLeft, Download, Upload } from "lucide-react";
+import { Pencil, FilterX, Trash2, ArrowLeft } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -68,7 +68,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [optionToEdit, setOptionToEdit] = useState<Option | null>(null);
-    const [importing, setImporting] = useState(false);
+
     const [optionToDelete, setOptionToDelete] = useState<number | null>(null);
 
     // Use global year filter instead of local state
@@ -174,81 +174,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         }
     };
 
-    const handleExport = async () => {
-        if (!ownerId) return;
 
-        try {
-            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/options/export?ownerId=${ownerId}&year=${year}`);
-            if (!res.ok) {
-                throw new Error('匯出失敗');
-            }
-
-            const data = await res.json();
-
-            const blob = new Blob([JSON.stringify(data.options, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `options_export_${params.userId}_${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            toast({
-                title: "匯出成功",
-                description: `已匯出 ${data.count} 筆交易紀錄`,
-            });
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "匯出失敗",
-                description: error.message,
-            });
-        }
-    };
-
-    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        try {
-            setImporting(true);
-
-            const text = await file.text();
-            const options = JSON.parse(text);
-
-            const res = await fetch('/api/options/import', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ options, ownerId }),
-            });
-
-            const result = await res.json();
-
-            if (!res.ok) {
-                throw new Error(result.error || '匯入失敗');
-            }
-
-            toast({
-                title: "匯入完成",
-                description: `成功匯入 ${result.imported} 筆，跳過 ${result.skipped} 筆`,
-            });
-
-            fetchOptions();
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "匯入失敗",
-                description: error.message,
-            });
-        } finally {
-            setImporting(false);
-            event.target.value = '';
-        }
-    };
 
     // --- Helpers & Filter Logic (Same as before) ---
     const formatDate = (timestamp: number | null) => {
@@ -375,38 +301,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                     </div>
 
                     {currentUserRole && currentUserRole !== 'customer' && (
-                        <>
-                            <Button
-                                onClick={handleExport}
-                                variant="outline"
-                                className="hover:bg-accent hover:text-accent-foreground"
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                匯出
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => document.getElementById('options-file-input')?.click()}
-                                disabled={importing}
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                {importing ? '匯入中...' : '匯入'}
-                                <input
-                                    type="file"
-                                    id="options-file-input"
-                                    accept=".json"
-                                    style={{ display: 'none' }}
-                                    onChange={handleImport}
-                                />
-                            </Button>
-                            <Button
-                                onClick={() => setDialogOpen(true)}
-                                variant="secondary"
-                                className="hover:bg-accent hover:text-accent-foreground"
-                            >
-                                <span className="mr-0.5">+</span>新增
-                            </Button>
-                        </>
+                        <Button
+                            onClick={() => setDialogOpen(true)}
+                            variant="secondary"
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            <span className="mr-0.5">+</span>新增
+                        </Button>
                     )}
                 </div>
             </div>

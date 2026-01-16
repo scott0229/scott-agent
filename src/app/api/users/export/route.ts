@@ -84,6 +84,24 @@ export async function GET(req: NextRequest) {
 
             const { results: netEquityRecords } = await db.prepare(netEquityQuery).bind(...netEquityParams).all();
             (user as any).net_equity_records = netEquityRecords || [];
+
+            // Fetch options trading records for each user
+            let optionsQuery = `
+                SELECT *
+                FROM OPTIONS
+                WHERE owner_id = ?
+            `;
+            const optionsParams: any[] = [user.id];
+
+            if (year && year !== 'All') {
+                optionsQuery += ` AND year = ?`;
+                optionsParams.push(parseInt(year));
+            }
+
+            optionsQuery += ` ORDER BY open_date DESC`;
+
+            const { results: options } = await db.prepare(optionsQuery).bind(...optionsParams).all();
+            (user as any).options = options || [];
         }
 
         return NextResponse.json({

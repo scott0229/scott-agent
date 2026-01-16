@@ -27,6 +27,7 @@ interface ImportUser {
     year?: number | null;
     deposits?: any[];
     net_equity_records?: any[];
+    options?: any[];
 }
 
 // POST: Import users from JSON array
@@ -178,6 +179,55 @@ export async function POST(req: NextRequest) {
                                 ).run();
                             } catch (netErr) {
                                 console.error(`Failed to import net equity record for user ${user.email}:`, netErr);
+                            }
+                        }
+                    }
+                }
+
+                // Import nested options trading records
+                if (user.options && Array.isArray(user.options) && targetUserId) {
+                    for (const option of user.options) {
+                        if (!option.open_date || !option.underlying || !option.type) continue;
+
+                        const optionYear = option.year || targetYear;
+
+                        // Check duplicate option (user, open_date, underlying, type, strike_price)
+                        const existingOption = await db.prepare(
+                            `SELECT id FROM OPTIONS 
+                             WHERE owner_id = ? AND open_date = ? AND underlying = ? AND type = ? AND strike_price = ?`
+                        ).bind(targetUserId, option.open_date, option.underlying, option.type, option.strike_price || 0).first();
+
+                        if (!existingOption) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO OPTIONS (
+                                        owner_id, status, operation, open_date, to_date, settlement_date,
+                                        quantity, underlying, type, strike_price, collateral, premium,
+                                        final_profit, profit_percent, delta, iv, capital_efficiency, year,
+                                        created_at, updated_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    targetUserId,
+                                    option.status || '未平倉',
+                                    option.operation || null,
+                                    option.open_date,
+                                    option.to_date || null,
+                                    option.settlement_date || null,
+                                    option.quantity || 0,
+                                    option.underlying,
+                                    option.type,
+                                    option.strike_price || 0,
+                                    option.collateral || null,
+                                    option.premium || null,
+                                    option.final_profit || null,
+                                    option.profit_percent || null,
+                                    option.delta || null,
+                                    option.iv || null,
+                                    option.capital_efficiency || null,
+                                    optionYear
+                                ).run();
+                            } catch (optErr) {
+                                console.error(`Failed to import option for user ${user.email}:`, optErr);
                             }
                         }
                     }
