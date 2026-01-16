@@ -342,15 +342,57 @@ export async function DELETE(req: NextRequest) {
                 return NextResponse.json({ error: '請指定要刪除的年份' }, { status: 400 });
             }
 
-            // Count users first to give accurate report (excluding cascades)
+            // Count users first to give accurate report (excluding admin)
             const { count } = await db.prepare('SELECT count(*) as count FROM USERS WHERE year = ? AND id != ?')
                 .bind(parseInt(year), admin.id)
                 .first();
 
-            // Delete all users in that year except the current admin (self)
-            await db.prepare('DELETE FROM USERS WHERE year = ? AND id != ?')
+            // Get user IDs that will be deleted
+            const { results: usersToDelete } = await db.prepare('SELECT id FROM USERS WHERE year = ? AND id != ?')
                 .bind(parseInt(year), admin.id)
-                .run();
+                .all();
+
+            const userIds = (usersToDelete as any[]).map((u: any) => u.id);
+
+            if (userIds.length > 0) {
+                const placeholders = userIds.map(() => '?').join(',');
+
+                // 1. Delete all OPTIONS for these users
+                await db.prepare(`DELETE FROM OPTIONS WHERE owner_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 2. Delete all DEPOSITS for these users
+                await db.prepare(`DELETE FROM DEPOSITS WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 3. Delete all monthly_interest for these users
+                await db.prepare(`DELETE FROM monthly_interest WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 4. Delete all DAILY_NET_EQUITY for these users
+                await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 5. Delete all COMMENTS created/updated by these users
+                await db.prepare(`DELETE FROM COMMENTS WHERE created_by IN (${placeholders}) OR updated_by IN (${placeholders})`).bind(...userIds, ...userIds).run();
+
+                // 6. Set created_by to NULL for deposits created by these users
+                await db.prepare(`UPDATE DEPOSITS SET created_by = NULL WHERE created_by IN (${placeholders})`).bind(...userIds).run();
+
+                // 7. Set created_by/updated_by to NULL for items created/updated by these users
+                await db.prepare(`UPDATE ITEMS SET created_by = NULL WHERE created_by IN (${placeholders})`).bind(...userIds).run();
+                await db.prepare(`UPDATE ITEMS SET updated_by = NULL WHERE updated_by IN (${placeholders})`).bind(...userIds).run();
+
+                // 8. Unassign ITEMS assigned to these users
+                await db.prepare(`UPDATE ITEMS SET assignee_id = NULL WHERE assignee_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 9. Delete all PROJECTS for these users
+                await db.prepare(`DELETE FROM PROJECTS WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 10. Delete all PROJECT_USERS for these users
+                await db.prepare(`DELETE FROM PROJECT_USERS WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+
+                // 11. Now delete all users in that year except the current admin (self)
+                await db.prepare('DELETE FROM USERS WHERE year = ? AND id != ?')
+                    .bind(parseInt(year), admin.id)
+                    .run();
+            }
 
             return NextResponse.json({ success: true, count: count });
         }

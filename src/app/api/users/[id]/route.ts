@@ -41,16 +41,35 @@ export async function DELETE(
         // 1. Delete user's trading records (OPTIONS)
         await db.prepare('DELETE FROM OPTIONS WHERE owner_id = ?').bind(id).run();
 
-        // 2. Unassign items assigned to this user (set assignee_id to NULL)
+        // 2. Delete user's deposits
+        await db.prepare('DELETE FROM DEPOSITS WHERE user_id = ?').bind(id).run();
+
+        // 3. Delete user's monthly interest records
+        await db.prepare('DELETE FROM monthly_interest WHERE user_id = ?').bind(id).run();
+
+        // 4. Delete user's daily net equity records
+        await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE user_id = ?').bind(id).run();
+
+        // 5. Delete or update comments created/updated by this user
+        await db.prepare('DELETE FROM COMMENTS WHERE created_by = ? OR updated_by = ?').bind(id, id).run();
+
+        // 6. Set created_by to NULL for deposits created by this user
+        await db.prepare('UPDATE DEPOSITS SET created_by = NULL WHERE created_by = ?').bind(id).run();
+
+        // 7. Set created_by/updated_by to NULL for items created/updated by this user
+        await db.prepare('UPDATE ITEMS SET created_by = NULL WHERE created_by = ?').bind(id).run();
+        await db.prepare('UPDATE ITEMS SET updated_by = NULL WHERE updated_by = ?').bind(id).run();
+
+        // 8. Unassign items assigned to this user (set assignee_id to NULL)
         await db.prepare('UPDATE ITEMS SET assignee_id = NULL WHERE assignee_id = ?').bind(id).run();
 
-        // 3. Delete user's projects (CASCADE will delete items they created)
+        // 9. Delete user's projects (CASCADE will delete items they created)
         await db.prepare('DELETE FROM PROJECTS WHERE user_id = ?').bind(id).run();
 
-        // 4. Delete user's project assignments
+        // 10. Delete user's project assignments
         await db.prepare('DELETE FROM PROJECT_USERS WHERE user_id = ?').bind(id).run();
 
-        // 5. Now delete the user
+        // 11. Now delete the user
         await db.prepare('DELETE FROM USERS WHERE id = ?').bind(id).run();
 
         return NextResponse.json({ success: true });
