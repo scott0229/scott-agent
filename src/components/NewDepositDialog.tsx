@@ -30,10 +30,9 @@ interface NewDepositDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    users: User[];
 }
 
-export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDepositDialogProps) {
+export function NewDepositDialog({ open, onOpenChange, onSuccess }: NewDepositDialogProps) {
     const [depositDate, setDepositDate] = useState('');
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState('');
@@ -41,6 +40,8 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
     const [depositType, setDepositType] = useState('cash');
     const [transactionType, setTransactionType] = useState('deposit');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [users, setUsers] = useState<User[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
     // Set today's date when dialog opens
     useEffect(() => {
@@ -50,6 +51,32 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
             setDepositDate(dateStr);
         }
     }, [open]);
+
+    // Fetch users when date changes
+    useEffect(() => {
+        if (!depositDate) return;
+
+        const year = new Date(depositDate).getFullYear();
+
+        const fetchUsers = async () => {
+            setIsLoadingUsers(true);
+            try {
+                const res = await fetch(`/api/users?mode=selection&roles=customer&year=${year}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.users) {
+                        setUsers(data.users);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch users:', error);
+            } finally {
+                setIsLoadingUsers(false);
+            }
+        };
+
+        fetchUsers();
+    }, [depositDate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,6 +111,7 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                 setNote('');
                 setDepositType('cash');
                 setTransactionType('deposit');
+                setUsers([]);
             }
         } catch (error) {
             console.error('Failed to create deposit:', error);
@@ -120,7 +148,7 @@ export function NewDepositDialog({ open, onOpenChange, onSuccess, users }: NewDe
                             </Label>
                             <Select value={userId} onValueChange={setUserId} required>
                                 <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="選擇用戶" />
+                                    <SelectValue placeholder={isLoadingUsers ? "載入中..." : "選擇用戶"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {users.map((user) => (

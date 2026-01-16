@@ -427,7 +427,6 @@ function DepositsPageContent() {
                         open={newDialogOpen}
                         onOpenChange={setNewDialogOpen}
                         onSuccess={fetchDeposits}
-                        users={users}
                     />
 
                     {editingDeposit && (
