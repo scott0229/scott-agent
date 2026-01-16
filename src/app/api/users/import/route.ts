@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
 
         let imported = 0;
         let skipped = 0;
+        let updated = 0;
         const errors: string[] = [];
 
         for (const user of users as ImportUser[]) {
@@ -60,66 +61,88 @@ export async function POST(req: NextRequest) {
                     continue;
                 }
 
-                // Check if user already exists (by email/user_id AND year)
-                // If year is not provided in import, default to 2025 (system default)
                 const targetYear = user.year || 2025;
 
+                // Check if user already exists
                 const existing = await db.prepare(
                     `SELECT id FROM USERS WHERE (email = ? OR (user_id IS NOT NULL AND user_id = ?)) AND year = ?`
                 ).bind(user.email, user.user_id || null, targetYear).first();
 
+                let targetUserId = existing ? existing.id : null;
+
                 if (existing) {
-                    errors.push(`跳過：使用者已存在 (${user.user_id || user.email})`);
-                    skipped++;
-                    continue;
+                    // Update existing user
+                    await db.prepare(
+                        `UPDATE USERS SET 
+                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, updated_at = unixepoch()
+                         WHERE id = ?`
+                    ).bind(
+                        user.role,
+                        user.management_fee ?? null,
+                        user.ib_account || null,
+                        user.phone || null,
+                        user.avatar_url || null,
+                        user.initial_cost || 0,
+                        existing.id
+                    ).run();
+                    updated++;
+                } else {
+                    // Insert new user
+                    const { meta } = await db.prepare(
+                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, year, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                    ).bind(
+                        user.user_id || null,
+                        user.email,
+                        passwordHash,
+                        user.role,
+                        user.management_fee ?? null,
+                        user.ib_account || null,
+                        user.phone || null,
+                        user.avatar_url || null,
+                        user.initial_cost || 0,
+                        targetYear
+                    ).run();
+                    targetUserId = meta.last_row_id;
+                    imported++;
                 }
 
-                // Insert new user with default password
-                const { meta } = await db.prepare(
-                    `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, year, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-                ).bind(
-                    user.user_id || null,
-                    user.email,
-                    passwordHash,
-                    user.role,
-                    user.management_fee ?? null,
-                    user.ib_account || null,
-                    user.phone || null,
-                    user.avatar_url || null,
-                    user.initial_cost || 0,
-                    targetYear,
-                    Date.now()
-                ).run();
-
-                const newUserId = meta.last_row_id;
-
-                // Import nested deposits if any
-                if (user.deposits && Array.isArray(user.deposits) && newUserId) {
+                // Import nested deposits
+                if (user.deposits && Array.isArray(user.deposits) && targetUserId) {
                     for (const deposit of user.deposits) {
-                        // Skip invalid deposits
                         if (!deposit.deposit_date || deposit.amount === undefined) continue;
 
-                        try {
-                            await db.prepare(
-                                `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-                            ).bind(
-                                deposit.deposit_date,
-                                newUserId,
-                                deposit.amount,
-                                deposit.year || targetYear, // Use deposit year or fallback to user year
-                                deposit.note || null,
-                                deposit.deposit_type || 'cash',
-                                deposit.transaction_type || 'deposit'
-                            ).run();
-                        } catch (depErr) {
-                            console.error(`Failed to import deposit for user ${user.email}:`, depErr);
+                        const depositYear = deposit.year || targetYear;
+                        const depositType = deposit.deposit_type || 'cash';
+                        const transType = deposit.transaction_type || 'deposit';
+
+                        // Check duplicate deposit
+                        const existingDeposit = await db.prepare(
+                            `SELECT id FROM DEPOSITS 
+                             WHERE user_id = ? AND deposit_date = ? AND amount = ? AND transaction_type = ? AND year = ?`
+                        ).bind(targetUserId, deposit.deposit_date, deposit.amount, transType, depositYear).first();
+
+                        if (!existingDeposit) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    deposit.deposit_date,
+                                    targetUserId,
+                                    deposit.amount,
+                                    depositYear,
+                                    deposit.note || null,
+                                    depositType,
+                                    transType
+                                ).run();
+                            } catch (depErr) {
+                                console.error(`Failed to import deposit for user ${user.email}:`, depErr);
+                            }
                         }
                     }
                 }
 
-                imported++;
             } catch (error: any) {
                 errors.push(`匯入失敗 (${user.user_id || user.email}): ${error.message}`);
                 skipped++;
@@ -129,6 +152,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             imported,
+            updated,
             skipped,
             total: users.length,
             errors: errors.length > 0 ? errors : undefined
