@@ -22,15 +22,25 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
+        const { searchParams } = new URL(req.url);
+        const year = searchParams.get('year');
+
         const db = await getDb();
 
-        // Get all users except admin account
-        const result = await db.prepare(
-            `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url 
+        let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url 
              FROM USERS 
-             WHERE email != 'admin' 
-             ORDER BY id ASC`
-        ).all();
+             WHERE email != 'admin'`;
+
+        const params: any[] = [];
+
+        if (year && year !== 'All') {
+            query += ` AND year = ?`;
+            params.push(parseInt(year));
+        }
+
+        query += ` ORDER BY id ASC`;
+
+        const result = await db.prepare(query).bind(...params).all();
 
         const users = result.results || [];
 

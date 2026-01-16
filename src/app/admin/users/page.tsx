@@ -147,7 +147,8 @@ export default function AdminUsersPage() {
 
     const handleExport = async () => {
         try {
-            const res = await fetch('/api/users/export');
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/users/export?year=${year}`);
             if (!res.ok) {
                 throw new Error('匯出失敗');
             }
