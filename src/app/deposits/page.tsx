@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -18,7 +19,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Pencil, Trash2, Download, Upload, FilterX } from 'lucide-react';
+import { Pencil, Trash2, Download, Upload, FilterX, ArrowLeft } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -63,6 +64,15 @@ interface User {
 }
 
 export default function DepositsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <DepositsPageContent />
+        </Suspense>
+    );
+}
+
+function DepositsPageContent() {
+    const router = useRouter();
     const [deposits, setDeposits] = useState<Deposit[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -71,11 +81,12 @@ export default function DepositsPage() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [depositToDelete, setDepositToDelete] = useState<number | null>(null);
     const [mounted, setMounted] = useState(false);
-    const [selectedYear, setSelectedYear] = useState('All');
+    const searchParams = useSearchParams();
+    const initialYear = searchParams.get('year') || 'All';
+    const [selectedYear, setSelectedYear] = useState(initialYear);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [selectedTransactionType, setSelectedTransactionType] = useState('All');
     const [selectedDepositType, setSelectedDepositType] = useState('All');
-    const [importing, setImporting] = useState(false);
     const [userRole, setUserRole] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
@@ -185,94 +196,6 @@ export default function DepositsPage() {
         }
     };
 
-    const handleExport = async () => {
-        try {
-            const params = new URLSearchParams();
-
-            if (selectedYear && selectedYear !== 'All') {
-                params.append('year', selectedYear);
-            }
-
-            if (selectedUserIds.length > 0) {
-                params.append('userId', selectedUserIds.join(','));
-            }
-
-            if (selectedTransactionType && selectedTransactionType !== 'All') {
-                params.append('transaction_type', selectedTransactionType);
-            }
-
-            const url = params.toString() ? `/api/deposits/export?${params.toString()}` : '/api/deposits/export';
-            const res = await fetch(url);
-            if (!res.ok) {
-                throw new Error('匯出失敗');
-            }
-
-            const data = await res.json();
-
-            const blob = new Blob([JSON.stringify(data.deposits, null, 2)], { type: 'application/json' });
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `deposits_export_${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(blobUrl);
-
-            toast({
-                title: "匯出成功",
-                description: `已匯出 ${data.count} 筆出入金記錄`,
-            });
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "匯出失敗",
-                description: error.message,
-            });
-        }
-    };
-
-    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        try {
-            setImporting(true);
-
-            const text = await file.text();
-            const deposits = JSON.parse(text);
-
-            const res = await fetch('/api/deposits/import', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deposits }),
-            });
-
-            const result = await res.json();
-
-            if (!res.ok) {
-                throw new Error(result.error || '匯入失敗');
-            }
-
-            toast({
-                title: "匯入完成",
-                description: `成功匯入 ${result.imported} 筆，跳過 ${result.skipped} 筆`,
-            });
-
-            fetchDeposits();
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "匯入失敗",
-                description: error.message,
-            });
-        } finally {
-            setImporting(false);
-            event.target.value = '';
-        }
-    };
-
     const formatDate = (timestamp: number) => {
         const date = new Date(timestamp * 1000);
         return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
@@ -303,7 +226,12 @@ export default function DepositsPage() {
                 <div className="w-full">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
-                        <h1 className="text-3xl font-bold tracking-tight">匯款記錄</h1>
+                        <div className="flex items-center gap-4">
+                            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                                <ArrowLeft className="h-6 w-6" />
+                            </Button>
+                            <h1 className="text-3xl font-bold tracking-tight">匯款記錄</h1>
+                        </div>
                         <div className="flex items-center gap-4">
                             {/* Clear Filters Button */}
                             <Tooltip>
@@ -374,29 +302,6 @@ export default function DepositsPage() {
                             {/* Admin/Manager only buttons */}
                             {userRole && ['admin', 'manager'].includes(userRole) && (
                                 <>
-                                    <Button
-                                        onClick={handleExport}
-                                        variant="outline"
-                                        className="hover:bg-accent hover:text-accent-foreground"
-                                    >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        匯出
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => document.getElementById('deposits-file-input')?.click()}
-                                        disabled={importing}
-                                    >
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        {importing ? '匯入中...' : '匯入'}
-                                        <input
-                                            type="file"
-                                            id="deposits-file-input"
-                                            accept=".json"
-                                            style={{ display: 'none' }}
-                                            onChange={handleImport}
-                                        />
-                                    </Button>
                                     <Button
                                         onClick={() => setNewDialogOpen(true)}
                                         variant="secondary"

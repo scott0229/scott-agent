@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
             // We need to fetch Users to return basic info too (name/email)
             // Filter users by year? USERS has year column.
-            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer'`).all();
+            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
 
             // ... (rest of the map logic) ...
 

@@ -48,17 +48,22 @@ export async function GET(req: NextRequest) {
             if (year && year !== 'All') {
                 query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
+                        (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
+                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit
                         FROM USERS`;
                 query += ' WHERE (year = ? OR role = \'admin\')';
                 params.push(parseInt(year)); // For options_count subquery
                 params.push(parseInt(year)); // For open_count subquery
+                params.push(parseInt(year)); // For net_deposit subquery
                 params.push(parseInt(year)); // For main query
                 whereAdded = true;
             } else {
                 query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
+                        (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
+                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit
                         FROM USERS`;
             }
 
@@ -199,11 +204,20 @@ export async function GET(req: NextRequest) {
         const db = await getDb();
         const year = searchParams.get('year');
 
+        const params: any[] = [];
+        let netDepositSelect = '';
+
+        if (year && year !== 'All') {
+            netDepositSelect = `, (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit`;
+            params.push(parseInt(year));
+        } else {
+            netDepositSelect = `, (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit`;
+        }
+
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost 
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost${netDepositSelect}
             FROM USERS 
         `;
-        const params: any[] = [];
         let whereClauses = [];
 
         // If customer, restrict to self

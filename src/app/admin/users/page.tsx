@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 
 interface User {
@@ -26,6 +26,9 @@ interface User {
     ib_account?: string;
     phone?: string;
     initial_cost?: number;
+    options_count?: number;
+    open_count?: number;
+    net_deposit?: number;
     created_at: number;
 }
 
@@ -265,6 +268,17 @@ export default function AdminUsersPage() {
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
                                 <Button
+                                    onClick={() => {
+                                        const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+                                        router.push(`/deposits?year=${year}`);
+                                    }}
+                                    variant="outline"
+                                    className="hover:bg-accent hover:text-accent-foreground"
+                                >
+                                    <Wallet className="h-4 w-4 mr-2" />
+                                    匯款記錄
+                                </Button>
+                                <Button
                                     onClick={handleExport}
                                     variant="outline"
                                     className="hover:bg-accent hover:text-accent-foreground"
@@ -305,10 +319,11 @@ export default function AdminUsersPage() {
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
-                                <TableHead className="text-center">帳號</TableHead>
+                                <TableHead className="text-center">User ID</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
+                                <TableHead className="text-center">年度匯款</TableHead>
                                 <TableHead className="text-center">年初淨值</TableHead>
-                                <TableHead className="text-center">證券帳號</TableHead>
+                                <TableHead className="text-center">IB 帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
                                 <TableHead>郵件地址</TableHead>
                                 <TableHead className="text-right"></TableHead>
@@ -334,7 +349,18 @@ export default function AdminUsersPage() {
                                         <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
                                         <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
                                         <TableCell className="text-center">{user.user_id || '-'}</TableCell>
-                                        <TableCell className="text-center">{user.role === 'customer' ? `${user.management_fee}%` : '-'}</TableCell>
+                                        <TableCell className="text-center">
+                                            {user.role === 'customer' ? (
+                                                user.management_fee === 0 ? (
+                                                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                                                        不收費
+                                                    </Badge>
+                                                ) : (
+                                                    `${user.management_fee}%`
+                                                )
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.net_deposit || 0) : '-'}</TableCell>
                                         <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
                                         <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                         <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>

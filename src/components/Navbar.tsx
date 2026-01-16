@@ -118,15 +118,7 @@ export function Navbar() {
                         期權交易
                     </Button>
                 </Link>
-                <Link href="/deposits" prefetch={true}>
-                    <Button
-                        variant={pathname.startsWith('/deposits') ? "default" : "ghost"}
-                        className="gap-2"
-                    >
-                        <Wallet className="h-4 w-4" />
-                        匯款記錄
-                    </Button>
-                </Link>
+
                 {(canAccessAdmin || role === 'customer') && (
                     <Link href="/net-equity" prefetch={true}>
                         <Button

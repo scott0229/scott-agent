@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
         const db = await getDb();
 
-        let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost 
+        let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, year
              FROM USERS 
              WHERE email != 'admin'`;
 
@@ -43,6 +43,30 @@ export async function GET(req: NextRequest) {
         const result = await db.prepare(query).bind(...params).all();
 
         const users = result.results || [];
+
+        // Fetch deposits for each user
+        for (const user of users) {
+            let depositQuery = `
+                SELECT 
+                    d.*,
+                    u.user_id as depositor_user_id,
+                    u.email as depositor_email
+                FROM DEPOSITS d
+                LEFT JOIN USERS u ON d.user_id = u.id
+                WHERE d.user_id = ?
+            `;
+            const depositParams: any[] = [user.id];
+
+            if (year && year !== 'All') {
+                depositQuery += ` AND d.year = ?`;
+                depositParams.push(parseInt(year));
+            }
+
+            depositQuery += ` ORDER BY d.deposit_date DESC`;
+
+            const { results: deposits } = await db.prepare(depositQuery).bind(...depositParams).all();
+            (user as any).deposits = deposits || [];
+        }
 
         return NextResponse.json({
             users,
