@@ -247,6 +247,12 @@ export default function NetEquityPage() {
                         </CardContent>
                     </Card>
                 ))}
+
+                {summaries.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
+                        尚無客戶資料
+                    </div>
+                )}
             </div>
 
             {editCostDialog && (

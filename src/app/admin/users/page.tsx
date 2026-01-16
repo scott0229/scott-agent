@@ -314,55 +314,70 @@ export default function AdminUsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {users.filter(u => u.email !== 'admin').map((user, index) => (
-                                <TableRow key={user.id}>
-                                    <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
-                                    <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
-                                    <TableCell className="text-center">{user.user_id || '-'}</TableCell>
-                                    <TableCell className="text-center">{user.role === 'customer' ? `${user.management_fee}%` : '-'}</TableCell>
-                                    <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
-                                    <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                    <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
-                                    <TableCell>{user.email}</TableCell>
-                                    <TableCell className="text-right">
-                                        {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
-                                            <div className="flex justify-end gap-1">
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(user)}
-                                                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>編輯</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
+                            {(() => {
+                                const filteredUsers = users.filter(u => u.email !== 'admin');
+                                if (filteredUsers.length === 0) {
+                                    return (
+                                        <TableRow>
+                                            <TableCell colSpan={9} className="p-4">
+                                                <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
+                                                    尚無客戶資料
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                }
 
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(user.id)}
-                                                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>刪除</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                return filteredUsers.map((user, index) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
+                                        <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
+                                        <TableCell className="text-center">{user.user_id || '-'}</TableCell>
+                                        <TableCell className="text-center">{user.role === 'customer' ? `${user.management_fee}%` : '-'}</TableCell>
+                                        <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
+                                        <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
+                                        <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
+                                        <TableCell className="text-right">
+                                            {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
+                                                <div className="flex justify-end gap-1">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEdit(user)}
+                                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>編輯</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDelete(user.id)}
+                                                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>刪除</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ));
+                            })()}
                         </TableBody>
                     </Table>
                 </div>

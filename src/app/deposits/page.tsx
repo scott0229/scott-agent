@@ -414,7 +414,7 @@ export default function DepositsPage() {
                         <div className="text-center py-12 text-muted-foreground">載入中...</div>
                     ) : deposits.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
-                            尚無出入金記錄
+                            尚無匯款記錄
                         </div>
                     ) : (
                         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
