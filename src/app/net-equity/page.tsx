@@ -19,7 +19,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
 import { NetEquityChart } from '@/components/NetEquityChart';
 
-import { Pencil, BarChart3, Coins } from "lucide-react";
+import { Pencil, BarChart3, Coins, Plus } from "lucide-react";
 
 interface UserSummary {
     id: number;
@@ -43,10 +43,33 @@ interface UserSummary {
         profit: number;
         return_rate: number;
     }[];
+
     equity_history?: {
         date: number;
         net_equity: number;
     }[];
+    qqqStats?: {
+        startEquity: number;
+        currentEquity: number;
+        returnPercentage: number;
+        maxDrawdown: number;
+        annualizedReturn: number;
+        annualizedStdDev: number;
+        sharpeRatio: number;
+        newHighCount: number;
+        newHighFreq: number;
+    } | null;
+    qldStats?: {
+        startEquity: number;
+        currentEquity: number;
+        returnPercentage: number;
+        maxDrawdown: number;
+        annualizedReturn: number;
+        annualizedStdDev: number;
+        sharpeRatio: number;
+        newHighCount: number;
+        newHighFreq: number;
+    } | null;
 }
 
 export default function NetEquityPage() {
@@ -56,7 +79,7 @@ export default function NetEquityPage() {
     const { selectedYear } = useYearFilter(); // Get year context
     const router = useRouter();
     const [editCostDialog, setEditCostDialog] = useState<{ open: boolean; userId: number; currentCost: number } | null>(null);
-    const [sortOrder, setSortOrder] = useState('alphabetical');
+    const [sortOrder, setSortOrder] = useState('return-desc');
 
     useEffect(() => {
         fetchData();
@@ -137,7 +160,7 @@ export default function NetEquityPage() {
                 </Select>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 {[...summaries].sort((a, b) => {
                     if (sortOrder === 'alphabetical') {
                         const nameA = a.user_id || a.email;
@@ -163,7 +186,7 @@ export default function NetEquityPage() {
                         className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer"
                         onClick={() => router.push(`/net-equity/${user.id}`)}
                     >
-                        <CardHeader className="flex flex-row items-center gap-4 pb-3">
+                        <CardHeader className="flex flex-row items-center gap-4 pb-0">
                             <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
                                 <AvatarFallback>{(user.user_id || user.email).charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
@@ -171,87 +194,180 @@ export default function NetEquityPage() {
                                 <CardTitle className="text-lg truncate">
                                     {user.user_id || user.email}
                                 </CardTitle>
-                                <CardDescription className="truncate">
-                                    當前淨值: {formatMoney(user.current_net_equity || 0)}
+                                <CardDescription className="truncate font-medium text-primary">
+                                    報酬率排名 {
+                                        [...summaries]
+                                            .sort((a, b) => (b.stats?.returnPercentage || 0) - (a.stats?.returnPercentage || 0))
+                                            .findIndex(u => u.id === user.id) + 1
+                                    }
                                 </CardDescription>
+                            </div>
+                            <div className="ml-auto flex gap-2">
+                                <Button
+                                    variant="ghost"
+                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/net-equity/${user.id}`);
+                                    }}
+                                    size="sm"
+                                >
+                                    <Plus className="h-3.5 w-3.5 mr-1" />
+                                    淨值記錄
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/net-equity/${user.id}/benchmark/QQQ`);
+                                    }}
+                                    size="sm"
+                                >
+                                    QQQ對照
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/net-equity/${user.id}/benchmark/QLD`);
+                                    }}
+                                    size="sm"
+                                >
+                                    QLD對照
+                                </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="pt-0">
-                            <div className="flex gap-4">
-                                {/* Stats Table - 40% */}
-                                <div className="w-[40%]">
-                                    <div className="border rounded-md overflow-hidden">
-                                        <table className="w-full text-[13px]">
-                                            <tbody className="text-[13px]">
-                                                <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                    <td className="py-1 px-2">年初淨值</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatMoney(user.initial_cost || 0)}
-                                                    </td>
-                                                </tr>
+                            <div className="grid grid-cols-[45%_1fr] gap-4">
+                                {/* Stats Table */}
+                                <div className="border rounded-md overflow-hidden">
+                                    <table className="w-full text-[13px]">
+                                        <thead>
+                                            <tr className="border-b bg-muted/40 text-[13px] font-medium">
+                                                <td className="py-2 px-2"></td>
+                                                <td className="py-2 px-2 text-center font-bold">帳戶</td>
+                                                <td className="py-2 px-2 text-center font-bold">QQQ</td>
+                                                <td className="py-2 px-2 text-center font-bold">QLD</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-[13px]">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-8 px-2">當前淨值</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatMoney(user.current_net_equity || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatMoney(user.qqqStats.currentEquity) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatMoney(user.qldStats.currentEquity) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="h-8 px-2">年初淨值</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatMoney(user.initial_cost || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatMoney(user.qqqStats.startEquity) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatMoney(user.qldStats.startEquity) : '-'}
+                                                </td>
+                                            </tr>
 
-                                                <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                    <td className="py-1 px-2">報酬率</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatPercent(user.stats?.returnPercentage || 0)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                    <td className="py-1 px-2">最大回撤</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatPercent(user.stats?.maxDrawdown || 0)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                    <td className="py-1 px-2">年化報酬率</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatPercent(user.stats?.annualizedReturn || 0)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                    <td className="py-1 px-2">年化標準差</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatPercent(user.stats?.annualizedStdDev || 0)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                    <td className="py-1 px-2">夏普值</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {(user.stats?.sharpeRatio || 0).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                    <td className="py-1 px-2">新高次數</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {user.stats?.newHighCount || 0}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                    <td className="py-1 px-2">新高頻率</td>
-                                                    <td className="py-1 px-2 text-center">
-                                                        {formatPercent(user.stats?.newHighFreq || 0)}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* Button below table, within left column */}
-                                    <Button
-                                        variant="outline"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            router.push(`/net-equity/${user.id}`);
-                                        }}
-                                        className="mt-3"
-                                        size="sm"
-                                    >
-                                        淨值記錄
-                                    </Button>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-8 px-2">報酬率</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatPercent(user.stats?.returnPercentage || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatPercent(user.qqqStats.returnPercentage) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatPercent(user.qldStats.returnPercentage) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="h-8 px-2">最大回撤</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatPercent(user.stats?.maxDrawdown || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatPercent(user.qqqStats.maxDrawdown) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatPercent(user.qldStats.maxDrawdown) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-8 px-2">年化報酬率</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatPercent(user.stats?.annualizedReturn || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatPercent(user.qqqStats.annualizedReturn) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatPercent(user.qldStats.annualizedReturn) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="h-8 px-2">年化標準差</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {formatPercent(user.stats?.annualizedStdDev || 0)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? formatPercent(user.qqqStats.annualizedStdDev) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? formatPercent(user.qldStats.annualizedStdDev) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-8 px-2">夏普值</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {(user.stats?.sharpeRatio || 0).toFixed(2)}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? (user.qqqStats.sharpeRatio || 0).toFixed(2) : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? (user.qldStats.sharpeRatio || 0).toFixed(2) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="h-8 px-2">新高次數</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.stats?.newHighCount || 0}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? user.qqqStats.newHighCount : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? user.qldStats.newHighCount : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-8 px-2">新高頻率</td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {Math.round((user.stats?.newHighFreq || 0) * 100)}%
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qqqStats ? Math.round(user.qqqStats.newHighFreq * 100) + '%' : '-'}
+                                                </td>
+                                                <td className="h-8 px-2 text-center">
+                                                    {user.qldStats ? Math.round(user.qldStats.newHighFreq * 100) + '%' : '-'}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
 
-                                {/* Chart - 60% (full height) */}
-                                <div className="w-[60%] flex items-center h-[228px]">
+                                {/* Chart - Matches Table Height */}
+                                <div className="h-full min-h-[300px] flex items-center border rounded-md">
                                     <NetEquityChart
                                         data={user.equity_history || []}
                                         initialCost={user.initial_cost}

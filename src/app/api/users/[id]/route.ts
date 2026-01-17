@@ -14,6 +14,53 @@ async function checkAdmin(req: NextRequest) {
     return payload;
 }
 
+// GET: Get user by ID
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const admin = await checkAdmin(req);
+        if (!admin) {
+            // Allow self-fetch? 
+            // Ideally yes, but for now strict admin check as per other methods?
+            // But the frontend calls this for header.
+            // If a customer views their own page, they need to fetch their own name?
+            // Or maybe they already know it.
+            // Let's allow if admin OR if id matches self.
+            const token = req.cookies.get('token')?.value;
+            if (token) {
+                const payload = await verifyToken(token);
+                const { id } = await params;
+                if (payload && (payload.role === 'admin' || payload.role === 'manager' || payload.id === Number(id))) {
+                    // Authorized
+                } else {
+                    return NextResponse.json({ error: '權限不足' }, { status: 403 });
+                }
+            } else {
+                return NextResponse.json({ error: '未登入' }, { status: 401 });
+            }
+        }
+
+        const { id } = await params;
+        if (!id) {
+            return NextResponse.json({ error: '缺少使用者 ID' }, { status: 400 });
+        }
+
+        const db = await getDb();
+        const user = await db.prepare('SELECT id, user_id, email, role, initial_cost FROM USERS WHERE id = ?').bind(id).first();
+
+        if (!user) {
+            return NextResponse.json({ error: '使用者不存在' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true, user });
+    } catch (error) {
+        console.error('Get user error:', error);
+        return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
+    }
+}
+
 // DELETE: Delete user by ID
 export async function DELETE(
     req: NextRequest,
