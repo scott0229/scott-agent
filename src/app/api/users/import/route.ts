@@ -28,6 +28,7 @@ interface ImportUser {
     deposits?: any[];
     net_equity_records?: any[];
     options?: any[];
+    monthly_interest?: any[];
 }
 
 // POST: Import users from JSON array
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { users } = body;
+        const { users, market_prices } = body;
 
         if (!Array.isArray(users)) {
             return NextResponse.json({ error: '無效的資料格式' }, { status: 400 });
@@ -234,9 +235,60 @@ export async function POST(req: NextRequest) {
                 }
 
 
+                // Import nested monthly interest
+                if (user.monthly_interest && Array.isArray(user.monthly_interest) && targetUserId) {
+                    for (const interest of user.monthly_interest) {
+                        if (interest.year === undefined || interest.month === undefined || interest.interest === undefined) continue;
+
+                        // Check duplicate
+                        const existingInterest = await db.prepare(
+                            `SELECT year FROM monthly_interest WHERE user_id = ? AND year = ? AND month = ?`
+                        ).bind(targetUserId, interest.year, interest.month).first();
+
+                        if (!existingInterest) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO monthly_interest (user_id, year, month, interest, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(targetUserId, interest.year, interest.month, interest.interest).run();
+                            } catch (intErr) {
+                                console.error(`Failed to import monthly interest for user ${user.email}:`, intErr);
+                            }
+                        }
+                    }
+                }
             } catch (error: any) {
                 errors.push(`匯入失敗 (${user.user_id || user.email}): ${error.message}`);
                 skipped++;
+            }
+        }
+
+        // Import market prices (Benchmark data)
+        let importedPrices = 0;
+        if (market_prices && Array.isArray(market_prices)) {
+            for (const price of market_prices) {
+                if (!price.symbol || !price.date || price.close_price === undefined) continue;
+
+                // Check duplicate or upsert? 
+                // Let's use INSERT OR IGNORE or just verify existence. 
+                // Since this is import, maybe we should respect existing? 
+                // Or overwrite? Usually import overwrites if newer?
+                // For simplicity, skip if exists.
+
+                const existingPrice = await db.prepare(
+                    `SELECT date FROM market_prices WHERE symbol = ? AND date = ?`
+                ).bind(price.symbol, price.date).first();
+
+                if (!existingPrice) {
+                    try {
+                        await db.prepare(
+                            `INSERT INTO market_prices (symbol, date, close_price) VALUES (?, ?, ?)`
+                        ).bind(price.symbol, price.date, price.close_price).run();
+                        importedPrices++;
+                    } catch (priceErr) {
+                        console.error(`Failed to import market price ${price.symbol}:`, priceErr);
+                    }
+                }
             }
         }
 
@@ -245,6 +297,7 @@ export async function POST(req: NextRequest) {
             imported,
             updated,
             skipped,
+            imported_market_prices: importedPrices,
             total: users.length,
             errors: errors.length > 0 ? errors : undefined
         });

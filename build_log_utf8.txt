@@ -1,0 +1,175 @@
+
+> scott-agent@0.1.0 build:cf
+> cross-env opennextjs-cloudflare build
+
+
+┌─────────────────────────────┐
+│ OpenNext — Cloudflare build │
+└─────────────────────────────┘
+
+WARN OpenNext is not fully compatible with Windows.
+WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
+WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
+App directory: C:\Users\scott\my project\scott-agent
+Next.js version : 14.2.35
+@opennextjs/cloudflare version: 1.14.8
+@opennextjs/aws version: 3.9.7
+
+┌─────────────────────────────────┐
+│ OpenNext — Building Next.js app │
+└─────────────────────────────────┘
+
+
+> scott-agent@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+   Generating static pages (0/23) ...
+Export options error: B [Error]: Dynamic server usage: Route /api/options/export couldn't be rendered statically because it used `request.cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.prod.js:6:21778)
+    at Object.get (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.prod.js:6:29465)
+    at c (C:\Users\scott\my project\scott-agent\.next\server\app\api\options\export\route.js:1:584)
+    at C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\next-server\app-route.runtime.prod.js:6:38417
+    at C:\Users\scott\my project\scott-agent\node_modules\next\dist\server\lib\trace\tracer.js:140:36
+    at NoopContextManager.with (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:7062)
+    at ContextAPI.with (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:518)
+    at NoopTracer.startActiveSpan (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18093)
+    at ProxyTracer.startActiveSpan (C:\Users\scott\my project\scott-agent\node_modules\next\dist\compiled\@opentelemetry\api\index.js:1:18854)
+    at C:\Users\scott\my project\scott-agent\node_modules\next\dist\server\lib\trace\tracer.js:122:103 {
+  description: "Route /api/options/export couldn't be rendered statically because it used `request.cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (5/23) 
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+Navbar: Current role: null isCustomer: false
+   Generating static pages (11/23) 
+Navbar: Current role: null isCustomer: false
+   Generating static pages (17/23) 
+Navbar: Current role: null isCustomer: false
+ ✓ Generating static pages (23/23)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                 Size     First Load JS
+┌ ○ /                                                       5.36 kB        93.3 kB
+├ ○ /_not-found                                             876 B          88.8 kB
+├ ○ /admin/users                                            6.02 kB         143 kB
+├ ƒ /api/auth/login                                         0 B                0 B
+├ ƒ /api/auth/logout                                        0 B                0 B
+├ ƒ /api/auth/me                                            0 B                0 B
+├ ƒ /api/auth/register                                      0 B                0 B
+├ ƒ /api/benchmark                                          0 B                0 B
+├ ƒ /api/debug-db                                           0 B                0 B
+├ ƒ /api/debug/december                                     0 B                0 B
+├ ƒ /api/debug/exec                                         0 B                0 B
+├ ƒ /api/debug/user-monthly                                 0 B                0 B
+├ ƒ /api/deposits                                           0 B                0 B
+├ ƒ /api/deposits/[id]                                      0 B                0 B
+├ ƒ /api/deposits/export                                    0 B                0 B
+├ ƒ /api/deposits/import                                    0 B                0 B
+├ ƒ /api/net-equity                                         0 B                0 B
+├ ƒ /api/net-equity/export                                  0 B                0 B
+├ ƒ /api/net-equity/import                                  0 B                0 B
+├ ƒ /api/options                                            0 B                0 B
+├ ƒ /api/options/[id]                                       0 B                0 B
+├ ƒ /api/options/export                                     0 B                0 B
+├ ƒ /api/options/import                                     0 B                0 B
+├ ƒ /api/projects                                           0 B                0 B
+├ ƒ /api/projects/[id]                                      0 B                0 B
+├ ƒ /api/projects/[id]/items                                0 B                0 B
+├ ƒ /api/projects/[id]/items/[itemId]                       0 B                0 B
+├ ƒ /api/projects/[id]/items/[itemId]/comments              0 B                0 B
+├ ƒ /api/projects/[id]/items/[itemId]/comments/[commentId]  0 B                0 B
+├ ƒ /api/projects/[id]/members                              0 B                0 B
+├ ƒ /api/projects/[id]/milestones                           0 B                0 B
+├ ƒ /api/projects/[id]/users                                0 B                0 B
+├ ƒ /api/projects/export                                    0 B                0 B
+├ ƒ /api/projects/import                                    0 B                0 B
+├ ƒ /api/upload                                             0 B                0 B
+├ ƒ /api/users                                              0 B                0 B
+├ ƒ /api/users/[id]                                         0 B                0 B
+├ ƒ /api/users/[id]/interest                                0 B                0 B
+├ ƒ /api/users/analysis                                     0 B                0 B
+├ ƒ /api/users/export                                       0 B                0 B
+├ ƒ /api/users/import                                       0 B                0 B
+├ ○ /deposits                                               5.42 kB         143 kB
+├ ○ /icon.png                                               0 B                0 B
+├ ○ /login                                                  2.71 kB         100 kB
+├ ○ /net-equity                                             116 kB          245 kB
+├ ƒ /net-equity/[userId]                                    7.3 kB          133 kB
+├ ƒ /net-equity/[userId]/benchmark/[symbol]                 3.85 kB         101 kB
+├ ○ /options                                                9.39 kB         138 kB
+├ ƒ /options/[userId]                                       6.21 kB         144 kB
+├ ○ /project-list                                           4.96 kB         134 kB
+├ ƒ /project/[id]                                           3.97 kB         144 kB
+├ ƒ /project/[id]/item/[itemId]                             5.74 kB         137 kB
+├ ○ /register                                               2.9 kB          109 kB
+└ ƒ /uploads/[...path]                                      0 B                0 B
++ First Load JS shared by all                               87.9 kB
+  ├ chunks/117-a68fe0c4de263b62.js                          31.9 kB
+  ├ chunks/fd9d1056-d85d32197eafe8b4.js                     53.6 kB
+  └ other shared chunks (total)                             2.39 kB
+
+
+ƒ Middleware                                                43.3 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+┌──────────────────────────────┐
+│ OpenNext — Generating bundle │
+└──────────────────────────────┘
+
+Bundling middleware function...
+Bundling static assets...
+Bundling cache assets...
+Building server function: default...
+opennextjs-cloudflare build
+
+Build an OpenNext Cloudflare worker
+
+Options:
+      --help                        Show help                          [boolean]
+      --version                     Show version number                [boolean]
+  -c, --config                      Path to Wrangler configuration file [string]
+      --configPath                  Path to Wrangler configuration file
+                                                           [deprecated] [string]
+  -e, --env                         Wrangler environment to use for operations
+                                                                        [string]
+  -s, --skipNextBuild, --skipBuild  Skip building the Next.js app
+                                                      [boolean] [default: false]
+      --noMinify                    Disable worker minification
+                                                      [boolean] [default: false]
+      --skipWranglerConfigCheck     Skip checking for a Wrangler config
+                                                      [boolean] [default: false]
+      --openNextConfigPath          Path to the OpenNext configuration file
+                                                                        [string]
+
+Error: 
+--------------------------------------------------------------------------------
+app/api\benchmark\route cannot use the edge runtime.
+OpenNext requires edge runtime function to be defined in a separate function.
+See the docs for more information on how to bundle edge runtime functions.
+--------------------------------------------------------------------------------
+        
+    at computeCopyFilesForPage (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/aws/dist/build/copyTracedFiles.js:108:23)
+    at file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/aws/dist/build/copyTracedFiles.js:173:9
+    at Array.forEach (<anonymous>)
+    at copyTracedFiles (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/aws/dist/build/copyTracedFiles.js:172:12)
+    at generateBundle (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/cloudflare/dist/cli/build/open-next/createServerBundle.js:121:60)
+    at createServerBundle (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/cloudflare/dist/cli/build/open-next/createServerBundle.js:75:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async build (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/cloudflare/dist/cli/build/build.js:70:5)
+    at async buildCommand (file:///C:/Users/scott/my%20project/scott-agent/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:21:5)

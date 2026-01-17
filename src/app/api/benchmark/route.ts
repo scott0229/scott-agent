@@ -2,7 +2,7 @@ import { getDb } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketData } from '@/lib/market-data';
 
-export const runtime = 'edge';
+
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);

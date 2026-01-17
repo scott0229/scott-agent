@@ -159,7 +159,7 @@ export default function AdminUsersPage() {
             const data = await res.json();
 
             // Create JSON blob and download
-            const blob = new Blob([JSON.stringify(data.users, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -191,12 +191,19 @@ export default function AdminUsersPage() {
             setImporting(true);
 
             const text = await file.text();
-            const users = JSON.parse(text);
+            const data = JSON.parse(text);
+
+            let payload;
+            if (Array.isArray(data)) {
+                payload = { users: data };
+            } else {
+                payload = data;
+            }
 
             const res = await fetch('/api/users/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ users }),
+                body: JSON.stringify(payload),
             });
 
             const result = await res.json();

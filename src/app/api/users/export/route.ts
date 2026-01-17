@@ -104,10 +104,47 @@ export async function GET(req: NextRequest) {
 
             const { results: options } = await db.prepare(optionsQuery).bind(...optionsParams).all();
             (user as any).options = options || [];
+
+            // Fetch monthly interest for each user
+            let interestQuery = `
+                SELECT year, month, interest
+                FROM monthly_interest
+                WHERE user_id = ?
+            `;
+            const interestParams: any[] = [user.id];
+
+            if (year && year !== 'All') {
+                interestQuery += ` AND year = ?`;
+                interestParams.push(parseInt(year));
+            }
+
+            interestQuery += ` ORDER BY year DESC, month DESC`;
+
+            const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
+            (user as any).monthly_interest = interest || [];
         }
+
+        // Fetch market prices (Benchmark data)
+        // We export ALL market prices or filter by year if requested?
+        // Usually benchmark data is global. User asked for QQQ and QLD comparison data.
+        // Let's export all market_prices for now, or filter if year is specified.
+        let marketPricesQuery = `SELECT symbol, date, close_price FROM market_prices`;
+        const marketPricesParams: any[] = [];
+
+        if (year && year !== 'All') {
+            const startOfYear = new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000;
+            const endOfYear = new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000;
+            marketPricesQuery += ` WHERE date >= ? AND date <= ?`;
+            marketPricesParams.push(startOfYear, endOfYear);
+        }
+
+        marketPricesQuery += ` ORDER BY symbol ASC, date ASC`;
+
+        const { results: marketPrices } = await db.prepare(marketPricesQuery).bind(...marketPricesParams).all();
 
         return NextResponse.json({
             users,
+            market_prices: marketPrices || [],
             exportDate: new Date().toISOString(),
             count: users.length
         });
