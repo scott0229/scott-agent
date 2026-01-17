@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -21,9 +21,42 @@ interface NewNetEquityDialogProps {
     onSuccess: () => void;
 }
 
+// Format number with thousand separators
+const formatNumber = (value: string): string => {
+    // Handle empty input
+    if (!value) return '';
+
+    // Remove all non-digit and non-decimal characters
+    const numStr = value.replace(/[^\d.]/g, '');
+
+    // Handle empty result after cleaning
+    if (!numStr) return '';
+
+    // Prevent multiple decimal points - keep only the first one
+    const parts = numStr.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? parts[1] : undefined;
+
+    // Don't format if empty
+    if (!integerPart) return '';
+
+    // Add thousand separators to integer part
+    const formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    // Recombine with decimal part if it exists
+    return decimalPart !== undefined ? `${formatted}.${decimalPart}` : formatted;
+};
+
+// Parse formatted number back to float
+const parseNumber = (value: string): number => {
+    return parseFloat(value.replace(/,/g, '')) || 0;
+};
+
 export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedYear, onSuccess }: NewNetEquityDialogProps) {
-    const getDefaultDate = () => {
-        const d = new Date();
+    // Calculate next business day from a given date
+    const getNextBusinessDay = (fromDate: Date): string => {
+        const d = new Date(fromDate);
+        d.setDate(d.getDate() + 1); // Start from next day
         const day = d.getDay();
         if (day === 6) { // Saturday -> Monday
             d.setDate(d.getDate() + 2);
@@ -36,10 +69,34 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
         return `${year}-${month}-${dayStr}`;
     };
 
-    const [date, setDate] = useState(getDefaultDate);
+    const [date, setDate] = useState('');
     const [equity, setEquity] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+
+    // Fetch latest record and set default date when dialog opens
+    useEffect(() => {
+        if (open && userId) {
+            // Fetch ALL records (no year filter) to get the absolute latest record
+            fetch(`/api/net-equity?userId=${userId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.data && data.data.length > 0) {
+                        // Get the most recent record (API returns sorted by date DESC)
+                        const latestRecord = data.data[0];
+                        const latestDate = new Date(latestRecord.date * 1000);
+                        setDate(getNextBusinessDay(latestDate));
+                    } else {
+                        // No records, default to next business day from today
+                        setDate(getNextBusinessDay(new Date()));
+                    }
+                })
+                .catch(() => {
+                    // On error, fallback to next business day from today
+                    setDate(getNextBusinessDay(new Date()));
+                });
+        }
+    }, [open, userId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,7 +119,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                 body: JSON.stringify({
                     user_id: userId,
                     date: timestamp,
-                    net_equity: parseFloat(equity),
+                    net_equity: parseNumber(equity),
                     year: selectedYear !== 'All' ? selectedYear : undefined
                 }),
             });
@@ -80,7 +137,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             onSuccess();
             onOpenChange(false);
             setEquity('');
-            setDate(getDefaultDate()); // Reset to default date instead of empty
+            setDate(getNextBusinessDay(new Date())); // Reset to fallback date
         } catch (error: any) {
             toast({
                 variant: "destructive",
@@ -118,12 +175,14 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                         </Label>
                         <Input
                             id="equity"
-                            type="number"
-                            step="0.01"
+                            type="text"
                             placeholder="輸入金額"
                             className="col-span-3"
                             value={equity}
-                            onChange={(e) => setEquity(e.target.value)}
+                            onChange={(e) => {
+                                const formatted = formatNumber(e.target.value);
+                                setEquity(formatted);
+                            }}
                             required
                         />
                     </div>

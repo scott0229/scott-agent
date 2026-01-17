@@ -24,6 +24,37 @@ interface EditNetEquityDialogProps {
     recordToEdit: PerformanceRecord | null;
 }
 
+// Format number with thousand separators
+const formatNumber = (value: string): string => {
+    // Handle empty input
+    if (!value) return '';
+
+    // Remove all non-digit and non-decimal characters
+    const numStr = value.replace(/[^\d.]/g, '');
+
+    // Handle empty result after cleaning
+    if (!numStr) return '';
+
+    // Prevent multiple decimal points - keep only the first one
+    const parts = numStr.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? parts[1] : undefined;
+
+    // Don't format if empty
+    if (!integerPart) return '';
+
+    // Add thousand separators to integer part
+    const formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    // Recombine with decimal part if it exists
+    return decimalPart !== undefined ? `${formatted}.${decimalPart}` : formatted;
+};
+
+// Parse formatted number back to float
+const parseNumber = (value: string): number => {
+    return parseFloat(value.replace(/,/g, '')) || 0;
+};
+
 const formatDateForInput = (timestamp: number | null) => {
     if (!timestamp) return '';
     const d = new Date(timestamp * 1000);
@@ -42,7 +73,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
         if (recordToEdit) {
             setFormData({
                 date: formatDateForInput(recordToEdit.date),
-                net_equity: recordToEdit.net_equity.toString()
+                net_equity: formatNumber(recordToEdit.net_equity.toString())
             });
         }
     }, [recordToEdit]);
@@ -58,7 +89,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
             const payload = {
                 id: recordToEdit.id,
                 date: Math.floor(new Date(formData.date).getTime() / 1000),
-                net_equity: parseFloat(formData.net_equity)
+                net_equity: parseNumber(formData.net_equity)
             };
 
             const res = await fetch('/api/net-equity', {
@@ -110,10 +141,12 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                         <Label htmlFor="net_equity">帳戶淨值</Label>
                         <Input
                             id="net_equity"
-                            type="number"
-                            step="0.01"
+                            type="text"
                             value={formData.net_equity}
-                            onChange={(e) => setFormData({ ...formData, net_equity: e.target.value })}
+                            onChange={(e) => {
+                                const formatted = formatNumber(e.target.value);
+                                setFormData({ ...formData, net_equity: formatted });
+                            }}
                             required
                         />
                     </div>
