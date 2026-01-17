@@ -10,7 +10,6 @@ CREATE TABLE USERS_NEW (
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
     user_id TEXT,
     avatar_url TEXT,
-    google_id TEXT,
     role TEXT NOT NULL DEFAULT 'customer',
     name TEXT,
     management_fee REAL DEFAULT 4.0,
@@ -18,19 +17,18 @@ CREATE TABLE USERS_NEW (
     phone TEXT,
     year INTEGER NOT NULL DEFAULT 2025,
     UNIQUE(email, year),
-    UNIQUE(user_id, year),
-    UNIQUE(google_id, year)
+    UNIQUE(user_id, year)
 );
 
 -- 2. Copy data from old table to new table
 INSERT INTO USERS_NEW (
     id, email, password, created_at, updated_at, 
-    user_id, avatar_url, google_id, role, name, 
+    user_id, avatar_url, role, name, 
     management_fee, ib_account, phone, year
 )
 SELECT 
     id, email, password, created_at, updated_at, 
-    user_id, avatar_url, google_id, role, name, 
+    user_id, avatar_url,role, name, 
     management_fee, ib_account, phone, year
 FROM USERS;
 

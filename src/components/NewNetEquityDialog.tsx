@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -73,6 +73,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
     const [equity, setEquity] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const isComposing = useRef(false);
 
     // Fetch latest record and set default date when dialog opens
     useEffect(() => {
@@ -179,7 +180,16 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                             placeholder="輸入金額"
                             className="col-span-3"
                             value={equity}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setEquity(formatNumber(e.currentTarget.value));
+                            }}
                             onChange={(e) => {
+                                if (isComposing.current) {
+                                    setEquity(e.target.value);
+                                    return;
+                                }
                                 const formatted = formatNumber(e.target.value);
                                 setEquity(formatted);
                             }}

@@ -3,6 +3,8 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
 // Helper to check for admin or manager role
+export const dynamic = 'force-dynamic';
+
 async function checkAdmin(req: NextRequest) {
     const token = req.cookies.get('token')?.value;
     if (!token) return null;

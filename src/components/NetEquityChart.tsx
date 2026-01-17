@@ -75,11 +75,9 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
 
     return (
         <div className="relative w-full h-full border rounded-md">
-            <div className="absolute top-0 left-10 text-[10px] text-muted-foreground font-medium z-10">
-                淨值率 (%)
-            </div>
+
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
                     <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.3} />
                     <XAxis
@@ -114,7 +112,7 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
                         labelFormatter={(label) => `日期: ${label}`}
                         cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
                     />
-                    <Legend verticalAlign="top" height={36} iconType="plainline" />
+
                     <Line
                         type="monotone"
                         dataKey="rate"

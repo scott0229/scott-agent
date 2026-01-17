@@ -129,6 +129,7 @@ export default function NetEquityPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="alphabetical">按字母</SelectItem>
+                        <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
                         <SelectItem value="return-desc">報酬率-從大到小</SelectItem>
                         <SelectItem value="drawdown-desc">最大回撤-從大到小</SelectItem>
                         <SelectItem value="sharpe-desc">夏普值-從大到小</SelectItem>
@@ -142,6 +143,9 @@ export default function NetEquityPage() {
                         const nameA = a.user_id || a.email;
                         const nameB = b.user_id || b.email;
                         return nameA.localeCompare(nameB);
+                    }
+                    if (sortOrder === 'net-equity-desc') {
+                        return (b.current_net_equity || 0) - (a.current_net_equity || 0);
                     }
                     if (sortOrder === 'return-desc') {
                         return (b.stats?.returnPercentage || 0) - (a.stats?.returnPercentage || 0);
