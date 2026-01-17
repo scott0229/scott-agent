@@ -17,6 +17,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
+import { NetEquityChart } from '@/components/NetEquityChart';
 
 import { Pencil, BarChart3, Coins } from "lucide-react";
 
@@ -41,6 +42,10 @@ interface UserSummary {
         net_equity: number;
         profit: number;
         return_rate: number;
+    }[];
+    equity_history?: {
+        date: number;
+        net_equity: number;
     }[];
 }
 
@@ -113,7 +118,7 @@ export default function NetEquityPage() {
     }
 
     return (
-        <div className="container mx-auto py-10 max-w-[1200px]">
+        <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
                     {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 帳戶績效
@@ -131,7 +136,7 @@ export default function NetEquityPage() {
                 </Select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {[...summaries].sort((a, b) => {
                     if (sortOrder === 'alphabetical') {
                         const nameA = a.user_id || a.email;
@@ -154,7 +159,7 @@ export default function NetEquityPage() {
                         className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer"
                         onClick={() => router.push(`/net-equity/${user.id}`)}
                     >
-                        <CardHeader className="flex flex-row items-center gap-4 pb-0">
+                        <CardHeader className="flex flex-row items-center gap-4 pb-3">
                             <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
                                 <AvatarFallback>{(user.user_id || user.email).charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
@@ -167,77 +172,87 @@ export default function NetEquityPage() {
                                 </CardDescription>
                             </div>
                         </CardHeader>
-                        <CardContent className="-mt-2">
-                            <div>
-                                <div className="border rounded-md overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <tbody className="text-sm">
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="py-1 px-2">年初淨值</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatMoney(user.initial_cost || 0)}
-                                                </td>
-                                            </tr>
+                        <CardContent className="pt-0">
+                            <div className="flex gap-4">
+                                {/* Stats Table - 40% */}
+                                <div className="w-[40%]">
+                                    <div className="border rounded-md overflow-hidden">
+                                        <table className="w-full text-[13px]">
+                                            <tbody className="text-[13px]">
+                                                <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                    <td className="py-1 px-2">年初淨值</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatMoney(user.initial_cost || 0)}
+                                                    </td>
+                                                </tr>
 
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="py-1 px-2">報酬率</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatPercent(user.stats?.returnPercentage || 0)}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="py-1 px-2">最大回撤</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatPercent(user.stats?.maxDrawdown || 0)}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="py-1 px-2">年化報酬率</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatPercent(user.stats?.annualizedReturn || 0)}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="py-1 px-2">年化標準差</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatPercent(user.stats?.annualizedStdDev || 0)}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="py-1 px-2">夏普值</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {(user.stats?.sharpeRatio || 0).toFixed(2)}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="py-1 px-2">新高次數</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {user.stats?.newHighCount || 0}
-                                                </td>
-                                            </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="py-1 px-2">新高頻率</td>
-                                                <td className="py-1 px-2 text-center">
-                                                    {formatPercent(user.stats?.newHighFreq || 0)}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                                <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                    <td className="py-1 px-2">報酬率</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatPercent(user.stats?.returnPercentage || 0)}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                    <td className="py-1 px-2">最大回撤</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatPercent(user.stats?.maxDrawdown || 0)}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                    <td className="py-1 px-2">年化報酬率</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatPercent(user.stats?.annualizedReturn || 0)}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                    <td className="py-1 px-2">年化標準差</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatPercent(user.stats?.annualizedStdDev || 0)}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                    <td className="py-1 px-2">夏普值</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {(user.stats?.sharpeRatio || 0).toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                    <td className="py-1 px-2">新高次數</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {user.stats?.newHighCount || 0}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                    <td className="py-1 px-2">新高頻率</td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        {formatPercent(user.stats?.newHighFreq || 0)}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Button below table, within left column */}
+                                    <Button
+                                        variant="outline"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            router.push(`/net-equity/${user.id}`);
+                                        }}
+                                        className="mt-3"
+                                        size="sm"
+                                    >
+                                        淨值記錄
+                                    </Button>
                                 </div>
-                            </div>
 
-                            <div className="flex gap-2 mt-3">
-                                <Button
-                                    variant="outline"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        router.push(`/net-equity/${user.id}`);
-                                    }}
-                                    className="flex-1"
-                                    size="sm"
-                                >
-                                    淨值記錄
-                                </Button>
+                                {/* Chart - 60% (full height) */}
+                                <div className="w-[60%] flex items-center h-[228px]">
+                                    <NetEquityChart
+                                        data={user.equity_history || []}
+                                        initialCost={user.initial_cost}
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -250,19 +265,21 @@ export default function NetEquityPage() {
                 )}
             </div>
 
-            {editCostDialog && (
-                <SetInitialCostDialog
-                    open={editCostDialog.open}
-                    onOpenChange={(open) => !open && setEditCostDialog(null)}
-                    userId={editCostDialog.userId}
-                    currentCost={editCostDialog.currentCost}
-                    onSuccess={() => {
-                        setEditCostDialog(null);
-                        fetchData();
-                    }}
-                />
-            )}
-        </div>
+            {
+                editCostDialog && (
+                    <SetInitialCostDialog
+                        open={editCostDialog.open}
+                        onOpenChange={(open) => !open && setEditCostDialog(null)}
+                        userId={editCostDialog.userId}
+                        currentCost={editCostDialog.currentCost}
+                        onSuccess={() => {
+                            setEditCostDialog(null);
+                            fetchData();
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 }
 

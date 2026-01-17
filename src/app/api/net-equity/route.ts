@@ -107,6 +107,8 @@ export async function GET(request: NextRequest) {
                 let minDrawdown = 0;
                 let newHighCount = 0;
                 let dailyReturns: number[] = [];
+                // Store chart data including calculated TWR rate
+                let chartData: { date: number; net_equity: number; rate: number }[] = [];
 
                 uEq.forEach((row, i) => {
                     const date = row.date;
@@ -119,14 +121,21 @@ export async function GET(request: NextRequest) {
 
                     let dailyReturn = 0;
                     // Calculate daily return (now includes first trading day)
-                    if (prevEquity !== 0) {
-                        dailyReturn = (equity - dailyDeposit - prevEquity) / prevEquity;
+                    if (prevEquity + dailyDeposit !== 0) {
+                        dailyReturn = (equity - dailyDeposit - prevEquity) / (prevEquity + dailyDeposit);
                     }
 
                     // Log Daily Return (includes all trading days)
                     dailyReturns.push(dailyReturn);
 
                     const navRatio = prevNavRatio * (1 + dailyReturn);
+
+                    // Push to chart data
+                    chartData.push({
+                        date: date,
+                        net_equity: equity,
+                        rate: (navRatio - 1) * 100 // Convert to percentage
+                    });
 
                     if (navRatio > peakNavRatio) {
                         peakNavRatio = navRatio;
@@ -221,8 +230,8 @@ export async function GET(request: NextRequest) {
                         // Or (Equity - Deposit - Initial) / Initial
 
                         let dRet = 0;
-                        if (mPrevEquity !== 0) {
-                            dRet = (r.net_equity - rDeposit - mPrevEquity) / mPrevEquity;
+                        if (mPrevEquity + rDeposit !== 0) {
+                            dRet = (r.net_equity - rDeposit - mPrevEquity) / (mPrevEquity + rDeposit);
                         }
 
                         mCompounded *= (1 + dRet);
@@ -247,8 +256,11 @@ export async function GET(request: NextRequest) {
                 // This excludes deposit/withdrawal impacts and reflects true investment performance
                 const timeWeightedReturn = prevNavRatio - 1;
 
-                // Annualized Return: Average daily return × 252
-                const annualizedReturn = daySpan > 0 ? (timeWeightedReturn / daySpan) * 252 : 0;
+                // Annualized Return: Average of daily returns × 252 (matching Excel formula)
+                const avgDailyReturn = dailyReturns.length > 0
+                    ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length
+                    : 0;
+                const annualizedReturn = avgDailyReturn * 252;
 
                 // Std Dev
                 let stdDev = 0;
@@ -279,7 +291,8 @@ export async function GET(request: NextRequest) {
                         newHighCount,
                         newHighFreq: daySpan > 0 ? newHighCount / daySpan : 0
                     },
-                    monthly_stats: monthlyStats
+                    monthly_stats: monthlyStats,
+                    equity_history: chartData // Return the data with TWR rates
                 };
             });
 
@@ -338,14 +351,14 @@ export async function GET(request: NextRequest) {
 
             if (i === 0) {
                 // For the first record, compare with Initial Cost if available
-                if (initialCost !== 0) {
-                    dailyReturn = (equity - dailyDeposit - initialCost) / initialCost;
+                if (initialCost + dailyDeposit !== 0) {
+                    dailyReturn = (equity - dailyDeposit - initialCost) / (initialCost + dailyDeposit);
                 } else {
                     dailyReturn = 0;
                 }
             } else {
-                if (prevEquity !== 0) {
-                    dailyReturn = (equity - dailyDeposit - prevEquity) / prevEquity;
+                if (prevEquity + dailyDeposit !== 0) {
+                    dailyReturn = (equity - dailyDeposit - prevEquity) / (prevEquity + dailyDeposit);
                 }
             }
 
