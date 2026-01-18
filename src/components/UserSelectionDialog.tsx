@@ -20,6 +20,7 @@ interface UserOption {
     display: string;     // Name/Email to show
     checked?: boolean;   // Initial state
     disabled?: boolean;
+    statusLabel?: string;
 }
 
 interface UserSelectionDialogProps {
@@ -202,16 +203,23 @@ export function UserSelectionDialog({
                                                 {user.display}
                                             </Label>
                                         </div>
-                                        {isCompleted && (
-                                            <div className="flex items-center text-green-600 animate-in fade-in zoom-in duration-300">
-                                                <Check className="h-4 w-4" />
-                                            </div>
-                                        )}
-                                        {processing && selected.has(user.id) && !isCompleted && (
-                                            <div className="flex items-center text-muted-foreground animate-pulse">
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {user.statusLabel && (
+                                                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                                    {user.statusLabel}
+                                                </span>
+                                            )}
+                                            {isCompleted && (
+                                                <div className="flex items-center text-green-600 animate-in fade-in zoom-in duration-300">
+                                                    <Check className="h-4 w-4" />
+                                                </div>
+                                            )}
+                                            {processing && selected.has(user.id) && !isCompleted && (
+                                                <div className="flex items-center text-muted-foreground animate-pulse">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

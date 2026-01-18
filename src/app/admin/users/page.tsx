@@ -299,11 +299,16 @@ export default function AdminUsersPage() {
                 throw new Error("檔案中沒有使用者資料");
             }
 
-            const importableUsers: { id: number | string; display: string; checked: boolean }[] = usersList.map((u: any, idx: number) => ({
-                id: u.email, // Use email as unique key for selection
-                display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'})`,
-                checked: true
-            }));
+            const importableUsers: { id: number | string; display: string; checked: boolean; disabled?: boolean }[] = usersList.map((u: any, idx: number) => {
+                const exists = users.some(existing => existing.email === u.email);
+                return {
+                    id: u.email, // Use email as unique key for selection
+                    display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'})`,
+                    checked: !exists,
+                    disabled: exists,
+                    statusLabel: exists ? '已存在' : undefined
+                };
+            });
 
             const hasDeposits = usersList.some((u: any) => u.deposits && Array.isArray(u.deposits) && u.deposits.length > 0);
             const hasOptions = usersList.some((u: any) => u.options && Array.isArray(u.options) && u.options.length > 0);
