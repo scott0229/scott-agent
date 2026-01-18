@@ -140,6 +140,32 @@ export default function NetEquityPage() {
         return null;
     }
 
+    const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
+        const isPositive = value > 0;
+        const isNegative = value < 0;
+
+        let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
+
+        if (variant === 'drawdown') {
+            colorClass = "bg-orange-50 text-orange-600 border-orange-200";
+        } else if (variant === 'sharpe') {
+            colorClass = "bg-blue-50 text-blue-600 border-blue-200";
+        } else {
+            // Return logic
+            if (isPositive) {
+                colorClass = "bg-emerald-50 text-emerald-600 border-emerald-200";
+            } else if (isNegative) {
+                colorClass = "bg-red-50 text-red-600 border-red-200";
+            }
+        }
+
+        return (
+            <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>
+                {format ? format(value) : formatPercent(value)}
+            </span>
+        );
+    };
+
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
@@ -277,29 +303,28 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatMoney(user.qldStats.startEquity) : '-'}
                                                 </td>
                                             </tr>
-
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="h-8 px-2">報酬率</td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {formatPercent(user.stats?.returnPercentage || 0)}
+                                                    <StatBadge value={user.stats?.returnPercentage || 0} />
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qqqStats ? formatPercent(user.qqqStats.returnPercentage) : '-'}
+                                                    {user.qqqStats ? <StatBadge value={user.qqqStats.returnPercentage} /> : '-'}
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qldStats ? formatPercent(user.qldStats.returnPercentage) : '-'}
+                                                    {user.qldStats ? <StatBadge value={user.qldStats.returnPercentage} /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-8 px-2">最大回撤</td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {formatPercent(user.stats?.maxDrawdown || 0)}
+                                                    <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qqqStats ? formatPercent(user.qqqStats.maxDrawdown) : '-'}
+                                                    {user.qqqStats ? <StatBadge value={user.qqqStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qldStats ? formatPercent(user.qldStats.maxDrawdown) : '-'}
+                                                    {user.qldStats ? <StatBadge value={user.qldStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
@@ -329,13 +354,17 @@ export default function NetEquityPage() {
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="h-8 px-2">夏普值</td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {(user.stats?.sharpeRatio || 0).toFixed(2)}
+                                                    <StatBadge
+                                                        value={user.stats?.sharpeRatio || 0}
+                                                        variant="sharpe"
+                                                        format={(v) => v.toFixed(2)}
+                                                    />
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qqqStats ? (user.qqqStats.sharpeRatio || 0).toFixed(2) : '-'}
+                                                    {user.qqqStats ? <StatBadge value={user.qqqStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
                                                 <td className="h-8 px-2 text-center">
-                                                    {user.qldStats ? (user.qldStats.sharpeRatio || 0).toFixed(2) : '-'}
+                                                    {user.qldStats ? <StatBadge value={user.qldStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">

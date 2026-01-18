@@ -2,105 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
+import { calculateBenchmarkStats, calculateUserTwr, findPrice } from '@/lib/twr';
 
 export const dynamic = 'force-dynamic';
 
-// Helper to calculate stats for a price series
-const calculateBenchmarkStats = (prices: any[], startDate: number, endDate: number, initialCost: number, deposits: any[]) => {
-    if (!prices || prices.length === 0) return null;
 
-    // Filter prices from startDate to endDate
-    const relevantPrices = prices.filter(p => p.date >= startDate && p.date <= endDate);
-    if (relevantPrices.length < 2) return null;
-
-    // Map Deposits
-    const depositMap = new Map<number, number>();
-    deposits.forEach(d => {
-        const dateObj = new Date(d.deposit_date * 1000);
-        // Midnight UTC to match market data
-        const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-        const amount = d.transaction_type === 'withdrawal' ? -d.amount : d.amount;
-        depositMap.set(midnight, (depositMap.get(midnight) || 0) + amount);
-    });
-
-    const startPrice = relevantPrices[0].close;
-    let shares = initialCost / startPrice;
-    let prevEquity = initialCost;
-    let prevNavRatio = 1.0;
-
-    // Max Drawdown & New Highs (NAV Based)
-    let peak = 1.0;
-    let maxDd = 0;
-    let newHighCount = 0;
-    const dailyRets: number[] = [];
-
-    relevantPrices.forEach((p, idx) => {
-        const price = p.close;
-        const date = p.date;
-        const dailyDeposit = depositMap.get(date) || 0;
-
-        // Buy shares at CLOSE
-        if (dailyDeposit !== 0 && price > 0) {
-            shares += dailyDeposit / price;
-        }
-
-        const currentEquity = shares * price;
-        let dailyReturn = 0;
-
-        if (idx > 0) {
-            const startVal = prevEquity;
-            // Formula matching Account Logic: (End - Dep - Start) / (Start + Dep)
-            if (startVal + dailyDeposit !== 0) {
-                dailyReturn = (currentEquity - dailyDeposit - startVal) / (startVal + dailyDeposit);
-            }
-        }
-
-        dailyRets.push(dailyReturn);
-
-        // Update NAV
-        if (idx === 0) {
-            prevNavRatio = 1.0;
-        } else {
-            prevNavRatio = prevNavRatio * (1 + dailyReturn);
-        }
-
-        // Stats
-        if (prevNavRatio > peak) {
-            peak = prevNavRatio;
-            if (idx > 0) newHighCount++;
-        }
-        const dd = (prevNavRatio - peak) / peak;
-        if (dd < maxDd) maxDd = dd;
-
-        prevEquity = currentEquity;
-    });
-
-    const avgDaily = dailyRets.reduce((a, b) => a + b, 0) / dailyRets.length;
-    const annRet = avgDaily * 252; // Simple assumption, or compound? Account implementation uses compound for total rate, but avg daily for Sharpe?
-    // Actually, Account Annualized Return = (1+TotalRet)^(1/Y) - 1 usually. 
-    // Checking lines 322 in original: `annualizedReturn = avgDailyReturn * 252`. Yes, simple approximation used there.
-
-    const variance = dailyRets.reduce((a, b) => a + Math.pow(b - avgDaily, 2), 0) / (dailyRets.length - 1);
-    const stdDev = Math.sqrt(variance);
-    const annStdDev = stdDev * Math.sqrt(252);
-    const sharpe = annStdDev !== 0 ? (annRet - 0.04) / annStdDev : 0;
-
-    // New High Freq
-    const daySpan = relevantPrices.length;
-    const newHighFreq = daySpan > 0 ? newHighCount / daySpan : 0;
-
-    return {
-        startEquity: initialCost,
-        currentEquity: prevEquity,
-        returnPercentage: prevNavRatio - 1, // TWR
-        maxDrawdown: maxDd,
-        annualizedReturn: annRet,
-        annualizedStdDev: annStdDev,
-        sharpeRatio: sharpe,
-        newHighCount,
-        newHighFreq
-    };
-};
 
 export async function GET(request: NextRequest) {
     try {
@@ -162,228 +68,14 @@ export async function GET(request: NextRequest) {
             // Continue without benchmarks
         }
 
-        // Helper to find closest price
-        const findPrice = (data: any[], targetDate: number) => {
-            // Data is expected to be sorted by date ASC (getMarketData does this typically? we should ensure)
-            // We want the last record where date <= targetDate
-            // Simple linear scan backwards or map approach
-            // Since we iterate forward through user records, we can track index?
-            // For simplicity, let's just find.
-            // Optimized: Create a map of "Date Midnight" -> Price? 
-            // Issue: User date might not be exact midnight or might be Sunday.
-            // Let's filter candidates <= targetDate and take the last one.
 
-            // Optimization: sort data if not sorted.
-            // market-data.ts likely returns sorted.
-
-            let closest = null;
-            // Iterate backwards
-            for (let i = data.length - 1; i >= 0; i--) {
-                if (data[i].date <= targetDate + 86400) { // Allow same day (within 24h?)
-                    // Be careful with timestamps.
-                    // If targetDate is Jan 6 00:00 UTC.
-                    // Market Data date is Jan 6 00:00 UTC.
-                    // comparison <= works.
-                    // If targetDate is Jan 6 23:59.
-                    // Market Data <= works.
-                    // If Market Data is Jan 5.
-                    // We want Jan 6 if avail, else Jan 5.
-                    if (data[i].date <= targetDate) {
-                        closest = data[i].close;
-                        break;
-                    }
-                }
-            }
-            return closest;
-        };
-
-        const processUserRecords = (u: any, uEq: any[], uDep: any[], benchStartDate?: number) => {
-            let chartData: { date: number; net_equity: number; rate: number; qqq_rate?: number; qld_rate?: number }[] = [];
-
-            if (uEq.length === 0) {
-                // No user data: Generate YTD chart but with 0 values (User request: "No lines or 0")
-                if (qqqData.length > 0) {
-                    qqqData.forEach(day => {
-                        chartData.push({
-                            date: day.date,
-                            net_equity: (u as any).initial_cost || 0,
-                            rate: 0
-                            // Omitted qqq_rate / qld_rate to prevent drawing lines
-                        });
-                    });
-                }
-
-                return {
-                    summary: {
-                        ...u,
-                        current_net_equity: (u as any).initial_cost || 0,
-                        stats: null,
-                        equity_history: chartData
-                    },
-                    dailyReturns: []
-                };
-            }
-            // Map Deposits
-            const depositMap = new Map<number, number>();
-            uDep.forEach(d => {
-                const dateObj = new Date(d.deposit_date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const amount = d.transaction_type === 'withdrawal' ? -d.amount : d.amount;
-                depositMap.set(midnight, (depositMap.get(midnight) || 0) + amount);
-            });
-
-            let prevNavRatio = 1.0;
-            let prevEquity = (u as any).initial_cost || 0;
-            let peakNavRatio = 1.0;
-            let minDrawdown = 0;
-            let newHighCount = 0;
-            let dailyReturns: number[] = [];
-
-
-            // Determine Start Price from Market Data
-            // We want the price on the day of the FIRST record (or closest previous).
-            // This is our "0%" baseline.
-            let startQQQ = 0;
-            let startQLD = 0;
-
-            if (uEq.length > 0) {
-                const firstDate = uEq[0].date;
-                const dateObj = new Date(firstDate * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-
-                // Use midnight for lookup to match market data convention generally
-                const referenceDate = benchStartDate || firstDate;
-                // Wait, if benchStartDate is Dec 31, we need to price at Dec 31.
-                // If finding price using `findPrice` which returns "last price <= date".
-
-                // If benchStartDate provided, use it. Else use firstDate.
-                const targetStart = benchStartDate ? benchStartDate : firstDate;
-
-                startQQQ = findPrice(qqqData, targetStart) || 0;
-                startQLD = findPrice(qldData, targetStart) || 0;
-            }
-
-            // Benchmark Running State for TWR
-            let qqqShares = startQQQ > 0 ? ((u as any).initial_cost || 0) / startQQQ : 0;
-            let qldShares = startQLD > 0 ? ((u as any).initial_cost || 0) / startQLD : 0;
-
-            let prevQQQEquity = (u as any).initial_cost || 0;
-            let prevQLDEquity = (u as any).initial_cost || 0;
-
-            let prevQQQNav = 1.0;
-            let prevQLDNav = 1.0;
-
-            uEq.forEach((row, i) => {
-                const date = row.date;
-                const equity = row.net_equity;
-                const dateObj = new Date(date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const dailyDeposit = depositMap.get(midnight) || 0;
-
-                let dailyReturn = 0;
-                // Calculate daily return
-                if (prevEquity + dailyDeposit !== 0) {
-                    dailyReturn = (equity - dailyDeposit - prevEquity) / (prevEquity + dailyDeposit);
-                }
-
-                dailyReturns.push(dailyReturn);
-                const navRatio = prevNavRatio * (1 + dailyReturn);
-
-                // Benchmark Rates (TWR Calculation)
-                const qqqPrice = findPrice(qqqData, midnight) || 0;
-                const qldPrice = findPrice(qldData, midnight) || 0;
-
-                let qqqRate = undefined;
-                let qldRate = undefined;
-
-                // QQQ TWR Logic
-                if (startQQQ > 0 && qqqPrice > 0) {
-                    // Buy shares with deposit
-                    if (dailyDeposit !== 0) {
-                        qqqShares += dailyDeposit / qqqPrice;
-                    }
-                    const currQQQEquity = qqqShares * qqqPrice;
-                    let dailyQQQRet = 0;
-                    if (prevQQQEquity + dailyDeposit !== 0) {
-                        dailyQQQRet = (currQQQEquity - dailyDeposit - prevQQQEquity) / (prevQQQEquity + dailyDeposit);
-                    }
-                    // Update NAV
-                    prevQQQNav = (i === 0 ? 1.0 : prevQQQNav) * (1 + dailyQQQRet);
-                    qqqRate = (prevQQQNav - 1) * 100;
-                    prevQQQEquity = currQQQEquity;
-                }
-
-                // QLD TWR Logic
-                if (startQLD > 0 && qldPrice > 0) {
-                    // Buy shares with deposit
-                    if (dailyDeposit !== 0) {
-                        qldShares += dailyDeposit / qldPrice;
-                    }
-                    const currQLDEquity = qldShares * qldPrice;
-                    let dailyQLDRet = 0;
-                    if (prevQLDEquity + dailyDeposit !== 0) {
-                        dailyQLDRet = (currQLDEquity - dailyDeposit - prevQLDEquity) / (prevQLDEquity + dailyDeposit);
-                    }
-                    // Update NAV
-                    prevQLDNav = (i === 0 ? 1.0 : prevQLDNav) * (1 + dailyQLDRet);
-                    qldRate = (prevQLDNav - 1) * 100;
-                    prevQLDEquity = currQLDEquity;
-                }
-
-                chartData.push({
-                    date: date,
-                    net_equity: equity,
-                    rate: (navRatio - 1) * 100,
-                    qqq_rate: qqqRate,
-                    qld_rate: qldRate
-                });
-
-                if (navRatio > peakNavRatio) {
-                    peakNavRatio = navRatio;
-                    newHighCount++;
-                }
-
-                const dd = (navRatio - peakNavRatio) / peakNavRatio;
-                if (dd < minDrawdown) minDrawdown = dd;
-
-                prevNavRatio = navRatio;
-                prevEquity = equity;
-            });
-
-            // Calculate Monthly Stats (omitted/simplified for single user response if not needed, but needed for BULK)
-            // ... (We keep the monthly logic for Bulk, but maybe skip for Single if not requested? 
-            // Actually single user request below returns `resultData` (flat array), not `UserSummary`.
-            // We should ensure consistency, but let's stick to returning what each endpoint expects.
-
-            return {
-                summary: {
-                    ...u,
-                    initial_cost: (u as any).initial_cost || 0,
-                    current_net_equity: uEq.length > 0 ? uEq[uEq.length - 1].net_equity : ((u as any).initial_cost || 0),
-                    stats: {
-                        startDate: uEq[0].date,
-                        returnPercentage: prevNavRatio - 1,
-                        maxDrawdown: minDrawdown,
-                        // ... other stats
-                        annualizedReturn: 0, // Placeholder if not needed for chart
-                        annualizedStdDev: 0,
-                        sharpeRatio: 0,
-                        newHighCount: newHighCount,
-                        newHighFreq: 0
-                    },
-                    equity_history: chartData
-                },
-                // For bulk, we need full stats.
-                dailyReturns // Pass out if needed for calcs
-            };
-        };
 
 
         if (isBulkFetch) {
             // Bulk Logic
             const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
             const deposits = await db.prepare(`SELECT * FROM DEPOSITS ORDER BY user_id, deposit_date ASC`).all();
-            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer'`).all();
+            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
 
             const userSummaries = (users.results as any[]).map(u => {
                 const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
@@ -392,42 +84,17 @@ export async function GET(request: NextRequest) {
                 // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
                 const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
 
-                const processed = processUserRecords(u, uEq, uDep, benchStartDate);
-
-                // Re-calculate advanced stats for Bulk (which uses them)
-                const dailyReturns = processed.dailyReturns;
-                const daySpan = uEq.length;
-
-                const avgDailyReturn = dailyReturns.length > 0 ? dailyReturns.reduce((a: number, b: number) => a + b, 0) / dailyReturns.length : 0;
-                const annualizedReturn = avgDailyReturn * 252;
-
-                let annualizedStdDev = 0;
-                if (dailyReturns.length > 0) {
-                    const mean = avgDailyReturn;
-                    const variance = dailyReturns.reduce((a: number, b: number) => a + Math.pow(b - mean, 2), 0) / (dailyReturns.length - 1);
-                    const stdDev = Math.sqrt(variance);
-                    annualizedStdDev = stdDev * Math.sqrt(252);
-                }
-                const sharpe = annualizedStdDev !== 0 ? (annualizedReturn - 0.04) / annualizedStdDev : 0;
-
-
+                // Use Shared Helper
+                const processed = calculateUserTwr(uEq, uDep, (u as any).initial_cost, benchStartDate || 0, qqqData, qldData);
 
                 const lastDate = uEq.length > 0 ? uEq[uEq.length - 1].date : 0;
-                // Use previously calculated benchStartDate
-                // const benchStartDate = ... (removed duplicate)
 
-                const qqqStats = uEq.length > 0 ? calculateBenchmarkStats(qqqData, benchStartDate, lastDate, (u as any).initial_cost, uDep) : null;
-                const qldStats = uEq.length > 0 ? calculateBenchmarkStats(qldData, benchStartDate, lastDate, (u as any).initial_cost, uDep) : null;
+                const qqqStats = uEq.length > 0 ? calculateBenchmarkStats(qqqData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
+                const qldStats = uEq.length > 0 ? calculateBenchmarkStats(qldData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
 
                 return {
-                    ...processed.summary,
-                    stats: {
-                        ...processed.summary.stats,
-                        annualizedReturn,
-                        annualizedStdDev,
-                        sharpeRatio: sharpe,
-                        newHighFreq: daySpan > 0 ? processed.summary.stats.newHighCount / daySpan : 0
-                    },
+                    ...u,
+                    ...processed.summary, // Merges stats, current_net_equity, equity_history
                     qqqStats,
                     qldStats
                 };
