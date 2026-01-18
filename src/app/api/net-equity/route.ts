@@ -339,20 +339,35 @@ export async function DELETE(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { id } = body;
+        const { id, mode, user_id, year, delete_benchmarks } = body;
 
-        if (!id) {
-            return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-        }
+        // Mode: 'single' (default) or 'all'
+        const isBulk = mode === 'all';
 
         const db = await getDb();
-        const result = await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE id = ?`).bind(id).run();
 
-        if (result.meta.changes === 0) {
-            return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
+        if (isBulk) {
+            if (!user_id || !year) {
+                return NextResponse.json({ error: 'Missing user_id or year for bulk delete' }, { status: 400 });
+            }
+
+            // 1. Delete Net Equity Records ONLY
+            // Unlike previous version, we DO NOT delete market data (QQQ/QLD) as that is global data shared across users.
+            const deleteResult = await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE user_id = ? AND year = ?`).bind(user_id, year).run();
+
+            return NextResponse.json({ success: true, deleted: deleteResult.meta.changes });
+
+        } else {
+            // Single Record Delete
+            if (!id) {
+                return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+            }
+            const result = await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE id = ?`).bind(id).run();
+            if (result.meta.changes === 0) {
+                return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
+            }
+            return NextResponse.json({ success: true });
         }
-
-        return NextResponse.json({ success: true });
 
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });

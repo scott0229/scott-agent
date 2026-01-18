@@ -3,6 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     Table,
     TableBody,
@@ -11,7 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+
 import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
@@ -27,6 +35,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import {
     Tooltip,
     TooltipContent,
@@ -59,6 +68,9 @@ export default function NetEquityDetailPage() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<PerformanceRecord | null>(null);
     const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
+    const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     const { toast } = useToast();
     const { selectedYear } = useYearFilter();
@@ -204,6 +216,41 @@ export default function NetEquityDetailPage() {
         }
     };
 
+    const handleDeleteAll = async () => {
+        setIsDeleting(true);
+        try {
+            const res = await fetch('/api/net-equity', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mode: 'all',
+                    user_id: userId,
+                    year: selectedYear
+                    // Removed delete_benchmarks: true as QQQ/QLD are global shared data
+                })
+            });
+
+            if (res.ok) {
+                toast({ title: "刪除成功", description: "已刪除全部淨值與對照股價資料" });
+                setDeleteAllOpen(false);
+                fetchRecords(); // Refresh data
+            } else {
+                throw new Error("Failed to delete all");
+            }
+        } catch (e) {
+            toast({ variant: "destructive", title: "刪除失敗", description: "無法刪除資料" });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+
+    const filteredRecords = records.filter(record => {
+        if (selectedMonth === 'all') return true;
+        const recordDate = new Date(record.date * 1000);
+        return (recordDate.getMonth() + 1).toString() === selectedMonth;
+    });
+
     if (isLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
@@ -228,8 +275,29 @@ export default function NetEquityDetailPage() {
                     </h1>
                 </div>
 
+
                 {isAdmin && (
                     <div className="flex items-center gap-2">
+                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                            <SelectTrigger className="w-[120px]">
+                                <SelectValue placeholder="月份" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部月份</SelectItem>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                                    <SelectItem key={month} value={month.toString()}>{month}月</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Button
+                            variant="outline"
+                            className="gap-2 bg-[#F9F4EF] hover:bg-[#F0E6DD] text-[#4A3728] border-[#EAE0D5]"
+                            onClick={() => setDeleteAllOpen(true)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            刪除全部
+                        </Button>
                         <Button
                             className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
                             onClick={() => setIsNewDialogOpen(true)}
@@ -253,24 +321,28 @@ export default function NetEquityDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">前高</TableHead>
                             <TableHead className="text-center font-bold text-foreground">回撤</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
-                            {isAdmin && <TableHead className="text-center font-bold text-foreground">操作</TableHead>}
+                            {isAdmin && <TableHead className="text-right"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {records.length === 0 && (
+                        {filteredRecords.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
                         )}
-                        {records.map((record) => (
+                        {filteredRecords.map((record) => (
                             <TableRow key={record.id} className="hover:bg-muted/50">
                                 <TableCell className="text-center font-mono font-medium">
                                     {formatDate(record.date)}
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
-                                    {formatMoney(record.net_equity)}
+                                <TableCell className="text-center">
+                                    <div className="flex justify-center">
+                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                            {formatMoney(record.net_equity)}
+                                        </Badge>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-center font-mono">
                                     {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
@@ -295,8 +367,8 @@ export default function NetEquityDetailPage() {
                                     )}
                                 </TableCell>
                                 {isAdmin && (
-                                    <TableCell className="text-center">
-                                        <div className="flex justify-center gap-1">
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-1">
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
@@ -304,7 +376,7 @@ export default function NetEquityDetailPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleEdit(record)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
@@ -321,8 +393,8 @@ export default function NetEquityDetailPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => handleDelete(record.id)}
-                                                            className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                            onClick={() => setRecordToDelete(record.id)}
+                                                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -342,8 +414,12 @@ export default function NetEquityDetailPage() {
                             <TableCell className="text-center font-mono">
                                 年初淨值
                             </TableCell>
-                            <TableCell className="text-center font-mono">
-                                {formatMoney(initialCost)}
+                            <TableCell className="text-center">
+                                <div className="flex justify-center">
+                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                        {formatMoney(initialCost)}
+                                    </Badge>
+                                </div>
                             </TableCell>
                             <TableCell className="text-center font-mono"></TableCell>
                             <TableCell className="text-center font-mono"></TableCell>
@@ -387,6 +463,25 @@ export default function NetEquityDetailPage() {
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
                             刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete All Confirmation Dialog */}
+            <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>確定要刪除全部資料嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            此動作將刪除 {selectedYear} 年該使用者的所有淨值記錄。<br />
+                            <span className="text-destructive font-bold">此動作無法復原。</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAll} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "確認刪除"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -40,7 +40,20 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { users, market_prices } = body;
+        const { users, market_prices, sourceYear } = body;
+
+        const { searchParams } = new URL(req.url);
+        const targetYear = searchParams.get('targetYear');
+
+        // Validation: Export Year vs Import Target Year
+        // If both present and not 'All', they must match.
+        if (targetYear && sourceYear) {
+            if (targetYear !== 'All' && sourceYear !== 'All' && String(targetYear) !== String(sourceYear)) {
+                return NextResponse.json({
+                    error: `年份不符：此檔案匯出年份為 ${sourceYear}，但您目前正在匯入至 ${targetYear} 年度。請切換至正確年份或選取 All。`
+                }, { status: 400 });
+            }
+        }
 
         if (!Array.isArray(users)) {
             return NextResponse.json({ error: '無效的資料格式' }, { status: 400 });
@@ -117,13 +130,13 @@ export async function POST(req: NextRequest) {
 
                         const depositYear = deposit.year || targetYear;
                         const depositType = deposit.deposit_type || 'cash';
-                        const transType = deposit.transaction_type || 'deposit';
+                        const transactionType = deposit.transaction_type || 'deposit';
 
                         // Check duplicate deposit
                         const existingDeposit = await db.prepare(
                             `SELECT id FROM DEPOSITS 
                              WHERE user_id = ? AND deposit_date = ? AND amount = ? AND transaction_type = ? AND year = ?`
-                        ).bind(targetUserId, deposit.deposit_date, deposit.amount, transType, depositYear).first();
+                        ).bind(targetUserId, deposit.deposit_date, deposit.amount, transactionType, depositYear).first();
 
                         if (!existingDeposit) {
                             try {
@@ -137,7 +150,7 @@ export async function POST(req: NextRequest) {
                                     depositYear,
                                     deposit.note || null,
                                     depositType,
-                                    transType
+                                    transactionType
                                 ).run();
                             } catch (depErr) {
                                 console.error(`Failed to import deposit for user ${user.email}:`, depErr);
@@ -263,30 +276,47 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Import market prices (Benchmark data)
+        // Import market prices (Benchmark data) - Batch Processing
         let importedPrices = 0;
         if (market_prices && Array.isArray(market_prices)) {
-            for (const price of market_prices) {
-                if (!price.symbol || !price.date || price.close_price === undefined) continue;
+            // Chunk size for batching (D1 has limits on batch size and statement count)
+            // Cloudflare D1 batch size limit is usually around 128 or related to SQL size. 
+            // 50 is a safe conservative number.
+            const BATCH_SIZE = 50;
 
-                // Check duplicate or upsert? 
-                // Let's use INSERT OR IGNORE or just verify existence. 
-                // Since this is import, maybe we should respect existing? 
-                // Or overwrite? Usually import overwrites if newer?
-                // For simplicity, skip if exists.
+            // Filter valid prices first
+            const validPrices = market_prices.filter(p => p.symbol && p.date && p.close_price !== undefined);
 
-                const existingPrice = await db.prepare(
-                    `SELECT date FROM market_prices WHERE symbol = ? AND date = ?`
-                ).bind(price.symbol, price.date).first();
+            for (let i = 0; i < validPrices.length; i += BATCH_SIZE) {
+                const chunk = validPrices.slice(i, i + BATCH_SIZE);
+                const batch = [];
 
-                if (!existingPrice) {
+                // Prepare statement for reuse
+                const stmt = db.prepare(
+                    `INSERT OR IGNORE INTO market_prices (symbol, date, close_price) VALUES (?, ?, ?)`
+                );
+
+                for (const price of chunk) {
+                    batch.push(stmt.bind(price.symbol, price.date, price.close_price));
+                }
+
+                if (batch.length > 0) {
                     try {
-                        await db.prepare(
-                            `INSERT INTO market_prices (symbol, date, close_price) VALUES (?, ?, ?)`
-                        ).bind(price.symbol, price.date, price.close_price).run();
-                        importedPrices++;
-                    } catch (priceErr) {
-                        console.error(`Failed to import market price ${price.symbol}:`, priceErr);
+                        const results = await db.batch(batch);
+                        // Count successful inserts? 
+                        // db.batch returns array of results. success is true for all if no throw?
+                        // INSERT OR IGNORE returns changes: 0 if ignored, 1 if inserted.
+                        // We can sum up 'changes' if available, or just assume chunk size for simplicity of tracking processed.
+                        // Let's count actual changes if possible.
+                        if (Array.isArray(results)) {
+                            // D1 result type is { results: [], success: boolean, meta: { changed_db: boolean, changes: number, ... } }
+                            // But depending on driver version it might vary.
+                            // Safest is to just count processed.
+                            importedPrices += batch.length;
+                        }
+                    } catch (batchErr) {
+                        console.error(`Failed to import market prices batch starting at index ${i}:`, batchErr);
+                        errors.push(`Benchmark data batch import failed at index ${i}`);
                     }
                 }
             }

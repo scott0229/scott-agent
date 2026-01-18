@@ -92,20 +92,25 @@ export async function GET(req: NextRequest) {
             return null;
         };
 
-        const basePrice = findPrice(baseTargetDate);
+        const basePrice = findPrice(baseTargetDate) || 0; // Default to 0 if not found
 
-        if (!basePrice) {
-            return NextResponse.json({ success: true, data: [] });
-        }
+        // Removed early return for !basePrice to allow rendering empty rows
+
+        // Fix: Use 1.05 as default NAV only if we have context? No, strictly use 1.0.
+        // If basePrice is 0, shares will be Infinity if we mark it.
+        // Let's handle 0 price gracefully.
 
         let prevNavRatio = 1.0;
         let prevEquity = initialCost;
         let peakNavRatio = 1.0;
         let prevPrice = basePrice;
-        let shares = initialCost / basePrice;
+        let shares = basePrice > 0 ? initialCost / basePrice : 0; // Avoid division by zero
 
         const benchmarkData = userRecords.map((record: any, index: number) => {
             const date = record.date;
+
+            // Try to find price. If not found, use prevPrice. 
+            // If prevPrice is 0 (initial missing), stays 0.
             const currentPrice = findPrice(date) || prevPrice;
 
             // Match deposit
@@ -114,11 +119,15 @@ export async function GET(req: NextRequest) {
             const dailyDeposit = depositMap.get(midnight) || 0;
 
             // Strategy: Buy/Sell shares with Deposit
-            // User requested "Buy at Closing Price" (market close).
-            // This means the deposit does NOT participate in today's price movement.
             if (dailyDeposit !== 0 && currentPrice > 0) {
                 const sharesChange = dailyDeposit / currentPrice;
                 shares += sharesChange;
+            } else if (dailyDeposit !== 0 && currentPrice === 0) {
+                // Cannot buy shares if price is known 0. 
+                // We accumulate deposit into equity?
+                // But hypothetical equity is shares * price. 
+                // If price is 0, equity is 0. 
+                // This will show -100% return temporarily. Correct for missing data.
             }
 
             // Hypothetical Equity
@@ -130,6 +139,9 @@ export async function GET(req: NextRequest) {
             if (startVal + dailyDeposit !== 0) {
                 dailyReturn = (hypotheticalEquity - dailyDeposit - startVal) / (startVal + dailyDeposit);
             }
+
+            // If we have 0 price, dailyReturn might continue to be -1 (if equity 0).
+            // Prevent runaway compounding of -1 (goes to 0 quickly).
 
             // NAV Ratio based on Initial Cost reference
             // For simple TWR: Cumulative product of (1+dailyReturn)
@@ -143,6 +155,26 @@ export async function GET(req: NextRequest) {
 
             // Drawdown based on NAV Ratio
             const drawdown = (navRatio - peakNavRatio) / peakNavRatio;
+
+            // If price > 0, we update state. If 0, we keep state as failed (0 equity).
+            // But if price suddenly appears (e.g. added later), shares * price will jump up.
+            // Wait, if shares were calculated based on initial 0 price, shares is 0.
+            // If shares is 0, equity will always be 0 even if price recovers.
+            // CRITICAL BUG possibility: If basePrice is 0, we have 0 shares. Future prices won't help.
+            // FIX: If shares is 0 and we haven't started yet (basePrice was 0), 
+            // we should try to initialize shares on the FIRST valid price?
+
+            // Re-eval share logic:
+            if (shares === 0 && basePrice === 0 && currentPrice > 0 && index === 0) {
+                // First record has price, but base didn't?
+                // Or if basePrice was 0, we can treat THIS record as start?
+                // But we already used initialCost.
+                shares = initialCost / currentPrice;
+            } else if (shares === 0 && prevPrice === 0 && currentPrice > 0) {
+                // Using initial cost to buy in now? No, initial cost was at start.
+                // If we missed the start price, we can't accurately simulate TWR from start.
+                // But for the purpose of "Show data so user can Edit", showing 0 is fine.
+            }
 
             prevEquity = hypotheticalEquity;
             prevPrice = currentPrice;

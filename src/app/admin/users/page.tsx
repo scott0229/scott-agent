@@ -16,6 +16,8 @@ import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Download, Upload, Wallet } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { UserSelectionDialog } from "@/components/UserSelectionDialog";
+import { ProgressDialog } from "@/components/ProgressDialog";
 
 interface User {
     id: number;
@@ -58,6 +60,18 @@ export default function AdminUsersPage() {
     const [importing, setImporting] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
+
+    // New State for Selection/Progress
+    const [exportSelectionOpen, setExportSelectionOpen] = useState(false);
+    const [importSelectionOpen, setImportSelectionOpen] = useState(false);
+    const [progressOpen, setProgressOpen] = useState(false);
+    const [progressValue, setProgressValue] = useState(0);
+    const [progressMessage, setProgressMessage] = useState("");
+
+    // Data holders
+    const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
+    const [pendingImportData, setPendingImportData] = useState<any>(null); // To hold parsed JSON before import
+
     const { toast } = useToast();
     const router = useRouter();
     const { selectedYear } = useYearFilter();
@@ -148,15 +162,50 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleExport = async () => {
+    const handleExportClick = () => {
+        // Prepare selection list from current users (excluding admin)
+        const exportableUsers = users
+            .filter(u => u.email !== 'admin')
+            .map(u => ({
+                id: u.id,
+                display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'})`,
+                checked: true
+            }));
+
+        setSelectionUsers(exportableUsers);
+        setExportSelectionOpen(true);
+    };
+
+    const confirmExport = async (selectedIds: (number | string)[]) => {
+        setExportSelectionOpen(false);
         try {
+            setProgressMessage("準備資料中...");
+            setProgressValue(0);
+            setProgressOpen(true);
+
+            // Simulate progress start
+            setProgressValue(10);
+
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/users/export?year=${year}`);
+
+            // Call POST endpoint with selected IDs
+            const res = await fetch('/api/users/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    year: selectedYear, // Pass 'All' or specific year directly
+                    userIds: selectedIds
+                })
+            });
+
+            setProgressValue(50);
+
             if (!res.ok) {
                 throw new Error('匯出失敗');
             }
 
             const data = await res.json();
+            setProgressValue(100);
 
             // Create JSON blob and download
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -164,17 +213,23 @@ export default function AdminUsersPage() {
             const a = document.createElement('a');
             a.href = url;
             const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `users_export_${dateStr}.json`;
+            a.download = `users_export_${dateStr}_(${data.count}).json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+
+            URL.revokeObjectURL(url);
+
+            setProgressMessage("匯出完成");
+            // setTimeout(() => setProgressOpen(false), 500); // Removed auto-close
 
             toast({
                 title: "匯出成功",
                 description: `已匯出 ${data.count} 位使用者`,
             });
         } catch (error: any) {
+            setProgressOpen(false);
             toast({
                 variant: "destructive",
                 title: "匯出失敗",
@@ -183,51 +238,139 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         try {
-            setImporting(true);
-
             const text = await file.text();
             const data = JSON.parse(text);
 
-            let payload;
+            let usersList = [];
             if (Array.isArray(data)) {
-                payload = { users: data };
+                usersList = data; // Legacy format? Or simple array
+                // We better assume standard format { users: [], market_prices: [] }
+                // But previous code handled array.
+                // Let's wrap.
+                setPendingImportData({ users: data });
             } else {
-                payload = data;
+                usersList = data.users || [];
+                setPendingImportData(data);
             }
 
-            const res = await fetch('/api/users/import', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+            if (!usersList || usersList.length === 0) {
+                throw new Error("檔案中沒有使用者資料");
+            }
+
+            const importableUsers = usersList.map((u: any, idx: number) => ({
+                id: u.email, // Use email as unique key for selection
+                display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'}) - ${u.year || ''}`,
+                checked: true
+            }));
+
+            setSelectionUsers(importableUsers);
+            setImportSelectionOpen(true);
+
+            // Reset input
+            event.target.value = '';
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "讀取檔案失敗",
+                description: error.message,
             });
+        }
+    };
 
-            const result = await res.json();
+    const confirmImport = async (selectedIds: (number | string)[]) => {
+        setImportSelectionOpen(false);
+        if (!pendingImportData) return;
 
-            if (!res.ok) {
-                throw new Error(result.error || '匯入失敗');
+        try {
+            setProgressOpen(true);
+            setProgressMessage("正在分析資料...");
+            setProgressValue(5);
+
+            const allUsers = pendingImportData.users || [];
+            // Filter users based on selection
+            // selectedIds contains emails (as strings)
+            const selectedUsers = allUsers.filter((u: any) => selectedIds.includes(u.email));
+
+            // Prepare Payload Structure
+            const marketPrices = pendingImportData.market_prices || [];
+            const sourceYear = pendingImportData.sourceYear;
+
+            const targetYear = selectedYear === 'All' ? 'All' : selectedYear;
+
+            // Step 1: Upload Market Prices (if any) - 10% progress
+            if (marketPrices.length > 0) {
+                setProgressMessage(`匯入市場數據 (${marketPrices.length} 筆)...`);
+                // Use a separate dummy call or just include in first batch?
+                // The current API handles both.
+                // To support progress, we should probably upload market prices separately or just once.
+                // Let's send market prices with the FIRST batch of users.
             }
+
+            // Step 2: Batch Upload Users
+            const TOTAL = selectedUsers.length;
+            const BATCH_SIZE = 5; // Import 5 users at a time
+            let processed = 0;
+            let totalImported = 0;
+            let totalSkipped = 0;
+            let errors: string[] = [];
+
+            for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
+                const chunk = selectedUsers.slice(i, i + BATCH_SIZE);
+
+                // Only include market_prices in the VERY FIRST Request to avoid re-processing
+                const chunkPayload = {
+                    users: chunk,
+                    market_prices: (i === 0) ? marketPrices : [],
+                    sourceYear: sourceYear
+                };
+
+                setProgressMessage(`正在匯入使用者 (${i + 1} ~ ${Math.min(i + BATCH_SIZE, TOTAL)} / ${TOTAL})...`);
+
+                const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(chunkPayload),
+                });
+
+                const result = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(result.error || `Batch ${i} failed`);
+                }
+
+                totalImported += (result.imported || 0) + (result.updated || 0); // Count updates as imported for user perspective
+                totalSkipped += (result.skipped || 0);
+                if (result.errors) errors.push(...result.errors);
+
+                processed += chunk.length;
+                const percent = 10 + Math.round((processed / TOTAL) * 90); // Map 0-100% of users to 10-100% of bar
+                setProgressValue(percent);
+            }
+
+            setProgressValue(100);
+            setProgressMessage("匯入完成");
+            // setTimeout(() => setProgressOpen(false), 800);
 
             toast({
                 title: "匯入完成",
-                description: `成功匯入 ${result.imported} 位使用者，跳過 ${result.skipped} 位`,
+                description: `成功處理 ${totalImported} 位，跳過 ${totalSkipped} 位`,
             });
 
+            setPendingImportData(null);
             fetchUsers();
+
         } catch (error: any) {
+            setProgressOpen(false);
             toast({
                 variant: "destructive",
                 title: "匯入失敗",
                 description: error.message,
             });
-        } finally {
-            setImporting(false);
-            // Reset file input
-            event.target.value = '';
         }
     };
 
@@ -315,7 +458,7 @@ export default function AdminUsersPage() {
                                     匯款記錄
                                 </Button>
                                 <Button
-                                    onClick={handleExport}
+                                    onClick={handleExportClick}
                                     variant="outline"
                                     className="hover:bg-accent hover:text-accent-foreground"
                                 >
@@ -328,11 +471,11 @@ export default function AdminUsersPage() {
                                     disabled={importing}
                                 >
                                     <Upload className="h-4 w-4 mr-2" />
-                                    {importing ? '匯入中...' : '匯入'}
+                                    匯入
                                     <input
                                         type="file"
                                         accept=".json"
-                                        onChange={handleImport}
+                                        onChange={handleImportFile}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                         disabled={importing}
                                     />
@@ -502,6 +645,54 @@ export default function AdminUsersPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                <UserSelectionDialog
+                    open={exportSelectionOpen}
+                    onOpenChange={setExportSelectionOpen}
+                    title={`選擇${selectedYear === 'All' ? '' : selectedYear}要匯出的使用者`}
+                    users={selectionUsers}
+                    onConfirm={confirmExport}
+                    confirmLabel="開始匯出"
+                />
+
+                <UserSelectionDialog
+                    open={importSelectionOpen}
+                    onOpenChange={setImportSelectionOpen}
+                    title={
+                        pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
+                            ? "無法匯入：年份不符"
+                            : "選擇要匯入的使用者"
+                    }
+                    description={
+                        pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
+                            ? `匯入檔案年份 (${pendingImportData.sourceYear}) 與目前檢視年份 (${selectedYear}) 不符。為了確保數據一致性，請切換至正確年份後再進行匯入。`
+                            : `目標年度：${selectedYear} | 來源年份：${pendingImportData?.sourceYear || '未知'}`
+                    }
+                    users={
+                        pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
+                            ? [] // Empty
+                            : selectionUsers
+                    }
+                    hideList={!!(pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear))}
+                    onlyConfirm={!!(pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear))}
+                    onConfirm={
+                        pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
+                            ? () => setImportSelectionOpen(false)
+                            : confirmImport
+                    }
+                    confirmLabel={
+                        pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
+                            ? "我知道了"
+                            : "開始匯入"
+                    }
+                />
+
+                <ProgressDialog
+                    open={progressOpen}
+                    title="處理中"
+                    description={progressMessage}
+                    progress={progressValue}
+                    onConfirm={progressValue === 100 ? () => setProgressOpen(false) : undefined}
+                />
             </div>
         </TooltipProvider >
     );

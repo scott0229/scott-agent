@@ -141,7 +141,7 @@ export default function NetEquityPage() {
     }
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
-        const isPositive = value > 0;
+        const isPositive = value >= 0;
         const isNegative = value < 0;
 
         let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
@@ -272,10 +272,10 @@ export default function NetEquityPage() {
                                     <table className="w-full text-[13px]">
                                         <thead>
                                             <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                                                <td className="py-2 px-2"></td>
-                                                <td className="py-2 px-2 text-center font-bold">帳戶</td>
-                                                <td className="py-2 px-2 text-center font-bold">QQQ</td>
-                                                <td className="py-2 px-2 text-center font-bold">QLD</td>
+                                                <td className="py-2 px-2 w-[25%]"></td>
+                                                <td className="py-2 px-2 text-center font-bold w-[25%]">帳戶</td>
+                                                <td className="py-2 px-2 text-center font-bold w-[25%]">QQQ</td>
+                                                <td className="py-2 px-2 text-center font-bold w-[25%]">QLD</td>
                                             </tr>
                                         </thead>
                                         <tbody className="text-[13px]">

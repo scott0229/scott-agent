@@ -13,13 +13,8 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
     const [visible, setVisible] = useState({ account: true, qqq: true, qld: true });
     const toggle = (key: keyof typeof visible) => setVisible(prev => ({ ...prev, [key]: !prev[key] }));
 
-    if (!data || data.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
-                無歷史資料
-            </div>
-        );
-    }
+    // Early check moved inside render to preserve layout
+    const hasData = data && data.length > 0;
 
     // Determine base cost
     const baseValue = initialCost && initialCost > 0 ? initialCost : (data[0]?.net_equity || 1);
@@ -68,102 +63,124 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
 
     return (
         <div className="relative w-full h-full border rounded-md flex flex-col overflow-hidden">
-            <div className="flex-1 w-full min-h-0">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.3} />
-                        <XAxis
-                            dataKey="dateStr"
-                            tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                            minTickGap={30}
-                            interval="preserveStartEnd"
-                            padding={{ left: 10, right: 10 }}
-                            axisLine={false}
-                            tickLine={false}
-                            dy={5}
-                        />
-                        <YAxis
-                            tick={CustomYTick}
-                            tickCount={5}
-                            width={45}
-                            domain={['auto', 'auto']}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'hsl(var(--popover))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: 'var(--radius)',
-                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                padding: '8px 12px'
-                            }}
-                            itemStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px', fontWeight: 'normal', padding: 0 }}
-                            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '12px', marginBottom: '2px', fontWeight: 'normal' }}
-                            formatter={(value: any, name: any) => {
-                                let label = name;
-                                if (name === 'rate') label = '帳戶';
-                                if (name === 'qqq_rate') label = 'QQQ';
-                                if (name === 'qld_rate') label = 'QLD';
-                                return [`${Number(value).toFixed(2)}%`, label];
-                            }}
-                            labelFormatter={(label) => `日期 : ${label}`}
-                            itemSorter={(item) => {
-                                if (item.name === 'rate') return 0;
-                                if (item.name === 'qqq_rate') return 1;
-                                if (item.name === 'qld_rate') return 2;
-                                return 3;
-                            }}
-                            cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
-                        />
+            <div className="flex-1 w-full min-h-0 relative">
+                {!hasData ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/50 gap-2">
+                        <div className="w-12 h-12 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="w-6 h-6"
+                            >
+                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                <circle cx="9" cy="9" r="2" />
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                            </svg>
+                        </div>
+                        <span className="text-xs">無歷史資料</span>
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.3} />
+                            <XAxis
+                                dataKey="dateStr"
+                                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                                minTickGap={30}
+                                interval="preserveStartEnd"
+                                padding={{ left: 10, right: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                dy={5}
+                            />
+                            <YAxis
+                                tick={CustomYTick}
+                                tickCount={5}
+                                width={45}
+                                domain={['auto', 'auto']}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--popover))',
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: 'var(--radius)',
+                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                    padding: '8px 12px'
+                                }}
+                                itemStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px', fontWeight: 'normal', padding: 0 }}
+                                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '12px', marginBottom: '2px', fontWeight: 'normal' }}
+                                formatter={(value: any, name: any) => {
+                                    let label = name;
+                                    if (name === 'rate') label = '帳戶';
+                                    if (name === 'qqq_rate') label = 'QQQ';
+                                    if (name === 'qld_rate') label = 'QLD';
+                                    return [`${Number(value).toFixed(2)}%`, label];
+                                }}
+                                labelFormatter={(label) => `日期 : ${label}`}
+                                itemSorter={(item) => {
+                                    if (item.name === 'rate') return 0;
+                                    if (item.name === 'qqq_rate') return 1;
+                                    if (item.name === 'qld_rate') return 2;
+                                    return 3;
+                                }}
+                                cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                            />
 
-                        {/* QQQ - Green */}
-                        {
-                            visible.qqq && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="qqq_rate"
-                                    name="qqq_rate"
-                                    stroke="#22c55e"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#22c55e' }}
-                                />
-                            )
-                        }
+                            {/* QQQ - Green */}
+                            {
+                                visible.qqq && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="qqq_rate"
+                                        name="qqq_rate"
+                                        stroke="#22c55e"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#22c55e' }}
+                                    />
+                                )
+                            }
 
-                        {/* QLD - Orange */}
-                        {
-                            visible.qld && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="qld_rate"
-                                    name="qld_rate"
-                                    stroke="#f97316"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }}
-                                />
-                            )
-                        }
+                            {/* QLD - Orange */}
+                            {
+                                visible.qld && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="qld_rate"
+                                        name="qld_rate"
+                                        stroke="#f97316"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }}
+                                    />
+                                )
+                            }
 
-                        {/* User - Blue (Rendered last to appear on top) */}
-                        {
-                            visible.account && (
-                                <Line
-                                    type="monotone"
-                                    dataKey="rate"
-                                    name="rate"
-                                    stroke="#2563eb"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
-                                />
-                            )
-                        }
-                    </LineChart >
-                </ResponsiveContainer >
+                            {/* User - Blue (Rendered last to appear on top) */}
+                            {
+                                visible.account && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="rate"
+                                        name="rate"
+                                        stroke="#2563eb"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
+                                    />
+                                )
+                            }
+                        </LineChart >
+                    </ResponsiveContainer >
+                )}
             </div >
 
             {/* Interactive Legend */}
