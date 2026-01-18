@@ -153,10 +153,7 @@ export default function ProjectListPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast({
-        title: "匯出成功",
-        description: `已匯出 ${data.count} 個專案`,
-      });
+
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -188,10 +185,7 @@ export default function ProjectListPage() {
         throw new Error(result.error || '匯入失敗');
       }
 
-      toast({
-        title: "匯入完成",
-        description: `成功匯入 ${result.importedProjects} 個專案、${result.importedTasks} 個任務、${result.importedMembers} 個成員`,
-      });
+
 
       fetchProjects();
     } catch (error: any) {

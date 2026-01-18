@@ -101,10 +101,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 throw new Error(data.error || (userToEdit ? '更新失敗' : '建立失敗'));
             }
 
-            toast({
-                title: "成功",
-                description: userToEdit ? "使用者已更新" : "使用者已建立",
-            });
+
 
             onSuccess();
             onOpenChange(false);

@@ -105,7 +105,7 @@ export default function BenchmarkDetailPage() {
             });
 
             if (res.ok) {
-                toast({ title: "成功", description: "已新增股價紀錄" });
+
                 setAddPriceOpen(false);
                 setNewPriceDate('');
                 setNewPriceValue('');
@@ -133,7 +133,7 @@ export default function BenchmarkDetailPage() {
             });
 
             if (res.ok) {
-                toast({ title: "刪除成功", description: `已刪除 ${symbol} 的所有股價記錄` });
+
                 setDeletePricesOpen(false);
                 fetchData(); // Refresh data
             } else {

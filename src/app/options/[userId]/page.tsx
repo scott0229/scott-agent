@@ -150,10 +150,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             });
 
             if (res.ok) {
-                toast({
-                    title: "刪除成功",
-                    description: "交易紀錄已刪除",
-                });
+
                 fetchOptions();
             } else {
                 toast({

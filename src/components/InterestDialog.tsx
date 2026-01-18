@@ -74,10 +74,7 @@ export function InterestDialog({ userId, year, open, onOpenChange, onSuccess }: 
             });
 
             if (res.ok) {
-                toast({
-                    title: "保存成功",
-                    description: "利息數據已更新",
-                });
+
                 onSuccess?.();
                 onOpenChange(false);
             } else {

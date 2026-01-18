@@ -130,10 +130,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                 throw new Error(data.error || 'Failed to create record');
             }
 
-            toast({
-                title: "記錄已新增",
-                description: "淨值記錄已成功保存",
-            });
+
 
             onSuccess();
             onOpenChange(false);

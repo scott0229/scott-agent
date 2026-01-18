@@ -65,8 +65,8 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
         <div className="relative w-full h-full border rounded-md flex flex-col overflow-hidden">
             <div className="flex-1 w-full min-h-0 relative">
                 {!hasData ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/50 gap-2">
-                        <div className="w-12 h-12 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-2">
+                        <div className="w-12 h-12 rounded-lg border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"

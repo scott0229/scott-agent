@@ -192,10 +192,7 @@ export default function NetEquityDetailPage() {
             });
 
             if (res.ok) {
-                toast({
-                    title: "刪除成功",
-                    description: "淨值記錄已刪除",
-                });
+
                 fetchRecords();
             } else {
                 toast({
@@ -231,7 +228,7 @@ export default function NetEquityDetailPage() {
             });
 
             if (res.ok) {
-                toast({ title: "刪除成功", description: "已刪除全部淨值與對照股價資料" });
+
                 setDeleteAllOpen(false);
                 fetchRecords(); // Refresh data
             } else {

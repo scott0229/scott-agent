@@ -2,15 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-do-not-use-in-prod';
 
-export async function hashPassword(password: string): Promise<string> {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.hash(password, 10);
-}
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.compare(password, hash);
-}
 
 export async function signToken(payload: any): Promise<string> {
   const secret = new TextEncoder().encode(JWT_SECRET);

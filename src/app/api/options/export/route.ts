@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
 // GET: Export options for a specific owner
+export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;

@@ -19,7 +19,9 @@ async function checkAdmin(req: NextRequest) {
 }
 
 // Extracting logic is safer. Use `executeExport`
-async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null) {
+// Extracting logic is safer. Use `executeExport`
+// Extracting logic is safer. Use `executeExport`
+async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true) {
     const db = await getDb();
 
     let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, year
@@ -67,7 +69,6 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
     // Fetch deposits for each user
     for (const user of users) {
-        // ... (Same Fetch Deposits Logic) ...
         let depositQuery = `
             SELECT 
                 d.*,
@@ -87,9 +88,16 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         depositQuery += ` ORDER BY d.deposit_date DESC`;
 
         const { results: deposits } = await db.prepare(depositQuery).bind(...depositParams).all();
-        (user as any).deposits = deposits || [];
+        const actualDeposits = deposits || [];
 
-        // ... (Same Net Equity Logic) ...
+        // Set deposits on user object based on policy
+        // We calculate stats internally using 'actualDeposits', but export based on flag
+        if (includeDepositRecords) {
+            (user as any).deposits = actualDeposits;
+        } else {
+            (user as any).deposits = [];
+        }
+
         let netEquityQuery = `
             SELECT date, net_equity, year
             FROM DAILY_NET_EQUITY
@@ -107,9 +115,10 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         const { results: netEquityRecords } = await db.prepare(netEquityQuery).bind(...netEquityParams).all();
         (user as any).net_equity_records = netEquityRecords || [];
 
-        // ... (Same Calc Logic) ...
         const uEq = (user as any).net_equity_records as any[];
-        const uDep = (user as any).deposits as any[];
+        // Use actualDeposits for calculation to ensure accuracy of stats even if not exported
+        const uDep = actualDeposits;
+
         let benchStartDate = 0;
         if (year && year !== 'All') {
             benchStartDate = new Date(Date.UTC(parseInt(year) - 1, 11, 31)).getTime() / 1000;
@@ -120,7 +129,6 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         const processed = calculateUserTwr(uEq, uDep, (user as any).initial_cost, benchStartDate, qqqData, qldData);
         (user as any).performance_stats = processed.summary.stats;
 
-        // ... (Same Benchmark Stats Logic) ...
         const startDateForBench = benchStartDate || (uEq.length > 0 ? uEq[0].date : 0);
         const lastDate = uEq.length > 0 ? uEq[uEq.length - 1].date : 0;
         if (uEq.length > 0) {
@@ -131,7 +139,6 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             (user as any).qld_stats = null;
         }
 
-        // ... (Same Options Logic) ...
         let optionsQuery = `SELECT * FROM OPTIONS WHERE owner_id = ?`;
         const optionsParams: any[] = [user.id];
         if (year && year !== 'All') {
@@ -140,9 +147,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
         optionsQuery += ` ORDER BY open_date DESC`;
         const { results: options } = await db.prepare(optionsQuery).bind(...optionsParams).all();
-        (user as any).options = options || [];
 
-        // ... (Same Interest Logic) ...
+        // Conditionally include options based on flag
+        if (includeOptionsRecords) {
+            (user as any).options = options || [];
+        } else {
+            (user as any).options = [];
+        }
+
         let interestQuery = `SELECT year, month, interest FROM monthly_interest WHERE user_id = ?`;
         const interestParams: any[] = [user.id];
         if (year && year !== 'All') {
@@ -151,10 +163,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
         interestQuery += ` ORDER BY year DESC, month DESC`;
         const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
-        (user as any).monthly_interest = interest || [];
+
+        if (includeInterestRecords) {
+            (user as any).monthly_interest = interest || [];
+        } else {
+            (user as any).monthly_interest = [];
+        }
     }
 
-    // ... (Same Market Prices Smart Range Logic) ...
     let minExportDate = Number.MAX_SAFE_INTEGER;
     let maxExportDate = 0;
     for (const user of users) {
@@ -167,32 +183,45 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
     }
 
-    let marketPricesQuery = `SELECT symbol, date, close_price FROM market_prices`;
-    const marketPricesParams: any[] = [];
-    if (minExportDate !== Number.MAX_SAFE_INTEGER && maxExportDate !== 0) {
-        const bufferSeconds = 20 * 86400;
-        const startFilter = minExportDate - bufferSeconds;
-        const endFilter = maxExportDate + 86400;
-        marketPricesQuery += ` WHERE date >= ? AND date <= ?`;
-        marketPricesParams.push(startFilter, endFilter);
-    } else if (year && year !== 'All') {
-        const startOfYear = new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000;
-        const endOfYear = new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000;
-        const startFilter = startOfYear - (20 * 86400);
-        marketPricesQuery += ` WHERE date >= ? AND date <= ?`;
-        marketPricesParams.push(startFilter, endOfYear);
+    let marketPrices: any[] = [];
+    const shouldExportMarketData = includeMarketData;
+
+    if (shouldExportMarketData) {
+        let marketPricesQuery = `SELECT symbol, date, close_price FROM market_prices`;
+        const marketPricesParams: any[] = [];
+        if (minExportDate !== Number.MAX_SAFE_INTEGER && maxExportDate !== 0) {
+            const bufferSeconds = 20 * 86400;
+            const startFilter = minExportDate - bufferSeconds;
+            const endFilter = maxExportDate + 86400;
+            marketPricesQuery += ` WHERE date >= ? AND date <= ?`;
+            marketPricesParams.push(startFilter, endFilter);
+        } else if (year && year !== 'All') {
+            const startOfYear = new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000;
+            const endOfYear = new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000;
+            const startFilter = startOfYear - (20 * 86400);
+            marketPricesQuery += ` WHERE date >= ? AND date <= ?`;
+            marketPricesParams.push(startFilter, endOfYear);
+        }
+        marketPricesQuery += ` ORDER BY symbol ASC, date ASC`;
+
+        try {
+            const { results } = await db.prepare(marketPricesQuery).bind(...marketPricesParams).all();
+            marketPrices = results || [];
+        } catch (err) {
+            console.error('Failed to fetch export market prices', err);
+        }
     }
-    marketPricesQuery += ` ORDER BY symbol ASC, date ASC`;
-    const { results: marketPrices } = await db.prepare(marketPricesQuery).bind(...marketPricesParams).all();
 
     return {
         users,
-        market_prices: marketPrices || [],
+        market_prices: marketPrices,
         exportDate: new Date().toISOString(),
         sourceYear: year || 'All',
         count: users.length
     };
 }
+
+
 
 // GET: Export all users (Legacy/Simple)
 export async function GET(req: NextRequest) {
@@ -203,7 +232,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const year = searchParams.get('year');
 
-        const data = await executeExport(req, year, null);
+        const data = await executeExport(req, year, null, true, true, true, true);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);
@@ -218,9 +247,13 @@ export async function POST(req: NextRequest) {
         if (!admin) return NextResponse.json({ error: '權限不足' }, { status: 403 });
 
         const body = await req.json();
-        const { year, userIds } = body;
+        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords } = body;
+        // Default includeDepositRecords to true if undefined
+        const safeIncludeDeposits = includeDepositRecords !== undefined ? includeDepositRecords : true;
+        const safeIncludeOptions = includeOptionsRecords !== undefined ? includeOptionsRecords : true;
+        const safeIncludeInterest = includeInterestRecords !== undefined ? includeInterestRecords : true;
 
-        const data = await executeExport(req, year, userIds || null);
+        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);

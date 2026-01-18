@@ -68,6 +68,15 @@ export default function AdminUsersPage() {
     const [progressValue, setProgressValue] = useState(0);
     const [progressMessage, setProgressMessage] = useState("");
 
+    // In-Dialog Progress State (Import)
+    const [importProcessing, setImportProcessing] = useState(false);
+    const [importProgress, setImportProgress] = useState(0);
+    const [completedImportIds, setCompletedImportIds] = useState<(number | string)[]>([]);
+
+    // In-Dialog Progress State (Export)
+    const [exportProcessing, setExportProcessing] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
+
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
     const [pendingImportData, setPendingImportData] = useState<any>(null); // To hold parsed JSON before import
@@ -93,8 +102,8 @@ export default function AdminUsersPage() {
         setDialogOpen(true);
     };
 
-    const fetchUsers = async () => {
-        setLoading(true);
+    const fetchUsers = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // Fetch users filtered by year
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
@@ -115,7 +124,7 @@ export default function AdminUsersPage() {
         } catch (error) {
             console.error('Failed to fetch users', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -146,11 +155,8 @@ export default function AdminUsersPage() {
                 throw new Error(data.error || 'Failed to delete');
             }
 
-            toast({
-                title: "已刪除",
-                description: "使用者已成功刪除",
-            });
-            fetchUsers();
+
+            fetchUsers(true);
         } catch (error: any) {
             toast({
                 variant: "destructive",
@@ -164,7 +170,7 @@ export default function AdminUsersPage() {
 
     const handleExportClick = () => {
         // Prepare selection list from current users (excluding admin)
-        const exportableUsers = users
+        const exportableUsers: { id: number | string; display: string; checked: boolean }[] = users
             .filter(u => u.email !== 'admin')
             .map(u => ({
                 id: u.id,
@@ -172,40 +178,83 @@ export default function AdminUsersPage() {
                 checked: true
             }));
 
+        // Add Deposit Records Option
+        exportableUsers.push({
+            id: 'deposit_records',
+            display: '用戶匯款記錄',
+            checked: true
+        });
+
+        // Add Options Records Option
+        exportableUsers.push({
+            id: 'options_records',
+            display: '用戶期權記錄',
+            checked: true
+        });
+
+        // Add Interest Records Option
+        exportableUsers.push({
+            id: 'interest_records',
+            display: '用戶利息記錄',
+            checked: true
+        });
+
+        // Add Market Data Option
+        exportableUsers.push({
+            id: 'market_data',
+            display: '歷史股價資料',
+            checked: true
+        });
+
         setSelectionUsers(exportableUsers);
+        setExportProcessing(false);
+        setExportProgress(0);
         setExportSelectionOpen(true);
     };
 
     const confirmExport = async (selectedIds: (number | string)[]) => {
-        setExportSelectionOpen(false);
+        // DO NOT close dialog, show progress in-dialog
         try {
-            setProgressMessage("準備資料中...");
-            setProgressValue(0);
-            setProgressOpen(true);
-
-            // Simulate progress start
-            setProgressValue(10);
+            setExportProcessing(true);
+            setExportProgress(10); // Start
 
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+
+            // Separate Options selection
+            const includeMarketData = selectedIds.includes('market_data');
+            const includeDepositRecords = selectedIds.includes('deposit_records');
+            const includeOptionsRecords = selectedIds.includes('options_records');
+            const includeInterestRecords = selectedIds.includes('interest_records');
+
+            const realUserIds = selectedIds.filter(id =>
+                id !== 'market_data' &&
+                id !== 'deposit_records' &&
+                id !== 'options_records' &&
+                id !== 'interest_records'
+            );
 
             // Call POST endpoint with selected IDs
             const res = await fetch('/api/users/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    year: selectedYear, // Pass 'All' or specific year directly
-                    userIds: selectedIds
+                    year: selectedYear,
+                    userIds: realUserIds,
+                    includeMarketData: includeMarketData,
+                    includeDepositRecords: includeDepositRecords,
+                    includeOptionsRecords: includeOptionsRecords,
+                    includeInterestRecords: includeInterestRecords
                 })
             });
 
-            setProgressValue(50);
+            setExportProgress(70);
 
             if (!res.ok) {
                 throw new Error('匯出失敗');
             }
 
             const data = await res.json();
-            setProgressValue(100);
+            setExportProgress(100);
 
             // Create JSON blob and download
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -219,17 +268,8 @@ export default function AdminUsersPage() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            URL.revokeObjectURL(url);
-
-            setProgressMessage("匯出完成");
-            // setTimeout(() => setProgressOpen(false), 500); // Removed auto-close
-
-            toast({
-                title: "匯出成功",
-                description: `已匯出 ${data.count} 位使用者`,
-            });
         } catch (error: any) {
-            setProgressOpen(false);
+            setExportProcessing(false);
             toast({
                 variant: "destructive",
                 title: "匯出失敗",
@@ -248,10 +288,7 @@ export default function AdminUsersPage() {
 
             let usersList = [];
             if (Array.isArray(data)) {
-                usersList = data; // Legacy format? Or simple array
-                // We better assume standard format { users: [], market_prices: [] }
-                // But previous code handled array.
-                // Let's wrap.
+                usersList = data;
                 setPendingImportData({ users: data });
             } else {
                 usersList = data.users || [];
@@ -262,13 +299,54 @@ export default function AdminUsersPage() {
                 throw new Error("檔案中沒有使用者資料");
             }
 
-            const importableUsers = usersList.map((u: any, idx: number) => ({
+            const importableUsers: { id: number | string; display: string; checked: boolean }[] = usersList.map((u: any, idx: number) => ({
                 id: u.email, // Use email as unique key for selection
-                display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'}) - ${u.year || ''}`,
+                display: `${u.user_id || u.email.split('@')[0]} (${u.ib_account || 'No IB'})`,
                 checked: true
             }));
 
+            const hasDeposits = usersList.some((u: any) => u.deposits && Array.isArray(u.deposits) && u.deposits.length > 0);
+            const hasOptions = usersList.some((u: any) => u.options && Array.isArray(u.options) && u.options.length > 0);
+            const hasInterest = usersList.some((u: any) => u.monthly_interest && Array.isArray(u.monthly_interest) && u.monthly_interest.length > 0);
+
+            // Check for Deposit Records choice
+            importableUsers.push({
+                id: 'deposit_records',
+                display: `用戶匯款記錄${!hasDeposits ? ' (無記錄)' : ''}`,
+                checked: hasDeposits,
+                disabled: !hasDeposits
+            } as any);
+
+            // Check for Options Records choice
+            importableUsers.push({
+                id: 'options_records',
+                display: `用戶期權記錄${!hasOptions ? ' (無記錄)' : ''}`,
+                checked: hasOptions,
+                disabled: !hasOptions
+            } as any);
+
+            // Check for Interest Records choice
+            importableUsers.push({
+                id: 'interest_records',
+                display: `用戶利息記錄${!hasInterest ? ' (無記錄)' : ''}`,
+                checked: hasInterest,
+                disabled: !hasInterest
+            } as any);
+
+
+            // Check for Market Data
+            if (data.market_prices && data.market_prices.length > 0) {
+                importableUsers.push({
+                    id: 'market_data',
+                    display: `歷史股價資料 (${data.market_prices.length} 筆)`,
+                    checked: true
+                });
+            }
+
             setSelectionUsers(importableUsers);
+            setImportProcessing(false);
+            setImportProgress(0);
+            setCompletedImportIds([]);
             setImportSelectionOpen(true);
 
             // Reset input
@@ -283,34 +361,60 @@ export default function AdminUsersPage() {
     };
 
     const confirmImport = async (selectedIds: (number | string)[]) => {
-        setImportSelectionOpen(false);
+        // DO NOT close dialog, start processing
         if (!pendingImportData) return;
 
         try {
-            setProgressOpen(true);
-            setProgressMessage("正在分析資料...");
-            setProgressValue(5);
+            setImportProcessing(true);
+            setImportProgress(0);
+            setCompletedImportIds([]);
+
+            const importMarketData = selectedIds.includes('market_data');
+            const importDeposits = selectedIds.includes('deposit_records');
+            const importOptions = selectedIds.includes('options_records');
+            const importInterest = selectedIds.includes('interest_records');
+
+            const selectedUserEmails = selectedIds.filter(id =>
+                id !== 'market_data' &&
+                id !== 'deposit_records' &&
+                id !== 'options_records' &&
+                id !== 'interest_records'
+            );
 
             const allUsers = pendingImportData.users || [];
             // Filter users based on selection
-            // selectedIds contains emails (as strings)
-            const selectedUsers = allUsers.filter((u: any) => selectedIds.includes(u.email));
+            const selectedUsers = allUsers.filter((u: any) => selectedUserEmails.includes(u.email));
 
             // Prepare Payload Structure
             const marketPrices = pendingImportData.market_prices || [];
             const sourceYear = pendingImportData.sourceYear;
-
             const targetYear = selectedYear === 'All' ? 'All' : selectedYear;
 
-            // Step 1: Upload Market Prices (if any) - 10% progress
-            if (marketPrices.length > 0) {
-                setProgressMessage(`匯入市場數據 (${marketPrices.length} 筆)...`);
-                // Use a separate dummy call or just include in first batch?
-                // The current API handles both.
-                // To support progress, we should probably upload market prices separately or just once.
-                // Let's send market prices with the FIRST batch of users.
+            // Scenario 1: Only Market Data selected
+            if (importMarketData && selectedUsers.length === 0) {
+                setImportProgress(10);
+                const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        users: [], // No users
+                        market_prices: marketPrices,
+                        sourceYear: sourceYear
+                    }),
+                });
+
+                if (!res.ok) {
+                    const result = await res.json();
+                    throw new Error(result.error || 'Market data import failed');
+                }
+
+                setImportProgress(100);
+                setCompletedImportIds(['market_data']);
+                fetchUsers(true);
+                return;
             }
 
+            // Scenario 2: Users (and optionally Market Data / Deposits / Options / Interest)
             // Step 2: Batch Upload Users
             const TOTAL = selectedUsers.length;
             const BATCH_SIZE = 5; // Import 5 users at a time
@@ -322,14 +426,21 @@ export default function AdminUsersPage() {
             for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
                 const chunk = selectedUsers.slice(i, i + BATCH_SIZE);
 
-                // Only include market_prices in the VERY FIRST Request to avoid re-processing
+                // Strip unwanted fields
+                const processedChunk = chunk.map((u: any) => {
+                    const clone = { ...u };
+                    if (!importDeposits) delete clone.deposits;
+                    if (!importOptions) delete clone.options;
+                    if (!importInterest) delete clone.monthly_interest;
+                    return clone;
+                });
+
+                // Only include market_prices in the VERY FIRST Request if selected
                 const chunkPayload = {
-                    users: chunk,
-                    market_prices: (i === 0) ? marketPrices : [],
+                    users: processedChunk,
+                    market_prices: (i === 0 && importMarketData) ? marketPrices : [],
                     sourceYear: sourceYear
                 };
-
-                setProgressMessage(`正在匯入使用者 (${i + 1} ~ ${Math.min(i + BATCH_SIZE, TOTAL)} / ${TOTAL})...`);
 
                 const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
                     method: 'POST',
@@ -343,29 +454,37 @@ export default function AdminUsersPage() {
                     throw new Error(result.error || `Batch ${i} failed`);
                 }
 
-                totalImported += (result.imported || 0) + (result.updated || 0); // Count updates as imported for user perspective
+                totalImported += (result.imported || 0) + (result.updated || 0);
                 totalSkipped += (result.skipped || 0);
                 if (result.errors) errors.push(...result.errors);
-
-                processed += chunk.length;
-                const percent = 10 + Math.round((processed / TOTAL) * 90); // Map 0-100% of users to 10-100% of bar
-                setProgressValue(percent);
+                // Update Progress
+                setCompletedImportIds(prev => {
+                    const newIds = [...prev, ...chunk.map((u: any) => u.email)];
+                    // Mark global items as completed after first batch if included
+                    if (i === 0 && importMarketData && !prev.includes('market_data')) {
+                        newIds.push('market_data');
+                    }
+                    if (i === 0 && importDeposits && !prev.includes('deposit_records')) {
+                        newIds.push('deposit_records');
+                    }
+                    if (i === 0 && importOptions && !prev.includes('options_records')) {
+                        newIds.push('options_records');
+                    }
+                    if (i === 0 && importInterest && !prev.includes('interest_records')) {
+                        newIds.push('interest_records');
+                    }
+                    return newIds;
+                });
             }
 
-            setProgressValue(100);
-            setProgressMessage("匯入完成");
-            // setTimeout(() => setProgressOpen(false), 800);
+            // FORCE 100% to ensure UI unlocks
+            setImportProgress(100);
 
-            toast({
-                title: "匯入完成",
-                description: `成功處理 ${totalImported} 位，跳過 ${totalSkipped} 位`,
-            });
-
-            setPendingImportData(null);
-            fetchUsers();
+            // Refresh list but keep dialog state stable until closed
+            fetchUsers(true);
 
         } catch (error: any) {
-            setProgressOpen(false);
+            setImportProcessing(false);
             toast({
                 variant: "destructive",
                 title: "匯入失敗",
@@ -373,6 +492,20 @@ export default function AdminUsersPage() {
             });
         }
     };
+    // ...
+    // Note: I will update the UserSelectionDialog instances below in the JSX return part in another pass or rely on multi chunk?
+    // Wait, the instruction only covered the logic functions. I need to update the JSX return to include the new dependencies too.
+    // The previous tool call covered lines 171-424.
+    // I need to update the JSX part too. 
+    // Let's rely on `multi_replace` or just do it all here if I can find the JSX.
+    // The JSX is further down.
+    // I will use `TargetContent` for the function bodies.
+    // I will handle the JSX update in a separate call or try to verify if I can reach it.
+    // The file is 791 lines.
+    // `confirmImport` ends around line 430.
+    // `dependencies` prop is passed in JSX around line 700.
+    // I will stick to updating functions first.
+
 
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
 
@@ -388,11 +521,8 @@ export default function AdminUsersPage() {
             }
 
             const data = await res.json();
-            toast({
-                title: "已刪除全部",
-                description: `已成功刪除 ${data.count} 位使用者`,
-            });
-            fetchUsers();
+            // Toast removed
+            fetchUsers(true);
             setDeleteAllDialogOpen(false);
         } catch (error: any) {
             toast({
@@ -652,20 +782,44 @@ export default function AdminUsersPage() {
                     users={selectionUsers}
                     onConfirm={confirmExport}
                     confirmLabel="開始匯出"
+                    // New Props for Export Progress
+                    processing={exportProcessing}
+                    progress={exportProgress}
+                    preventCloseOnConfirm={true}
+                    dependencies={{
+                        'deposit_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
+                        },
+                        'options_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
+                        },
+                        'interest_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
+                        }
+                    }}
                 />
-
                 <UserSelectionDialog
                     open={importSelectionOpen}
-                    onOpenChange={setImportSelectionOpen}
+                    onOpenChange={(open) => {
+                        setImportSelectionOpen(open);
+                        if (!open) {
+                            // Reset state only when strictly closed
+                            setImportProcessing(false);
+                            setImportProgress(0);
+                            setCompletedImportIds([]);
+                            setPendingImportData(null);
+                            setSelectionUsers([]);
+                        }
+                    }}
                     title={
                         pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
                             ? "無法匯入：年份不符"
-                            : "選擇要匯入的使用者"
+                            : `選擇${pendingImportData?.sourceYear || ''}要匯入的使用者`
                     }
                     description={
                         pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
                             ? `匯入檔案年份 (${pendingImportData.sourceYear}) 與目前檢視年份 (${selectedYear}) 不符。為了確保數據一致性，請切換至正確年份後再進行匯入。`
-                            : `目標年度：${selectedYear} | 來源年份：${pendingImportData?.sourceYear || '未知'}`
+                            : undefined
                     }
                     users={
                         pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
@@ -676,7 +830,7 @@ export default function AdminUsersPage() {
                     onlyConfirm={!!(pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear))}
                     onConfirm={
                         pendingImportData?.sourceYear && selectedYear !== 'All' && String(pendingImportData.sourceYear) !== String(selectedYear)
-                            ? () => setImportSelectionOpen(false)
+                            ? (() => setImportSelectionOpen(false)) as any // Force cast if needed or adjust logic
                             : confirmImport
                     }
                     confirmLabel={
@@ -684,6 +838,22 @@ export default function AdminUsersPage() {
                             ? "我知道了"
                             : "開始匯入"
                     }
+                    // New Props
+                    processing={importProcessing}
+                    progress={importProgress}
+                    completedIds={completedImportIds}
+                    preventCloseOnConfirm={true} // Keep open for processing
+                    dependencies={{
+                        'deposit_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
+                        },
+                        'options_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
+                        },
+                        'interest_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
+                        }
+                    }}
                 />
 
                 <ProgressDialog

@@ -55,10 +55,7 @@ export function SetInitialCostDialog({
             const data = await res.json();
 
             if (data.success) {
-                toast({
-                    title: "更新成功",
-                    description: "已更新初始成本",
-                });
+
                 onSuccess();
                 onOpenChange(false);
             } else {
