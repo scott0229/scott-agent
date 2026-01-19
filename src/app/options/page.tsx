@@ -42,6 +42,8 @@ interface User {
     open_count: number;
     monthly_stats?: UserStats[];
     total_profit?: number;
+    net_deposit?: number;
+    initial_cost?: number;
 }
 
 
@@ -115,6 +117,14 @@ export default function OptionsPage() {
             const nameA = a.user_id || a.email;
             const nameB = b.user_id || b.email;
             return nameA.localeCompare(nameB);
+        } else if (sortOrder === 'profit-desc') {
+            const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
+            const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
+            return equityB - equityA;
+        } else if (sortOrder === 'profit-asc') {
+            const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
+            const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
+            return equityA - equityB;
         }
         return 0;
     });
@@ -131,8 +141,8 @@ export default function OptionsPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="alphabetical">按字母</SelectItem>
-                        <SelectItem value="profit-desc">按淨值-從大到小</SelectItem>
-                        <SelectItem value="profit-asc">按淨值-從小到大</SelectItem>
+                        <SelectItem value="profit-desc">當前淨值-從大到小</SelectItem>
+                        <SelectItem value="profit-asc">當前淨值-從小到大</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

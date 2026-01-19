@@ -18,6 +18,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { isMarketHoliday } from '@/lib/holidays';
 
 interface NewOptionDialogProps {
     open: boolean;
@@ -30,7 +40,7 @@ interface NewOptionDialogProps {
 const getNextWorkday = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    while (d.getDay() === 0 || d.getDay() === 6) {
+    while (d.getDay() === 0 || d.getDay() === 6 || isMarketHoliday(d)) {
         d.setDate(d.getDate() + 1);
     }
     return d.toISOString().split('T')[0];
@@ -47,7 +57,7 @@ const isWeekend = (dateStr: string): boolean => {
 const adjustToWorkday = (dateStr: string): string => {
     if (!dateStr) return dateStr;
     const d = new Date(dateStr);
-    while (d.getDay() === 0 || d.getDay() === 6) {
+    while (d.getDay() === 0 || d.getDay() === 6 || isMarketHoliday(d)) {
         d.setDate(d.getDate() + 1);
     }
     return d.toISOString().split('T')[0];
@@ -105,7 +115,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 settlement_date: formData.settlement_date ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
                 quantity: parseFloat(formData.quantity),
                 strike_price: parseFloat(formData.strike_price),
-                premium: formData.premium ? parseFloat(formData.premium) : 0,
+                premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
                 collateral: Math.abs(parseFloat(formData.quantity)) * parseFloat(formData.strike_price) * 100,
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
@@ -168,81 +178,178 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     )}
                     <div className="grid grid-cols-2 gap-4">
 
+                        <div className="grid gap-2">
+                            <Label htmlFor="status">狀態</Label>
+                            <Select
+                                value={formData.status}
+                                onValueChange={(value) => setFormData({ ...formData, status: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="選擇狀態" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="未平倉">未平倉</SelectItem>
+                                    <SelectItem value="已關">已關</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
+                        <div className="grid gap-2">
+                            <Label htmlFor="operation">操作</Label>
+                            <Select
+                                value={formData.operation}
+                                onValueChange={(value) => setFormData({ ...formData, operation: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="選擇操作" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="無">無</SelectItem>
+                                    <SelectItem value="滾動">滾動</SelectItem>
+                                    <SelectItem value="到期">到期</SelectItem>
+                                    <SelectItem value="中途被行權">中途被行權</SelectItem>
+                                    <SelectItem value="到期-被行權">到期-被行權</SelectItem>
+                                    <SelectItem value="提早平倉">提早平倉</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
 
                         <div className="grid gap-2">
-                            <Label htmlFor="open_date">開倉日</Label>
-                            <Input
-                                id="open_date"
-                                type="date"
-                                value={formData.open_date}
-                                onChange={(e) => {
-                                    const newDate = adjustToWorkday(e.target.value);
-                                    if (newDate !== e.target.value) {
-                                        setError('開倉日不能選擇週末，已自動調整至下一個工作日');
-                                        setTimeout(() => setError(null), 3000);
-                                    }
-                                    setFormData({ ...formData, open_date: newDate });
-                                }}
-                                required
-                            />
+                            <Label>開倉日</Label>
+                            <Popover modal={true}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        type="button"
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !formData.open_date && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {formData.open_date ? format(new Date(formData.open_date), "yyyy-MM-dd") : <span>選擇日期</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={formData.open_date ? new Date(formData.open_date) : undefined}
+                                        onSelect={(date) => {
+                                            if (date) {
+                                                const dateStr = format(date, "yyyy-MM-dd");
+                                                setFormData({ ...formData, open_date: dateStr });
+                                                setError(null);
+                                            }
+                                        }}
+                                        disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>到期日</Label>
+                            <Popover modal={true}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        type="button"
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !formData.to_date && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {formData.to_date ? format(new Date(formData.to_date), "yyyy-MM-dd") : <span>選擇日期</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={formData.to_date ? new Date(formData.to_date) : undefined}
+                                        onSelect={(date) => {
+                                            if (date) {
+                                                const dateStr = format(date, "yyyy-MM-dd");
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    to_date: dateStr,
+                                                    // If settlement date hasn't been manually modified, auto-update it
+                                                    settlement_date: !isSettlementDateDirty ? dateStr : prev.settlement_date
+                                                }));
+                                                setError(null);
+                                            }
+                                        }}
+                                        fromDate={formData.open_date ? new Date(formData.open_date) : undefined}
+                                        disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
 
 
                         <div className="grid gap-2">
-                            <Label htmlFor="to_date">到期日</Label>
+                            <Label>結算日</Label>
+                            <Popover modal={true}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        type="button"
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !formData.settlement_date && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {formData.settlement_date ? format(new Date(formData.settlement_date), "yyyy-MM-dd") : <span>選擇日期</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={formData.settlement_date ? new Date(formData.settlement_date) : undefined}
+                                        onSelect={(date) => {
+                                            if (date) {
+                                                const dateStr = format(date, "yyyy-MM-dd");
+                                                setFormData({ ...formData, settlement_date: dateStr });
+                                                setIsSettlementDateDirty(true);
+                                                setError(null);
+                                            }
+                                        }}
+                                        fromDate={formData.to_date ? new Date(formData.to_date) : undefined}
+                                        disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="quantity">口數</Label>
                             <Input
-                                id="to_date"
-                                type="date"
-                                value={formData.to_date}
-                                onChange={(e) => {
-                                    const newDate = adjustToWorkday(e.target.value);
-                                    if (newDate !== e.target.value) {
-                                        setError('到期日不能選擇週末，已自動調整至下一個工作日');
-                                        setTimeout(() => setError(null), 3000);
-                                    }
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        to_date: newDate,
-                                        settlement_date: isSettlementDateDirty ? prev.settlement_date : newDate
-                                    }));
-                                }}
-                                required
+                                id="quantity"
+                                type="number"
+                                placeholder="輸入口數 (可為負)"
+                                value={formData.quantity}
+                                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="settlement_date">結算日</Label>
-                            <Input
-                                id="settlement_date"
-                                type="date"
-                                value={formData.settlement_date}
-                                onChange={(e) => {
-                                    const newDate = adjustToWorkday(e.target.value);
-                                    if (newDate !== e.target.value) {
-                                        setError('結算日不能選擇週末，已自動調整至下一個工作日');
-                                        setTimeout(() => setError(null), 3000);
-                                    }
-                                    setFormData({ ...formData, settlement_date: newDate });
-                                    setIsSettlementDateDirty(true);
-                                }}
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="underlying">底層標的</Label>
+                            <Label htmlFor="underlying">標的</Label>
                             <Input
                                 id="underlying"
+                                placeholder="例如: AAPL"
                                 value={formData.underlying}
                                 onChange={(e) => setFormData({ ...formData, underlying: e.target.value.toUpperCase() })}
-                                required
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="type">多空</Label>
+                            <Label htmlFor="type">類型</Label>
                             <Select
                                 value={formData.type}
                                 onValueChange={(value) => setFormData({ ...formData, type: value })}
@@ -258,26 +365,14 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="quantity">口數 (負數為賣出)</Label>
-                            <Input
-                                id="quantity"
-                                type="number"
-                                step="1"
-                                value={formData.quantity}
-                                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
                             <Label htmlFor="strike_price">行權價</Label>
                             <Input
                                 id="strike_price"
                                 type="number"
                                 step="0.01"
+                                placeholder="輸入行權價"
                                 value={formData.strike_price}
                                 onChange={(e) => setFormData({ ...formData, strike_price: e.target.value })}
-                                required
                             />
                         </div>
 
@@ -285,40 +380,47 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Label htmlFor="premium">權利金</Label>
                             <Input
                                 id="premium"
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                placeholder="輸入權利金"
                                 value={formData.premium}
-                                onChange={(e) => setFormData({ ...formData, premium: e.target.value })}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    const cleanValue = value.replace(/,/g, '');
+                                    if (/^-?\d*\.?\d*$/.test(cleanValue)) {
+                                        const parts = cleanValue.split('.');
+                                        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                        setFormData({ ...formData, premium: parts.join('.') });
+                                    }
+                                }}
                             />
                         </div>
 
-
-
                         <div className="grid gap-2">
-                            <Label htmlFor="iv">隱含波動率</Label>
+                            <Label htmlFor="iv">IV</Label>
                             <Input
                                 id="iv"
                                 type="number"
-                                step="0.1"
+                                step="0.01"
+                                placeholder="輸入 IV"
                                 value={formData.iv}
                                 onChange={(e) => setFormData({ ...formData, iv: e.target.value })}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="delta">期權字母 Delta</Label>
+                            <Label htmlFor="delta">Delta</Label>
                             <Input
                                 id="delta"
                                 type="number"
-                                step="0.001"
+                                step="0.01"
+                                placeholder="輸入 Delta"
                                 value={formData.delta}
                                 onChange={(e) => setFormData({ ...formData, delta: e.target.value })}
                             />
                         </div>
-
                     </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
                             取消
                         </Button>
                         <Button type="submit" disabled={isLoading}>
@@ -327,6 +429,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     </div>
                 </form>
             </DialogContent>
-        </Dialog >
+        </Dialog>
     );
 }
