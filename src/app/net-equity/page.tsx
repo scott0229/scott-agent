@@ -79,7 +79,7 @@ export default function NetEquityPage() {
     const { selectedYear } = useYearFilter(); // Get year context
     const router = useRouter();
     const [editCostDialog, setEditCostDialog] = useState<{ open: boolean; userId: number; currentCost: number } | null>(null);
-    const [sortOrder, setSortOrder] = useState('return-desc');
+    const [sortOrder, setSortOrder] = useState('net-equity-desc');
 
     useEffect(() => {
         fetchData();

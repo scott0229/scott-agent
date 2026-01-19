@@ -14,10 +14,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
+import { FeesDialog } from "@/components/FeesDialog";
 
 interface User {
     id: number;
@@ -34,6 +35,7 @@ interface User {
     created_at: number;
     deposits_count?: number;
     interest_count?: number;
+    fees_count?: number;
 }
 
 import {
@@ -60,6 +62,8 @@ export default function AdminUsersPage() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
     const [importing, setImporting] = useState(false);
+    const [feesDialogOpen, setFeesDialogOpen] = useState(false);
+    const [selectedUserForFees, setSelectedUserForFees] = useState<User | null>(null);
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
     const [marketDataCount, setMarketDataCount] = useState(0);
@@ -201,6 +205,11 @@ export default function AdminUsersPage() {
             return sum + (user?.interest_count || 0);
         }, 0);
 
+        const totalFees = exportableUsers.reduce((sum, u) => {
+            const user = users.find(existing => existing.id === u.id);
+            return sum + (user?.fees_count || 0);
+        }, 0);
+
         // Add Deposit Records Option
         exportableUsers.push({
             id: 'deposit_records',
@@ -219,6 +228,13 @@ export default function AdminUsersPage() {
         exportableUsers.push({
             id: 'interest_records',
             display: `用戶利息記錄 (${totalInterest} 筆)`,
+            checked: true
+        });
+
+        // Add Fees Records Option
+        exportableUsers.push({
+            id: 'fees_records',
+            display: `用戶管理費記錄 (${totalFees} 筆)`, // Precise count via API
             checked: true
         });
 
@@ -248,12 +264,14 @@ export default function AdminUsersPage() {
             const includeDepositRecords = selectedIds.includes('deposit_records');
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeInterestRecords = selectedIds.includes('interest_records');
+            const includeFeeRecords = selectedIds.includes('fees_records');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'deposit_records' &&
                 id !== 'options_records' &&
-                id !== 'interest_records'
+                id !== 'interest_records' &&
+                id !== 'fees_records'
             );
 
             // Call POST endpoint with selected IDs
@@ -266,7 +284,8 @@ export default function AdminUsersPage() {
                     includeMarketData: includeMarketData,
                     includeDepositRecords: includeDepositRecords,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeInterestRecords: includeInterestRecords
+                    includeInterestRecords: includeInterestRecords,
+                    includeFeeRecords: includeFeeRecords
                 })
             });
 
@@ -336,6 +355,7 @@ export default function AdminUsersPage() {
             const totalDeposits = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.deposits) ? u.deposits.length : 0), 0);
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
             const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
+            const totalFees = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_fees) ? u.monthly_fees.length : 0), 0);
 
             // Check for Deposit Records choice
             importableUsers.push({
@@ -359,6 +379,14 @@ export default function AdminUsersPage() {
                 display: `用戶利息記錄 (${totalInterest} 筆)`,
                 checked: totalInterest > 0,
                 disabled: totalInterest === 0
+            } as any);
+
+            // Check for Fees Records choice
+            importableUsers.push({
+                id: 'fees_records',
+                display: `用戶管理費記錄 (${totalFees} 筆)`,
+                checked: totalFees > 0,
+                disabled: totalFees === 0
             } as any);
 
 
@@ -401,12 +429,14 @@ export default function AdminUsersPage() {
             const importDeposits = selectedIds.includes('deposit_records');
             const importOptions = selectedIds.includes('options_records');
             const importInterest = selectedIds.includes('interest_records');
+            const importFees = selectedIds.includes('fees_records');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'deposit_records' &&
                 id !== 'options_records' &&
-                id !== 'interest_records'
+                id !== 'interest_records' &&
+                id !== 'fees_records'
             );
 
             const allUsers = pendingImportData.users || [];
@@ -460,6 +490,7 @@ export default function AdminUsersPage() {
                     if (!importDeposits) delete clone.deposits;
                     if (!importOptions) delete clone.options;
                     if (!importInterest) delete clone.monthly_interest;
+                    if (!importFees) delete clone.monthly_fees;
                     return clone;
                 });
 
@@ -500,6 +531,9 @@ export default function AdminUsersPage() {
                     }
                     if (i === 0 && importInterest && !prev.includes('interest_records')) {
                         newIds.push('interest_records');
+                    }
+                    if (i === 0 && importFees && !prev.includes('fees_records')) {
+                        newIds.push('fees_records');
                     }
                     return newIds;
                 });
@@ -720,6 +754,25 @@ export default function AdminUsersPage() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
+                                                                onClick={() => {
+                                                                    setSelectedUserForFees(user);
+                                                                    setFeesDialogOpen(true);
+                                                                }}
+                                                                className="text-muted-foreground hover:text-green-600 hover:bg-green-50"
+                                                            >
+                                                                <DollarSign className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>管理費記錄</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
                                                                 onClick={() => handleEdit(user)}
                                                                 className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                             >
@@ -764,6 +817,16 @@ export default function AdminUsersPage() {
                     }}
                     onSuccess={fetchUsers}
                     userToEdit={editingUser}
+                />
+
+                <FeesDialog
+                    open={feesDialogOpen}
+                    onOpenChange={(open) => {
+                        setFeesDialogOpen(open);
+                        if (!open) setSelectedUserForFees(null);
+                    }}
+                    userId={selectedUserForFees?.id}
+                    year={selectedYear === 'All' ? new Date().getFullYear() : (typeof selectedYear === 'string' ? parseInt(selectedYear) : selectedYear)}
                 />
 
                 <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
@@ -823,6 +886,9 @@ export default function AdminUsersPage() {
                         },
                         'interest_records': {
                             satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
+                        },
+                        'fees_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
                         }
                     }}
                 />
@@ -879,7 +945,10 @@ export default function AdminUsersPage() {
                             satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
                         },
                         'interest_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
+                        },
+                        'fees_records': {
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
                         }
                     }}
                 />

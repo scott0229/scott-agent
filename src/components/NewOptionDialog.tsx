@@ -171,7 +171,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>新增交易</DialogTitle>
+                    <DialogTitle>新增期權交易</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4">
                     {error && (

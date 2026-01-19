@@ -29,6 +29,7 @@ interface ImportUser {
     net_equity_records?: any[];
     options?: any[];
     monthly_interest?: any[];
+    monthly_fees?: any[];
 }
 
 // POST: Import users from JSON array
@@ -266,6 +267,29 @@ export async function POST(req: NextRequest) {
                                 ).bind(targetUserId, interest.year, interest.month, interest.interest).run();
                             } catch (intErr) {
                                 console.error(`Failed to import monthly interest for user ${user.email}:`, intErr);
+                            }
+                        }
+                    }
+                }
+
+                // Import nested monthly fee records
+                if (user.monthly_fees && Array.isArray(user.monthly_fees) && targetUserId) {
+                    for (const fee of user.monthly_fees) {
+                        if (fee.year === undefined || fee.month === undefined || fee.amount === undefined) continue;
+
+                        // Check duplicate
+                        const existingFee = await db.prepare(
+                            `SELECT year FROM monthly_fees WHERE user_id = ? AND year = ? AND month = ?`
+                        ).bind(targetUserId, fee.year, fee.month).first();
+
+                        if (!existingFee) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO monthly_fees (user_id, year, month, amount, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(targetUserId, fee.year, fee.month, fee.amount).run();
+                            } catch (feeErr) {
+                                console.error(`Failed to import monthly fee for user ${user.email}:`, feeErr);
                             }
                         }
                     }

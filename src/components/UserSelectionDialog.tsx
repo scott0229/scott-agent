@@ -203,7 +203,19 @@ export function UserSelectionDialog({
                                                         (processing || isDisabled) && "cursor-not-allowed opacity-70"
                                                     )}
                                                 >
-                                                    {user.display}
+                                                    {(() => {
+                                                        // Split by the LAST opening parenthesis to separate main text from ID/Count info
+                                                        const match = user.display.match(/^(.*)(\s\(.*\))$/);
+                                                        if (match) {
+                                                            return (
+                                                                <>
+                                                                    {match[1]}
+                                                                    <span className="text-muted-foreground ml-0.5">{match[2].trimStart()}</span>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return user.display;
+                                                    })()}
                                                 </Label>
                                             </div>
                                             <div className="flex items-center gap-2">

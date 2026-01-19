@@ -223,7 +223,7 @@ export default function OptionsPage() {
                                                 const turnoverRate = (currentEquity * daysInCurrentMonth) > 0
                                                     ? monthlyTurnover / (currentEquity * daysInCurrentMonth)
                                                     : 0;
-                                                const turnoverRateDisplay = (turnoverRate * 100).toFixed(2) + '%';
+                                                const turnoverRateDisplay = (turnoverRate * 100).toFixed(0) + '%';
 
                                                 const metrics = [
                                                     {

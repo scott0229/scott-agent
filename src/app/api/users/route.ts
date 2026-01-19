@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
                          FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
                         (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
+                        (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
 
@@ -71,6 +72,7 @@ export async function GET(req: NextRequest) {
                 params.push(parseInt(year)); // For net_deposit subquery
                 params.push(parseInt(year)); // For deposits_count subquery
                 params.push(parseInt(year)); // For interest_count subquery
+                params.push(parseInt(year)); // For fees_count subquery
                 params.push(parseInt(year)); // For open_put_covered_capital subquery
 
 
@@ -88,6 +90,7 @@ export async function GET(req: NextRequest) {
                          FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
                         (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
+                        (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
             }
@@ -277,20 +280,23 @@ export async function GET(req: NextRequest) {
                 (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
                 (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
-                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count`;
+                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
+                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count`;
 
             // Params for SELECT subqueries
             params.push(parseInt(year)); // net_deposit
             params.push(parseInt(year)); // deposits_count
             params.push(parseInt(year)); // options_count
             params.push(parseInt(year)); // interest_count
+            params.push(parseInt(year)); // fees_count
         } else {
             // General counts for All years
             additionalSelects = `, 
                 (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
                 (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
-                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count`;
+                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
+                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count`;
         }
 
         let query = `

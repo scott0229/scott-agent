@@ -142,7 +142,12 @@ function DepositsPageContent() {
             const res = await fetch(url, { cache: 'no-store' });
             const data = await res.json();
             if (data.success) {
-                setDeposits(data.deposits);
+                setDeposits(data.deposits.sort((a: Deposit, b: Deposit) => {
+                    if (b.deposit_date !== a.deposit_date) {
+                        return b.deposit_date - a.deposit_date;
+                    }
+                    return b.id - a.id;
+                }));
             }
         } catch (error) {
             console.error('Failed to fetch deposits:', error);

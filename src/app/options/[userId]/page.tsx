@@ -240,7 +240,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || '無') === selectedOperation;
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
-    });
+    }).sort((a, b) => b.open_date - a.open_date);
 
     return (
         <div className="container mx-auto py-10 max-w-[1600px]">
