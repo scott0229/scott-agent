@@ -178,33 +178,33 @@ export default function OptionsPage() {
                                                 <tbody className="text-[13px]">
                                                     {client.monthly_stats.map((stat, index) => (
                                                         <tr key={stat.month} className={`border-t hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                            <td className="py-2 px-2 text-center h-8">{stat.month}月</td>
-                                                            <td className="py-2 px-2 text-center font-medium h-8">
+                                                            <td className="px-2 text-center h-8">{stat.month}月</td>
+                                                            <td className="px-2 text-center font-medium h-8">
                                                                 {stat.total_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-2 px-2 text-center h-8">
+                                                            <td className="px-2 text-center h-8">
                                                                 {stat.put_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-2 px-2 text-center h-8">
+                                                            <td className="px-2 text-center h-8">
                                                                 {stat.call_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-2 px-2 text-center h-8">
+                                                            <td className="px-2 text-center h-8">
                                                                 {(stat.interest || 0).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     ))}
                                                     <tr className="border-t hover:bg-secondary/20 bg-muted/40 font-bold">
-                                                        <td className="py-2 px-2 text-center h-8">總計</td>
-                                                        <td className="py-2 px-2 text-center h-8">
+                                                        <td className="px-2 text-center h-8">總計</td>
+                                                        <td className="px-2 text-center h-8">
                                                             {(client.total_profit ?? 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-2 px-2 text-center h-8">
+                                                        <td className="px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-2 px-2 text-center h-8">
+                                                        <td className="px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-2 px-2 text-center h-8">
+                                                        <td className="px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
                                                         </td>
                                                     </tr>
