@@ -53,7 +53,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
                          FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
                         (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
-                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count
+                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
+                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
 
                 // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
@@ -70,6 +71,8 @@ export async function GET(req: NextRequest) {
                 params.push(parseInt(year)); // For net_deposit subquery
                 params.push(parseInt(year)); // For deposits_count subquery
                 params.push(parseInt(year)); // For interest_count subquery
+                params.push(parseInt(year)); // For open_put_covered_capital subquery
+
 
                 params.push(parseInt(year)); // For main WHERE year = ?
                 params.push(parseInt(year)); // For DEPOSITS subquery
@@ -84,7 +87,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
                          FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
                         (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
-                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count
+                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
+                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
             }
 
@@ -114,7 +118,19 @@ export async function GET(req: NextRequest) {
                         owner_id as user_id,
                         strftime('%m', datetime(open_date, 'unixepoch')) as month,
                         type,
-                        SUM(COALESCE(final_profit, 0)) as profit
+                        SUM(COALESCE(final_profit, 0)) as profit,
+                        SUM(
+                            (strike_price * ABS(quantity) * 100) * 
+                            (
+                                (
+                                    CASE 
+                                        WHEN settlement_date IS NOT NULL THEN settlement_date 
+                                        WHEN to_date IS NOT NULL THEN to_date
+                                        ELSE unixepoch() 
+                                    END - open_date
+                                ) / 86400.0
+                            )
+                        ) as turnover
                     FROM OPTIONS
                     WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
                     GROUP BY owner_id, month, type
@@ -143,10 +159,11 @@ export async function GET(req: NextRequest) {
 
                     const userStats = userStatsMap.get(row.user_id);
                     if (!userStats[row.month]) {
-                        userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0 };
+                        userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
                     }
 
                     userStats[row.month].total += row.profit;
+                    userStats[row.month].turnover += (row.turnover || 0);
                     if (row.type === 'PUT') {
                         userStats[row.month].put += row.profit;
                     } else if (row.type === 'CALL') {
@@ -162,7 +179,7 @@ export async function GET(req: NextRequest) {
                     const userStats = userStatsMap.get(row.user_id);
                     const monthStr = row.month.toString().padStart(2, '0');
                     if (!userStats[monthStr]) {
-                        userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0 };
+                        userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
                     }
                     userStats[monthStr].interest = row.interest;
                     userStats[monthStr].total += row.interest; // Add interest to total
@@ -176,13 +193,14 @@ export async function GET(req: NextRequest) {
                     const allMonths = [];
                     for (let i = 1; i <= 12; i++) {
                         const monthStr = i.toString().padStart(2, '0');
-                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0 };
+                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
                         allMonths.push({
                             month: monthStr,
                             total_profit: monthData.total,
                             put_profit: monthData.put,
                             call_profit: monthData.call,
-                            interest: monthData.interest
+                            interest: monthData.interest,
+                            turnover: monthData.turnover
                         });
                     }
 

@@ -30,6 +30,7 @@ interface UserStats {
     put_profit: number;
     call_profit: number;
     interest: number;
+    turnover?: number;
 }
 
 interface User {
@@ -44,6 +45,7 @@ interface User {
     total_profit?: number;
     net_deposit?: number;
     initial_cost?: number;
+    open_put_covered_capital?: number;
 }
 
 
@@ -166,8 +168,11 @@ export default function OptionsPage() {
                                     <CardTitle className="text-lg truncate">
                                         {displayName}{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
                                     </CardTitle>
-                                    <CardDescription className="truncate">
-                                        總共{client.options_count || 0}筆交易, <span className="text-green-600">{client.open_count || 0}</span>筆未平倉
+                                    <CardDescription className="truncate flex items-center mt-1">
+                                        <span className="bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200 mr-1.5">
+                                            {client.open_count || 0}
+                                        </span>
+                                        筆未平倉
                                     </CardDescription>
                                 </div>
                             </CardHeader>
@@ -199,9 +204,30 @@ export default function OptionsPage() {
 
                                                 const displayYear = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
 
+                                                // Calculate Margin Requirement Rate (融資需求率)
+                                                // Formula: Sum(Open PUT Strike * Quantity * 100) / Current Net Equity
+                                                const marginRate = currentEquity > 0
+                                                    ? (client.open_put_covered_capital || 0) / currentEquity
+                                                    : 0;
+                                                const marginRateDisplay = (marginRate * 100).toFixed(2) + '%';
+
+                                                // Calculate Monthly Capital Turnover Rate (月資金流水率)
+                                                // Formula: (Current Net Equity * Days in Month) / Monthly Turnover
+                                                // Monthly Turnover is calculated in backend as Sum(Collateral * Days Held) for the current month.
+                                                // We need to find the stats for the current month.
+                                                const currentMonthStr = new Date().getMonth() + 1; // 1-indexed (e.g., 1 for Jan)
+                                                const currentMonthStats = client.monthly_stats?.find((s) => parseInt(s.month) === currentMonthStr);
+                                                const monthlyTurnover = currentMonthStats?.turnover || 0;
+                                                const daysInCurrentMonth = new Date(new Date().getFullYear(), currentMonthStr, 0).getDate();
+
+                                                const turnoverRate = (currentEquity * daysInCurrentMonth) > 0
+                                                    ? monthlyTurnover / (currentEquity * daysInCurrentMonth)
+                                                    : 0;
+                                                const turnoverRateDisplay = (turnoverRate * 100).toFixed(2) + '%';
+
                                                 const metrics = [
-                                                    { label: '融資需求率', value: '' },
-                                                    { label: '月資金流水率', value: '' },
+                                                    { label: '融資需求率', value: marginRateDisplay },
+                                                    { label: '月資金流水率', value: turnoverRateDisplay },
                                                     { label: `權利金-Q${currentQuarter}`, value: quarterProfit.toLocaleString() },
                                                     { label: `權利金-Q${currentQuarter}-目標`, value: quarterTarget.toLocaleString() },
                                                     { label: `權利金-${displayYear}`, value: yearProfit.toLocaleString() },
@@ -319,10 +345,13 @@ export default function OptionsPage() {
                                     <Button
                                         variant="outline"
                                         onClick={() => router.push(`/options/${client.user_id || client.id}`)}
-                                        className="flex-1"
+                                        className="flex-1 justify-between px-3"
                                         size="sm"
                                     >
-                                        交易記錄
+                                        <span>交易記錄</span>
+                                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium border border-gray-200">
+                                            {client.options_count || 0}
+                                        </span>
                                     </Button>
                                     <Button
                                         variant="outline"
