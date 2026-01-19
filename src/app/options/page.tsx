@@ -226,11 +226,23 @@ export default function OptionsPage() {
                                                 const turnoverRateDisplay = (turnoverRate * 100).toFixed(2) + '%';
 
                                                 const metrics = [
-                                                    { label: '融資需求率', value: marginRateDisplay },
-                                                    { label: '月資金流水率', value: turnoverRateDisplay },
-                                                    { label: `權利金-Q${currentQuarter}`, value: quarterProfit.toLocaleString() },
+                                                    {
+                                                        label: '融資需求率',
+                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{marginRateDisplay}</span>
+                                                    },
+                                                    {
+                                                        label: '月資金流水率',
+                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{turnoverRateDisplay}</span>
+                                                    },
+                                                    {
+                                                        label: `權利金-Q${currentQuarter}`,
+                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{quarterProfit.toLocaleString()}</span>
+                                                    },
                                                     { label: `權利金-Q${currentQuarter}-目標`, value: quarterTarget.toLocaleString() },
-                                                    { label: `權利金-${displayYear}`, value: yearProfit.toLocaleString() },
+                                                    {
+                                                        label: `權利金-${displayYear}`,
+                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{yearProfit.toLocaleString()}</span>
+                                                    },
                                                     { label: `權利金-${displayYear}-目標`, value: annualTarget.toLocaleString() },
                                                 ];
 
