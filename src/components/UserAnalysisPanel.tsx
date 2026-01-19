@@ -172,7 +172,7 @@ export function UserAnalysisPanel({ user, year }: UserAnalysisPanelProps) {
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="bg-[#e8e4dc] font-bold text-foreground">
+                                <tr className="bg-[#e8e4dc] text-foreground">
                                     <td className="border px-2 text-center whitespace-nowrap h-7">總結</td>
                                     <td className="border px-2 text-center whitespace-nowrap h-7">{totals.put_win_rate_count > 0 ? formatPercent(totals.put_win_rate_sum / totals.put_win_rate_count) : ''}</td>
                                     <td className="border px-2 text-center whitespace-nowrap h-7">{totals.call_win_rate_count > 0 ? formatPercent(totals.call_win_rate_sum / totals.call_win_rate_count) : ''}</td>

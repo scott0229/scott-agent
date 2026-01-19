@@ -216,13 +216,14 @@ export async function POST(req: NextRequest) {
                             try {
                                 await db.prepare(
                                     `INSERT INTO OPTIONS (
-                                        owner_id, status, operation, open_date, to_date, settlement_date,
+                                        owner_id, user_id, status, operation, open_date, to_date, settlement_date,
                                         quantity, underlying, type, strike_price, collateral, premium,
                                         final_profit, profit_percent, delta, iv, capital_efficiency, year,
                                         created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
+                                    user.user_id || null,  // Add user_id from the imported user data
                                     option.status || '未平倉',
                                     option.operation || null,
                                     option.open_date,

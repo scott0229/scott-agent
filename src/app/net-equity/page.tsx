@@ -280,114 +280,114 @@ export default function NetEquityPage() {
                                         </thead>
                                         <tbody className="text-[13px]">
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-8 px-2">當前淨值</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">當前淨值</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {formatMoney(user.current_net_equity || 0)}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? formatMoney(user.qqqStats.currentEquity) : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? formatMoney(user.qldStats.currentEquity) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="h-8 px-2">年初淨值</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">年初淨值</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {formatMoney(user.initial_cost || 0)}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? formatMoney(user.qqqStats.startEquity) : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? formatMoney(user.qldStats.startEquity) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-8 px-2">報酬率</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">報酬率</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.returnPercentage || 0} />
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? <StatBadge value={user.qqqStats.returnPercentage} /> : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? <StatBadge value={user.qldStats.returnPercentage} /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="h-8 px-2">最大回撤</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">最大回撤</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? <StatBadge value={user.qqqStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? <StatBadge value={user.qldStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-8 px-2">年化報酬率</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">年化報酬率</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedReturn || 0)}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? formatPercent(user.qqqStats.annualizedReturn) : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedReturn) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="h-8 px-2">年化標準差</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">年化標準差</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedStdDev || 0)}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? formatPercent(user.qqqStats.annualizedStdDev) : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedStdDev) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-8 px-2">夏普值</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">夏普值</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge
                                                         value={user.stats?.sharpeRatio || 0}
                                                         variant="sharpe"
                                                         format={(v) => v.toFixed(2)}
                                                     />
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? <StatBadge value={user.qqqStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? <StatBadge value={user.qldStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                                <td className="h-8 px-2">新高次數</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">新高次數</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.stats?.newHighCount || 0}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? user.qqqStats.newHighCount : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? user.qldStats.newHighCount : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-8 px-2">新高頻率</td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2">新高頻率</td>
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {Math.round((user.stats?.newHighFreq || 0) * 100)}%
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qqqStats ? Math.round(user.qqqStats.newHighFreq * 100) + '%' : '-'}
                                                 </td>
-                                                <td className="h-8 px-2 text-center">
+                                                <td className="h-7 py-1 px-2 text-center">
                                                     {user.qldStats ? Math.round(user.qldStats.newHighFreq * 100) + '%' : '-'}
                                                 </td>
                                             </tr>

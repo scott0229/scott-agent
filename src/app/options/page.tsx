@@ -287,7 +287,7 @@ export default function OptionsPage() {
                                                 const marginRate = currentEquity > 0
                                                     ? (client.open_put_covered_capital || 0) / currentEquity
                                                     : 0;
-                                                const marginRateDisplay = (marginRate * 100).toFixed(1) + '%';
+                                                const marginRateDisplay = (marginRate * 100).toFixed(0) + '%';
 
                                                 // Calculate Monthly Capital Turnover Rate (月資金流水率)
                                                 // Formula: (Current Net Equity * Days in Month) / Monthly Turnover
@@ -406,7 +406,7 @@ export default function OptionsPage() {
                                                         <col className="w-[20%]" />
                                                     </colgroup>
                                                     <tbody>
-                                                        <tr className="font-bold">
+                                                        <tr>
                                                             <td className="px-2 text-center h-7">總計</td>
                                                             <td className="px-2 text-center h-7">
                                                                 {(client.total_profit ?? 0).toLocaleString()}

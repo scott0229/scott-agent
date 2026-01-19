@@ -330,33 +330,33 @@ export default function NetEquityDetailPage() {
                             </TableRow>
                         )}
                         {filteredRecords.map((record) => (
-                            <TableRow key={record.id} className="hover:bg-muted/50">
-                                <TableCell className="text-center font-mono font-medium">
+                            <TableRow key={record.id} className="hover:bg-muted/50 h-9">
+                                <TableCell className="text-center font-mono font-medium py-1">
                                     {formatDate(record.date)}
                                 </TableCell>
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-1">
                                     <div className="flex justify-center">
                                         <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
                                             {formatMoney(record.net_equity)}
                                         </Badge>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
+                                <TableCell className="text-center font-mono py-1">
                                     {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
+                                <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.daily_return)}
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
+                                <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.nav_ratio)}
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
+                                <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.running_peak)}
                                 </TableCell>
-                                <TableCell className="text-center font-mono">
+                                <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.drawdown)}
                                 </TableCell>
-                                <TableCell className="text-center">
+                                <TableCell className="text-center py-1">
                                     {record.is_new_high && (
                                         <div className="flex justify-center">
                                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
@@ -364,7 +364,7 @@ export default function NetEquityDetailPage() {
                                     )}
                                 </TableCell>
                                 {isAdmin && (
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right py-1">
                                         <div className="flex justify-end gap-1">
                                             <TooltipProvider>
                                                 <Tooltip>
