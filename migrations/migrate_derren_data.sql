@@ -1,6 +1,6 @@
 -- 1. Create New User (idempotent check)
-INSERT INTO USERS (user_id, email, password, role, year, created_at, updated_at, initial_cost, management_fee, ib_account, name, phone, avatar_url, google_id)
-SELECT user_id, email, password, role, 2026, unixepoch(), unixepoch(), 0, management_fee, ib_account, name, phone, avatar_url, google_id
+INSERT INTO USERS (user_id, email, password, role, year, created_at, updated_at, initial_cost, management_fee, ib_account, name, phone, avatar_url)
+SELECT user_id, email, password, role, 2026, unixepoch(), unixepoch(), 0, management_fee, ib_account, name, phone, avatar_url
 FROM USERS WHERE user_id = 'derren' AND year = 2025
 AND NOT EXISTS (SELECT 1 FROM USERS WHERE user_id = 'derren' AND year = 2026);
 

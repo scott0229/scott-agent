@@ -66,10 +66,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
         <CardHeader>
-          <CardTitle className="text-2xl text-primary font-bold">登入</CardTitle>
-          <CardDescription>
-            使用帳號密碼登入。
-          </CardDescription>
+          <CardTitle className="text-2xl text-primary font-bold">思科金融</CardTitle>
+
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
