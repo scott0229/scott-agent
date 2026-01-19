@@ -140,91 +140,95 @@ export function UserSelectionDialog({
 
     return (
         <Dialog open={open} onOpenChange={(val) => (!processing || progress === 100) && onOpenChange(val)}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className={cn(
+                "sm:max-w-[425px] flex flex-col justify-center",
+                !hideList && "min-h-[500px]"
+            )}>
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     {description && <DialogDescription className="text-sm text-muted-foreground mt-3">{description}</DialogDescription>}
                 </DialogHeader>
 
                 {!hideList && (
-                    <ScrollArea className="h-[300px] border rounded-md p-3">
-                        <div className="space-y-3">
-                            <div className="flex items-center space-x-3 pb-2 border-b mb-2 sticky top-0 bg-background z-10">
-                                <Checkbox
-                                    id="select-all"
-                                    checked={selected.size === users.length && users.length > 0}
-                                    onCheckedChange={(checked: boolean) => {
-                                        if (checked) {
-                                            handleSelectAll();
-                                        } else {
-                                            handleDeselectAll();
-                                        }
-                                    }}
-                                    disabled={processing}
-                                />
-                                <Label
-                                    htmlFor="select-all"
-                                    className={cn("text-sm font-bold cursor-pointer", processing && "cursor-not-allowed opacity-70")}
-                                >
-                                    全選
-                                </Label>
-                                <div className="ml-auto text-sm text-muted-foreground">
-                                    {processing ? (progress === 100 ? '已完成' : '處理中...') : `已選擇 ${selected.size} / ${users.length}`}
-                                </div>
-                            </div>
-
-                            {users.map((user) => {
-                                const isCompleted = completedIds.includes(user.id) || (progress === 100 && selected.has(user.id));
-
-                                // Calculate disabled state
-                                let isDisabled = processing || user.disabled;
-                                if (!isDisabled && dependencies && dependencies[String(user.id)]) {
-                                    if (!dependencies[String(user.id)].satisfied(selected)) {
-                                        isDisabled = true;
+                    <div className="border rounded-md flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center space-x-3 p-3 border-b bg-muted/30">
+                            <Checkbox
+                                id="select-all"
+                                checked={selected.size === users.length && users.length > 0}
+                                onCheckedChange={(checked: boolean) => {
+                                    if (checked) {
+                                        handleSelectAll();
+                                    } else {
+                                        handleDeselectAll();
                                     }
-                                }
-
-                                return (
-                                    <div key={user.id} className="flex items-center space-x-3 group justify-between">
-                                        <div className="flex items-center space-x-3">
-                                            <Checkbox
-                                                id={`user-${user.id}`}
-                                                checked={selected.has(user.id)}
-                                                onCheckedChange={() => handleToggle(user.id)}
-                                                disabled={isDisabled}
-                                            />
-                                            <Label
-                                                htmlFor={`user-${user.id}`}
-                                                className={cn(
-                                                    "text-sm font-medium leading-none cursor-pointer",
-                                                    (processing || isDisabled) && "cursor-not-allowed opacity-70"
-                                                )}
-                                            >
-                                                {user.display}
-                                            </Label>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {user.statusLabel && (
-                                                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                                                    {user.statusLabel}
-                                                </span>
-                                            )}
-                                            {isCompleted && (
-                                                <div className="flex items-center text-green-600 animate-in fade-in zoom-in duration-300">
-                                                    <Check className="h-4 w-4" />
-                                                </div>
-                                            )}
-                                            {processing && selected.has(user.id) && !isCompleted && (
-                                                <div className="flex items-center text-muted-foreground animate-pulse">
-                                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                }}
+                                disabled={processing}
+                            />
+                            <Label
+                                htmlFor="select-all"
+                                className={cn("text-sm font-bold cursor-pointer", processing && "cursor-not-allowed opacity-70")}
+                            >
+                                全選
+                            </Label>
+                            <div className="ml-auto text-sm text-muted-foreground">
+                                {processing ? (progress === 100 ? '已完成' : '處理中...') : `已選擇 ${selected.size} / ${users.length}`}
+                            </div>
                         </div>
-                    </ScrollArea>
+                        <ScrollArea className="flex-1">
+                            <div className="space-y-3 p-3">
+                                {users.map((user) => {
+                                    const isCompleted = completedIds.includes(user.id) || (progress === 100 && selected.has(user.id));
+
+                                    // Calculate disabled state
+                                    let isDisabled = processing || user.disabled;
+                                    if (!isDisabled && dependencies && dependencies[String(user.id)]) {
+                                        if (!dependencies[String(user.id)].satisfied(selected)) {
+                                            isDisabled = true;
+                                        }
+                                    }
+
+                                    return (
+                                        <div key={user.id} className="flex items-center space-x-3 group justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <Checkbox
+                                                    id={`user-${user.id}`}
+                                                    checked={selected.has(user.id)}
+                                                    onCheckedChange={() => handleToggle(user.id)}
+                                                    disabled={isDisabled}
+                                                />
+                                                <Label
+                                                    htmlFor={`user-${user.id}`}
+                                                    className={cn(
+                                                        "text-sm font-medium leading-none cursor-pointer",
+                                                        (processing || isDisabled) && "cursor-not-allowed opacity-70"
+                                                    )}
+                                                >
+                                                    {user.display}
+                                                </Label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {user.statusLabel && (
+                                                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                                        {user.statusLabel}
+                                                    </span>
+                                                )}
+                                                {isCompleted && (
+                                                    <div className="flex items-center text-green-600 animate-in fade-in zoom-in duration-300">
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                {processing && selected.has(user.id) && !isCompleted && (
+                                                    <div className="flex items-center text-muted-foreground animate-pulse">
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </ScrollArea>
+                    </div>
                 )}
 
                 {processing && (

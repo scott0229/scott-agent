@@ -165,46 +165,46 @@ export default function OptionsPage() {
                                 {client.monthly_stats && client.monthly_stats.length > 0 ? (
                                     <div>
                                         <div className="border rounded-md overflow-hidden">
-                                            <table className="w-full text-sm">
-                                                <thead className="bg-secondary/50">
-                                                    <tr>
-                                                        <th className="text-center py-1 px-2 font-medium">月份</th>
-                                                        <th className="text-center py-1 px-2 font-medium">總損益</th>
-                                                        <th className="text-center py-1 px-2 font-medium">PUT</th>
-                                                        <th className="text-center py-1 px-2 font-medium">CALL</th>
-                                                        <th className="text-center py-1 px-2 font-medium">利息</th>
+                                            <table className="w-full text-[13px]">
+                                                <thead className="">
+                                                    <tr className="border-b bg-muted/40 text-[13px] font-medium">
+                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">月份</th>
+                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">總損益</th>
+                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">PUT</th>
+                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">CALL</th>
+                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">利息</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="text-sm">
+                                                <tbody className="text-[13px]">
                                                     {client.monthly_stats.map((stat, index) => (
                                                         <tr key={stat.month} className={`border-t hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                            <td className="py-1 px-2 text-center">{stat.month}月</td>
-                                                            <td className="py-1 px-2 text-center font-medium">
+                                                            <td className="py-2 px-2 text-center h-8">{stat.month}月</td>
+                                                            <td className="py-2 px-2 text-center font-medium h-8">
                                                                 {stat.total_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-1 px-2 text-center">
+                                                            <td className="py-2 px-2 text-center h-8">
                                                                 {stat.put_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-1 px-2 text-center">
+                                                            <td className="py-2 px-2 text-center h-8">
                                                                 {stat.call_profit.toLocaleString()}
                                                             </td>
-                                                            <td className="py-1 px-2 text-center">
+                                                            <td className="py-2 px-2 text-center h-8">
                                                                 {(stat.interest || 0).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    <tr className="border-t-2 bg-secondary/30 font-bold">
-                                                        <td className="py-1 px-2 text-center">總計</td>
-                                                        <td className="py-1 px-2 text-center">
+                                                    <tr className="border-t hover:bg-secondary/20 bg-muted/40 font-bold">
+                                                        <td className="py-2 px-2 text-center h-8">總計</td>
+                                                        <td className="py-2 px-2 text-center h-8">
                                                             {(client.total_profit ?? 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-1 px-2 text-center">
+                                                        <td className="py-2 px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-1 px-2 text-center">
+                                                        <td className="py-2 px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
                                                         </td>
-                                                        <td className="py-1 px-2 text-center">
+                                                        <td className="py-2 px-2 text-center h-8">
                                                             {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
                                                         </td>
                                                     </tr>

@@ -29,15 +29,29 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             WHERE email != 'admin'`;
 
     const params: any[] = [];
+    const whereClauses: string[] = [];
 
     if (year && year !== 'All') {
-        query += ` AND year = ?`;
-        params.push(parseInt(year));
+        // Broaden filter: Include users who belong to the year OR have activity in that year
+        whereClauses.push(`(
+            year = ? 
+            OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
+            OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
+            OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
+        )`);
+        params.push(parseInt(year)); // year = ?
+        params.push(parseInt(year)); // DEPOSITS activity
+        params.push(parseInt(year)); // OPTIONS activity
+        params.push(parseInt(year)); // interest activity
     }
 
     if (userIds && userIds.length > 0) {
-        query += ` AND id IN (${userIds.map(() => '?').join(',')})`;
+        whereClauses.push(`id IN (${userIds.map(() => '?').join(',')})`);
         params.push(...userIds);
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` AND ${whereClauses.join(' AND ')}`;
     }
 
     query += ` ORDER BY id ASC`;

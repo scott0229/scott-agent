@@ -125,7 +125,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 <DialogHeader>
                     <DialogTitle>{userToEdit ? '編輯使用者' : '新增使用者'}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4" autoComplete="off">
+                <form onSubmit={handleSubmit} className="grid gap-4" autoComplete="off">
                     <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="userId" className="text-right">
                             帳號

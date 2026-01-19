@@ -51,20 +51,40 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
-                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit
+                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
+                        (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
+                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count
                         FROM USERS`;
-                query += ' WHERE (year = ? OR role = \'admin\')';
+
+                // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
+                query += ` WHERE (
+                    year = ? 
+                    OR role = 'admin'
+                    OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
+                    OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
+                    OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
+                )`;
+
                 params.push(parseInt(year)); // For options_count subquery
                 params.push(parseInt(year)); // For open_count subquery
                 params.push(parseInt(year)); // For net_deposit subquery
-                params.push(parseInt(year)); // For main query
+                params.push(parseInt(year)); // For deposits_count subquery
+                params.push(parseInt(year)); // For interest_count subquery
+
+                params.push(parseInt(year)); // For main WHERE year = ?
+                params.push(parseInt(year)); // For DEPOSITS subquery
+                params.push(parseInt(year)); // For OPTIONS subquery
+                params.push(parseInt(year)); // For monthly_interest subquery
+
                 whereAdded = true;
             } else {
                 query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
-                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit
+                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
+                        (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
+                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count
                         FROM USERS`;
             }
 
@@ -176,7 +196,32 @@ export async function GET(req: NextRequest) {
                 });
             }
 
-            return NextResponse.json({ users });
+            // Calculate Market Data Count
+            let marketDataCount = 0;
+            if (year && year !== 'All') {
+                const startOfYear = Math.floor(new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000);
+                const endOfYear = Math.floor(new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000);
+                // Align with export logic: include 20 days buffer before start of year
+                const bufferSeconds = 20 * 86400;
+                const startFilter = startOfYear - bufferSeconds;
+
+                const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices WHERE date >= ? AND date <= ?')
+                    .bind(startFilter, endOfYear)
+                    .first();
+                marketDataCount = countResult?.count || 0;
+
+                return NextResponse.json({
+                    users,
+                    meta: {
+                        marketDataCount
+                    }
+                });
+            } else {
+                const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
+                marketDataCount = countResult?.count || 0;
+            }
+
+            return NextResponse.json({ users, meta: { marketDataCount } });
         }
 
         const admin = await checkAdmin(req);
@@ -206,17 +251,32 @@ export async function GET(req: NextRequest) {
         const year = searchParams.get('year');
 
         const params: any[] = [];
-        let netDepositSelect = '';
+        let additionalSelects = '';
 
         if (year && year !== 'All') {
-            netDepositSelect = `, (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit`;
-            params.push(parseInt(year));
+            // Add counts and net_deposit for specific year
+            additionalSelects = `, 
+                (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
+                (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
+                (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
+                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count`;
+
+            // Params for SELECT subqueries
+            params.push(parseInt(year)); // net_deposit
+            params.push(parseInt(year)); // deposits_count
+            params.push(parseInt(year)); // options_count
+            params.push(parseInt(year)); // interest_count
         } else {
-            netDepositSelect = `, (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit`;
+            // General counts for All years
+            additionalSelects = `, 
+                (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
+                (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
+                (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
+                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count`;
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost${netDepositSelect}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -227,16 +287,19 @@ export async function GET(req: NextRequest) {
             params.push(userPayload.id);
         }
 
-        // Add year filter (only admin crosses years, but if customer is restricted to self, does year matter?
-        // User table has 'year' column? Yes.
-        // If customer wants to see their account for a specific year?
-        // The user request is "Unable to see other users".
-        // Usually User Management shows the user account records.
-        // If the user table has a 'year' column, it means user records are year-specific?
-        // Yes, existing code: "SELECT ... WHERE (year = ? OR role = 'admin')"
         if (year && year !== 'All') {
-            whereClauses.push(`(year = ? OR role = 'admin')`);
-            params.push(parseInt(year));
+            // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
+            whereClauses.push(`(
+                year = ? 
+                OR role = 'admin'
+                OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
+                OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
+                OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
+            )`);
+            params.push(parseInt(year)); // year = ?
+            params.push(parseInt(year)); // DEPOSITS activity
+            params.push(parseInt(year)); // OPTIONS activity
+            params.push(parseInt(year)); // interest activity
         }
 
         if (whereClauses.length > 0) {
@@ -257,7 +320,24 @@ export async function GET(req: NextRequest) {
 
         const { results } = await db.prepare(query).bind(...params).all();
 
-        return NextResponse.json({ users: results });
+        // Calculate Market Data Count
+        let marketDataCount = 0;
+        if (year && year !== 'All') {
+            const startOfYear = Math.floor(new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000);
+            const endOfYear = Math.floor(new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000);
+            const bufferSeconds = 20 * 86400;
+            const startFilter = startOfYear - bufferSeconds;
+
+            const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices WHERE date >= ? AND date <= ?')
+                .bind(startFilter, endOfYear)
+                .first();
+            marketDataCount = countResult?.count || 0;
+        } else {
+            const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
+            marketDataCount = countResult?.count || 0;
+        }
+
+        return NextResponse.json({ users: results, meta: { marketDataCount } });
     } catch (error) {
         console.error('Fetch users error:', error);
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });

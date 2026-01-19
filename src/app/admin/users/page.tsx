@@ -32,6 +32,8 @@ interface User {
     open_count?: number;
     net_deposit?: number;
     created_at: number;
+    deposits_count?: number;
+    interest_count?: number;
 }
 
 import {
@@ -60,6 +62,7 @@ export default function AdminUsersPage() {
     const [importing, setImporting] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
+    const [marketDataCount, setMarketDataCount] = useState(0);
 
     // New State for Selection/Progress
     const [exportSelectionOpen, setExportSelectionOpen] = useState(false);
@@ -121,6 +124,9 @@ export default function AdminUsersPage() {
             if (data.users) {
                 setUsers(data.users);
             }
+            if (data.meta && typeof data.meta.marketDataCount === 'number') {
+                setMarketDataCount(data.meta.marketDataCount);
+            }
         } catch (error) {
             console.error('Failed to fetch users', error);
         } finally {
@@ -178,31 +184,48 @@ export default function AdminUsersPage() {
                 checked: true
             }));
 
+        // Calculate Totals for Labels
+        const totalDeposits = exportableUsers.reduce((sum, u) => {
+            const user = users.find(existing => existing.id === u.id);
+            return sum + (user?.deposits_count || 0);
+        }, 0);
+
+        const totalOptions = exportableUsers.reduce((sum, u) => {
+            // Options count is already present in user object
+            const user = users.find(existing => existing.id === u.id);
+            return sum + (user?.options_count || 0);
+        }, 0);
+
+        const totalInterest = exportableUsers.reduce((sum, u) => {
+            const user = users.find(existing => existing.id === u.id);
+            return sum + (user?.interest_count || 0);
+        }, 0);
+
         // Add Deposit Records Option
         exportableUsers.push({
             id: 'deposit_records',
-            display: '用戶匯款記錄',
+            display: `用戶匯款記錄 (${totalDeposits} 筆)`,
             checked: true
         });
 
         // Add Options Records Option
         exportableUsers.push({
             id: 'options_records',
-            display: '用戶期權記錄',
+            display: `用戶期權記錄 (${totalOptions} 筆)`,
             checked: true
         });
 
         // Add Interest Records Option
         exportableUsers.push({
             id: 'interest_records',
-            display: '用戶利息記錄',
+            display: `用戶利息記錄 (${totalInterest} 筆)`,
             checked: true
         });
 
         // Add Market Data Option
         exportableUsers.push({
             id: 'market_data',
-            display: '歷史股價資料',
+            display: `歷史股價資料 (${marketDataCount} 筆)`,
             checked: true
         });
 
@@ -310,32 +333,32 @@ export default function AdminUsersPage() {
                 };
             });
 
-            const hasDeposits = usersList.some((u: any) => u.deposits && Array.isArray(u.deposits) && u.deposits.length > 0);
-            const hasOptions = usersList.some((u: any) => u.options && Array.isArray(u.options) && u.options.length > 0);
-            const hasInterest = usersList.some((u: any) => u.monthly_interest && Array.isArray(u.monthly_interest) && u.monthly_interest.length > 0);
+            const totalDeposits = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.deposits) ? u.deposits.length : 0), 0);
+            const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
+            const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
 
             // Check for Deposit Records choice
             importableUsers.push({
                 id: 'deposit_records',
-                display: `用戶匯款記錄${!hasDeposits ? ' (無記錄)' : ''}`,
-                checked: hasDeposits,
-                disabled: !hasDeposits
+                display: `用戶匯款記錄 (${totalDeposits} 筆)`,
+                checked: totalDeposits > 0,
+                disabled: totalDeposits === 0
             } as any);
 
             // Check for Options Records choice
             importableUsers.push({
                 id: 'options_records',
-                display: `用戶期權記錄${!hasOptions ? ' (無記錄)' : ''}`,
-                checked: hasOptions,
-                disabled: !hasOptions
+                display: `用戶期權記錄 (${totalOptions} 筆)`,
+                checked: totalOptions > 0,
+                disabled: totalOptions === 0
             } as any);
 
             // Check for Interest Records choice
             importableUsers.push({
                 id: 'interest_records',
-                display: `用戶利息記錄${!hasInterest ? ' (無記錄)' : ''}`,
-                checked: hasInterest,
-                disabled: !hasInterest
+                display: `用戶利息記錄 (${totalInterest} 筆)`,
+                checked: totalInterest > 0,
+                disabled: totalInterest === 0
             } as any);
 
 
