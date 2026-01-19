@@ -56,7 +56,7 @@ export default function OptionsPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [interestDialogOpen, setInterestDialogOpen] = useState(false);
     const [interestUser, setInterestUser] = useState<User | null>(null);
-    const [sortOrder, setSortOrder] = useState('alphabetical');
+    const [sortOrder, setSortOrder] = useState('profit-desc');
     const router = useRouter();
 
     const checkUserAndFetchClients = async () => {
@@ -174,52 +174,140 @@ export default function OptionsPage() {
                             <CardContent className="-mt-2">
                                 {client.monthly_stats && client.monthly_stats.length > 0 ? (
                                     <div>
+                                        <div className="border rounded-md overflow-hidden mb-4">
+                                            {(() => {
+                                                const currentMonth = new Date().getMonth() + 1; // 1-12
+                                                const currentQuarter = Math.ceil(currentMonth / 3);
+
+                                                // Calculate Quarterly Profit
+                                                const startMonth = (currentQuarter - 1) * 3 + 1;
+                                                const endMonth = startMonth + 2;
+
+                                                const quarterProfit = client.monthly_stats
+                                                    .filter((stat: any) => {
+                                                        const m = parseInt(stat.month.replace('月', ''));
+                                                        return m >= startMonth && m <= endMonth;
+                                                    })
+                                                    .reduce((sum: number, stat: any) => sum + stat.total_profit, 0);
+
+                                                const yearProfit = client.total_profit || 0;
+
+                                                // Calculate Current Net Equity and Annual Target
+                                                const currentEquity = (client.initial_cost || 0) + (client.net_deposit || 0) + (client.total_profit || 0);
+                                                const annualTarget = Math.round(currentEquity * 0.04);
+                                                const quarterTarget = Math.round(annualTarget / 4);
+
+                                                const displayYear = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+
+                                                const metrics = [
+                                                    { label: '融資需求率', value: '' },
+                                                    { label: '月資金流水率', value: '' },
+                                                    { label: `權利金-Q${currentQuarter}`, value: quarterProfit.toLocaleString() },
+                                                    { label: `權利金-Q${currentQuarter}-目標`, value: quarterTarget.toLocaleString() },
+                                                    { label: `權利金-${displayYear}`, value: yearProfit.toLocaleString() },
+                                                    { label: `權利金-${displayYear}-目標`, value: annualTarget.toLocaleString() },
+                                                ];
+
+                                                return (
+                                                    <div className="bg-white">
+                                                        {metrics.map((metric, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`flex justify-between items-center px-3 py-1.5 text-[13px] ${idx !== metrics.length - 1 ? 'border-b' : ''}`}
+                                                            >
+                                                                <span className="font-medium text-gray-900">{metric.label}</span>
+                                                                <span className="text-gray-600 font-medium">{metric.value}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
                                         <div className="border rounded-md overflow-hidden">
-                                            <table className="w-full text-[13px]">
-                                                <thead className="">
-                                                    <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">月份</th>
-                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">總損益</th>
-                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">PUT</th>
-                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">CALL</th>
-                                                        <th className="text-center py-2 px-2 font-medium w-[20%]">利息</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="text-[13px]">
-                                                    {client.monthly_stats.map((stat, index) => (
-                                                        <tr key={stat.month} className={`border-t hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                            <td className="px-2 text-center h-8">{stat.month}月</td>
-                                                            <td className="px-2 text-center font-medium h-8">
-                                                                {stat.total_profit.toLocaleString()}
+                                            {/* Header Table */}
+                                            <div className="bg-muted border-b">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                    </colgroup>
+                                                    <thead>
+                                                        <tr className="text-[13px] font-medium text-muted-foreground bg-[#e8e4dc]">
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">月份</th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">總損益</th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">PUT</th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">CALL</th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">利息</th>
+                                                        </tr>
+                                                    </thead>
+                                                </table>
+                                            </div>
+
+                                            {/* Scrollable Body Table */}
+                                            <div className="max-h-[200px] overflow-y-auto relative bg-white [&::-webkit-scrollbar]:!w-[2px]">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                    </colgroup>
+                                                    <tbody className="text-[13px]">
+                                                        {client.monthly_stats.map((stat, index) => (
+                                                            <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
+                                                                <td className="px-2 text-center h-7">{stat.month}月</td>
+                                                                <td className="px-2 text-center font-medium h-7">
+                                                                    {stat.total_profit.toLocaleString()}
+                                                                </td>
+                                                                <td className="px-2 text-center h-7">
+                                                                    {stat.put_profit.toLocaleString()}
+                                                                </td>
+                                                                <td className="px-2 text-center h-7">
+                                                                    {stat.call_profit.toLocaleString()}
+                                                                </td>
+                                                                <td className="px-2 text-center h-7">
+                                                                    {(stat.interest || 0).toLocaleString()}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Footer Table */}
+                                            <div className="bg-muted border-t">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                        <col className="w-[20%]" />
+                                                    </colgroup>
+                                                    <tbody>
+                                                        <tr className="font-bold">
+                                                            <td className="px-2 text-center h-7">總計</td>
+                                                            <td className="px-2 text-center h-7">
+                                                                {(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
-                                                            <td className="px-2 text-center h-8">
-                                                                {stat.put_profit.toLocaleString()}
+                                                            <td className="px-2 text-center h-7">
+                                                                {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
                                                             </td>
-                                                            <td className="px-2 text-center h-8">
-                                                                {stat.call_profit.toLocaleString()}
+                                                            <td className="px-2 text-center h-7">
+                                                                {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
                                                             </td>
-                                                            <td className="px-2 text-center h-8">
-                                                                {(stat.interest || 0).toLocaleString()}
+                                                            <td className="px-2 text-center h-7">
+                                                                {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
                                                             </td>
                                                         </tr>
-                                                    ))}
-                                                    <tr className="border-t hover:bg-secondary/20 bg-muted/40 font-bold">
-                                                        <td className="px-2 text-center h-8">總計</td>
-                                                        <td className="px-2 text-center h-8">
-                                                            {(client.total_profit ?? 0).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-2 text-center h-8">
-                                                            {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-2 text-center h-8">
-                                                            {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-2 text-center h-8">
-                                                            {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (

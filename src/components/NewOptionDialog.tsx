@@ -84,6 +84,9 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSettlementDateDirty, setIsSettlementDateDirty] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isToDateOpen, setIsToDateOpen] = useState(false);
+    const [isSettlementDateOpen, setIsSettlementDateOpen] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -170,7 +173,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 <DialogHeader>
                     <DialogTitle>新增交易</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit} className="grid gap-4">
                     {error && (
                         <div className="bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm border border-red-200">
                             {error}
@@ -217,7 +220,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
 
                         <div className="grid gap-2">
                             <Label>開倉日</Label>
-                            <Popover modal={true}>
+                            <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant={"outline"}
@@ -240,6 +243,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                                 const dateStr = format(date, "yyyy-MM-dd");
                                                 setFormData({ ...formData, open_date: dateStr });
                                                 setError(null);
+                                                setIsCalendarOpen(false);
                                             }
                                         }}
                                         disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
@@ -251,7 +255,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
 
                         <div className="grid gap-2">
                             <Label>到期日</Label>
-                            <Popover modal={true}>
+                            <Popover modal={true} open={isToDateOpen} onOpenChange={setIsToDateOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant={"outline"}
@@ -279,6 +283,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                                     settlement_date: !isSettlementDateDirty ? dateStr : prev.settlement_date
                                                 }));
                                                 setError(null);
+                                                setIsToDateOpen(false);
                                             }
                                         }}
                                         fromDate={formData.open_date ? new Date(formData.open_date) : undefined}
@@ -293,7 +298,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
 
                         <div className="grid gap-2">
                             <Label>結算日</Label>
-                            <Popover modal={true}>
+                            <Popover modal={true} open={isSettlementDateOpen} onOpenChange={setIsSettlementDateOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant={"outline"}
@@ -317,6 +322,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                                 setFormData({ ...formData, settlement_date: dateStr });
                                                 setIsSettlementDateDirty(true);
                                                 setError(null);
+                                                setIsSettlementDateOpen(false);
                                             }
                                         }}
                                         fromDate={formData.to_date ? new Date(formData.to_date) : undefined}
@@ -332,7 +338,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Input
                                 id="quantity"
                                 type="number"
-                                placeholder="輸入口數 (可為負)"
                                 value={formData.quantity}
                                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             />
@@ -342,7 +347,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Label htmlFor="underlying">標的</Label>
                             <Input
                                 id="underlying"
-                                placeholder="例如: AAPL"
                                 value={formData.underlying}
                                 onChange={(e) => setFormData({ ...formData, underlying: e.target.value.toUpperCase() })}
                             />
@@ -370,7 +374,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                 id="strike_price"
                                 type="number"
                                 step="0.01"
-                                placeholder="輸入行權價"
                                 value={formData.strike_price}
                                 onChange={(e) => setFormData({ ...formData, strike_price: e.target.value })}
                             />
@@ -381,7 +384,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Input
                                 id="premium"
                                 type="text"
-                                placeholder="輸入權利金"
                                 value={formData.premium}
                                 onChange={(e) => {
                                     const value = e.target.value;
@@ -396,12 +398,11 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="iv">IV</Label>
+                            <Label htmlFor="iv">隱含波動率</Label>
                             <Input
                                 id="iv"
                                 type="number"
                                 step="0.01"
-                                placeholder="輸入 IV"
                                 value={formData.iv}
                                 onChange={(e) => setFormData({ ...formData, iv: e.target.value })}
                             />
@@ -413,7 +414,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                 id="delta"
                                 type="number"
                                 step="0.01"
-                                placeholder="輸入 Delta"
                                 value={formData.delta}
                                 onChange={(e) => setFormData({ ...formData, delta: e.target.value })}
                             />

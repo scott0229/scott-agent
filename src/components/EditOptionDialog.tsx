@@ -94,6 +94,9 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isToDateOpen, setIsToDateOpen] = useState(false);
+    const [isSettlementDateOpen, setIsSettlementDateOpen] = useState(false);
 
     useEffect(() => {
         if (optionToEdit) {
@@ -183,7 +186,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 <DialogHeader>
                     <DialogTitle>編輯交易</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 py-4">
+                <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
                     {error && (
                         <div className="col-span-2 bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm border border-red-200">
                             {error}
@@ -228,7 +231,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
 
                     <div className="grid gap-2">
                         <Label>開倉日</Label>
-                        <Popover modal={true}>
+                        <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
@@ -251,6 +254,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                             const dateStr = format(date, "yyyy-MM-dd");
                                             setFormData({ ...formData, open_date: dateStr });
                                             setError(null);
+                                            setIsCalendarOpen(false);
                                         }
                                     }}
                                     disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
@@ -262,7 +266,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
 
                     <div className="grid gap-2">
                         <Label>到期日</Label>
-                        <Popover modal={true}>
+                        <Popover modal={true} open={isToDateOpen} onOpenChange={setIsToDateOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
@@ -289,6 +293,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                                 // Assuming we don't have isSettlementDateDirty logic here as per existing code, or simplified
                                             }));
                                             setError(null);
+                                            setIsToDateOpen(false);
                                         }
                                     }}
                                     fromDate={formData.open_date ? new Date(formData.open_date) : undefined}
@@ -303,7 +308,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
 
                     <div className="grid gap-2">
                         <Label>結算日</Label>
-                        <Popover modal={true}>
+                        <Popover modal={true} open={isSettlementDateOpen} onOpenChange={setIsSettlementDateOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
@@ -326,6 +331,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                             const dateStr = format(date, "yyyy-MM-dd");
                                             setFormData({ ...formData, settlement_date: dateStr });
                                             setError(null);
+                                            setIsSettlementDateOpen(false);
                                         }
                                     }}
                                     fromDate={formData.to_date ? new Date(formData.to_date) : undefined}
@@ -341,7 +347,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                         <Input
                             id="quantity"
                             type="number"
-                            placeholder="輸入口數 (可為負)"
                             value={formData.quantity}
                             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                         />
@@ -351,7 +356,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                         <Label htmlFor="underlying">標的</Label>
                         <Input
                             id="underlying"
-                            placeholder="例如: AAPL"
                             value={formData.underlying}
                             onChange={(e) => setFormData({ ...formData, underlying: e.target.value.toUpperCase() })}
                         />
@@ -379,7 +383,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="strike_price"
                             type="number"
                             step="0.01"
-                            placeholder="輸入行權價"
                             value={formData.strike_price}
                             onChange={(e) => setFormData({ ...formData, strike_price: e.target.value })}
                         />
@@ -390,7 +393,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                         <Input
                             id="premium"
                             type="text"
-                            placeholder="輸入權利金"
                             value={formData.premium}
                             onChange={(e) => {
                                 const value = e.target.value;
@@ -405,12 +407,11 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="iv">IV</Label>
+                        <Label htmlFor="iv">隱含波動率</Label>
                         <Input
                             id="iv"
                             type="number"
                             step="0.01"
-                            placeholder="輸入 IV"
                             value={formData.iv}
                             onChange={(e) => setFormData({ ...formData, iv: e.target.value })}
                         />
@@ -422,7 +423,6 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="delta"
                             type="number"
                             step="0.01"
-                            placeholder="輸入 Delta"
                             value={formData.delta}
                             onChange={(e) => setFormData({ ...formData, delta: e.target.value })}
                         />
@@ -434,10 +434,17 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="final_profit"
                             type="number"
                             step="0.01"
-                            placeholder="輸入最終損益"
                             value={formData.final_profit}
                             onChange={(e) => setFormData({ ...formData, final_profit: e.target.value })}
                         />
+                    </div>
+                    <div className="flex justify-end gap-2 col-span-2">
+                        <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+                            取消
+                        </Button>
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? '更新中...' : '更新'}
+                        </Button>
                     </div>
                 </form>
             </DialogContent>

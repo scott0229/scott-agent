@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { NewOptionDialog } from "@/components/NewOptionDialog";
 import { EditOptionDialog } from "@/components/EditOptionDialog";
-import { Pencil, FilterX, Trash2, ArrowLeft } from "lucide-react";
+import { ArrowLeft, FilterX, Pencil, Trash, Trash2 } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -66,6 +66,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [options, setOptions] = useState<Option[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [optionToEdit, setOptionToEdit] = useState<Option | null>(null);
 
@@ -96,7 +97,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 }
 
                 // Fetch page owner user
-                const res = await fetch(`/api/users?mode=selection&userId=${params.userId}`, {
+                const yearForUser = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+                const res = await fetch(`/api/users?mode=selection&userId=${params.userId}&year=${yearForUser}`, {
                     credentials: 'include' // Ensure cookies are sent
                 });
                 const data = await res.json();
@@ -108,13 +110,28 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             }
         };
         fetchUserAndCheckRole();
-    }, [params.userId]);
+    }, [params.userId, selectedYear]);
+
+    const handleDeleteAll = async () => {
+        try {
+            const res = await fetch(`/api/options?userId=${params.userId}&year=${selectedYear}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) throw new Error('Failed to delete all options');
+
+            await fetchOptions();
+            setIsDeleteAllOpen(false);
+        } catch (error) {
+            console.error('Delete all error:', error);
+            alert('刪除失敗');
+        }
+    };
 
     const fetchOptions = async () => {
-        if (!ownerId) return;
         try {
-            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/options?ownerId=${ownerId}&year=${year}`, { cache: 'no-store' });
+            const year = selectedYear; // Allow 'All' to be passed directly
+            const res = await fetch(`/api/options?userId=${params.userId}&year=${year}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.options) {
                 setOptions(data.options);
@@ -127,10 +144,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     };
 
     useEffect(() => {
-        if (ownerId) {
-            fetchOptions();
-        }
-    }, [ownerId, selectedYear]);
+        fetchOptions();
+    }, [params.userId, selectedYear]);
 
     const handleEdit = (option: Option) => {
         setOptionToEdit(option);
@@ -298,13 +313,23 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                     </div>
 
                     {currentUserRole && currentUserRole !== 'customer' && (
-                        <Button
-                            onClick={() => setDialogOpen(true)}
-                            variant="secondary"
-                            className="hover:bg-accent hover:text-accent-foreground"
-                        >
-                            <span className="mr-0.5">+</span>新增
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                className="flex gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                                onClick={() => setIsDeleteAllOpen(true)}
+                            >
+                                <Trash className="h-4 w-4" />
+                                刪除全部
+                            </Button>
+                            <Button
+                                onClick={() => setDialogOpen(true)}
+                                variant="secondary"
+                                className="hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <span className="mr-0.5">+</span>新增
+                            </Button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -382,8 +407,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <TableCell>{opt.strike_price}</TableCell>
                                     <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
                                     <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
-                                    <TableCell className={opt.final_profit && opt.final_profit > 0 ? 'text-green-600' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}>
-                                        {opt.final_profit?.toLocaleString() || '-'}
+                                    <TableCell>
+                                        {opt.status === '未平倉' ? (
+                                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                                                {opt.final_profit?.toLocaleString() || '-'}
+                                            </Badge>
+                                        ) : (
+                                            <span className={opt.final_profit && opt.final_profit > 0 ? 'text-green-600' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}>
+                                                {opt.final_profit?.toLocaleString() || '-'}
+                                            </span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         {(() => {
@@ -492,6 +525,26 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
                             刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>確定要刪除全部資料嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            此動作無法復原。這將會永久刪除 {selectedYear === 'All' ? '所有年份' : `${selectedYear}年`} {params.userId} 的所有期權交易資料。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteAll}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            確認刪除
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

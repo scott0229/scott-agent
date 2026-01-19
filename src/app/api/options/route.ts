@@ -75,11 +75,17 @@ export async function POST(req: NextRequest) {
             year // Add year
         } = body;
 
+        // Auto-fill final_profit with premium if status is '未平倉' (Open)
+        let final_profit = body.final_profit;
+        if ((status === '未平倉' || !status) && (final_profit === undefined || final_profit === null)) {
+            final_profit = premium;
+        }
+
         // Auto-calculate profit percent
         let profit_percent = body.profit_percent;
-        if (body.final_profit !== undefined && body.final_profit !== null && premium && premium !== 0) {
-            profit_percent = body.final_profit / premium;
-        } else if (body.final_profit === null) {
+        if (final_profit !== undefined && final_profit !== null && premium && premium !== 0) {
+            profit_percent = final_profit / premium;
+        } else if (final_profit === null) {
             profit_percent = null;
         }
 
@@ -109,7 +115,7 @@ export async function POST(req: NextRequest) {
             strike_price,
             body.collateral || 0,
             premium || 0,
-            body.final_profit || null,
+            final_profit || null,
             profit_percent || null,
             body.delta || null,
             body.iv || null,
@@ -197,6 +203,35 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Update option error:', error);
+        return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const token = req.cookies.get('token')?.value;
+        const user = token ? await verifyToken(token) : null;
+
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get('userId');
+        const year = searchParams.get('year');
+
+        if (!userId || !year) {
+            return NextResponse.json({ error: 'Missing userId or year' }, { status: 400 });
+        }
+
+        const db = await getDb();
+        const result = await db.prepare('DELETE FROM OPTIONS WHERE user_id = ? AND year = ?')
+            .bind(userId, parseInt(year))
+            .run();
+
+        return NextResponse.json({ success: true, deleted: result.meta.changes });
+    } catch (error) {
+        console.error('Delete all options error:', error);
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
     }
 }
