@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Card,
@@ -18,11 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, Users, TrendingUp, BarChart3 } from "lucide-react";
+import { Loader2, Users, TrendingUp, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
-import { UserAnalysisDialog } from '@/components/UserAnalysisDialog';
 import { InterestDialog } from '@/components/InterestDialog';
+import { UserAnalysisPanel } from '@/components/UserAnalysisPanel';
+import { useWindowSize } from '@/hooks/use-window-size';
 
 interface UserStats {
     month: string;
@@ -48,18 +49,38 @@ interface User {
     open_put_covered_capital?: number;
 }
 
-
 export default function OptionsPage() {
     const [clients, setClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
     const { selectedYear } = useYearFilter();
-    const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+    // Changed: Track expanded user ID for inline display instead of dialog
+    const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+    // Track selected user for interest dialog
     const [interestDialogOpen, setInterestDialogOpen] = useState(false);
     const [interestUser, setInterestUser] = useState<User | null>(null);
     const [sortOrder, setSortOrder] = useState('profit-desc');
     const router = useRouter();
+
+    // Use window size for responsive grid calculation
+    const { width } = useWindowSize();
+
+    // Ref for auto-scrolling to analysis panel
+    const analysisPanelRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to analysis panel when expanded
+    useEffect(() => {
+        if (expandedUserId && analysisPanelRef.current) {
+            setTimeout(() => {
+                analysisPanelRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 150);
+        }
+    }, [expandedUserId]);
 
     const checkUserAndFetchClients = async () => {
         try {
@@ -101,6 +122,15 @@ export default function OptionsPage() {
         setMounted(true);
     }, []);
 
+    // Helper to determine number of columns based on window width
+    // Tailwind breakpoints: md: 768px (2 cols), lg: 1024px (3 cols)
+    const getNumColumns = () => {
+        if (!width) return 1; // Default
+        if (width >= 1024) return 3;
+        if (width >= 768) return 2;
+        return 1;
+    };
+
     if (isLoading) {
         return (
             <div className="container mx-auto py-10 max-w-[1200px]">
@@ -131,6 +161,35 @@ export default function OptionsPage() {
         return 0;
     });
 
+    // Logic to insert the expanded panel
+    const numColumns = getNumColumns();
+    const clientsWithPanel = [];
+
+    // Find index of expanded user
+    const expandedIndex = sortedClients.findIndex(c =>
+        (c.user_id || c.email) === expandedUserId
+    );
+
+    // If expanded, calculate where to insert the panel (end of the row)
+    let insertPanelAtIndex = -1;
+    if (expandedIndex !== -1) {
+        const rowStartIndex = Math.floor(expandedIndex / numColumns) * numColumns;
+        // The end of the row is start index + columns - 1, but we need to verify limits
+        const rowEndIndex = Math.min(rowStartIndex + numColumns - 1, sortedClients.length - 1);
+        insertPanelAtIndex = rowEndIndex;
+    }
+
+    // Build the render list
+    for (let i = 0; i < sortedClients.length; i++) {
+        clientsWithPanel.push({ type: 'card', data: sortedClients[i] });
+        if (i === insertPanelAtIndex) {
+            clientsWithPanel.push({
+                type: 'panel',
+                data: sortedClients[expandedIndex]
+            });
+        }
+    }
+
     return (
         <div className="container mx-auto py-10 max-w-[1200px]">
             <div className="mb-8 flex justify-between items-center">
@@ -150,15 +209,34 @@ export default function OptionsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedClients.map((client) => {
+                {clientsWithPanel.map((item, index) => {
+                    if (item.type === 'panel') {
+                        // Full width panel that spans all columns
+                        return (
+                            <div ref={analysisPanelRef} key="analysis-panel" className="col-span-1 md:col-span-2 lg:col-span-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                                <UserAnalysisPanel
+                                    user={item.data}
+                                    year={selectedYear.toString()}
+                                />
+                            </div>
+                        );
+                    }
+
+                    const client = item.data;
                     const displayName = client.user_id || client.email.split('@')[0];
                     const initials = displayName.charAt(0).toUpperCase();
+                    const isExpanded = (client.user_id || client.email) === expandedUserId;
 
                     return (
                         <Card
                             key={client.id}
-                            className="hover:shadow-lg transition-all hover:border-primary/50"
+                            className={`hover:shadow-lg transition-all hover:border-primary/50 relative ${isExpanded ? 'border-primary ring-1 ring-primary' : ''}`}
                         >
+                            {/* Triangle indicator for selected card */}
+                            {isExpanded && (
+                                <div className="absolute -bottom-[10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-primary z-10"></div>
+                            )}
+
                             <CardHeader className="flex flex-row items-center gap-4 pb-0">
                                 <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
                                     <AvatarImage src={client.avatar_url || undefined} />
@@ -228,20 +306,20 @@ export default function OptionsPage() {
                                                 const metrics = [
                                                     {
                                                         label: '融資需求率',
-                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{marginRateDisplay}</span>
+                                                        value: <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-200">{marginRateDisplay}</span>
                                                     },
                                                     {
                                                         label: '月資金流水率',
-                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{turnoverRateDisplay}</span>
+                                                        value: <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-200">{turnoverRateDisplay}</span>
                                                     },
                                                     {
                                                         label: `權利金-Q${currentQuarter}`,
-                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{quarterProfit.toLocaleString()}</span>
+                                                        value: <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-200">{quarterProfit.toLocaleString()}</span>
                                                     },
                                                     { label: `權利金-Q${currentQuarter}-目標`, value: quarterTarget.toLocaleString() },
                                                     {
                                                         label: `權利金-${displayYear}`,
-                                                        value: <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-blue-200">{yearProfit.toLocaleString()}</span>
+                                                        value: <span className="bg-amber-50 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-medium border border-amber-200">{yearProfit.toLocaleString()}</span>
                                                     },
                                                     { label: `權利金-${displayYear}-目標`, value: annualTarget.toLocaleString() },
                                                 ];
@@ -299,7 +377,7 @@ export default function OptionsPage() {
                                                         {client.monthly_stats.map((stat, index) => (
                                                             <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                 <td className="px-2 text-center h-7">{stat.month}月</td>
-                                                                <td className="px-2 text-center font-medium h-7">
+                                                                <td className="px-2 text-center h-7">
                                                                     {stat.total_profit.toLocaleString()}
                                                                 </td>
                                                                 <td className="px-2 text-center h-7">
@@ -366,11 +444,11 @@ export default function OptionsPage() {
                                         </span>
                                     </Button>
                                     <Button
-                                        variant="outline"
+                                        variant={isExpanded ? "default" : "outline"}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setSelectedUser(client);
-                                            setAnalysisDialogOpen(true);
+                                            const id = client.user_id || client.email;
+                                            setExpandedUserId(expandedUserId === id ? null : id);
                                         }}
                                         className="flex-1"
                                         size="sm"
@@ -402,13 +480,6 @@ export default function OptionsPage() {
                     </div>
                 )}
             </div>
-
-            <UserAnalysisDialog
-                user={selectedUser}
-                year={selectedYear}
-                open={analysisDialogOpen}
-                onOpenChange={setAnalysisDialogOpen}
-            />
 
             <InterestDialog
                 userId={interestUser?.id}
