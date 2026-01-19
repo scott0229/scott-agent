@@ -209,7 +209,7 @@ export default function OptionsPage() {
                                                 const marginRate = currentEquity > 0
                                                     ? (client.open_put_covered_capital || 0) / currentEquity
                                                     : 0;
-                                                const marginRateDisplay = (marginRate * 100).toFixed(2) + '%';
+                                                const marginRateDisplay = (marginRate * 100).toFixed(1) + '%';
 
                                                 // Calculate Monthly Capital Turnover Rate (月資金流水率)
                                                 // Formula: (Current Net Equity * Days in Month) / Monthly Turnover

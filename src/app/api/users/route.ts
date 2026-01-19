@@ -59,13 +59,7 @@ export async function GET(req: NextRequest) {
                         FROM USERS`;
 
                 // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
-                query += ` WHERE (
-                    year = ? 
-                    OR role = 'admin'
-                    OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
-                    OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
-                    OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
-                )`;
+                query += ` WHERE year = ?`;
 
                 params.push(parseInt(year)); // For options_count subquery
                 params.push(parseInt(year)); // For open_count subquery
@@ -75,11 +69,7 @@ export async function GET(req: NextRequest) {
                 params.push(parseInt(year)); // For fees_count subquery
                 params.push(parseInt(year)); // For open_put_covered_capital subquery
 
-
                 params.push(parseInt(year)); // For main WHERE year = ?
-                params.push(parseInt(year)); // For DEPOSITS subquery
-                params.push(parseInt(year)); // For OPTIONS subquery
-                params.push(parseInt(year)); // For monthly_interest subquery
 
                 whereAdded = true;
             } else {
@@ -281,7 +271,8 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                 (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
-                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count`;
+                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count,
+                (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity`;
 
             // Params for SELECT subqueries
             params.push(parseInt(year)); // net_deposit
@@ -296,7 +287,8 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                 (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
-                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count`;
+                (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count,
+                (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity`;
         }
 
         let query = `
@@ -312,18 +304,8 @@ export async function GET(req: NextRequest) {
         }
 
         if (year && year !== 'All') {
-            // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
-            whereClauses.push(`(
-                year = ? 
-                OR role = 'admin'
-                OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
-                OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
-                OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
-            )`);
+            whereClauses.push('year = ?');
             params.push(parseInt(year)); // year = ?
-            params.push(parseInt(year)); // DEPOSITS activity
-            params.push(parseInt(year)); // OPTIONS activity
-            params.push(parseInt(year)); // interest activity
         }
 
         if (whereClauses.length > 0) {
@@ -343,6 +325,39 @@ export async function GET(req: NextRequest) {
         `;
 
         const { results } = await db.prepare(query).bind(...params).all();
+
+        // Calculate total_profit for each user if year is specified
+        if (year && year !== 'All') {
+            const statsQuery = `
+                SELECT 
+                    owner_id as user_id,
+                    strftime('%m', datetime(open_date, 'unixepoch')) as month,
+                    SUM(COALESCE(final_profit, 0)) as profit
+                FROM OPTIONS
+                WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
+                GROUP BY owner_id, month
+            `;
+            const { results: optionsResults } = await db.prepare(statsQuery).bind(year).all();
+
+            const interestQuery = `SELECT user_id, month, interest FROM monthly_interest WHERE year = ?`;
+            const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
+
+            const userProfitMap = new Map<number, number>();
+
+            (optionsResults as any[]).forEach(row => {
+                const current = userProfitMap.get(row.user_id) || 0;
+                userProfitMap.set(row.user_id, current + row.profit);
+            });
+
+            (interestResults as any[]).forEach(row => {
+                const current = userProfitMap.get(row.user_id) || 0;
+                userProfitMap.set(row.user_id, current + row.interest);
+            });
+
+            (results as any[]).forEach((user: any) => {
+                user.total_profit = userProfitMap.get(user.id) || 0;
+            });
+        }
 
         // Calculate Market Data Count
         let marketDataCount = 0;

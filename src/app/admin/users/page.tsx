@@ -36,6 +36,8 @@ interface User {
     deposits_count?: number;
     interest_count?: number;
     fees_count?: number;
+    total_profit?: number;
+    current_net_equity?: number;
 }
 
 import {
@@ -703,6 +705,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
                                 <TableHead className="text-center">年度匯款</TableHead>
+                                <TableHead className="text-center">當前淨值</TableHead>
                                 <TableHead className="text-center">年初淨值</TableHead>
                                 <TableHead className="text-center">IB 帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
@@ -716,7 +719,7 @@ export default function AdminUsersPage() {
                                 if (filteredUsers.length === 0) {
                                     return (
                                         <TableRow className="hover:bg-transparent">
-                                            <TableCell colSpan={9} className="p-4">
+                                            <TableCell colSpan={10} className="p-4">
                                                 <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
                                                     尚無客戶資料
                                                 </div>
@@ -725,85 +728,95 @@ export default function AdminUsersPage() {
                                     );
                                 }
 
-                                return filteredUsers.map((user, index) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
-                                        <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
-                                        <TableCell className="text-center">{user.user_id || '-'}</TableCell>
-                                        <TableCell className="text-center">
-                                            {user.role === 'customer' ? (
-                                                user.management_fee === 0 ? (
-                                                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
-                                                        不收費
-                                                    </Badge>
-                                                ) : (
-                                                    `${user.management_fee}%`
-                                                )
-                                            ) : '-'}
-                                        </TableCell>
-                                        <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.net_deposit || 0) : '-'}</TableCell>
-                                        <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
-                                        <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                        <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
-                                        <TableCell>{user.email}</TableCell>
-                                        <TableCell className="text-right">
-                                            {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
-                                                <div className="flex justify-end gap-1">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => {
-                                                                    setSelectedUserForFees(user);
-                                                                    setFeesDialogOpen(true);
-                                                                }}
-                                                                className="text-muted-foreground hover:text-green-600 hover:bg-green-50"
-                                                            >
-                                                                <DollarSign className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>管理費記錄</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
+                                const sortedUsers = [...filteredUsers].sort((a, b) => {
+                                    const equityA = a.current_net_equity || 0;
+                                    const equityB = b.current_net_equity || 0;
+                                    return equityB - equityA;
+                                });
 
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEdit(user)}
-                                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>編輯</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
+                                return sortedUsers.map((user, index) => {
+                                    const currentEquity = user.current_net_equity || 0;
+                                    return (
+                                        <TableRow key={user.id}>
+                                            <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
+                                            <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
+                                            <TableCell className="text-center">{user.user_id || '-'}</TableCell>
+                                            <TableCell className="text-center">
+                                                {user.role === 'customer' ? (
+                                                    user.management_fee === 0 ? (
+                                                        <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                                                            不收費
+                                                        </Badge>
+                                                    ) : (
+                                                        `${user.management_fee}%`
+                                                    )
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.net_deposit || 0) : '-'}</TableCell>
+                                            <TableCell className="text-center">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
+                                            <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
+                                            <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
+                                            <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
+                                            <TableCell>{user.email}</TableCell>
+                                            <TableCell className="text-right">
+                                                {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
+                                                    <div className="flex justify-end gap-1">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => {
+                                                                        setSelectedUserForFees(user);
+                                                                        setFeesDialogOpen(true);
+                                                                    }}
+                                                                    className="text-muted-foreground hover:text-green-600 hover:bg-green-50"
+                                                                >
+                                                                    <DollarSign className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>管理費記錄</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
 
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleDelete(user.id)}
-                                                                className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>刪除</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ));
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEdit(user)}
+                                                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>編輯</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleDelete(user.id)}
+                                                                    className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>刪除</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                });
                             })()}
                         </TableBody>
                     </Table>
