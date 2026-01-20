@@ -248,6 +248,11 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
     }
 
+    // Remove id field from users before export (used internally for queries only)
+    for (const user of users) {
+        delete (user as any).id;
+    }
+
     return {
         users,
         market_prices: marketPrices,

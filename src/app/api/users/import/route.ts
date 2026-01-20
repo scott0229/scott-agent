@@ -80,10 +80,13 @@ export async function POST(req: NextRequest) {
 
                 const targetYear = user.year || 2025;
 
-                // Check if user already exists
+                // Check if user already exists by email or IB account
                 const existing = await db.prepare(
-                    `SELECT id FROM USERS WHERE (email = ? OR (user_id IS NOT NULL AND user_id = ?)) AND year = ?`
-                ).bind(user.email, user.user_id || null, targetYear).first();
+                    `SELECT id FROM USERS WHERE (
+                        email = ? 
+                        OR (ib_account IS NOT NULL AND ib_account != '' AND ib_account = ?)
+                    ) AND year = ?`
+                ).bind(user.email, user.ib_account || null, targetYear).first();
 
                 let targetUserId = existing ? existing.id : null;
 
