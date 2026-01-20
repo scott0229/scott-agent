@@ -35,13 +35,13 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         // Broaden filter: Include users who belong to the year OR have activity in that year
         whereClauses.push(`(
             year = ? 
-            OR id IN (SELECT DISTINCT user_id FROM DEPOSITS WHERE year = ?)
+            OR id IN (SELECT DISTINCT user_id FROM DAILY_NET_EQUITY WHERE year = ? AND deposit != 0)
             OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
             OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
             OR id IN (SELECT DISTINCT user_id FROM monthly_fees WHERE year = ?)
         )`);
         params.push(parseInt(year)); // year = ?
-        params.push(parseInt(year)); // DEPOSITS activity
+        params.push(parseInt(year)); // DEPOSITS activity (via DAILY_NET_EQUITY)
         params.push(parseInt(year)); // OPTIONS activity
         params.push(parseInt(year)); // interest activity
         params.push(parseInt(year)); // fees activity
@@ -83,37 +83,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         console.error('Export: Failed to fetch market data', e);
     }
 
-    // Fetch deposits for each user
+    // Fetch deposits for each user (Internal validation/calc usage)
     for (const user of users) {
-        let depositQuery = `
-            SELECT 
-                id, deposit_date, amount, year, note, 
-                deposit_type, transaction_type
-            FROM DEPOSITS
-            WHERE user_id = ?
-        `;
-        const depositParams: any[] = [user.id];
-
-        if (year && year !== 'All') {
-            depositQuery += ` AND year = ?`;
-            depositParams.push(parseInt(year));
-        }
-
-        depositQuery += ` ORDER BY deposit_date DESC`;
-
-        const { results: deposits } = await db.prepare(depositQuery).bind(...depositParams).all();
-        const actualDeposits = deposits || [];
-
-        // Set deposits on user object based on policy
-        // We calculate stats internally using 'actualDeposits', but export based on flag
-        if (includeDepositRecords) {
-            (user as any).deposits = actualDeposits;
-        } else {
-            (user as any).deposits = [];
-        }
+        // Legacy DEPOSITS table query removed. 
+        // We no longer export separate deposits array as it is now integrated into net_equity
+        (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;
@@ -130,8 +107,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).net_equity_records = netEquityRecords || [];
 
         const uEq = (user as any).net_equity_records as any[];
-        // Use actualDeposits for calculation to ensure accuracy of stats even if not exported
-        const uDep = actualDeposits;
+
+        // Synthesize deposits from net_equity.deposit for TWR calculation
+        // This ensures the exported stats match what the new system calculates
+        const uDep = uEq.filter(r => r.deposit && r.deposit !== 0).map(r => ({
+            deposit_date: r.date,
+            amount: Math.abs(r.deposit),
+            transaction_type: r.deposit > 0 ? 'deposit' : 'withdrawal'
+        }));
 
         let benchStartDate = 0;
         if (year && year !== 'All') {

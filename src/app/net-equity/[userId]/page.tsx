@@ -314,7 +314,7 @@ export default function NetEquityDetailPage() {
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">現金水位</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">當日入金</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">匯款記錄</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">前高</TableHead>
@@ -351,7 +351,17 @@ export default function NetEquityDetailPage() {
                                     )}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
-                                    {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
+                                    {(record as any).deposit && (record as any).deposit !== 0 ? (
+                                        (record as any).deposit < 0 ? (
+                                            <div className="flex justify-center">
+                                                <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 font-sans font-normal text-sm px-2">
+                                                    {formatMoney((record as any).deposit)}
+                                                </Badge>
+                                            </div>
+                                        ) : (
+                                            formatMoney((record as any).deposit)
+                                        )
+                                    ) : '0'}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.daily_return)}
@@ -427,13 +437,13 @@ export default function NetEquityDetailPage() {
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell className="text-center font-mono"></TableCell>
-                            <TableCell className="text-center font-mono"></TableCell>
-                            <TableCell className="text-center font-mono"></TableCell>
-                            <TableCell className="text-center font-mono"></TableCell>
-                            <TableCell className="text-center font-mono"></TableCell>
                             <TableCell className="text-center"></TableCell>
-                            {isAdmin && <TableCell className="text-center"></TableCell>}
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell colSpan={isAdmin ? 2 : 1} className="text-center"></TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>

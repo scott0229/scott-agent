@@ -22,14 +22,22 @@ export async function GET(request: NextRequest) {
         const userIds = url.searchParams.get('userId'); // Can be comma-separated IDs
         const transactionType = url.searchParams.get('transaction_type');
 
+        // Query DAILY_NET_EQUITY where deposit is not 0
         let query = `
       SELECT 
-        d.*,
+        d.id,
+        d.user_id,
+        d.date as deposit_date,
+        ABS(d.deposit) as amount,
+        d.year,
+        CASE WHEN d.deposit > 0 THEN 'deposit' ELSE 'withdrawal' END as transaction_type,
+        'cash' as deposit_type,
+        NULL as note,
         u.user_id as depositor_user_id,
         u.email as depositor_email
-      FROM DEPOSITS d
+      FROM DAILY_NET_EQUITY d
       LEFT JOIN USERS u ON d.user_id = u.id
-      WHERE 1=1
+      WHERE d.deposit IS NOT NULL AND d.deposit != 0
     `;
         const params: any[] = [];
 
@@ -55,33 +63,36 @@ export async function GET(request: NextRequest) {
 
         // Transaction type filter
         if (transactionType && transactionType !== 'All') {
-            query += ` AND d.transaction_type = ?`;
-            params.push(transactionType);
-        }
-
-        // Deposit type filter
-        const depositType = url.searchParams.get('deposit_type');
-        if (depositType && depositType !== 'All') {
-            if (depositType === 'stock') {
-                query += ` AND d.deposit_type IN ('stock', 'both')`;
-            } else if (depositType === 'cash') {
-                query += ` AND d.deposit_type IN ('cash', 'both')`;
-            } else {
-                query += ` AND d.deposit_type = ?`;
-                params.push(depositType);
+            if (transactionType === 'deposit') {
+                query += ` AND d.deposit > 0`;
+            } else if (transactionType === 'withdrawal') {
+                query += ` AND d.deposit < 0`;
             }
         }
 
-        query += ` ORDER BY d.deposit_date DESC, d.id DESC`;
+        // Deposit type filter - Ignored as we only have 'cash' equivalent (part of net equity)
+        // We could strictly allow only 'cash' or 'All'
+        const depositType = url.searchParams.get('deposit_type');
+        if (depositType && depositType !== 'All' && depositType !== 'cash') {
+            // If they ask for 'stock', we return nothing as net equity deposits are treated as cash/value
+            // Or we just ignore it. Let's strictly return empty if they want stock specifically, 
+            // assuming migration merged everything into value.
+            if (depositType === 'stock') {
+                // return empty
+                return NextResponse.json({
+                    success: true,
+                    deposits: [],
+                });
+            }
+        }
 
-        console.log('Deposits API: Query:', query);
-        console.log('Deposits API: Params:', params);
+        query += ` ORDER BY d.date DESC, d.id DESC`;
+
+        console.log('Deposits API (Net Equity Source): Query:', query);
+        console.log('Deposits API (Net Equity Source): Params:', params);
 
         const { results } = await db.prepare(query).bind(...params).all();
         console.log('Deposits API: Found records:', results.length);
-        if (results.length > 0) {
-            console.log('Deposits API: First record type:', results[0].deposit_type);
-        }
 
         return NextResponse.json({
             success: true,
@@ -96,56 +107,5 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function POST(request: NextRequest) {
-    try {
-        // Permission check: only admin and manager can create deposits
-        const token = request.cookies.get('token')?.value;
-        const user = token ? await verifyToken(token) : null;
+// POST endpoint removed as deposits are now managed via Net Equity API
 
-        if (!user || !['admin', 'manager'].includes(user.role)) {
-            return NextResponse.json(
-                { success: false, error: 'Insufficient permissions' },
-                { status: 403 }
-            );
-        }
-
-        const db = await getDb();
-        const body = await request.json();
-
-        const { deposit_date, user_id, amount, note, deposit_type, transaction_type } = body;
-
-        if (!deposit_date || !user_id || amount === undefined) {
-            return NextResponse.json(
-                { success: false, error: 'Missing required fields' },
-                { status: 400 }
-            );
-        }
-
-        // Extract year from deposit_date (Unix timestamp)
-        const date = new Date(deposit_date * 1000);
-        const year = date.getFullYear();
-
-        const result = await db
-            .prepare(
-                `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-            )
-            .bind(deposit_date, user_id, amount, year, note || null, deposit_type || 'cash', transaction_type || 'deposit')
-            .run();
-
-        if (!result.success) {
-            throw new Error('Failed to create deposit record');
-        }
-
-        return NextResponse.json({
-            success: true,
-            id: result.meta.last_row_id,
-        });
-    } catch (error: any) {
-        console.error('Failed to create deposit:', error);
-        return NextResponse.json(
-            { success: false, error: error.message },
-            { status: 500 }
-        );
-    }
-}

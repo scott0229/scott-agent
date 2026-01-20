@@ -72,18 +72,27 @@ export async function GET(request: NextRequest) {
 
 
 
+
         if (isBulkFetch) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
             const cacheKey = `net-equity-bulk-${year}`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
                 const db = await getDb();
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
-                const deposits = await db.prepare(`SELECT * FROM DEPOSITS ORDER BY user_id, deposit_date ASC`).all();
+
+                // Legacy DEPOSITS table query removed. We now use DAILY_NET_EQUITY.deposit
+
                 const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
 
                 return (users.results as any[]).map(u => {
                     const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
-                    const uDep = (deposits.results as any[]).filter(d => d.user_id === u.id);
+
+                    // Synthesize Deposit[] from uEq.deposit
+                    const uDep = uEq.filter(r => r.deposit && r.deposit !== 0).map(r => ({
+                        deposit_date: r.date,
+                        amount: Math.abs(r.deposit),
+                        transaction_type: r.deposit > 0 ? 'deposit' : 'withdrawal'
+                    }));
 
                     // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
                     const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
@@ -119,11 +128,7 @@ export async function GET(request: NextRequest) {
                 ORDER BY date ASC
             `).bind(targetUserId, year).all();
 
-            const deposits = await db.prepare(`
-                SELECT * FROM DEPOSITS 
-                WHERE user_id = ? 
-                ORDER BY deposit_date ASC
-            `).bind(targetUserId).all();
+            // Legacy DEPOSITS table query removed.
 
             const userRecord = await db.prepare('SELECT initial_cost, user_id, email FROM USERS WHERE id = ?').bind(targetUserId).first();
 
@@ -135,24 +140,13 @@ export async function GET(request: NextRequest) {
                 email: userRecord?.email
             };
 
-            // The Single User endpoint returns a flat list of records (PerformanceRecord[]), reversed.
-            // We re-run the loop to ensure we return the exact structure expected by the frontend,
-            // while adding the new benchmark keys (qqq_rate, qld_rate).
-
             // Re-run loop for Single User to get exact shape text:
-            // (Copying logic from helper but adapting output)
-
             const uEq = equityRecords.results as any[];
-            const uDep = deposits.results as any[];
 
-            // ... Deposit Map ...
-            const depositMap = new Map<number, number>();
-            uDep.forEach(d => {
-                const dateObj = new Date(d.deposit_date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const amount = d.transaction_type === 'withdrawal' ? -d.amount : d.amount;
-                depositMap.set(midnight, (depositMap.get(midnight) || 0) + amount);
-            });
+            // Synthesize Deposit[] from uEq.deposit
+            // We don't really need uDep array for the loop below since we iterate uEq directly,
+            // but we need it if we wanted to call helper or for benchmark consistency.
+            // Actually, the loop uses `depositMap`? No, updated logic should just read `row.deposit`.
 
             const rows = uEq;
             const singleResultData: any[] = [];
@@ -161,7 +155,6 @@ export async function GET(request: NextRequest) {
             let peakNavRatio = 1.0;
 
             // Start Price for Benchmarks
-            // Determine Benchmark Start Date for Single User
             const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : uEq[0].date;
 
             // Start Price for Benchmarks
@@ -188,9 +181,9 @@ export async function GET(request: NextRequest) {
                 const row = rows[i];
                 const date = row.date;
                 const equity = row.net_equity;
-                const dateObj = new Date(date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const dailyDeposit = depositMap.get(midnight) || 0;
+
+                // Direct read from row.deposit instead of Map
+                const dailyDeposit = row.deposit || 0;
 
                 let dailyReturn = 0;
                 if (prevEquity + dailyDeposit !== 0) {
@@ -206,6 +199,9 @@ export async function GET(request: NextRequest) {
                 const drawdown = (navRatio - peakNavRatio) / peakNavRatio;
 
                 // Benchmarks Rates (TWR Calculation)
+                const dateObj = new Date(date * 1000);
+                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
+
                 const qqqPrice = findPrice(qqqData, midnight) || 0;
                 const qldPrice = findPrice(qldData, midnight) || 0;
                 let qqqRate = undefined;
@@ -238,20 +234,16 @@ export async function GET(request: NextRequest) {
                     date: row.date,
                     net_equity: equity,
                     cash_balance: row.cash_balance ?? null,
+                    // Use deposit column
+                    deposit: dailyDeposit,
+                    // Keeping daily_deposit for compatibility if frontend needs it, but it's redundant
                     daily_deposit: dailyDeposit,
                     daily_return: dailyReturn,
                     nav_ratio: navRatio,
                     running_peak: peakNavRatio,
                     drawdown: drawdown,
                     is_new_high: isNewHigh,
-                    // Additional fields for Chart
-                    rate: (navRatio - 1) * 100, // Frontend uses this or calculates it? 
-                    // Frontend table uses daily_return and nav_ratio. 
-                    // Chart component uses `rate` (TWR).
-                    // We should pass `rate` implicitly or explicitly.
-                    // The Chart component accepts `data` prop. 
-                    // In `NetEquityDetailPage`, `NetEquityChart` is NOT used? 
-                    // Wait, let me check `NetEquityPage` (Detail) again.
+                    rate: (navRatio - 1) * 100,
                     qqq_rate: qqqRate,
                     qld_rate: qldRate
                 });
@@ -280,7 +272,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { user_id, date, net_equity, cash_balance, year } = body;
+        const { user_id, date, net_equity, cash_balance, deposit, year } = body;
 
         if (!user_id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -292,16 +284,20 @@ export async function POST(request: NextRequest) {
             targetYear = dateObj.getFullYear();
         }
 
+        // Default deposit to 0 if not provided
+        const depositVal = deposit || 0;
+
         const db = await getDb();
         const result = await db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, year, updated_at)
-            VALUES (?, ?, ?, ?, ?, unixepoch())
+            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, year, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
             net_equity = excluded.net_equity,
             cash_balance = excluded.cash_balance,
+            deposit = excluded.deposit,
             year = excluded.year,
             updated_at = unixepoch()
-        `).bind(user_id, date, net_equity, cash_balance, targetYear).run();
+        `).bind(user_id, date, net_equity, cash_balance, depositVal, targetYear).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
 
@@ -318,18 +314,26 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { id, date, net_equity, cash_balance } = body;
+        const { id, date, net_equity, cash_balance, deposit } = body;
 
         if (!id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
+        const depositVal = deposit ?? 0; // Use 0 if explicitly null/undefined (though usually defaults to existing?)
+        // Wait, if PUT doesn't send deposit, we might overwrite with 0. 
+        // Ideally we should update if provided.
+        // But for simplicity of this form, we usually send all fields. 
+        // EditNetEquityDialog sends all fields of the record.
+
         const db = await getDb();
+
+        // Dynamic update is safer but for now assume full record update
         const result = await db.prepare(`
             UPDATE DAILY_NET_EQUITY 
-            SET date = ?, net_equity = ?, cash_balance = ?, updated_at = unixepoch()
+            SET date = ?, net_equity = ?, cash_balance = ?, deposit = ?, updated_at = unixepoch()
             WHERE id = ?
-        `).bind(date, net_equity, cash_balance, id).run();
+        `).bind(date, net_equity, cash_balance, depositVal, id).run();
 
         if (result.meta.changes === 0) {
             return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });

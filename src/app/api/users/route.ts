@@ -54,9 +54,9 @@ export async function GET(req: NextRequest) {
                     query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
-                        (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
-                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
-                        (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
+                        (SELECT COALESCE(SUM(deposit), 0) 
+                         FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
+                        (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
                         (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
@@ -80,9 +80,9 @@ export async function GET(req: NextRequest) {
                     query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
-                        (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
-                         FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
-                        (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
+                        (SELECT COALESCE(SUM(deposit), 0) 
+                         FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
+                        (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
                         (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
@@ -274,8 +274,8 @@ export async function GET(req: NextRequest) {
         if (year && year !== 'All') {
             // Add counts and net_deposit for specific year
             additionalSelects = `, 
-                (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as net_deposit,
-                (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id AND DEPOSITS.year = ?) as deposits_count,
+                (SELECT COALESCE(SUM(deposit), 0) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
+                (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                 (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
                 (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id AND monthly_fees.year = ?) as fees_count,
@@ -290,8 +290,8 @@ export async function GET(req: NextRequest) {
         } else {
             // General counts for All years
             additionalSelects = `, 
-                (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as net_deposit,
-                (SELECT COUNT(*) FROM DEPOSITS WHERE DEPOSITS.user_id = USERS.id) as deposits_count,
+                (SELECT COALESCE(SUM(deposit), 0) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
+                (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                 (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
                 (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count,
@@ -487,8 +487,7 @@ export async function DELETE(req: NextRequest) {
                 // 1. Delete all OPTIONS for these users
                 await db.prepare(`DELETE FROM OPTIONS WHERE owner_id IN (${placeholders})`).bind(...userIds).run();
 
-                // 2. Delete all DEPOSITS for these users
-                await db.prepare(`DELETE FROM DEPOSITS WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+                // 2. DEPOSITS table dropped, data moved to DAILY_NET_EQUITY
 
                 // 3. Delete all monthly_interest for these users
                 await db.prepare(`DELETE FROM monthly_interest WHERE user_id IN (${placeholders})`).bind(...userIds).run();
@@ -499,8 +498,7 @@ export async function DELETE(req: NextRequest) {
                 // 5. Delete all COMMENTS created/updated by these users
                 await db.prepare(`DELETE FROM COMMENTS WHERE created_by IN (${placeholders}) OR updated_by IN (${placeholders})`).bind(...userIds, ...userIds).run();
 
-                // 6. Set created_by to NULL for deposits created by these users
-                await db.prepare(`UPDATE DEPOSITS SET created_by = NULL WHERE created_by IN (${placeholders})`).bind(...userIds).run();
+                // 6. DEPOSITS table dropped
 
                 // 7. Set created_by/updated_by to NULL for items created/updated by these users
                 await db.prepare(`UPDATE ITEMS SET created_by = NULL WHERE created_by IN (${placeholders})`).bind(...userIds).run();

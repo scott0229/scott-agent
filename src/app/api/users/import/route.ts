@@ -127,41 +127,7 @@ export async function POST(req: NextRequest) {
                     imported++;
                 }
 
-                // Import nested deposits
-                if (user.deposits && Array.isArray(user.deposits) && targetUserId) {
-                    for (const deposit of user.deposits) {
-                        if (!deposit.deposit_date || deposit.amount === undefined) continue;
 
-                        const depositYear = deposit.year || targetYear;
-                        const depositType = deposit.deposit_type || 'cash';
-                        const transactionType = deposit.transaction_type || 'deposit';
-
-                        // Check duplicate deposit
-                        const existingDeposit = await db.prepare(
-                            `SELECT id FROM DEPOSITS 
-                             WHERE user_id = ? AND deposit_date = ? AND amount = ? AND transaction_type = ? AND year = ?`
-                        ).bind(targetUserId, deposit.deposit_date, deposit.amount, transactionType, depositYear).first();
-
-                        if (!existingDeposit) {
-                            try {
-                                await db.prepare(
-                                    `INSERT INTO DEPOSITS (deposit_date, user_id, amount, year, note, deposit_type, transaction_type, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-                                ).bind(
-                                    deposit.deposit_date,
-                                    targetUserId,
-                                    deposit.amount,
-                                    depositYear,
-                                    deposit.note || null,
-                                    depositType,
-                                    transactionType
-                                ).run();
-                            } catch (depErr) {
-                                console.error(`Failed to import deposit for user ${user.email}:`, depErr);
-                            }
-                        }
-                    }
-                }
 
                 // Import nested net equity records
                 if (user.net_equity_records && Array.isArray(user.net_equity_records) && targetUserId) {
@@ -187,17 +153,67 @@ export async function POST(req: NextRequest) {
                         if (!existingRecord) {
                             try {
                                 await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     dateTimestamp,
                                     record.net_equity,
                                     record.cash_balance ?? 0,
+                                    record.deposit ?? 0,
                                     recordYear
                                 ).run();
                             } catch (netErr) {
                                 console.error(`Failed to import net equity record for user ${user.email}:`, netErr);
+                            }
+                        }
+                    }
+                }
+
+                // Import nested deposits (Legacy support: Merge into DAILY_NET_EQUITY)
+                // This handles backward compatibility for old backups that have separate 'deposits' array.
+                if (user.deposits && Array.isArray(user.deposits) && user.deposits.length > 0 && targetUserId) {
+                    for (const deposit of user.deposits) {
+                        if (!deposit.deposit_date || deposit.amount === undefined) continue;
+
+                        const depositYear = deposit.year || targetYear;
+                        const transactionType = deposit.transaction_type || 'deposit';
+                        // Signed amount: withdrawal is negative
+                        const amount = transactionType === 'deposit' ? deposit.amount : -Math.abs(deposit.amount);
+
+                        // Check if DAILY_NET_EQUITY record exists for this date
+                        const existingRecord = await db.prepare(
+                            `SELECT id FROM DAILY_NET_EQUITY WHERE user_id = ? AND date = ?`
+                        ).bind(targetUserId, deposit.deposit_date).first();
+
+                        if (existingRecord) {
+                            // Update existing record
+                            // We add to the existing deposit value to support multiple legacy deposits on same day being merged
+                            try {
+                                await db.prepare(
+                                    `UPDATE DAILY_NET_EQUITY 
+                                     SET deposit = deposit + ?, updated_at = unixepoch()
+                                     WHERE id = ?`
+                                ).bind(amount, existingRecord.id).run();
+                            } catch (err) {
+                                console.error(`Failed to merge legacy deposit for user ${user.email}:`, err);
+                            }
+                        } else {
+                            // Insert new record
+                            // If no net_equity record exists, we create one with 0 net_equity/cash_balance just to hold the deposit?
+                            // Or should we infer something? Safer to just init with 0 and strict year.
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, year, created_at, updated_at)
+                                     VALUES (?, ?, 0, 0, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    targetUserId,
+                                    deposit.deposit_date,
+                                    amount,
+                                    depositYear
+                                ).run();
+                            } catch (err) {
+                                console.error(`Failed to insert legacy deposit record for user ${user.email}:`, err);
                             }
                         }
                     }

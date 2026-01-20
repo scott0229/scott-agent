@@ -22,29 +22,42 @@ interface NewNetEquityDialogProps {
 }
 
 // Format number with thousand separators
+// Format number with thousand separators
 const formatNumber = (value: string): string => {
     // Handle empty input
     if (!value) return '';
 
+    // Check if it's negative
+    const isNegative = value.startsWith('-');
+
     // Remove all non-digit and non-decimal characters
-    const numStr = value.replace(/[^\d.]/g, '');
+    const cleanValue = value.replace(/[^\d.]/g, '');
+
+    // Handle case where user just typed "-"
+    if (isNegative && !cleanValue) return '-';
 
     // Handle empty result after cleaning
-    if (!numStr) return '';
+    if (!cleanValue) return '';
 
     // Prevent multiple decimal points - keep only the first one
-    const parts = numStr.split('.');
+    const parts = cleanValue.split('.');
     const integerPart = parts[0];
     const decimalPart = parts.length > 1 ? parts[1] : undefined;
 
-    // Don't format if empty
-    if (!integerPart) return '';
+    // Don't format if empty (unless it's just 0 or similar, but integerPart check usually handles empty string)
+    // Actually, if integerPart is empty but we have decimal (e.g. .5), we might want to keep it or prefix 0.
+    // Existing logic was: if (!integerPart) return ''; which implies .5 -> empty. Let's stick to existing behavior for now but safeguard.
 
-    // Add thousand separators to integer part
-    const formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    let formatted = integerPart;
+    if (integerPart) {
+        // Add thousand separators to integer part
+        formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
 
     // Recombine with decimal part if it exists
-    return decimalPart !== undefined ? `${formatted}.${decimalPart}` : formatted;
+    const result = decimalPart !== undefined ? `${formatted}.${decimalPart}` : formatted;
+
+    return isNegative ? `-${result}` : result;
 };
 
 // Parse formatted number back to float
@@ -72,6 +85,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
     const [date, setDate] = useState('');
     const [equity, setEquity] = useState('');
     const [cashBalance, setCashBalance] = useState('');
+    const [deposit, setDeposit] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const isComposing = useRef(false);
@@ -123,6 +137,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     date: timestamp,
                     net_equity: parseNumber(equity),
                     cash_balance: cashBalance ? parseNumber(cashBalance) : null,
+                    deposit: deposit ? parseNumber(deposit) : 0,
                     year: selectedYear !== 'All' ? selectedYear : undefined
                 }),
             });
@@ -138,6 +153,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             onOpenChange(false);
             setEquity('');
             setCashBalance('');
+            setDeposit('');
             setDate(getNextBusinessDay(new Date())); // Reset to fallback date
         } catch (error: any) {
             toast({
@@ -216,6 +232,30 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                                 }
                                 const formatted = formatNumber(e.target.value);
                                 setCashBalance(formatted);
+                            }}
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="deposit" className="text-right">
+                            匯款記錄
+                        </Label>
+                        <Input
+                            id="deposit"
+                            type="text"
+                            className="col-span-3"
+                            value={deposit}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setDeposit(formatNumber(e.currentTarget.value));
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setDeposit(e.target.value);
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setDeposit(formatted);
                             }}
                         />
                     </div>

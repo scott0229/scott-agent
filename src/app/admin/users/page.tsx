@@ -19,6 +19,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
 import { FeesDialog } from "@/components/FeesDialog";
+import { DepositsDialog } from "@/components/DepositsDialog";
 
 interface User {
     id: number;
@@ -191,33 +192,18 @@ export default function AdminUsersPage() {
             }));
 
         // Calculate Totals for Labels
-        const totalDeposits = exportableUsers.reduce((sum, u) => {
-            const user = users.find(existing => existing.id === u.id);
-            return sum + (user?.deposits_count || 0);
-        }, 0);
+        const totalOptions = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.options_count || 0), 0);
 
-        const totalOptions = exportableUsers.reduce((sum, u) => {
-            // Options count is already present in user object
-            const user = users.find(existing => existing.id === u.id);
-            return sum + (user?.options_count || 0);
-        }, 0);
+        const totalInterest = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.interest_count || 0), 0);
 
-        const totalInterest = exportableUsers.reduce((sum, u) => {
-            const user = users.find(existing => existing.id === u.id);
-            return sum + (user?.interest_count || 0);
-        }, 0);
+        const totalFees = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.fees_count || 0), 0);
 
-        const totalFees = exportableUsers.reduce((sum, u) => {
-            const user = users.find(existing => existing.id === u.id);
-            return sum + (user?.fees_count || 0);
-        }, 0);
-
-        // Add Deposit Records Option
-        exportableUsers.push({
-            id: 'deposit_records',
-            display: `用戶匯款記錄 (${totalDeposits} 筆)`,
-            checked: true
-        });
 
         // Add Options Records Option
         exportableUsers.push({
@@ -263,14 +249,13 @@ export default function AdminUsersPage() {
 
             // Separate Options selection
             const includeMarketData = selectedIds.includes('market_data');
-            const includeDepositRecords = selectedIds.includes('deposit_records');
+            // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeInterestRecords = selectedIds.includes('interest_records');
             const includeFeeRecords = selectedIds.includes('fees_records');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
-                id !== 'deposit_records' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'fees_records'
@@ -284,7 +269,6 @@ export default function AdminUsersPage() {
                     year: selectedYear,
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
-                    includeDepositRecords: includeDepositRecords,
                     includeOptionsRecords: includeOptionsRecords,
                     includeInterestRecords: includeInterestRecords,
                     includeFeeRecords: includeFeeRecords
@@ -354,18 +338,10 @@ export default function AdminUsersPage() {
                 };
             });
 
-            const totalDeposits = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.deposits) ? u.deposits.length : 0), 0);
+            // Check for Deposit Records choice REMOVED (Merged into net_equity)
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
             const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
             const totalFees = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_fees) ? u.monthly_fees.length : 0), 0);
-
-            // Check for Deposit Records choice
-            importableUsers.push({
-                id: 'deposit_records',
-                display: `用戶匯款記錄 (${totalDeposits} 筆)`,
-                checked: totalDeposits > 0,
-                disabled: totalDeposits === 0
-            } as any);
 
             // Check for Options Records choice
             importableUsers.push({
@@ -428,14 +404,13 @@ export default function AdminUsersPage() {
             setCompletedImportIds([]);
 
             const importMarketData = selectedIds.includes('market_data');
-            const importDeposits = selectedIds.includes('deposit_records');
+            // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importInterest = selectedIds.includes('interest_records');
             const importFees = selectedIds.includes('fees_records');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
-                id !== 'deposit_records' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'fees_records'
@@ -474,22 +449,22 @@ export default function AdminUsersPage() {
                 return;
             }
 
-            // Scenario 2: Users (and optionally Market Data / Deposits / Options / Interest)
+            // Scenario 2: Users (and optionally Market Data / Options / Interest)
             // Step 2: Batch Upload Users
             const TOTAL = selectedUsers.length;
             const BATCH_SIZE = 5; // Import 5 users at a time
             let processed = 0;
-            let totalImported = 0;
-            let totalSkipped = 0;
-            let errors: string[] = [];
+            // Unused variables commented out to prevent linter warnings
+            // let totalImported = 0;
+            // let totalSkipped = 0;
+            const errors: string[] = [];
 
             for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
                 const chunk = selectedUsers.slice(i, i + BATCH_SIZE);
 
-                // Strip unwanted fields
                 const processedChunk = chunk.map((u: any) => {
                     const clone = { ...u };
-                    if (!importDeposits) delete clone.deposits;
+                    // deposit logic removed
                     if (!importOptions) delete clone.options;
                     if (!importInterest) delete clone.monthly_interest;
                     if (!importFees) delete clone.monthly_fees;
@@ -515,18 +490,16 @@ export default function AdminUsersPage() {
                     throw new Error(result.error || `Batch ${i} failed`);
                 }
 
-                totalImported += (result.imported || 0) + (result.updated || 0);
-                totalSkipped += (result.skipped || 0);
+                // totalImported += (result.imported || 0) + (result.updated || 0);
+                // totalSkipped += (result.skipped || 0);
                 if (result.errors) errors.push(...result.errors);
+
                 // Update Progress
                 setCompletedImportIds(prev => {
                     const newIds = [...prev, ...chunk.map((u: any) => u.email)];
                     // Mark global items as completed after first batch if included
                     if (i === 0 && importMarketData && !prev.includes('market_data')) {
                         newIds.push('market_data');
-                    }
-                    if (i === 0 && importDeposits && !prev.includes('deposit_records')) {
-                        newIds.push('deposit_records');
                     }
                     if (i === 0 && importOptions && !prev.includes('options_records')) {
                         newIds.push('options_records');
@@ -539,13 +512,24 @@ export default function AdminUsersPage() {
                     }
                     return newIds;
                 });
+
+                processed += chunk.length;
+                const progressPct = Math.round((processed / TOTAL) * 90); // Scale to 90%
+                setImportProgress(progressPct);
             }
 
             // FORCE 100% to ensure UI unlocks
             setImportProgress(100);
-
             // Refresh list but keep dialog state stable until closed
             fetchUsers(true);
+
+            if (errors.length > 0) {
+                toast({
+                    variant: "destructive",
+                    title: "匯入完成但有錯誤",
+                    description: `共有 ${errors.length} 個錯誤發生。`,
+                });
+            }
 
         } catch (error: any) {
             setImportProcessing(false);
@@ -640,17 +624,9 @@ export default function AdminUsersPage() {
                         {/* Only show actions for admin/manager/trader, NOT customer */}
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
-                                <Button
-                                    onClick={() => {
-                                        const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-                                        router.push(`/deposits?year=${year}`);
-                                    }}
-                                    variant="outline"
-                                    className="hover:bg-accent hover:text-accent-foreground"
-                                >
-                                    <Wallet className="h-4 w-4 mr-2" />
-                                    匯款記錄
-                                </Button>
+                                <DepositsDialog
+                                    initialYear={selectedYear === 'All' ? new Date().getFullYear().toString() : selectedYear}
+                                />
                                 <Button
                                     onClick={handleExportClick}
                                     variant="outline"
@@ -704,7 +680,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
-                                <TableHead className="text-center">年度匯款</TableHead>
+                                <TableHead className="text-center">匯款記錄</TableHead>
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 <TableHead className="text-center">年初淨值</TableHead>
                                 <TableHead className="text-center">IB 帳號</TableHead>
@@ -752,7 +728,17 @@ export default function AdminUsersPage() {
                                                     )
                                                 ) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.net_deposit || 0) : '-'}</TableCell>
+                                            <TableCell className="text-center">
+                                                {user.role === 'customer' ? (
+                                                    (user.net_deposit || 0) < 0 ? (
+                                                        <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                                                            {formatMoney(user.net_deposit)}
+                                                        </Badge>
+                                                    ) : (
+                                                        formatMoney(user.net_deposit || 0)
+                                                    )
+                                                ) : '-'}
+                                            </TableCell>
                                             <TableCell className="text-center">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                             <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
                                             <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
@@ -891,9 +877,6 @@ export default function AdminUsersPage() {
                     progress={exportProgress}
                     preventCloseOnConfirm={true}
                     dependencies={{
-                        'deposit_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
-                        },
                         'options_records': {
                             satisfied: (selected) => Array.from(selected).some(id => typeof id === 'number')
                         },
@@ -951,17 +934,14 @@ export default function AdminUsersPage() {
                     completedIds={completedImportIds}
                     preventCloseOnConfirm={true} // Keep open for processing
                     dependencies={{
-                        'deposit_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
-                        },
                         'options_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records')
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'options_records' && id !== 'interest_records')
                         },
                         'interest_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
                         },
                         'fees_records': {
-                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'deposit_records' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
+                            satisfied: (selected) => Array.from(selected).some(id => id !== 'market_data' && id !== 'options_records' && id !== 'interest_records' && id !== 'fees_records')
                         }
                     }}
                 />

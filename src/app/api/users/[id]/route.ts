@@ -88,9 +88,6 @@ export async function DELETE(
         // 1. Delete user's trading records (OPTIONS)
         await db.prepare('DELETE FROM OPTIONS WHERE owner_id = ?').bind(id).run();
 
-        // 2. Delete user's deposits
-        await db.prepare('DELETE FROM DEPOSITS WHERE user_id = ?').bind(id).run();
-
         // 3. Delete user's monthly interest records
         await db.prepare('DELETE FROM monthly_interest WHERE user_id = ?').bind(id).run();
 
@@ -99,9 +96,6 @@ export async function DELETE(
 
         // 5. Delete or update comments created/updated by this user
         await db.prepare('DELETE FROM COMMENTS WHERE created_by = ? OR updated_by = ?').bind(id, id).run();
-
-        // 6. Set created_by to NULL for deposits created by this user
-        await db.prepare('UPDATE DEPOSITS SET created_by = NULL WHERE created_by = ?').bind(id).run();
 
         // 7. Set created_by/updated_by to NULL for items created/updated by this user
         await db.prepare('UPDATE ITEMS SET created_by = NULL WHERE created_by = ?').bind(id).run();
