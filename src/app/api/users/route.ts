@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { hashPassword } from '@/lib/password';
+import { cacheResponse, clearCache } from '@/lib/response-cache';
 
 // Helper to check for admin, manager, or trader role
 async function checkAdmin(req: NextRequest) {
