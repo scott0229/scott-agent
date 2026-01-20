@@ -71,6 +71,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
 
     const [date, setDate] = useState('');
     const [equity, setEquity] = useState('');
+    const [cashBalance, setCashBalance] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const isComposing = useRef(false);
@@ -121,6 +122,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     user_id: userId,
                     date: timestamp,
                     net_equity: parseNumber(equity),
+                    cash_balance: cashBalance ? parseNumber(cashBalance) : null,
                     year: selectedYear !== 'All' ? selectedYear : undefined
                 }),
             });
@@ -135,6 +137,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             onSuccess();
             onOpenChange(false);
             setEquity('');
+            setCashBalance('');
             setDate(getNextBusinessDay(new Date())); // Reset to fallback date
         } catch (error: any) {
             toast({
@@ -153,7 +156,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                 <DialogHeader>
                     <DialogTitle>新增帳戶淨值</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                <form onSubmit={handleSubmit} className="grid gap-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="date" className="text-right">
                             交易日
@@ -174,7 +177,6 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                         <Input
                             id="equity"
                             type="text"
-                            placeholder="輸入金額"
                             className="col-span-3"
                             value={equity}
                             onCompositionStart={() => isComposing.current = true}
@@ -191,6 +193,30 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                                 setEquity(formatted);
                             }}
                             required
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="cashBalance" className="text-right">
+                            現金水位
+                        </Label>
+                        <Input
+                            id="cashBalance"
+                            type="text"
+                            className="col-span-3"
+                            value={cashBalance}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setCashBalance(formatNumber(e.currentTarget.value));
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setCashBalance(e.target.value);
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setCashBalance(formatted);
+                            }}
                         />
                     </div>
                     <DialogFooter>

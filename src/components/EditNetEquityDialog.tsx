@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -15,6 +15,7 @@ interface PerformanceRecord {
     id: number;
     date: number;
     net_equity: number;
+    cash_balance?: number | null;
 }
 
 interface EditNetEquityDialogProps {
@@ -64,16 +65,19 @@ const formatDateForInput = (timestamp: number | null) => {
 export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdit }: EditNetEquityDialogProps) {
     const [formData, setFormData] = useState({
         date: '',
-        net_equity: ''
+        net_equity: '',
+        cash_balance: ''
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const isComposing = useRef(false);
 
     useEffect(() => {
         if (recordToEdit) {
             setFormData({
                 date: formatDateForInput(recordToEdit.date),
-                net_equity: formatNumber(recordToEdit.net_equity.toString())
+                net_equity: formatNumber(recordToEdit.net_equity.toString()),
+                cash_balance: recordToEdit.cash_balance ? formatNumber(recordToEdit.cash_balance.toString()) : ''
             });
         }
     }, [recordToEdit]);
@@ -89,7 +93,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
             const payload = {
                 id: recordToEdit.id,
                 date: Math.floor(new Date(formData.date).getTime() / 1000),
-                net_equity: parseNumber(formData.net_equity)
+                net_equity: parseNumber(formData.net_equity),
+                cash_balance: formData.cash_balance ? parseNumber(formData.cash_balance) : null
             };
 
             const res = await fetch('/api/net-equity', {
@@ -119,7 +124,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 <DialogHeader>
                     <DialogTitle>編輯淨值記錄</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit} className="grid gap-4">
                     {error && (
                         <div className="bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm border border-red-200">
                             {error}
@@ -143,11 +148,42 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                             id="net_equity"
                             type="text"
                             value={formData.net_equity}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setFormData({ ...formData, net_equity: formatNumber(e.currentTarget.value) });
+                            }}
                             onChange={(e) => {
+                                if (isComposing.current) {
+                                    setFormData({ ...formData, net_equity: e.target.value });
+                                    return;
+                                }
                                 const formatted = formatNumber(e.target.value);
                                 setFormData({ ...formData, net_equity: formatted });
                             }}
                             required
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="cash_balance">現金水位</Label>
+                        <Input
+                            id="cash_balance"
+                            type="text"
+                            value={formData.cash_balance}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setFormData({ ...formData, cash_balance: formatNumber(e.currentTarget.value) });
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setFormData({ ...formData, cash_balance: e.target.value });
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setFormData({ ...formData, cash_balance: formatted });
+                            }}
                         />
                     </div>
 

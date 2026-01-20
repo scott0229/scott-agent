@@ -113,7 +113,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
 
         let netEquityQuery = `
-            SELECT date, net_equity, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;

@@ -96,9 +96,13 @@ export async function GET(request: NextRequest) {
                     const qqqStats = uEq.length > 0 ? calculateBenchmarkStats(qqqData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
                     const qldStats = uEq.length > 0 ? calculateBenchmarkStats(qldData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
 
+                    const latestRecord = uEq.length > 0 ? uEq[uEq.length - 1] : null;
+                    const currentCashBalance = latestRecord ? (latestRecord.cash_balance ?? 0) : 0;
+
                     return {
                         ...u,
                         ...processed.summary, // Merges stats, current_net_equity, equity_history
+                        current_cash_balance: currentCashBalance,
                         qqqStats,
                         qldStats
                     };
@@ -233,6 +237,7 @@ export async function GET(request: NextRequest) {
                     id: row.id,
                     date: row.date,
                     net_equity: equity,
+                    cash_balance: row.cash_balance ?? null,
                     daily_deposit: dailyDeposit,
                     daily_return: dailyReturn,
                     nav_ratio: navRatio,
@@ -275,7 +280,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { user_id, date, net_equity, year } = body;
+        const { user_id, date, net_equity, cash_balance, year } = body;
 
         if (!user_id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -289,13 +294,14 @@ export async function POST(request: NextRequest) {
 
         const db = await getDb();
         const result = await db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, year, updated_at)
-            VALUES (?, ?, ?, ?, unixepoch())
+            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, year, updated_at)
+            VALUES (?, ?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
             net_equity = excluded.net_equity,
+            cash_balance = excluded.cash_balance,
             year = excluded.year,
             updated_at = unixepoch()
-        `).bind(user_id, date, net_equity, targetYear).run();
+        `).bind(user_id, date, net_equity, cash_balance, targetYear).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
 
@@ -312,7 +318,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { id, date, net_equity } = body;
+        const { id, date, net_equity, cash_balance } = body;
 
         if (!id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -321,9 +327,9 @@ export async function PUT(request: NextRequest) {
         const db = await getDb();
         const result = await db.prepare(`
             UPDATE DAILY_NET_EQUITY 
-            SET date = ?, net_equity = ?, updated_at = unixepoch()
+            SET date = ?, net_equity = ?, cash_balance = ?, updated_at = unixepoch()
             WHERE id = ?
-        `).bind(date, net_equity, id).run();
+        `).bind(date, net_equity, cash_balance, id).run();
 
         if (result.meta.changes === 0) {
             return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });

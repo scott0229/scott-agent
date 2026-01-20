@@ -27,6 +27,7 @@ interface UserSummary {
     email: string;
     initial_cost: number;
     current_net_equity: number;
+    current_cash_balance?: number;
     stats: {
         startDate: number;
         returnPercentage: number;
@@ -304,6 +305,18 @@ export default function NetEquityPage() {
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-7 py-1 px-2">現金水位</td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    {user.current_cash_balance !== undefined ? formatMoney(user.current_cash_balance) : '0'}
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    0
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    0
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">報酬率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.returnPercentage || 0} />
@@ -315,7 +328,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.returnPercentage} /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="h-7 py-1 px-2">最大回撤</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
@@ -327,7 +340,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">年化報酬率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedReturn || 0)}
@@ -339,7 +352,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedReturn) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="h-7 py-1 px-2">年化標準差</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedStdDev || 0)}
@@ -351,7 +364,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedStdDev) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">夏普值</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge
@@ -367,7 +380,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
                                                 <td className="h-7 py-1 px-2">新高次數</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {user.stats?.newHighCount || 0}
@@ -379,7 +392,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? user.qldStats.newHighCount : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">新高頻率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {Math.round((user.stats?.newHighFreq || 0) * 100)}%

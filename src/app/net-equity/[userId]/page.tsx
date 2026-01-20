@@ -48,6 +48,7 @@ interface PerformanceRecord {
     id: number;
     date: number;
     net_equity: number;
+    cash_balance?: number | null;
     daily_deposit: number;
     daily_return: number;
     nav_ratio: number;
@@ -312,6 +313,7 @@ export default function NetEquityDetailPage() {
                         <TableRow className="bg-secondary/50 hover:bg-secondary/50">
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">現金水位</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日入金</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
@@ -324,7 +326,7 @@ export default function NetEquityDetailPage() {
                     <TableBody>
                         {filteredRecords.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
@@ -340,6 +342,13 @@ export default function NetEquityDetailPage() {
                                             {formatMoney(record.net_equity)}
                                         </Badge>
                                     </div>
+                                </TableCell>
+                                <TableCell className="text-center py-1">
+                                    {record.cash_balance !== null && record.cash_balance !== undefined ? (
+                                        formatMoney(record.cash_balance)
+                                    ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
                                     {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}

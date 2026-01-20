@@ -187,12 +187,13 @@ export async function POST(req: NextRequest) {
                         if (!existingRecord) {
                             try {
                                 await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     dateTimestamp,
                                     record.net_equity,
+                                    record.cash_balance ?? 0,
                                     recordYear
                                 ).run();
                             } catch (netErr) {
