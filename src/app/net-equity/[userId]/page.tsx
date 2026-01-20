@@ -49,6 +49,7 @@ interface PerformanceRecord {
     date: number;
     net_equity: number;
     cash_balance?: number | null;
+    management_fee?: number | null;
     daily_deposit: number;
     daily_return: number;
     nav_ratio: number;
@@ -72,9 +73,20 @@ export default function NetEquityDetailPage() {
     const [deleteAllOpen, setDeleteAllOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
+    const [filterType, setFilterType] = useState<string>('all');
+
+
 
     const { toast } = useToast();
     const { selectedYear } = useYearFilter();
+
+    // ... (rest of the file until filteredRecords)
+
+    // ... code lines omitted for brevity ...
+    // Note: I cannot omit lines in ReplacementContent if I am replacing a block.
+    // I need to be careful with the target block to avoiding replacing the whole file logic.
+    // I will split this into two calls. One for State, one for Filter Logic.
+
 
     // Safe parsing of userId
     const userId = typeof params.userId === 'string' ? params.userId : '';
@@ -244,9 +256,27 @@ export default function NetEquityDetailPage() {
 
 
     const filteredRecords = records.filter(record => {
-        if (selectedMonth === 'all') return true;
-        const recordDate = new Date(record.date * 1000);
-        return (recordDate.getMonth() + 1).toString() === selectedMonth;
+        // 1. Month Filter
+        if (selectedMonth !== 'all') {
+            const recordDate = new Date(record.date * 1000);
+            if ((recordDate.getMonth() + 1).toString() !== selectedMonth) {
+                return false;
+            }
+        }
+
+        // 2. Type Filter (Activity: Deposit or Fee or All)
+        if (filterType === 'management_fee') {
+            const hasFee = record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0;
+            if (!hasFee) return false;
+        } else if (filterType === 'transfer') {
+            const hasDeposit = (record as any).deposit && (record as any).deposit !== 0;
+            if (!hasDeposit) return false;
+        } else if (filterType === 'transfer') {
+            const hasDeposit = (record as any).deposit && (record as any).deposit !== 0;
+            if (!hasDeposit) return false;
+        }
+
+        return true;
     });
 
     if (isLoading) {
@@ -276,15 +306,35 @@ export default function NetEquityDetailPage() {
 
                 {isAdmin && (
                     <div className="flex items-center gap-2">
+                        <Select value={filterType} onValueChange={setFilterType}>
+                            <SelectTrigger className="w-[140px]">
+                                <SelectValue placeholder="顯示全部" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">顯示全部</SelectItem>
+                                <SelectItem value="management_fee">顯示管理費</SelectItem>
+                                <SelectItem value="transfer">顯示轉帳記錄</SelectItem>
+                            </SelectContent>
+                        </Select>
+
                         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                             <SelectTrigger className="w-[120px]">
                                 <SelectValue placeholder="月份" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">全部月份</SelectItem>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                    <SelectItem key={month} value={month.toString()}>{month}月</SelectItem>
-                                ))}
+                                <SelectItem value="1">1月</SelectItem>
+                                <SelectItem value="2">2月</SelectItem>
+                                <SelectItem value="3">3月</SelectItem>
+                                <SelectItem value="4">4月</SelectItem>
+                                <SelectItem value="5">5月</SelectItem>
+                                <SelectItem value="6">6月</SelectItem>
+                                <SelectItem value="7">7月</SelectItem>
+                                <SelectItem value="8">8月</SelectItem>
+                                <SelectItem value="9">9月</SelectItem>
+                                <SelectItem value="10">10月</SelectItem>
+                                <SelectItem value="11">11月</SelectItem>
+                                <SelectItem value="12">12月</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -313,8 +363,9 @@ export default function NetEquityDetailPage() {
                         <TableRow className="bg-secondary/50 hover:bg-secondary/50">
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">現金水位</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">匯款記錄</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">管理費</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">轉帳記錄</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">前高</TableHead>
@@ -326,7 +377,7 @@ export default function NetEquityDetailPage() {
                     <TableBody>
                         {filteredRecords.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
@@ -350,6 +401,17 @@ export default function NetEquityDetailPage() {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
+                                <TableCell className="text-center py-1">
+                                    {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 font-sans font-normal text-sm px-2">
+                                                {formatMoney(record.management_fee)}
+                                            </Badge>
+                                        </div>
+                                    ) : (
+                                        "0"
+                                    )}
+                                </TableCell>
                                 <TableCell className="text-center font-mono py-1">
                                     {(record as any).deposit && (record as any).deposit !== 0 ? (
                                         (record as any).deposit < 0 ? (
@@ -359,9 +421,15 @@ export default function NetEquityDetailPage() {
                                                 </Badge>
                                             </div>
                                         ) : (
-                                            formatMoney((record as any).deposit)
+                                            <div className="flex justify-center">
+                                                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-sans font-normal text-sm px-2">
+                                                    {formatMoney((record as any).deposit)}
+                                                </Badge>
+                                            </div>
                                         )
-                                    ) : '0'}
+                                    ) : (
+                                        "0"
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
                                     {formatPercent(record.daily_return)}
@@ -438,16 +506,43 @@ export default function NetEquityDetailPage() {
                                 </div>
                             </TableCell>
                             <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell colSpan={isAdmin ? 2 : 1} className="text-center"></TableCell>
+                            <TableCell className="text-center font-mono">
+                                {(() => {
+                                    const sum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
+                                    if (sum === 0) return '';
+                                    return (
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 font-sans font-normal text-sm px-2">
+                                                {formatMoney(sum)}
+                                            </Badge>
+                                        </div>
+                                    );
+                                })()}
+                            </TableCell>
+                            <TableCell className="text-center font-mono">
+                                {(() => {
+                                    const sum = records.reduce((s, r) => s + (r.daily_deposit || 0), 0);
+                                    if (sum === 0) return '';
+                                    return sum < 0 ? (
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 font-sans font-normal text-sm px-2">
+                                                {formatMoney(sum)}
+                                            </Badge>
+                                        </div>
+                                    ) : (
+                                        <div className="flex justify-center">
+                                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-sans font-normal text-sm px-2">
+                                                {formatMoney(sum)}
+                                            </Badge>
+                                        </div>
+                                    );
+                                })()}
+                            </TableCell>
+                            <TableCell colSpan={6} className="text-center"></TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
-            </div>
+            </div >
 
             <NewNetEquityDialog
                 open={isNewDialogOpen}
@@ -502,6 +597,6 @@ export default function NetEquityDetailPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </div >
     );
 }

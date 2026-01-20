@@ -38,13 +38,11 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             OR id IN (SELECT DISTINCT user_id FROM DAILY_NET_EQUITY WHERE year = ? AND deposit != 0)
             OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
             OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
-            OR id IN (SELECT DISTINCT user_id FROM monthly_fees WHERE year = ?)
         )`);
         params.push(parseInt(year)); // year = ?
         params.push(parseInt(year)); // DEPOSITS activity (via DAILY_NET_EQUITY)
         params.push(parseInt(year)); // OPTIONS activity
         params.push(parseInt(year)); // interest activity
-        params.push(parseInt(year)); // fees activity
     }
 
     if (userIds && userIds.length > 0) {
@@ -90,7 +88,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;
@@ -172,21 +170,6 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             (user as any).monthly_interest = interest || [];
         } else {
             (user as any).monthly_interest = [];
-        }
-
-        let feesQuery = `SELECT year, month, amount FROM monthly_fees WHERE user_id = ?`;
-        const feesParams: any[] = [user.id];
-        if (year && year !== 'All') {
-            feesQuery += ` AND year = ?`;
-            feesParams.push(parseInt(year));
-        }
-        feesQuery += ` ORDER BY year DESC, month DESC`;
-        const { results: fees } = await db.prepare(feesQuery).bind(...feesParams).all();
-
-        if (includeFeeRecords) {
-            (user as any).monthly_fees = fees || [];
-        } else {
-            (user as any).monthly_fees = [];
         }
     }
 

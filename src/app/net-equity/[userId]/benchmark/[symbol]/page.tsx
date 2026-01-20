@@ -327,12 +327,8 @@ export default function BenchmarkDetailPage() {
                                 <TableCell className="text-center font-mono">
                                     {record.shares?.toFixed(2)}
                                 </TableCell>
-                                <TableCell className="text-center">
-                                    <div className="flex justify-center">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
-                                            {record.close_price ? formatMoney(record.net_equity) : '-'}
-                                        </Badge>
-                                    </div>
+                                <TableCell className="text-center font-mono">
+                                    {record.close_price ? formatMoney(record.net_equity) : '-'}
                                 </TableCell>
                                 <TableCell className="text-center font-mono">
                                     {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
@@ -395,12 +391,8 @@ export default function BenchmarkDetailPage() {
                             <TableCell className="text-center font-mono">
                                 {basePrice > 0 ? (initialCost / basePrice).toFixed(2) : '-'}
                             </TableCell>
-                            <TableCell className="text-center">
-                                <div className="flex justify-center">
-                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
-                                        {formatMoney(initialCost)}
-                                    </Badge>
-                                </div>
+                            <TableCell className="text-center font-mono">
+                                {formatMoney(initialCost)}
                             </TableCell>
                             <TableCell colSpan={6}></TableCell>
                             <TableCell className="text-center px-2">

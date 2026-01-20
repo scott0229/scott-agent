@@ -16,6 +16,7 @@ interface PerformanceRecord {
     date: number;
     net_equity: number;
     cash_balance?: number | null;
+    management_fee?: number | null;
 }
 
 interface EditNetEquityDialogProps {
@@ -77,6 +78,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
         date: '',
         net_equity: '',
         cash_balance: '',
+        management_fee: '',
         deposit: ''
     });
     const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 date: formatDateForInput(recordToEdit.date),
                 net_equity: formatNumber(recordToEdit.net_equity.toString()),
                 cash_balance: (recordToEdit.cash_balance !== null && recordToEdit.cash_balance !== undefined) ? formatNumber(recordToEdit.cash_balance.toString()) : '',
+                management_fee: (recordToEdit.management_fee !== null && recordToEdit.management_fee !== undefined) ? formatNumber(recordToEdit.management_fee.toString()) : '0',
                 deposit: (recordToEdit as any).deposit !== undefined && (recordToEdit as any).deposit !== null ? formatNumber((recordToEdit as any).deposit.toString()) : '0'
             });
         }
@@ -107,6 +110,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 date: Math.floor(new Date(formData.date).getTime() / 1000),
                 net_equity: parseNumber(formData.net_equity),
                 cash_balance: formData.cash_balance ? parseNumber(formData.cash_balance) : null,
+                management_fee: formData.management_fee ? parseNumber(formData.management_fee) : 0,
                 deposit: formData.deposit ? parseNumber(formData.deposit) : 0
             };
 
@@ -181,7 +185,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="cash_balance" className="text-right">現金水位</Label>
+                        <Label htmlFor="cash_balance" className="text-right">帳戶現金</Label>
                         <Input
                             id="cash_balance"
                             type="text"
@@ -204,7 +208,30 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="deposit" className="text-right">匯款記錄</Label>
+                        <Label htmlFor="management_fee" className="text-right">管理費</Label>
+                        <Input
+                            id="management_fee"
+                            type="text"
+                            className="col-span-3"
+                            value={formData.management_fee}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setFormData({ ...formData, management_fee: formatNumber(e.currentTarget.value) });
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setFormData({ ...formData, management_fee: e.target.value });
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setFormData({ ...formData, management_fee: formatted });
+                            }}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="deposit" className="text-right">轉帳記錄</Label>
                         <Input
                             id="deposit"
                             type="text"

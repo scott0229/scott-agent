@@ -85,6 +85,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
     const [date, setDate] = useState('');
     const [equity, setEquity] = useState('');
     const [cashBalance, setCashBalance] = useState('');
+    const [managementFee, setManagementFee] = useState('');
     const [deposit, setDeposit] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
@@ -138,6 +139,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     net_equity: parseNumber(equity),
                     cash_balance: cashBalance ? parseNumber(cashBalance) : null,
                     deposit: deposit ? parseNumber(deposit) : 0,
+                    management_fee: managementFee ? parseNumber(managementFee) : 0,
                     year: selectedYear !== 'All' ? selectedYear : undefined
                 }),
             });
@@ -153,6 +155,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             onOpenChange(false);
             setEquity('');
             setCashBalance('');
+            setManagementFee('');
             setDeposit('');
             setDate(getNextBusinessDay(new Date())); // Reset to fallback date
         } catch (error: any) {
@@ -213,7 +216,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="cashBalance" className="text-right">
-                            現金水位
+                            帳戶現金
                         </Label>
                         <Input
                             id="cashBalance"
@@ -236,8 +239,32 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                         />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="managementFee" className="text-right">
+                            管理費
+                        </Label>
+                        <Input
+                            id="managementFee"
+                            type="text"
+                            className="col-span-3"
+                            value={managementFee}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setManagementFee(formatNumber(e.currentTarget.value));
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setManagementFee(e.target.value);
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setManagementFee(formatted);
+                            }}
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="deposit" className="text-right">
-                            匯款記錄
+                            轉帳記錄
                         </Label>
                         <Input
                             id="deposit"

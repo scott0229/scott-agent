@@ -28,6 +28,7 @@ interface UserSummary {
     initial_cost: number;
     current_net_equity: number;
     current_cash_balance?: number;
+    total_deposit?: number;
     stats: {
         startDate: number;
         returnPercentage: number;
@@ -305,7 +306,19 @@ export default function NetEquityPage() {
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-7 py-1 px-2">現金水位</td>
+                                                <td className="h-7 py-1 px-2">轉帳記錄</td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    {user.total_deposit !== undefined && user.total_deposit !== 0 ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit)}</span>) : '0'}
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    0
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    0
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                                <td className="h-7 py-1 px-2">帳戶現金</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {user.current_cash_balance !== undefined ? formatMoney(user.current_cash_balance) : '0'}
                                                 </td>

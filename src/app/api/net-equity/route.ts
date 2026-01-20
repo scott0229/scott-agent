@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
         if (isBulkFetch) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
-            const cacheKey = `net-equity-bulk-${year}`;
+            const cacheKey = `net-equity-bulk-${year}-v2`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
                 const db = await getDb();
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
@@ -108,10 +108,12 @@ export async function GET(request: NextRequest) {
                     const latestRecord = uEq.length > 0 ? uEq[uEq.length - 1] : null;
                     const currentCashBalance = latestRecord ? (latestRecord.cash_balance ?? 0) : 0;
 
+                    const total_deposit = uEq.reduce((acc: number, r: any) => acc + (r.deposit || 0), 0);
                     return {
                         ...u,
                         ...processed.summary, // Merges stats, current_net_equity, equity_history
                         current_cash_balance: currentCashBalance,
+                        total_deposit,
                         qqqStats,
                         qldStats
                     };
@@ -245,7 +247,8 @@ export async function GET(request: NextRequest) {
                     is_new_high: isNewHigh,
                     rate: (navRatio - 1) * 100,
                     qqq_rate: qqqRate,
-                    qld_rate: qldRate
+                    qld_rate: qldRate,
+                    management_fee: row.management_fee ?? 0
                 });
 
                 prevEquity = equity;
@@ -272,7 +275,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { user_id, date, net_equity, cash_balance, deposit, year } = body;
+        const { user_id, date, net_equity, cash_balance, deposit, management_fee, year } = body;
 
         if (!user_id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -284,20 +287,21 @@ export async function POST(request: NextRequest) {
             targetYear = dateObj.getFullYear();
         }
 
-        // Default deposit to 0 if not provided
         const depositVal = deposit || 0;
+        const feeVal = management_fee || 0;
 
         const db = await getDb();
         const result = await db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, year, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, year, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
             net_equity = excluded.net_equity,
             cash_balance = excluded.cash_balance,
             deposit = excluded.deposit,
+            management_fee = excluded.management_fee,
             year = excluded.year,
             updated_at = unixepoch()
-        `).bind(user_id, date, net_equity, cash_balance, depositVal, targetYear).run();
+        `).bind(user_id, date, net_equity, cash_balance, depositVal, feeVal, targetYear).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
 
@@ -314,26 +318,22 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { id, date, net_equity, cash_balance, deposit } = body;
+        const { id, date, net_equity, cash_balance, deposit, management_fee } = body;
 
         if (!id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        const depositVal = deposit ?? 0; // Use 0 if explicitly null/undefined (though usually defaults to existing?)
-        // Wait, if PUT doesn't send deposit, we might overwrite with 0. 
-        // Ideally we should update if provided.
-        // But for simplicity of this form, we usually send all fields. 
-        // EditNetEquityDialog sends all fields of the record.
+        const depositVal = deposit ?? 0;
+        const feeVal = management_fee ?? 0;
 
         const db = await getDb();
 
-        // Dynamic update is safer but for now assume full record update
         const result = await db.prepare(`
             UPDATE DAILY_NET_EQUITY 
-            SET date = ?, net_equity = ?, cash_balance = ?, deposit = ?, updated_at = unixepoch()
+            SET date = ?, net_equity = ?, cash_balance = ?, deposit = ?, management_fee = ?, updated_at = unixepoch()
             WHERE id = ?
-        `).bind(date, net_equity, cash_balance, depositVal, id).run();
+        `).bind(date, net_equity, cash_balance, depositVal, feeVal, id).run();
 
         if (result.meta.changes === 0) {
             return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });

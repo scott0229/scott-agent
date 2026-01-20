@@ -18,8 +18,7 @@ import { Pencil, Trash2, Download, Upload, Wallet, DollarSign } from "lucide-rea
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
-import { FeesDialog } from "@/components/FeesDialog";
-import { DepositsDialog } from "@/components/DepositsDialog";
+
 
 interface User {
     id: number;
@@ -65,8 +64,6 @@ export default function AdminUsersPage() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
     const [importing, setImporting] = useState(false);
-    const [feesDialogOpen, setFeesDialogOpen] = useState(false);
-    const [selectedUserForFees, setSelectedUserForFees] = useState<User | null>(null);
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
     const [marketDataCount, setMarketDataCount] = useState(0);
@@ -200,10 +197,6 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.interest_count || 0), 0);
 
-        const totalFees = users
-            .filter(u => u.email !== 'admin')
-            .reduce((sum, u) => sum + (u.fees_count || 0), 0);
-
 
         // Add Options Records Option
         exportableUsers.push({
@@ -216,13 +209,6 @@ export default function AdminUsersPage() {
         exportableUsers.push({
             id: 'interest_records',
             display: `用戶利息記錄 (${totalInterest} 筆)`,
-            checked: true
-        });
-
-        // Add Fees Records Option
-        exportableUsers.push({
-            id: 'fees_records',
-            display: `用戶管理費記錄 (${totalFees} 筆)`, // Precise count via API
             checked: true
         });
 
@@ -252,7 +238,6 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeInterestRecords = selectedIds.includes('interest_records');
-            const includeFeeRecords = selectedIds.includes('fees_records');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
@@ -270,8 +255,7 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeInterestRecords: includeInterestRecords,
-                    includeFeeRecords: includeFeeRecords
+                    includeInterestRecords: includeInterestRecords
                 })
             });
 
@@ -341,7 +325,6 @@ export default function AdminUsersPage() {
             // Check for Deposit Records choice REMOVED (Merged into net_equity)
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
             const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
-            const totalFees = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_fees) ? u.monthly_fees.length : 0), 0);
 
             // Check for Options Records choice
             importableUsers.push({
@@ -357,14 +340,6 @@ export default function AdminUsersPage() {
                 display: `用戶利息記錄 (${totalInterest} 筆)`,
                 checked: totalInterest > 0,
                 disabled: totalInterest === 0
-            } as any);
-
-            // Check for Fees Records choice
-            importableUsers.push({
-                id: 'fees_records',
-                display: `用戶管理費記錄 (${totalFees} 筆)`,
-                checked: totalFees > 0,
-                disabled: totalFees === 0
             } as any);
 
 
@@ -407,7 +382,6 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importInterest = selectedIds.includes('interest_records');
-            const importFees = selectedIds.includes('fees_records');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
@@ -467,7 +441,6 @@ export default function AdminUsersPage() {
                     // deposit logic removed
                     if (!importOptions) delete clone.options;
                     if (!importInterest) delete clone.monthly_interest;
-                    if (!importFees) delete clone.monthly_fees;
                     return clone;
                 });
 
@@ -506,9 +479,6 @@ export default function AdminUsersPage() {
                     }
                     if (i === 0 && importInterest && !prev.includes('interest_records')) {
                         newIds.push('interest_records');
-                    }
-                    if (i === 0 && importFees && !prev.includes('fees_records')) {
-                        newIds.push('fees_records');
                     }
                     return newIds;
                 });
@@ -624,9 +594,7 @@ export default function AdminUsersPage() {
                         {/* Only show actions for admin/manager/trader, NOT customer */}
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
-                                <DepositsDialog
-                                    initialYear={selectedYear === 'All' ? new Date().getFullYear().toString() : selectedYear}
-                                />
+
                                 <Button
                                     onClick={handleExportClick}
                                     variant="outline"
@@ -680,8 +648,8 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">管理費</TableHead>
-                                <TableHead className="text-center">匯款記錄</TableHead>
-                                <TableHead className="text-center">當前淨值</TableHead>
+
+
                                 <TableHead className="text-center">年初淨值</TableHead>
                                 <TableHead className="text-center">IB 帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
@@ -728,18 +696,8 @@ export default function AdminUsersPage() {
                                                     )
                                                 ) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center">
-                                                {user.role === 'customer' ? (
-                                                    (user.net_deposit || 0) < 0 ? (
-                                                        <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
-                                                            {formatMoney(user.net_deposit)}
-                                                        </Badge>
-                                                    ) : (
-                                                        formatMoney(user.net_deposit || 0)
-                                                    )
-                                                ) : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-center">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
+
+
                                             <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
                                             <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                             <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
@@ -747,25 +705,6 @@ export default function AdminUsersPage() {
                                             <TableCell className="text-right">
                                                 {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
                                                     <div className="flex justify-end gap-1">
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => {
-                                                                        setSelectedUserForFees(user);
-                                                                        setFeesDialogOpen(true);
-                                                                    }}
-                                                                    className="text-muted-foreground hover:text-green-600 hover:bg-green-50"
-                                                                >
-                                                                    <DollarSign className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>管理費記錄</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -816,16 +755,6 @@ export default function AdminUsersPage() {
                     }}
                     onSuccess={fetchUsers}
                     userToEdit={editingUser}
-                />
-
-                <FeesDialog
-                    open={feesDialogOpen}
-                    onOpenChange={(open) => {
-                        setFeesDialogOpen(open);
-                        if (!open) setSelectedUserForFees(null);
-                    }}
-                    userId={selectedUserForFees?.id}
-                    year={selectedYear === 'All' ? new Date().getFullYear() : (typeof selectedYear === 'string' ? parseInt(selectedYear) : selectedYear)}
                 />
 
                 <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>

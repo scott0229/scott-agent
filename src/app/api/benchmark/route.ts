@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
         try {
             // 1. Get User Records
-            let query = `SELECT date, net_equity FROM daily_net_equity WHERE user_id = ?`;
+            let query = `SELECT date, net_equity, deposit FROM daily_net_equity WHERE user_id = ?`;
             const params: any[] = [userId];
 
             if (year && year !== 'All') {
@@ -46,17 +46,6 @@ export async function GET(req: NextRequest) {
 
             const startDate = userRecords[0].date as number;
             const endDate = userRecords[userRecords.length - 1].date as number;
-
-            // Fetch Deposits
-            const deposits = await DB.prepare(`SELECT * FROM DEPOSITS WHERE user_id = ?`).bind(userId).all();
-
-            const depositMap = new Map<number, number>();
-            (deposits.results as any[]).forEach(d => {
-                const dateObj = new Date(d.deposit_date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const amount = d.transaction_type === 'withdrawal' ? -d.amount : d.amount;
-                depositMap.set(midnight, (depositMap.get(midnight) || 0) + amount);
-            });
 
             // 2. Fetch Market Data
             let fetchStartDate = startDate - (7 * 86400);
@@ -95,9 +84,9 @@ export async function GET(req: NextRequest) {
             const benchmarkData = userRecords.map((record: any, index: number) => {
                 const date = record.date;
                 const currentPrice = findPrice(date) || prevPrice;
-                const dateObj = new Date(date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const dailyDeposit = depositMap.get(midnight) || 0;
+                // const dateObj = new Date(date * 1000);
+                // const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
+                const dailyDeposit = record.deposit || 0;
 
                 if (dailyDeposit !== 0 && currentPrice > 0) {
                     const sharesChange = dailyDeposit / currentPrice;
@@ -157,7 +146,12 @@ export async function GET(req: NextRequest) {
             };
 
         } catch (e: any) {
-            throw e; // Let outer catch handle it
+            console.error('Benchmark API Error:', e);
+            return {
+                success: false,
+                error: e.message,
+                stack: e.stack
+            };
         }
     }, 5 * 60 * 1000); // 5 minute cache
 
