@@ -77,7 +77,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
             setFormData({
                 date: formatDateForInput(recordToEdit.date),
                 net_equity: formatNumber(recordToEdit.net_equity.toString()),
-                cash_balance: recordToEdit.cash_balance ? formatNumber(recordToEdit.cash_balance.toString()) : ''
+                cash_balance: (recordToEdit.cash_balance !== null && recordToEdit.cash_balance !== undefined) ? formatNumber(recordToEdit.cash_balance.toString()) : ''
             });
         }
     }, [recordToEdit]);
