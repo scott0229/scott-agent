@@ -87,21 +87,19 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
     for (const user of users) {
         let depositQuery = `
             SELECT 
-                d.*,
-                u.user_id as depositor_user_id,
-                u.email as depositor_email
-            FROM DEPOSITS d
-            LEFT JOIN USERS u ON d.user_id = u.id
-            WHERE d.user_id = ?
+                id, deposit_date, amount, year, note, 
+                deposit_type, transaction_type
+            FROM DEPOSITS
+            WHERE user_id = ?
         `;
         const depositParams: any[] = [user.id];
 
         if (year && year !== 'All') {
-            depositQuery += ` AND d.year = ?`;
+            depositQuery += ` AND year = ?`;
             depositParams.push(parseInt(year));
         }
 
-        depositQuery += ` ORDER BY d.deposit_date DESC`;
+        depositQuery += ` ORDER BY deposit_date DESC`;
 
         const { results: deposits } = await db.prepare(depositQuery).bind(...depositParams).all();
         const actualDeposits = deposits || [];
@@ -155,7 +153,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             (user as any).qld_stats = null;
         }
 
-        let optionsQuery = `SELECT * FROM OPTIONS WHERE owner_id = ?`;
+        let optionsQuery = `
+            SELECT 
+                id, status, operation, open_date, to_date, settlement_date, days_to_expire, days_held,
+                quantity, underlying, type, strike_price, collateral, premium,
+                final_profit, profit_percent, delta, iv, capital_efficiency, year
+            FROM OPTIONS 
+            WHERE owner_id = ?
+        `;
         const optionsParams: any[] = [user.id];
         if (year && year !== 'All') {
             optionsQuery += ` AND year = ?`;
