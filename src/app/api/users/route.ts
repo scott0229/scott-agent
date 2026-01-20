@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { hashPassword } from '@/lib/password';
 import { cacheResponse, clearCache } from '@/lib/response-cache';
+import { getCachedUserSelection } from '@/lib/user-cache';
 
 // Helper to check for admin, manager, or trader role
 async function checkAdmin(req: NextRequest) {
@@ -37,18 +38,20 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
             }
 
-            const db = await getDb();
+            // Wrap expensive query in cache
+            const responseData = await getCachedUserSelection(req, async () => {
+                const db = await getDb();
 
-            const roles = searchParams.get('roles')?.split(',');
-            const year = searchParams.get('year');
+                const roles = searchParams.get('roles')?.split(',');
+                const year = searchParams.get('year');
 
-            let query = '';
-            const params: any[] = [];
-            let whereAdded = false;
+                let query = '';
+                const params: any[] = [];
+                let whereAdded = false;
 
-            // Add year filter (only admin crosses years)
-            if (year && year !== 'All') {
-                query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
+                // Add year filter (only admin crosses years)
+                if (year && year !== 'All') {
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
@@ -59,22 +62,22 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
 
-                // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
-                query += ` WHERE year = ?`;
+                    // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
+                    query += ` WHERE year = ?`;
 
-                params.push(parseInt(year)); // For options_count subquery
-                params.push(parseInt(year)); // For open_count subquery
-                params.push(parseInt(year)); // For net_deposit subquery
-                params.push(parseInt(year)); // For deposits_count subquery
-                params.push(parseInt(year)); // For interest_count subquery
-                params.push(parseInt(year)); // For fees_count subquery
-                params.push(parseInt(year)); // For open_put_covered_capital subquery
+                    params.push(parseInt(year)); // For options_count subquery
+                    params.push(parseInt(year)); // For open_count subquery
+                    params.push(parseInt(year)); // For net_deposit subquery
+                    params.push(parseInt(year)); // For deposits_count subquery
+                    params.push(parseInt(year)); // For interest_count subquery
+                    params.push(parseInt(year)); // For fees_count subquery
+                    params.push(parseInt(year)); // For open_put_covered_capital subquery
 
-                params.push(parseInt(year)); // For main WHERE year = ?
+                    params.push(parseInt(year)); // For main WHERE year = ?
 
-                whereAdded = true;
-            } else {
-                query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
+                    whereAdded = true;
+                } else {
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount ELSE -amount END), 0) 
@@ -84,30 +87,30 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM monthly_fees WHERE monthly_fees.user_id = USERS.id) as fees_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
                         FROM USERS`;
-            }
+                }
 
-            if (roles && roles.length > 0) {
-                const placeholders = roles.map(() => '?').join(',');
-                query += whereAdded ? ` AND role IN (${placeholders})` : ` WHERE role IN (${placeholders})`;
-                params.push(...roles);
-                whereAdded = true;
-            }
+                if (roles && roles.length > 0) {
+                    const placeholders = roles.map(() => '?').join(',');
+                    query += whereAdded ? ` AND role IN (${placeholders})` : ` WHERE role IN (${placeholders})`;
+                    params.push(...roles);
+                    whereAdded = true;
+                }
 
-            const userId = searchParams.get('userId');
-            if (userId) {
-                query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
-                params.push(userId);
-            }
+                const userId = searchParams.get('userId');
+                if (userId) {
+                    query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
+                    params.push(userId);
+                }
 
-            query += ' ORDER BY email ASC';
+                query += ' ORDER BY email ASC';
 
-            // Return simplified user list for dropdowns
-            console.log('Executing query:', query, params); // Check SQL construction
-            const { results: users } = await db.prepare(query).bind(...params).all();
+                // Return simplified user list for dropdowns
+                console.log('Executing query:', query, params); // Check SQL construction
+                const { results: users } = await db.prepare(query).bind(...params).all();
 
-            // Get monthly statistics for each user if year is specified
-            if (year && year !== 'All') {
-                const statsQuery = `
+                // Get monthly statistics for each user if year is specified
+                if (year && year !== 'All') {
+                    const statsQuery = `
                     SELECT 
                         owner_id as user_id,
                         strftime('%m', datetime(open_date, 'unixepoch')) as month,
@@ -130,10 +133,10 @@ export async function GET(req: NextRequest) {
                     GROUP BY owner_id, month, type
                 `;
 
-                const { results: statsResults } = await db.prepare(statsQuery).bind(year).all();
+                    const { results: statsResults } = await db.prepare(statsQuery).bind(year).all();
 
-                // Fetch interest data for the year
-                const interestQuery = `
+                    // Fetch interest data for the year
+                    const interestQuery = `
                     SELECT 
                         user_id,
                         month,
@@ -141,99 +144,102 @@ export async function GET(req: NextRequest) {
                     FROM monthly_interest
                     WHERE year = ?
                 `;
-                const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
+                    const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
 
-                // Aggregate statistics by user
-                const userStatsMap = new Map();
+                    // Aggregate statistics by user
+                    const userStatsMap = new Map();
 
-                (statsResults as any[]).forEach((row: any) => {
-                    if (!userStatsMap.has(row.user_id)) {
-                        userStatsMap.set(row.user_id, {});
-                    }
+                    (statsResults as any[]).forEach((row: any) => {
+                        if (!userStatsMap.has(row.user_id)) {
+                            userStatsMap.set(row.user_id, {});
+                        }
 
-                    const userStats = userStatsMap.get(row.user_id);
-                    if (!userStats[row.month]) {
-                        userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
-                    }
+                        const userStats = userStatsMap.get(row.user_id);
+                        if (!userStats[row.month]) {
+                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
+                        }
 
-                    userStats[row.month].total += row.profit;
-                    userStats[row.month].turnover += (row.turnover || 0);
-                    if (row.type === 'PUT') {
-                        userStats[row.month].put += row.profit;
-                    } else if (row.type === 'CALL') {
-                        userStats[row.month].call += row.profit;
-                    }
-                });
+                        userStats[row.month].total += row.profit;
+                        userStats[row.month].turnover += (row.turnover || 0);
+                        if (row.type === 'PUT') {
+                            userStats[row.month].put += row.profit;
+                        } else if (row.type === 'CALL') {
+                            userStats[row.month].call += row.profit;
+                        }
+                    });
 
-                // Add interest data to userStatsMap
-                (interestResults as any[]).forEach((row: any) => {
-                    if (!userStatsMap.has(row.user_id)) {
-                        userStatsMap.set(row.user_id, {});
-                    }
-                    const userStats = userStatsMap.get(row.user_id);
-                    const monthStr = row.month.toString().padStart(2, '0');
-                    if (!userStats[monthStr]) {
-                        userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
-                    }
-                    userStats[monthStr].interest = row.interest;
-                    userStats[monthStr].total += row.interest; // Add interest to total
-                });
+                    // Add interest data to userStatsMap
+                    (interestResults as any[]).forEach((row: any) => {
+                        if (!userStatsMap.has(row.user_id)) {
+                            userStatsMap.set(row.user_id, {});
+                        }
+                        const userStats = userStatsMap.get(row.user_id);
+                        const monthStr = row.month.toString().padStart(2, '0');
+                        if (!userStats[monthStr]) {
+                            userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
+                        }
+                        userStats[monthStr].interest = row.interest;
+                        userStats[monthStr].total += row.interest; // Add interest to total
+                    });
 
-                // Attach monthly_stats to each user
-                (users as any[]).forEach((user: any) => {
-                    const userMonthlyData = userStatsMap.get(user.id);
+                    // Attach monthly_stats to each user
+                    (users as any[]).forEach((user: any) => {
+                        const userMonthlyData = userStatsMap.get(user.id);
 
-                    // Create all 12 months with default zero values
-                    const allMonths = [];
-                    for (let i = 1; i <= 12; i++) {
-                        const monthStr = i.toString().padStart(2, '0');
-                        const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
-                        allMonths.push({
-                            month: monthStr,
-                            total_profit: monthData.total,
-                            put_profit: monthData.put,
-                            call_profit: monthData.call,
-                            interest: monthData.interest,
-                            turnover: monthData.turnover
-                        });
-                    }
+                        // Create all 12 months with default zero values
+                        const allMonths = [];
+                        for (let i = 1; i <= 12; i++) {
+                            const monthStr = i.toString().padStart(2, '0');
+                            const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
+                            allMonths.push({
+                                month: monthStr,
+                                total_profit: monthData.total,
+                                put_profit: monthData.put,
+                                call_profit: monthData.call,
+                                interest: monthData.interest,
+                                turnover: monthData.turnover
+                            });
+                        }
 
-                    user.monthly_stats = allMonths;
+                        user.monthly_stats = allMonths;
 
-                    // Calculate total profit (including interest)
-                    user.total_profit = allMonths.reduce(
-                        (sum: number, stat: any) => sum + stat.total_profit,
-                        0
-                    );
-                });
-            }
+                        // Calculate total profit (including interest)
+                        user.total_profit = allMonths.reduce(
+                            (sum: number, stat: any) => sum + stat.total_profit,
+                            0
+                        );
+                    });
+                }
 
-            // Calculate Market Data Count
-            let marketDataCount = 0;
-            if (year && year !== 'All') {
-                const startOfYear = Math.floor(new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000);
-                const endOfYear = Math.floor(new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000);
-                // Align with export logic: include 20 days buffer before start of year
-                const bufferSeconds = 20 * 86400;
-                const startFilter = startOfYear - bufferSeconds;
+                // Calculate Market Data Count
+                let marketDataCount = 0;
+                if (year && year !== 'All') {
+                    const startOfYear = Math.floor(new Date(`${year}-01-01T00:00:00Z`).getTime() / 1000);
+                    const endOfYear = Math.floor(new Date(`${year}-12-31T23:59:59Z`).getTime() / 1000);
+                    // Align with export logic: include 20 days buffer before start of year
+                    const bufferSeconds = 20 * 86400;
+                    const startFilter = startOfYear - bufferSeconds;
 
-                const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices WHERE date >= ? AND date <= ?')
-                    .bind(startFilter, endOfYear)
-                    .first();
-                marketDataCount = countResult?.count || 0;
+                    const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices WHERE date >= ? AND date <= ?')
+                        .bind(startFilter, endOfYear)
+                        .first();
+                    marketDataCount = countResult?.count || 0;
 
-                return NextResponse.json({
-                    users,
-                    meta: {
-                        marketDataCount
-                    }
-                });
-            } else {
-                const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
-                marketDataCount = countResult?.count || 0;
-            }
+                    return NextResponse.json({
+                        users,
+                        meta: {
+                            marketDataCount
+                        }
+                    });
+                } else {
+                    const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
+                    marketDataCount = countResult?.count || 0;
+                }
 
-            return NextResponse.json({ users, meta: { marketDataCount } });
+                return { users, meta: { marketDataCount } };
+            });
+
+            return NextResponse.json(responseData);
         }
 
         const admin = await checkAdmin(req);
