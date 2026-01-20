@@ -225,12 +225,12 @@ export async function GET(req: NextRequest) {
                         .first();
                     marketDataCount = countResult?.count || 0;
 
-                    return NextResponse.json({
+                    return {
                         users,
                         meta: {
                             marketDataCount
                         }
-                    });
+                    };
                 } else {
                     const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
                     marketDataCount = countResult?.count || 0;
