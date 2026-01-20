@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
 import { calculateBenchmarkStats, calculateUserTwr, findPrice } from '@/lib/twr';
+import { cacheResponse } from '@/lib/response-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,33 +73,37 @@ export async function GET(request: NextRequest) {
 
 
         if (isBulkFetch) {
-            // Bulk Logic
-            const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
-            const deposits = await db.prepare(`SELECT * FROM DEPOSITS ORDER BY user_id, deposit_date ASC`).all();
-            const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
+            // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
+            const cacheKey = `net-equity-bulk-${year}`;
+            const userSummaries = await cacheResponse(cacheKey, async () => {
+                const db = await getDb();
+                const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
+                const deposits = await db.prepare(`SELECT * FROM DEPOSITS ORDER BY user_id, deposit_date ASC`).all();
+                const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
 
-            const userSummaries = (users.results as any[]).map(u => {
-                const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
-                const uDep = (deposits.results as any[]).filter(d => d.user_id === u.id);
+                return (users.results as any[]).map(u => {
+                    const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
+                    const uDep = (deposits.results as any[]).filter(d => d.user_id === u.id);
 
-                // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
-                const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
+                    // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
+                    const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
 
-                // Use Shared Helper
-                const processed = calculateUserTwr(uEq, uDep, (u as any).initial_cost, benchStartDate || 0, qqqData, qldData);
+                    // Use Shared Helper
+                    const processed = calculateUserTwr(uEq, uDep, (u as any).initial_cost, benchStartDate || 0, qqqData, qldData);
 
-                const lastDate = uEq.length > 0 ? uEq[uEq.length - 1].date : 0;
+                    const lastDate = uEq.length > 0 ? uEq[uEq.length - 1].date : 0;
 
-                const qqqStats = uEq.length > 0 ? calculateBenchmarkStats(qqqData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
-                const qldStats = uEq.length > 0 ? calculateBenchmarkStats(qldData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
+                    const qqqStats = uEq.length > 0 ? calculateBenchmarkStats(qqqData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
+                    const qldStats = uEq.length > 0 ? calculateBenchmarkStats(qldData, benchStartDate || (uEq[0].date), lastDate, (u as any).initial_cost, uDep) : null;
 
-                return {
-                    ...u,
-                    ...processed.summary, // Merges stats, current_net_equity, equity_history
-                    qqqStats,
-                    qldStats
-                };
-            });
+                    return {
+                        ...u,
+                        ...processed.summary, // Merges stats, current_net_equity, equity_history
+                        qqqStats,
+                        qldStats
+                    };
+                });
+            }, 5 * 60 * 1000); // 5 minute cache
 
             return NextResponse.json({ success: true, data: userSummaries });
 
