@@ -600,7 +600,7 @@ export default function AdminUsersPage() {
                                     variant="outline"
                                     className="hover:bg-accent hover:text-accent-foreground"
                                 >
-                                    <Download className="h-4 w-4 mr-2" />
+                                    <Upload className="h-4 w-4 mr-2" />
                                     匯出
                                 </Button>
                                 <Button
@@ -608,7 +608,7 @@ export default function AdminUsersPage() {
                                     className="hover:bg-accent hover:text-accent-foreground relative"
                                     disabled={importing}
                                 >
-                                    <Upload className="h-4 w-4 mr-2" />
+                                    <Download className="h-4 w-4 mr-2" />
                                     匯入
                                     <input
                                         type="file"

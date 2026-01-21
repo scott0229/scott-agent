@@ -1,0 +1,379 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+import { StockTradeDialog } from '@/components/StockTradeDialog';
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useYearFilter } from '@/contexts/YearFilterContext';
+
+interface StockTrade {
+    id: number;
+    user_id: string; // The API returns string user_id
+    owner_id: number;
+    year: number;
+    symbol: string;
+    status: 'Holding' | 'Closed';
+    open_date: number;
+    close_date?: number | null;
+    open_price: number;
+    close_price?: number | null;
+    quantity: number;
+}
+
+interface User {
+    id: number;
+    user_id: string;
+    email: string;
+    role: string;
+}
+
+export default function StockTradingPage() {
+    const [trades, setTrades] = useState<StockTrade[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState<User[]>([]);
+
+    // Filters
+    const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
+    const [statusFilter, setStatusFilter] = useState<string>("All");
+    const [symbolFilter, setSymbolFilter] = useState("");
+
+    // Dialogs
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [tradeToEdit, setTradeToEdit] = useState<StockTrade | null>(null);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+
+
+    const { selectedYear } = useYearFilter();
+
+    // Auth context (simplified)
+    // Auth context (simplified)
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        fetchCurrentUser();
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+        fetchTrades();
+    }, [selectedYear]);
+
+    const fetchCurrentUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentUser(data.user);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            // Filter users by selected Year (or current year if All)
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/users?year=${year}`);
+            const data = await res.json();
+            if (data.users) setUsers(data.users);
+        } catch (e) {
+            console.error('Failed to fetch users', e);
+        }
+    };
+
+    const fetchTrades = async () => {
+        setLoading(true);
+        try {
+            const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
+            // If normal user, maybe API restricts? Assuming API handles filtering if we don't pass userId
+            let url = `/api/stocks?dummy=1${yearParam}`;
+
+            // Should we filter by user here or let the user filter on UI?
+            // If admin, we fetch all. If user, API returns only theirs ideally.
+            // Let's rely on API response.
+
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.trades) {
+                setTrades(data.trades);
+            }
+        } catch (error) {
+            console.error('Failed to fetch trades', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            const res = await fetch(`/api/stocks/${deleteId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Delete failed');
+
+            setTrades(prev => prev.filter(t => t.id !== deleteId));
+            setTrades(prev => prev.filter(t => t.id !== deleteId));
+        } catch (error) {
+            console.error('Delete failed', error);
+        } finally {
+            setDeleteId(null);
+        }
+    };
+
+    const formatDate = (ts: number) => {
+        return new Date(ts * 1000).toLocaleDateString();
+    };
+
+    const formatMoney = (val: number | null | undefined) => {
+        if (val === null || val === undefined) return '-';
+        return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+    };
+
+    // Filter Logic
+    const filteredTrades = trades.filter(trade => {
+        // User Filter
+        if (selectedUserFilter !== "All") {
+            // Match against user_id string or if we had ID mapping
+            // API returns user_id string in trade.user_id
+            // Filter value is user_id string
+            if (trade.user_id !== selectedUserFilter) return false;
+        }
+
+        // Symbol Filter
+        if (symbolFilter) {
+            if (!trade.symbol.includes(symbolFilter.toUpperCase())) return false;
+        }
+
+        // Status Filter
+        if (statusFilter !== "All") {
+            if (trade.status !== statusFilter) return false;
+        }
+
+        return true;
+    });
+
+    const canEdit = (trade: StockTrade) => {
+        if (!currentUser) return false;
+        if (currentUser.role === 'admin' || currentUser.role === 'manager') return true;
+        return currentUser.user_id === trade.user_id; // Simple ownership check
+    };
+
+    const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
+
+    return (
+        <TooltipProvider delayDuration={300}>
+            <div className="container mx-auto py-10">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold">{mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 股票交易</h1>
+                    <div className="flex items-center gap-2">
+                        {/* User Filter - Admin/Manager Only */}
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
+                            <div className="w-[150px]">
+                                <Select value={selectedUserFilter} onValueChange={setSelectedUserFilter}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="所有用戶" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="All">所有用戶</SelectItem>
+                                        {users.map(u => (
+                                            <SelectItem key={u.id} value={u.user_id || u.email}>
+                                                {u.user_id || u.email}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {/* Status Filter */}
+                        <div className="w-[150px]">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="所有狀態" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">所有狀態</SelectItem>
+                                    <SelectItem value="Holding">持有中</SelectItem>
+                                    <SelectItem value="Closed">已平倉</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Symbol Filter */}
+                        <div className="w-[150px]">
+                            <Input
+                                placeholder="搜尋代號..."
+                                value={symbolFilter}
+                                onChange={(e) => setSymbolFilter(e.target.value)}
+                            />
+                        </div>
+
+                        <Button
+                            onClick={() => { setTradeToEdit(null); setDialogOpen(true); }}
+                            variant="secondary"
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            <span className="mr-0.5">+</span>新增
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-secondary hover:bg-secondary">
+                                <TableHead className="w-[50px] text-center">#</TableHead>
+                                <TableHead className="text-center">狀態</TableHead>
+                                <TableHead className="text-center">開倉日</TableHead>
+                                <TableHead className="text-center">關倉日</TableHead>
+                                <TableHead className="text-center">持有者</TableHead>
+                                <TableHead className="text-center">標的</TableHead>
+                                <TableHead className="text-center">股數</TableHead>
+                                <TableHead className="text-center">開倉價</TableHead>
+                                <TableHead className="text-center">關倉價</TableHead>
+                                <TableHead className="text-center">損益</TableHead>
+                                <TableHead className="text-right"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredTrades.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={11} className="h-24 text-center">
+                                        無交易紀錄
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredTrades.map((trade, index) => {
+                                    const isClosed = trade.status === 'Closed';
+                                    // Calculate simple P/L if close_price exists
+                                    let pnl: number | null = null;
+                                    if (trade.close_price) {
+                                        pnl = (trade.close_price - trade.open_price) * trade.quantity;
+                                    }
+
+                                    return (
+                                        <TableRow key={trade.id}>
+                                            <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge variant={isClosed ? "secondary" : "default"} className={!isClosed ? "bg-green-600 hover:bg-green-700" : ""}>
+                                                    {isClosed ? "已平倉" : "持有中"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
+                                            <TableCell className="text-center">{trade.close_date ? formatDate(trade.close_date) : '-'}</TableCell>
+                                            <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
+                                            <TableCell className="text-center">{trade.symbol}</TableCell>
+                                            <TableCell className="text-center">{trade.quantity}</TableCell>
+                                            <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
+                                            <TableCell className="text-center">
+                                                {trade.close_price ? formatMoney(trade.close_price) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {pnl !== null ? formatMoney(pnl) : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex justify-end gap-1">
+                                                    {canEdit(trade) && (
+                                                        <>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => { setTradeToEdit(trade); setDialogOpen(true); }}
+                                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>編輯</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                                        onClick={() => setDeleteId(trade.id)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>刪除</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                <StockTradeDialog
+                    open={dialogOpen}
+                    onOpenChange={setDialogOpen}
+                    tradeToEdit={tradeToEdit}
+                    onSuccess={() => { fetchTrades(); }}
+                    year={displayYear}
+                />
+
+                <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>確認刪除?</AlertDialogTitle>
+                            <AlertDialogDescription>這筆交易將被永久刪除且無法復原。</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600" onClick={handleDelete}>刪除</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </TooltipProvider>
+    );
+}

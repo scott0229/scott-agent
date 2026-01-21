@@ -54,7 +54,7 @@ export function Navbar() {
     }
 
     const canAccessAdmin = role === 'admin' || role === 'manager';
-    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity');
+    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity') || pathname.startsWith('/stocks');
 
     // Generate year options from 2025 (when the website started) to current year
     const currentYear = new Date().getFullYear();
@@ -94,6 +94,30 @@ export function Navbar() {
                     >
                         <FolderKanban className="h-4 w-4" />
                         專案管理
+                    </Button>
+                </Link>
+
+                <Link href="/stocks" prefetch={true}>
+                    <Button
+                        variant={pathname.startsWith('/stocks') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-4 w-4"
+                        >
+                            <path d="M3 3v18h18" />
+                            <path d="m19 9-5 5-4-4-3 3" />
+                        </svg>
+                        股票交易
                     </Button>
                 </Link>
 
