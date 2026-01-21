@@ -475,19 +475,24 @@ export async function DELETE(req: NextRequest) {
 
             const userIds = (usersToDelete as any[]).map((u: any) => u.id);
 
+            // 1. Delete all OPTIONS for the year (excluding admin)
+            await db.prepare('DELETE FROM OPTIONS WHERE year = ? AND owner_id != ?').bind(parseInt(year), admin.id).run();
+
+            // 1.5 Delete all STOCK_TRADES for the year (excluding admin)
+            await db.prepare('DELETE FROM STOCK_TRADES WHERE year = ? AND owner_id != ?').bind(parseInt(year), admin.id).run();
+
+            // 2. DEPOSITS table dropped
+
+            // 3. Delete all monthly_interest for the year (excluding admin)
+            await db.prepare('DELETE FROM monthly_interest WHERE year = ? AND user_id != ?').bind(parseInt(year), admin.id).run();
+
+            // 4. Delete all DAILY_NET_EQUITY for the year (excluding admin)
+            await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE year = ? AND user_id != ?').bind(parseInt(year), admin.id).run();
+
             if (userIds.length > 0) {
                 const placeholders = userIds.map(() => '?').join(',');
 
-                // 1. Delete all OPTIONS for these users
-                await db.prepare(`DELETE FROM OPTIONS WHERE owner_id IN (${placeholders})`).bind(...userIds).run();
-
-                // 2. DEPOSITS table dropped, data moved to DAILY_NET_EQUITY
-
-                // 3. Delete all monthly_interest for these users
-                await db.prepare(`DELETE FROM monthly_interest WHERE user_id IN (${placeholders})`).bind(...userIds).run();
-
-                // 4. Delete all DAILY_NET_EQUITY for these users
-                await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE user_id IN (${placeholders})`).bind(...userIds).run();
+                // 5. Delete all COMMENTS created/updated by these users
 
                 // 5. Delete all COMMENTS created/updated by these users
                 await db.prepare(`DELETE FROM COMMENTS WHERE created_by IN (${placeholders}) OR updated_by IN (${placeholders})`).bind(...userIds, ...userIds).run();
@@ -526,6 +531,14 @@ export async function DELETE(req: NextRequest) {
         if (Number(id) === admin.id) {
             return NextResponse.json({ error: '不能刪除自己' }, { status: 400 });
         }
+
+        // Explicitly delete related records since Foreign Keys might not cascade or exist (e.g., STOCK_TRADES)
+        await db.prepare('DELETE FROM STOCK_TRADES WHERE owner_id = ?').bind(id).run();
+        await db.prepare('DELETE FROM OPTIONS WHERE owner_id = ?').bind(id).run();
+        await db.prepare('DELETE FROM monthly_interest WHERE user_id = ?').bind(id).run();
+        await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE user_id = ?').bind(id).run();
+        // monthly_fees has ON DELETE CASCADE, but safer to leave it if we rely on DB, or add it if we want consistency.
+        // For now, these are the main ones.
 
         await db.prepare('DELETE FROM USERS WHERE id = ?').bind(id).run();
 

@@ -29,6 +29,7 @@ interface ImportUser {
     net_equity_records?: any[];
     options?: any[];
     monthly_interest?: any[];
+    stock_trades?: any[];
 }
 
 // POST: Import users from JSON array
@@ -264,6 +265,46 @@ export async function POST(req: NextRequest) {
                                 ).run();
                             } catch (optErr) {
                                 console.error(`Failed to import option for user ${user.email}:`, optErr);
+                            }
+                        }
+                    }
+                }
+
+                // Import nested stock trades
+                if (user.stock_trades && Array.isArray(user.stock_trades) && targetUserId) {
+                    for (const trade of user.stock_trades) {
+                        if (!trade.open_date || !trade.symbol || !trade.quantity) continue;
+
+                        const tradeYear = trade.year || targetYear;
+
+                        // Check duplicate stock trade (user, symbol, open_date, quantity)
+                        // Removed open_price from check to avoid floating point mismatch issues
+                        const existingTrade = await db.prepare(
+                            `SELECT id FROM STOCK_TRADES 
+                             WHERE owner_id = ? AND symbol = ? AND open_date = ? AND quantity = ?`
+                        ).bind(targetUserId, trade.symbol, trade.open_date, trade.quantity).first();
+
+                        if (!existingTrade) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO STOCK_TRADES (
+                                        owner_id, user_id, symbol, status, open_date, close_date, 
+                                        open_price, close_price, quantity, year, created_at, updated_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    targetUserId,
+                                    user.user_id || null, // API uses string ID
+                                    trade.symbol,
+                                    trade.status || 'Holding',
+                                    trade.open_date,
+                                    trade.close_date || null,
+                                    trade.open_price,
+                                    trade.close_price || null,
+                                    trade.quantity,
+                                    tradeYear
+                                ).run();
+                            } catch (stockErr) {
+                                console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
                             }
                         }
                     }

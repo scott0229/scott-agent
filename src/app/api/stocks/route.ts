@@ -19,34 +19,38 @@ export async function GET(req: NextRequest) {
         const symbol = searchParams.get('symbol');
 
         const db = await getDb();
-        let query = 'SELECT * FROM STOCK_TRADES';
+        let query = `
+            SELECT ST.*, U.user_id as user_name 
+            FROM STOCK_TRADES ST
+            JOIN USERS U ON ST.owner_id = U.id
+        `;
         const params: any[] = [];
         let whereAdded = false;
 
         // Add year filter
         if (year && year !== 'All') {
-            query += ' WHERE year = ?';
+            query += ' WHERE ST.year = ?';
             params.push(parseInt(year));
             whereAdded = true;
         }
 
         if (ownerId) {
-            query += whereAdded ? ' AND owner_id = ?' : ' WHERE owner_id = ?';
+            query += whereAdded ? ' AND ST.owner_id = ?' : ' WHERE ST.owner_id = ?';
             params.push(ownerId);
             whereAdded = true;
         } else if (userId) {
-            query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
+            query += whereAdded ? ' AND ST.user_id = ?' : ' WHERE ST.user_id = ?';
             params.push(userId);
             whereAdded = true;
         }
 
         if (symbol) {
-            query += whereAdded ? ' AND symbol = ?' : ' WHERE symbol = ?';
+            query += whereAdded ? ' AND ST.symbol = ?' : ' WHERE ST.symbol = ?';
             params.push(symbol);
             whereAdded = true;
         }
 
-        query += ' ORDER BY open_date DESC';
+        query += ' ORDER BY ST.open_date DESC';
 
         const { results } = await db.prepare(query).bind(...params).all();
 

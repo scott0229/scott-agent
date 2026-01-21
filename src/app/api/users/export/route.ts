@@ -21,7 +21,7 @@ async function checkAdmin(req: NextRequest) {
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
-async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true) {
+async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true) {
     const db = await getDb();
 
     let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, year
@@ -38,11 +38,13 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             OR id IN (SELECT DISTINCT user_id FROM DAILY_NET_EQUITY WHERE year = ? AND deposit != 0)
             OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
             OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
+            OR id IN (SELECT DISTINCT owner_id FROM STOCK_TRADES WHERE year = ?)
         )`);
         params.push(parseInt(year)); // year = ?
         params.push(parseInt(year)); // DEPOSITS activity (via DAILY_NET_EQUITY)
         params.push(parseInt(year)); // OPTIONS activity
         params.push(parseInt(year)); // interest activity
+        params.push(parseInt(year)); // stock activity
     }
 
     if (userIds && userIds.length > 0) {
@@ -171,6 +173,26 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         } else {
             (user as any).monthly_interest = [];
         }
+
+        let stocksQuery = `
+            SELECT 
+                id, symbol, status, open_date, close_date, open_price, close_price, quantity, year
+            FROM STOCK_TRADES 
+            WHERE owner_id = ?
+        `;
+        const stocksParams: any[] = [user.id];
+        if (year && year !== 'All') {
+            stocksQuery += ` AND year = ?`;
+            stocksParams.push(parseInt(year));
+        }
+        stocksQuery += ` ORDER BY open_date DESC`;
+        const { results: stocks } = await db.prepare(stocksQuery).bind(...stocksParams).all();
+
+        if (includeStockRecords) {
+            (user as any).stock_trades = stocks || [];
+        } else {
+            (user as any).stock_trades = [];
+        }
     }
 
     let minExportDate = Number.MAX_SAFE_INTEGER;
@@ -239,7 +261,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const year = searchParams.get('year');
 
-        const data = await executeExport(req, year, null, true, true, true, true, true);
+        const data = await executeExport(req, year, null, true, true, true, true, true, true);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);
@@ -254,14 +276,15 @@ export async function POST(req: NextRequest) {
         if (!admin) return NextResponse.json({ error: '權限不足' }, { status: 403 });
 
         const body = await req.json();
-        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords } = body;
+        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords, includeStockRecords } = body;
         // Default includeDepositRecords to true if undefined
         const safeIncludeDeposits = includeDepositRecords !== undefined ? includeDepositRecords : true;
         const safeIncludeOptions = includeOptionsRecords !== undefined ? includeOptionsRecords : true;
         const safeIncludeInterest = includeInterestRecords !== undefined ? includeInterestRecords : true;
         const safeIncludeFees = includeFeeRecords !== undefined ? includeFeeRecords : true;
+        const safeIncludeStocks = includeStockRecords !== undefined ? includeStockRecords : true;
 
-        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees);
+        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees, safeIncludeStocks);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);

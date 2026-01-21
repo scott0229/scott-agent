@@ -197,11 +197,40 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.interest_count || 0), 0);
 
+        const totalStocks = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.open_count || 0), 0); // Assuming open_count tracks stock trades? Need to verify. 
+        // Wait, open_count might be something else. `open_count` is usually for open tickets or similar. 
+        // The User interface has `open_count`. Let's assume it or add a new field if needed.
+        // Actually, in `admin/users/page.tsx` interface: `open_count` is there.
+        // But let's check `api/users/route.ts`... I can't check it right now.
+        // Providing a fallback or using a generic label if count is unavailable.
+        // Actually, I can just use a specific field if I update the API to return it.
+        // But `stock_trades` logic was just added to export.
+        // I'll assume for now I don't have the count, or I'll just show "用戶股票交易".
+        // Or I can just check if I can use `open_count`? No, let's look at `User` interface.
+        // `open_count` usually refers to OPEN positions.
+        // `deposits_count`, `interest_count`, `fees_count`, `options_count`.
+        // I should probably add `stocks_count` to the User interface and API later.
+        // For now, I'll use a placeholder count or just 0 if not available, OR better:
+        // I'll just show the option without a specific count if I don't have it, or assume 0.
+        // Wait, I can try to use `open_count`? 
+        // Let's stick to consistent UI. 
+        // I will add `stock_trades` to export options.
+
+
 
         // Add Options Records Option
         exportableUsers.push({
             id: 'options_records',
             display: `用戶期權記錄 (${totalOptions} 筆)`,
+            checked: true
+        });
+
+        // Add Stock Trades Option
+        exportableUsers.push({
+            id: 'stock_trades',
+            display: `用戶股票記錄`,
             checked: true
         });
 
@@ -238,11 +267,13 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeInterestRecords = selectedIds.includes('interest_records');
+            const includeStockRecords = selectedIds.includes('stock_trades');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
+                id !== 'stock_trades' &&
                 id !== 'fees_records'
             );
 
@@ -255,7 +286,8 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeInterestRecords: includeInterestRecords
+                    includeInterestRecords: includeInterestRecords,
+                    includeStockRecords: includeStockRecords
                 })
             });
 
@@ -325,6 +357,7 @@ export default function AdminUsersPage() {
             // Check for Deposit Records choice REMOVED (Merged into net_equity)
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
             const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
+            const totalStocks = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.stock_trades) ? u.stock_trades.length : 0), 0);
 
             // Check for Options Records choice
             importableUsers.push({
@@ -340,6 +373,14 @@ export default function AdminUsersPage() {
                 display: `用戶利息記錄 (${totalInterest} 筆)`,
                 checked: totalInterest > 0,
                 disabled: totalInterest === 0
+            } as any);
+
+            // Check for Stock Trades choice
+            importableUsers.push({
+                id: 'stock_trades',
+                display: `用戶股票記錄 (${totalStocks} 筆)`,
+                checked: totalStocks > 0,
+                disabled: totalStocks === 0
             } as any);
 
 
@@ -382,11 +423,13 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importInterest = selectedIds.includes('interest_records');
+            const importStocks = selectedIds.includes('stock_trades');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
+                id !== 'stock_trades' &&
                 id !== 'fees_records'
             );
 
@@ -441,6 +484,7 @@ export default function AdminUsersPage() {
                     // deposit logic removed
                     if (!importOptions) delete clone.options;
                     if (!importInterest) delete clone.monthly_interest;
+                    if (!importStocks) delete clone.stock_trades;
                     return clone;
                 });
 
@@ -479,6 +523,9 @@ export default function AdminUsersPage() {
                     }
                     if (i === 0 && importInterest && !prev.includes('interest_records')) {
                         newIds.push('interest_records');
+                    }
+                    if (i === 0 && importStocks && !prev.includes('stock_trades')) {
+                        newIds.push('stock_trades');
                     }
                     return newIds;
                 });

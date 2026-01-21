@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
     Table,
@@ -156,7 +157,7 @@ export default function StockTradingPage() {
     };
 
     const formatDate = (ts: number) => {
-        return new Date(ts * 1000).toLocaleDateString();
+        return format(new Date(ts * 1000), "yy-MM-dd");
     };
 
     const formatMoney = (val: number | null | undefined) => {
