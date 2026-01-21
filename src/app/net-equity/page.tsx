@@ -211,63 +211,10 @@ export default function NetEquityPage() {
                 }).map((user) => (
                     <Card
                         key={user.id}
-                        className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer"
+                        className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer py-0"
                         onClick={() => router.push(`/net-equity/${user.id}`)}
                     >
-                        <CardHeader className="flex flex-row items-center gap-4 pb-0">
-                            <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
-                                <AvatarFallback>{(user.user_id || user.email).charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col overflow-hidden">
-                                <CardTitle className="text-lg truncate">
-                                    {user.user_id || user.email}
-                                </CardTitle>
-                                <CardDescription className="truncate font-medium text-primary">
-                                    報酬率排名 {
-                                        [...summaries]
-                                            .sort((a, b) => (b.stats?.returnPercentage || 0) - (a.stats?.returnPercentage || 0))
-                                            .findIndex(u => u.id === user.id) + 1
-                                    }
-                                </CardDescription>
-                            </div>
-                            <div className="ml-auto flex gap-2">
-                                <Button
-                                    variant="ghost"
-                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        router.push(`/net-equity/${user.id}`);
-                                    }}
-                                    size="sm"
-                                >
-                                    <Plus className="h-3.5 w-3.5 mr-1" />
-                                    淨值記錄
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        router.push(`/net-equity/${user.id}/benchmark/QQQ`);
-                                    }}
-                                    size="sm"
-                                >
-                                    QQQ對照
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    className="bg-[#F5F2EF] hover:bg-[#EBE5E0] text-stone-900 px-3 rounded-md"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        router.push(`/net-equity/${user.id}/benchmark/QLD`);
-                                    }}
-                                    size="sm"
-                                >
-                                    QLD對照
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
+                        <CardContent className="p-4">
                             <div className="grid grid-cols-[45%_1fr] gap-4">
                                 {/* Stats Table */}
                                 <div className="border rounded-md overflow-hidden">
