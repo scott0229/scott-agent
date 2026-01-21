@@ -172,7 +172,7 @@ export default function NetEquityPage() {
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
-                    {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 帳戶績效
+                    {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 績效總覽
                 </h1>
                 <Select value={sortOrder} onValueChange={setSortOrder}>
                     <SelectTrigger className="w-[180px]">
@@ -311,10 +311,10 @@ export default function NetEquityPage() {
                                                     {user.total_deposit !== undefined && user.total_deposit !== 0 ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit)}</span>) : '0'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    {user.qqqStats ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
+                                                    {user.qqqStats ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    {user.qldStats ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
+                                                    {user.qldStats ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -28,10 +28,29 @@ interface AdminUserDialogProps {
     userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; initial_cost?: number } | null;
 }
 
+// Format number with thousand separators (Borrowed from EditNetEquityDialog)
+const formatNumber = (value: string): string => {
+    if (!value) return '';
+    const isNegative = value.startsWith('-');
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    if (isNegative && !cleanValue) return '-';
+    if (!cleanValue) return '';
+    const parts = cleanValue.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? parts[1] : undefined;
+    let formatted = integerPart;
+    if (integerPart) {
+        formatted = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    const result = decimalPart !== undefined ? `${formatted}.${decimalPart}` : formatted;
+    return isNegative ? `-${result}` : result;
+};
+
 export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: AdminUserDialogProps) {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
     const { selectedYear } = useYearFilter();
+    const isComposing = useRef(false);
     const [formData, setFormData] = useState({
         email: '',
         userId: '',
@@ -54,7 +73,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
-                initialCost: userToEdit.initial_cost?.toString() || ''
+                initialCost: userToEdit.initial_cost ? userToEdit.initial_cost.toLocaleString('en-US') : ''
             });
         }
     });
@@ -72,7 +91,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
-                initialCost: userToEdit.initial_cost?.toString() || ''
+                initialCost: userToEdit.initial_cost ? userToEdit.initial_cost.toLocaleString('en-US') : ''
             });
         } else {
             setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', initialCost: '' });
@@ -87,7 +106,10 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             const url = '/api/users';
             const method = userToEdit ? 'PUT' : 'POST';
             const year = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
-            const body = userToEdit ? { ...formData, id: userToEdit.id } : { ...formData, year };
+            const cleanInitialCost = formData.initialCost ? formData.initialCost.replace(/,/g, '') : '';
+            const body = userToEdit
+                ? { ...formData, initialCost: cleanInitialCost, id: userToEdit.id }
+                : { ...formData, initialCost: cleanInitialCost, year };
 
             const res = await fetch(url, {
                 method: method,
@@ -123,7 +145,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[380px]">
                 <DialogHeader>
-                    <DialogTitle>{userToEdit ? '編輯使用者' : '新增使用者'}</DialogTitle>
+                    <DialogTitle>{userToEdit ? '編輯用戶' : '新增使用者'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4" autoComplete="off">
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -251,12 +273,21 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                 </Label>
                                 <Input
                                     id="initialCost"
-                                    type="number"
-                                    min="0"
-                                    step="1"
+                                    type="text"
                                     placeholder="0"
                                     value={formData.initialCost}
-                                    onChange={(e) => setFormData({ ...formData, initialCost: e.target.value })}
+                                    onCompositionStart={() => isComposing.current = true}
+                                    onCompositionEnd={(e) => {
+                                        isComposing.current = false;
+                                        setFormData({ ...formData, initialCost: formatNumber(e.currentTarget.value) });
+                                    }}
+                                    onChange={(e) => {
+                                        if (isComposing.current) {
+                                            setFormData({ ...formData, initialCost: e.target.value });
+                                            return;
+                                        }
+                                        setFormData({ ...formData, initialCost: formatNumber(e.target.value) });
+                                    }}
                                     className="col-span-2"
                                     autoComplete="off"
                                 />

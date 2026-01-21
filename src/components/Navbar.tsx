@@ -105,7 +105,7 @@ export function Navbar() {
                             className="gap-2"
                         >
                             <Users className="h-4 w-4" />
-                            帳號管理
+                            用戶設定
                         </Button>
                     </Link>
                 )}
@@ -126,7 +126,7 @@ export function Navbar() {
                             className="gap-2"
                         >
                             <LineChart className="h-4 w-4" />
-                            帳戶績效
+                            績效總覽
                         </Button>
                     </Link>
                 )}

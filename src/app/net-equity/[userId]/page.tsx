@@ -299,7 +299,7 @@ export default function NetEquityDetailPage() {
                         </Button>
                     )}
                     <h1 className="text-3xl font-bold">
-                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `帳戶績效 - ${userName}` : '帳戶績效詳細記錄'}
+                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `績效總覽 - ${userName}` : '績效詳細記錄'}
                     </h1>
                 </div>
 
