@@ -45,6 +45,16 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import { isMarketHoliday } from '@/lib/holidays';
 
 
 
@@ -78,8 +88,10 @@ export default function BenchmarkDetailPage() {
     const [submitting, setSubmitting] = useState(false);
     const [deletePricesOpen, setDeletePricesOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     const { selectedYear } = useYearFilter();
 
@@ -260,7 +272,12 @@ export default function BenchmarkDetailPage() {
                     </Button>
                     <Button
                         className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
-                        onClick={() => setAddPriceOpen(true)}
+                        onClick={() => {
+                            setIsEditing(false);
+                            setNewPriceDate('');
+                            setNewPriceValue('');
+                            setAddPriceOpen(true);
+                        }}
                     >
                         <Plus className="h-4 w-4" />
                         新增
@@ -363,6 +380,7 @@ export default function BenchmarkDetailPage() {
                                                 const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                                                 setNewPriceDate(dateStr);
                                                 setNewPriceValue(record.close_price?.toFixed(2) || '');
+                                                setIsEditing(true);
                                                 setAddPriceOpen(true);
                                             }}
                                         >
@@ -407,6 +425,7 @@ export default function BenchmarkDetailPage() {
                                                 const dateStr = `${year}-12-31`;
                                                 setNewPriceDate(dateStr);
                                                 setNewPriceValue(basePrice > 0 ? basePrice.toFixed(2) : '');
+                                                setIsEditing(true);
                                                 setAddPriceOpen(true);
                                             }}
                                         >
@@ -423,7 +442,7 @@ export default function BenchmarkDetailPage() {
             <Dialog open={addPriceOpen} onOpenChange={setAddPriceOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>新增 {symbol} 股價</DialogTitle>
+                        <DialogTitle>{isEditing ? '編輯' : '新增'} {symbol} 股價</DialogTitle>
 
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -431,14 +450,34 @@ export default function BenchmarkDetailPage() {
                             <Label htmlFor="date" className="text-right">
                                 日期
                             </Label>
-                            <Input
-                                id="date"
-                                type="date"
-                                value={newPriceDate}
-                                onChange={(e) => setNewPriceDate(e.target.value)}
-                                className="col-span-3"
-                                max={todayStr}
-                            />
+                            <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "col-span-3 justify-start text-left font-normal",
+                                            !newPriceDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {newPriceDate ? format(new Date(newPriceDate), "yyyy-MM-dd") : <span>選擇日期</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={newPriceDate ? new Date(newPriceDate) : undefined}
+                                        onSelect={(date) => {
+                                            if (date) {
+                                                setNewPriceDate(format(date, "yyyy-MM-dd"));
+                                                setIsCalendarOpen(false);
+                                            }
+                                        }}
+                                        disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="price" className="text-right">
@@ -458,7 +497,7 @@ export default function BenchmarkDetailPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddPriceOpen(false)}>取消</Button>
                         <Button onClick={handleAddPrice} disabled={submitting || !newPriceDate || !newPriceValue}>
-                            {submitting ? "儲存中..." : "確認新增"}
+                            {submitting ? "儲存中..." : (isEditing ? "確認修改" : "確認新增")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
