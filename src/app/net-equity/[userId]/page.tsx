@@ -299,7 +299,7 @@ export default function NetEquityDetailPage() {
                         </Button>
                     )}
                     <h1 className="text-3xl font-bold">
-                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `績效總覽 - ${userName}` : '績效詳細記錄'}
+                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `淨值記錄 - ${userName}` : '淨值記錄'}
                     </h1>
                 </div>
 
@@ -312,7 +312,7 @@ export default function NetEquityDetailPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">顯示全部</SelectItem>
-                                <SelectItem value="management_fee">顯示管理費</SelectItem>
+                                <SelectItem value="management_fee">顯示管理費支出</SelectItem>
                                 <SelectItem value="transfer">顯示轉帳記錄</SelectItem>
                             </SelectContent>
                         </Select>
@@ -364,7 +364,7 @@ export default function NetEquityDetailPage() {
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">管理費</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">管理費支出</TableHead>
                             <TableHead className="text-center font-bold text-foreground">轉帳記錄</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>

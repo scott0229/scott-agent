@@ -647,7 +647,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
-                                <TableHead className="text-center">管理費</TableHead>
+                                <TableHead className="text-center">管理費率</TableHead>
 
 
                                 <TableHead className="text-center">年初淨值</TableHead>

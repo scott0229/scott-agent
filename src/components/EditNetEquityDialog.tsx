@@ -208,7 +208,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="management_fee" className="text-right">管理費</Label>
+                        <Label htmlFor="management_fee" className="text-right">管理費支出</Label>
                         <Input
                             id="management_fee"
                             type="text"

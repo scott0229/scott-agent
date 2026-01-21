@@ -230,7 +230,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                         <>
                             <div className="grid grid-cols-3 items-center gap-4">
                                 <Label htmlFor="managementFee" className="text-right">
-                                    管理費
+                                    管理費率
                                 </Label>
                                 <div className="col-span-2 relative">
                                     <Input

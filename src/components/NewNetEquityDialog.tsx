@@ -240,7 +240,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="managementFee" className="text-right">
-                            管理費
+                            管理費支出
                         </Label>
                         <Input
                             id="managementFee"
