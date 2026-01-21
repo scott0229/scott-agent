@@ -311,10 +311,22 @@ export default function NetEquityPage() {
                                                     {user.total_deposit !== undefined && user.total_deposit !== 0 ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit)}</span>) : '0'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    0
+                                                    {user.qqqStats ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    0
+                                                    {user.qldStats ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                                <td className="h-7 py-1 px-2">淨利潤</td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    {formatMoney((user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0))}
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    {user.qqqStats ? formatMoney(user.qqqStats.currentEquity - user.qqqStats.startEquity - (user.total_deposit || 0)) : '-'}
+                                                </td>
+                                                <td className="h-7 py-1 px-2 text-center">
+                                                    {user.qldStats ? formatMoney(user.qldStats.currentEquity - user.qldStats.startEquity - (user.total_deposit || 0)) : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">

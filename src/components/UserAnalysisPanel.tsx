@@ -143,7 +143,7 @@ export function UserAnalysisPanel({ user, year }: UserAnalysisPanelProps) {
                         <table className="w-full border-collapse" style={{ fontSize: '13px' }}>
                             <thead>
                                 <tr className="bg-[#e8e4dc]">
-                                    <th className="border px-2 py-1.5 text-center font-medium whitespace-nowrap text-foreground h-7">月份</th>
+                                    <th className="border px-2 py-1.5 text-center font-medium whitespace-nowrap text-foreground h-7"></th>
                                     <th className="border px-2 py-1.5 text-center font-medium whitespace-nowrap text-foreground h-7">PUT勝率</th>
                                     <th className="border px-2 py-1.5 text-center font-medium whitespace-nowrap text-foreground h-7">CALL勝率</th>
                                     <th className="border px-2 py-1.5 text-center font-medium whitespace-nowrap text-foreground h-7">總勝率</th>

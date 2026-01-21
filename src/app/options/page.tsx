@@ -353,7 +353,7 @@ export default function OptionsPage() {
                                                     </colgroup>
                                                     <thead>
                                                         <tr className="text-[13px] font-medium text-muted-foreground bg-[#e8e4dc]">
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">月份</th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground"></th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">總損益</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">PUT</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">CALL</th>
