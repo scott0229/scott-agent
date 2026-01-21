@@ -67,8 +67,9 @@ export function Navbar() {
     return (
         <nav className="sticky top-0 w-full z-50 p-4 flex justify-between gap-2 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-white/20 shadow-sm items-center">
             {/* Year Filter - Only show on options pages */}
-            {isOptionsPage && (
-                <div className="flex items-center gap-2 ml-2">
+            <div className="flex items-center gap-2 ml-2">
+                {/* Year Filter - Only show on options pages */}
+                {isOptionsPage && (
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
                         <SelectTrigger className="w-[120px]">
                             <SelectValue placeholder="選擇年份" />
@@ -79,14 +80,9 @@ export function Navbar() {
                             ))}
                         </SelectContent>
                     </Select>
-                </div>
-            )}
+                )}
 
-            {/* Spacer for non-options pages to maintain layout */}
-            {!isOptionsPage && <div />}
-
-            <div className="flex gap-2 items-center">
-                {/* Projects - visible for all logged-in users */}
+                {/* Projects - Moved to left side */}
                 <Link href="/project-list" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/project') ? "default" : "ghost"}
@@ -96,6 +92,21 @@ export function Navbar() {
                         專案管理
                     </Button>
                 </Link>
+            </div>
+
+            <div className="flex gap-2 items-center">
+                {/* Admin panel - visible for admin/manager and now customer (read-only) */}
+                {(canAccessAdmin || role === 'customer') && (
+                    <Link href="/admin/users" prefetch={true}>
+                        <Button
+                            variant={pathname.startsWith('/admin') ? "default" : "ghost"}
+                            className="gap-2"
+                        >
+                            <Users className="h-4 w-4" />
+                            用戶設定
+                        </Button>
+                    </Link>
+                )}
 
                 <Link href="/stocks" prefetch={true}>
                     <Button
@@ -120,19 +131,6 @@ export function Navbar() {
                         股票交易
                     </Button>
                 </Link>
-
-                {/* Admin panel - visible for admin/manager and now customer (read-only) */}
-                {(canAccessAdmin || role === 'customer') && (
-                    <Link href="/admin/users" prefetch={true}>
-                        <Button
-                            variant={pathname.startsWith('/admin') ? "default" : "ghost"}
-                            className="gap-2"
-                        >
-                            <Users className="h-4 w-4" />
-                            用戶設定
-                        </Button>
-                    </Link>
-                )}
                 <Link href="/options" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/options') ? "default" : "ghost"}

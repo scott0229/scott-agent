@@ -38,6 +38,7 @@ interface User {
     fees_count?: number;
     total_profit?: number;
     current_net_equity?: number;
+    stock_trades_count?: number;
 }
 
 import {
@@ -199,38 +200,19 @@ export default function AdminUsersPage() {
 
         const totalStocks = users
             .filter(u => u.email !== 'admin')
-            .reduce((sum, u) => sum + (u.open_count || 0), 0); // Assuming open_count tracks stock trades? Need to verify. 
-        // Wait, open_count might be something else. `open_count` is usually for open tickets or similar. 
-        // The User interface has `open_count`. Let's assume it or add a new field if needed.
-        // Actually, in `admin/users/page.tsx` interface: `open_count` is there.
-        // But let's check `api/users/route.ts`... I can't check it right now.
-        // Providing a fallback or using a generic label if count is unavailable.
-        // Actually, I can just use a specific field if I update the API to return it.
-        // But `stock_trades` logic was just added to export.
-        // I'll assume for now I don't have the count, or I'll just show "用戶股票交易".
-        // Or I can just check if I can use `open_count`? No, let's look at `User` interface.
-        // `open_count` usually refers to OPEN positions.
-        // `deposits_count`, `interest_count`, `fees_count`, `options_count`.
-        // I should probably add `stocks_count` to the User interface and API later.
-        // For now, I'll use a placeholder count or just 0 if not available, OR better:
-        // I'll just show the option without a specific count if I don't have it, or assume 0.
-        // Wait, I can try to use `open_count`? 
-        // Let's stick to consistent UI. 
-        // I will add `stock_trades` to export options.
-
-
+            .reduce((sum, u) => sum + (u.stock_trades_count || 0), 0);
 
         // Add Options Records Option
         exportableUsers.push({
             id: 'options_records',
-            display: `用戶期權記錄 (${totalOptions} 筆)`,
+            display: `期權交易記錄 (${totalOptions} 筆)`,
             checked: true
         });
 
         // Add Stock Trades Option
         exportableUsers.push({
             id: 'stock_trades',
-            display: `用戶股票記錄`,
+            display: `股票交易記錄 (${totalStocks} 筆)`,
             checked: true
         });
 
@@ -362,7 +344,7 @@ export default function AdminUsersPage() {
             // Check for Options Records choice
             importableUsers.push({
                 id: 'options_records',
-                display: `用戶期權記錄 (${totalOptions} 筆)`,
+                display: `期權交易記錄 (${totalOptions} 筆)`,
                 checked: totalOptions > 0,
                 disabled: totalOptions === 0
             } as any);
@@ -378,7 +360,7 @@ export default function AdminUsersPage() {
             // Check for Stock Trades choice
             importableUsers.push({
                 id: 'stock_trades',
-                display: `用戶股票記錄 (${totalStocks} 筆)`,
+                display: `股票交易記錄 (${totalStocks} 筆)`,
                 checked: totalStocks > 0,
                 disabled: totalStocks === 0
             } as any);
