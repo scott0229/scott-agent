@@ -398,7 +398,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <TableCell>{formatDate(opt.settlement_date)}</TableCell>
                                     <TableCell>{getDaysHeld(opt)}</TableCell>
                                     <TableCell>{opt.quantity}</TableCell>
-                                    <TableCell className="font-medium">{opt.underlying}</TableCell>
+                                    <TableCell>{opt.underlying}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={opt.type === 'CALL' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
                                             {opt.type}

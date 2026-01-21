@@ -384,12 +384,12 @@ export default function NetEquityDetailPage() {
                         )}
                         {filteredRecords.map((record) => (
                             <TableRow key={record.id} className="hover:bg-muted/50 h-9">
-                                <TableCell className="text-center font-mono font-medium py-1">
+                                <TableCell className="text-center font-mono py-1">
                                     {formatDate(record.date)}
                                 </TableCell>
                                 <TableCell className="text-center py-1">
                                     <div className="flex justify-center">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
                                             {formatMoney(record.net_equity)}
                                         </Badge>
                                     </div>
@@ -403,30 +403,14 @@ export default function NetEquityDetailPage() {
                                 </TableCell>
                                 <TableCell className="text-center py-1">
                                     {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 font-sans font-normal text-sm px-2">
-                                                {formatMoney(record.management_fee)}
-                                            </Badge>
-                                        </div>
+                                        formatMoney(record.management_fee)
                                     ) : (
                                         "0"
                                     )}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
                                     {(record as any).deposit && (record as any).deposit !== 0 ? (
-                                        (record as any).deposit < 0 ? (
-                                            <div className="flex justify-center">
-                                                <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 font-sans font-normal text-sm px-2">
-                                                    {formatMoney((record as any).deposit)}
-                                                </Badge>
-                                            </div>
-                                        ) : (
-                                            <div className="flex justify-center">
-                                                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-sans font-normal text-sm px-2">
-                                                    {formatMoney((record as any).deposit)}
-                                                </Badge>
-                                            </div>
-                                        )
+                                        formatMoney((record as any).deposit)
                                     ) : (
                                         "0"
                                     )}
@@ -500,42 +484,24 @@ export default function NetEquityDetailPage() {
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
-                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
                                         {formatMoney(initialCost)}
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell className="text-center"></TableCell>
-                            <TableCell className="text-center font-mono">
+                            <TableCell className="text-center font-mono font-normal">0</TableCell>
+                            <TableCell className="text-center font-mono font-normal">
                                 {(() => {
                                     const sum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
                                     if (sum === 0) return '';
-                                    return (
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 font-sans font-normal text-sm px-2">
-                                                {formatMoney(sum)}
-                                            </Badge>
-                                        </div>
-                                    );
+                                    return formatMoney(sum);
                                 })()}
                             </TableCell>
-                            <TableCell className="text-center font-mono">
+                            <TableCell className="text-center font-mono font-normal">
                                 {(() => {
                                     const sum = records.reduce((s, r) => s + (r.daily_deposit || 0), 0);
                                     if (sum === 0) return '';
-                                    return sum < 0 ? (
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50 font-sans font-normal text-sm px-2">
-                                                {formatMoney(sum)}
-                                            </Badge>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-center">
-                                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 font-sans font-normal text-sm px-2">
-                                                {formatMoney(sum)}
-                                            </Badge>
-                                        </div>
-                                    );
+                                    return formatMoney(sum);
                                 })()}
                             </TableCell>
                             <TableCell colSpan={6} className="text-center"></TableCell>
