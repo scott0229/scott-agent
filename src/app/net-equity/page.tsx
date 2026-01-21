@@ -275,9 +275,42 @@ export default function NetEquityPage() {
                                         <thead>
                                             <tr className="border-b bg-muted/40 text-[13px] font-medium">
                                                 <td className="py-2 px-2 w-[25%]"></td>
-                                                <td className="py-2 px-2 text-center font-bold w-[25%]">帳戶</td>
-                                                <td className="py-2 px-2 text-center font-bold w-[25%]">QQQ</td>
-                                                <td className="py-2 px-2 text-center font-bold w-[25%]">QLD</td>
+                                                <td className="py-1 px-2 text-center font-bold w-[25%]">
+                                                    <div
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/net-equity/${user.id}`);
+                                                        }}
+                                                    >
+                                                        <div className="h-2 w-2 rounded-full bg-[#2563eb]" />
+                                                        <span>{user.user_id || 'scott'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-1 px-2 text-center font-bold w-[25%]">
+                                                    <div
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/net-equity/${user.id}/benchmark/QQQ`);
+                                                        }}
+                                                    >
+                                                        <div className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                                                        <span>QQQ</span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-1 px-2 text-center font-bold w-[25%]">
+                                                    <div
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/net-equity/${user.id}/benchmark/QLD`);
+                                                        }}
+                                                    >
+                                                        <div className="h-2 w-2 rounded-full bg-[#f97316]" />
+                                                        <span>QLD</span>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         </thead>
                                         <tbody className="text-[13px]">
@@ -438,6 +471,7 @@ export default function NetEquityPage() {
                                     <NetEquityChart
                                         data={user.equity_history || []}
                                         initialCost={user.initial_cost}
+                                        name={user.user_id || 'scott'}
                                     />
                                 </div>
                             </div>

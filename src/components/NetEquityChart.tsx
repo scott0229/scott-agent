@@ -7,11 +7,14 @@ interface NetEquityChartProps {
     data: { date: number; net_equity: number; rate?: number; qqq_rate?: number; qld_rate?: number }[];
     initialCost?: number;
     id?: string | number; // Add ID for unique gradient identifier
+    name?: string;
 }
 
-export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
+export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartProps) {
     const [visible, setVisible] = useState({ account: true, qqq: true, qld: true });
     const toggle = (key: keyof typeof visible) => setVisible(prev => ({ ...prev, [key]: !prev[key] }));
+
+    const accountLabel = name || '帳戶';
 
     // Early check moved inside render to preserve layout
     const hasData = data && data.length > 0;
@@ -119,7 +122,7 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
                                 labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '12px', marginBottom: '2px', fontWeight: 'normal' }}
                                 formatter={(value: any, name: any) => {
                                     let label = name;
-                                    if (name === 'rate') label = '帳戶';
+                                    if (name === 'rate') label = accountLabel;
                                     if (name === 'qqq_rate') label = 'QQQ';
                                     if (name === 'qld_rate') label = 'QLD';
                                     return [`${Number(value).toFixed(2)}%`, label];
@@ -190,7 +193,7 @@ export function NetEquityChart({ data, initialCost, id }: NetEquityChartProps) {
                     className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.account ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-[#2563eb]" />
-                    <span className="text-muted-foreground font-medium">帳戶</span>
+                    <span className="text-muted-foreground font-medium">{accountLabel}</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('qqq'); }}

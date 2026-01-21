@@ -407,7 +407,7 @@ export default function OptionsPage() {
                                                     </colgroup>
                                                     <tbody>
                                                         <tr>
-                                                            <td className="px-2 text-center h-7">總計</td>
+                                                            <td className="px-2 text-center h-7"></td>
                                                             <td className="px-2 text-center h-7">
                                                                 {(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
