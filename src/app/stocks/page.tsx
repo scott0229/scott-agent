@@ -61,6 +61,7 @@ interface User {
     user_id: string;
     email: string;
     role: string;
+    current_net_equity?: number;
 }
 
 export default function StockTradingPage() {
@@ -112,7 +113,10 @@ export default function StockTradingPage() {
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
             const res = await fetch(`/api/users?year=${year}`);
             const data = await res.json();
-            if (data.users) setUsers(data.users);
+            if (data.users) {
+                const sortedUsers = data.users.sort((a: User, b: User) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
+                setUsers(sortedUsers);
+            }
         } catch (e) {
             console.error('Failed to fetch users', e);
         }
