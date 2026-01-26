@@ -298,7 +298,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
-                                    disabled={!!tradeToEdit}
+
                                     className={cn(
                                         "col-span-3 justify-start text-left font-normal",
                                         !openDate && "text-muted-foreground"
@@ -374,7 +374,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                             onChange={(e) => setQuantity(e.target.value)}
                             className="col-span-3 no-spinner"
                             placeholder="0"
-                            disabled={!!tradeToEdit}
+
                         />
                     </div>
 
@@ -391,7 +391,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                             onChange={(e) => setOpenPrice(e.target.value)}
                             className="col-span-3 no-spinner"
                             placeholder="0.00"
-                            disabled={!!tradeToEdit}
+
                         />
                     </div>
 
