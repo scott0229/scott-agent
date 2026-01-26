@@ -573,7 +573,7 @@ export default function NetEquityDetailPage() {
                             <TableCell className="text-center font-mono font-normal">
                                 {(() => {
                                     const sum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
-                                    if (sum === 0) return '';
+                                    if (sum === 0) return '0';
                                     return formatMoney(sum);
                                 })()}
                             </TableCell>
