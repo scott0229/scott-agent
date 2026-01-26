@@ -147,9 +147,12 @@ export default function NetEquityPage() {
         // Cream background, gold border, brown text for all values (positive, negative, drawdown)
         const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
 
+        // Display positive value for drawdown as per user request
+        const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
+
         return (
             <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>
-                {format ? format(value) : formatPercent(value)}
+                {format ? format(displayValue) : formatPercent(displayValue)}
             </span>
         );
     };
@@ -189,7 +192,7 @@ export default function NetEquityPage() {
                         <SelectItem value="alphabetical">按字母</SelectItem>
                         <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
                         <SelectItem value="return-desc">報酬率-從大到小</SelectItem>
-                        <SelectItem value="drawdown-desc">最大回撤-從大到小</SelectItem>
+                        <SelectItem value="drawdown-desc">最大回撤-從少到多</SelectItem>
                         <SelectItem value="sharpe-desc">夏普值-從大到小</SelectItem>
                     </SelectContent>
                 </Select>

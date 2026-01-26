@@ -505,7 +505,7 @@ export default function NetEquityDetailPage() {
                                     {formatPercent(record.running_peak)}
                                 </TableCell>
                                 <TableCell className="text-center font-mono py-1">
-                                    {formatPercent(record.drawdown)}
+                                    {formatPercent(Math.abs(record.drawdown))}
                                 </TableCell>
                                 <TableCell className="text-center py-1">
                                     {record.is_new_high && (

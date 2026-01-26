@@ -48,9 +48,12 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         // Cream background, gold border, brown text for all values (positive, negative, drawdown)
         const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
 
+        // Display positive value for drawdown as per user request
+        const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
+
         return (
             <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>
-                {format ? format(value) : formatPercent(value)}
+                {format ? format(displayValue) : formatPercent(displayValue)}
             </span>
         );
     };
