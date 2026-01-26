@@ -59,7 +59,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
-                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
+                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
+                        (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
                         FROM USERS`;
 
                     // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
@@ -85,7 +86,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                         (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
-                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital
+                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
+                        (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
                         FROM USERS`;
                 }
 

@@ -62,6 +62,7 @@ export default function NetEquityDetailPage() {
     const params = useParams();
     const router = useRouter();
     const [records, setRecords] = useState<PerformanceRecord[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string>('');
@@ -74,6 +75,7 @@ export default function NetEquityDetailPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
+    const [selectedUserValue, setSelectedUserValue] = useState<string>('');
 
 
 
@@ -119,16 +121,28 @@ export default function NetEquityDetailPage() {
                 if (userRes.ok) {
                     const userData = await userRes.json();
                     if (userData.users && userData.users.length > 0) {
-                        // Find by DB ID (params.userId is ID)
-                        const targetId = parseInt(userId);
-                        const user = userData.users.find((u: any) => u.id === targetId);
+                        // Filter out admin user (usually id 1 or user_id 'admin')
+                        // Assuming user_id or email check
+                        const filteredUsers = userData.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+                        filteredUsers.sort((a: any, b: any) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
+                        setUsers(filteredUsers);
+
+                        // Find by DB ID or user_id or email
+                        const user = userData.users.find((u: any) =>
+                            u.id.toString() === userId ||
+                            u.user_id === userId
+                        );
 
                         if (user) {
                             const displayName = user.user_id || user.email.split('@')[0];
+                            const selectorValue = user.user_id || user.email;
                             setUserName(displayName);
+                            setSelectedUserValue(selectorValue);
                             setInitialCost((user as any).initial_cost || 0);
                         } else {
-                            console.log("User not found in selection list", targetId);
+                            console.log("User not found in selection list", userId);
+                            // Fallback to params.userId if not found ??
+                            setSelectedUserValue(userId);
                         }
                     }
                 }
@@ -298,8 +312,29 @@ export default function NetEquityDetailPage() {
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     )}
-                    <h1 className="text-3xl font-bold">
-                        {selectedYear === 'All' ? '' : selectedYear} {userName ? `淨值記錄 - ${userName}` : '淨值記錄'}
+                    <h1 className="text-3xl font-bold flex items-center gap-2">
+                        {selectedYear === 'All' ? '' : selectedYear} 淨值記錄
+                        {isAdmin && users.length > 0 ? (
+                            <>
+                                <Select
+                                    value={selectedUserValue || userId}
+                                    onValueChange={(newId) => router.push(`/net-equity/${newId}`)}
+                                >
+                                    <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
+                                        <SelectValue placeholder="選擇用戶" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {users.map((user) => (
+                                            <SelectItem key={user.id} value={user.user_id || user.email}>
+                                                {user.user_id || user.email}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </>
+                        ) : (
+                            userName ? `- ${userName}` : ''
+                        )}
                     </h1>
                 </div>
 

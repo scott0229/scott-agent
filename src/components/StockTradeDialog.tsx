@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -23,6 +24,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { useToast } from "@/hooks/use-toast";
 import {
     Popover,
     PopoverContent,
@@ -60,6 +62,7 @@ interface StockTradeDialogProps {
 }
 
 export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, year }: StockTradeDialogProps) {
+    const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -157,24 +160,59 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
     const handleSubmit = async () => {
         if (!selectedUserId && !tradeToEdit) { // Require user selection for new trade
+            toast({
+                variant: "destructive",
+                title: "缺少資料",
+                description: "請選擇用戶",
+            });
             return;
         }
         if (!symbol) {
+            toast({
+                variant: "destructive",
+                title: "缺少資料",
+                description: "請輸入代號",
+            });
             return;
         }
         if (!openDate) {
+            toast({
+                variant: "destructive",
+                title: "缺少資料",
+                description: "請選擇開倉日期",
+            });
             return;
         }
 
         // Validate Year
-        if (openDate.getFullYear() !== year) {
-            return;
+        // Open Date year check removed as per requirement (allow carry-over)
+
+        // Close Date Validation: Must be in the current year if closed
+        if (status === 'Closed' && closeDate) {
+            if (closeDate.getFullYear() !== year) {
+                toast({
+                    variant: "destructive",
+                    title: "無效的日期",
+                    description: `平倉日期必須在 ${year} 年`,
+                });
+                return;
+            }
         }
 
         if (!openPrice || !quantity) {
+            toast({
+                variant: "destructive",
+                title: "缺少資料",
+                description: "請輸入價格和股數",
+            });
             return;
         }
         if (status === 'Closed' && (!closeDate || !closePrice)) {
+            toast({
+                variant: "destructive",
+                title: "缺少資料",
+                description: "請輸入平倉資料",
+            });
             return;
         }
 
@@ -218,6 +256,11 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
         } catch (error: any) {
             console.error(error.message);
+            toast({
+                variant: "destructive",
+                title: "操作失敗",
+                description: error.message || "未知錯誤",
+            });
         } finally {
             setLoading(false);
         }
@@ -228,6 +271,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{tradeToEdit ? "編輯股票交易" : "新增股票交易"}</DialogTitle>
+
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     {/* Status - Only visible when editing */}
@@ -241,7 +285,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Holding">持有中</SelectItem>
+                                    <SelectItem value="Holding">未平倉</SelectItem>
                                     <SelectItem value="Closed">已平倉</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -355,7 +399,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                     {status === 'Closed' && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">關倉日期</Label>
+                                <Label className="text-right">平倉日期</Label>
                                 <Popover open={isCloseCalendarOpen} onOpenChange={setIsCloseCalendarOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -392,7 +436,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                     {tradeToEdit && (
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="closePrice" className="text-right">
-                                關倉價格
+                                平倉價格
                             </Label>
                             <Input
                                 id="closePrice"

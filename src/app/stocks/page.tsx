@@ -229,7 +229,7 @@ export default function StockTradingPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">所有狀態</SelectItem>
-                                    <SelectItem value="Holding">持有中</SelectItem>
+                                    <SelectItem value="Holding">未平倉</SelectItem>
                                     <SelectItem value="Closed">已平倉</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -261,12 +261,12 @@ export default function StockTradingPage() {
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">狀態</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
-                                <TableHead className="text-center">關倉日</TableHead>
+                                <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">股數</TableHead>
                                 <TableHead className="text-center">開倉價</TableHead>
-                                <TableHead className="text-center">關倉價</TableHead>
+                                <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">損益</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -291,8 +291,15 @@ export default function StockTradingPage() {
                                         <TableRow key={trade.id}>
                                             <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
                                             <TableCell className="text-center">
-                                                <Badge variant={isClosed ? "secondary" : "default"} className={!isClosed ? "bg-green-600 hover:bg-green-700" : ""}>
-                                                    {isClosed ? "已平倉" : "持有中"}
+                                                <Badge
+                                                    variant={isClosed ? "secondary" : "outline"}
+                                                    className={
+                                                        !isClosed
+                                                            ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                                            : ""
+                                                    }
+                                                >
+                                                    {isClosed ? "已平倉" : "未平倉"}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>

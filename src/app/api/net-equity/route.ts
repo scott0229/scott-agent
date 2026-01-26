@@ -22,15 +22,33 @@ export async function GET(request: NextRequest) {
         const userIdParam = searchParams.get('userId');
         const yearParam = searchParams.get('year');
         const year = yearParam ? parseInt(yearParam) : new Date().getFullYear();
+        const db = await getDb();
 
         // Authorization: Admin/Manager can see any, Customer can only see self
         let targetUserId: number | null = user.id;
         let isBulkFetch = false;
 
         if (userIdParam) {
+            // Check if userIdParam is numeric ID or string user_id
+            let numericId = parseInt(userIdParam);
+
+            // If NaN, it might be a user_id string (e.g. 'derren')
+            if (isNaN(numericId)) {
+                // Look up user by user_id string to get the numeric ID
+                const userRecord = await db.prepare('SELECT id FROM USERS WHERE user_id = ? OR email = ?').bind(userIdParam, userIdParam).first();
+                if (userRecord) {
+                    numericId = userRecord.id;
+                }
+            }
+
             if (['admin', 'manager'].includes(user.role)) {
-                targetUserId = parseInt(userIdParam);
-            } else if (parseInt(userIdParam) !== user.id) {
+                if (!isNaN(numericId)) {
+                    targetUserId = numericId;
+                } else {
+                    // Could not resolve user
+                    return NextResponse.json({ success: true, data: [] });
+                }
+            } else if (numericId !== user.id) {
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
         } else {
@@ -44,8 +62,6 @@ export async function GET(request: NextRequest) {
                 targetUserId = user.id;
             }
         }
-
-        const db = await getDb();
 
         // 1. Fetch Market Data for the Year (Common for both paths)
         // 1. Fetch Market Data for the Year (Common for both paths)
@@ -77,7 +93,6 @@ export async function GET(request: NextRequest) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
             const cacheKey = `net-equity-bulk-${year}-v2`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
-                const db = await getDb();
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
 
                 // Legacy DEPOSITS table query removed. We now use DAILY_NET_EQUITY.deposit

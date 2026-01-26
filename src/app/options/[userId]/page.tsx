@@ -64,6 +64,8 @@ interface Option {
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
     const [options, setOptions] = useState<Option[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [selectedUserValue, setSelectedUserValue] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
@@ -98,12 +100,25 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                 // Fetch page owner user
                 const yearForUser = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-                const res = await fetch(`/api/users?mode=selection&userId=${params.userId}&year=${yearForUser}`, {
-                    credentials: 'include' // Ensure cookies are sent
+                // Fetch all users for selection
+                const res = await fetch(`/api/users?mode=selection`, {
+                    credentials: 'include'
                 });
                 const data = await res.json();
                 if (data.users && data.users.length > 0) {
-                    setOwnerId(data.users[0].id);
+                    // Filter out admin user
+                    const filteredUsers = data.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+                    filteredUsers.sort((a: any, b: any) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
+                    setUsers(filteredUsers);
+                    // Find current owner
+                    const currentOwner = data.users.find((u: any) => u.id.toString() === params.userId || u.user_id === params.userId);
+                    if (currentOwner) {
+                        setOwnerId(currentOwner.id);
+                        setSelectedUserValue(currentOwner.user_id || currentOwner.email);
+                    } else {
+                        // Fallback
+                        setSelectedUserValue(params.userId);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch user:', error);
@@ -251,7 +266,30 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <ArrowLeft className="h-6 w-6" />
                     </Button>
                 )}
-                <h1 className="text-3xl font-bold">期權交易 - {params.userId}</h1>
+                <h1 className="text-3xl font-bold flex items-center gap-2">
+                    期權交易
+                    {currentUserRole && currentUserRole !== 'customer' && users.length > 0 ? (
+                        <>
+                            <Select
+                                value={selectedUserValue || params.userId}
+                                onValueChange={(newId) => router.push(`/options/${newId}`)}
+                            >
+                                <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
+                                    <SelectValue placeholder="選擇用戶" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {users.map((user) => (
+                                        <SelectItem key={user.id} value={user.user_id || user.email}>
+                                            {user.user_id || user.email}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </>
+                    ) : (
+                        ` - ${params.userId}`
+                    )}
+                </h1>
                 <div className="ml-auto flex items-center gap-4">
                     {/* Filter Controls */}
                     <div className="flex items-center gap-2">
