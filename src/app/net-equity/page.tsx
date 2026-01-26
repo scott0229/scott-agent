@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
 import { NetEquityChart } from '@/components/NetEquityChart';
+import { NetEquitySummaryTable } from '@/components/NetEquitySummaryTable';
 
 import { Pencil, BarChart3, Coins, Plus } from "lucide-react";
 
@@ -143,23 +144,8 @@ export default function NetEquityPage() {
     }
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
-        const isPositive = value >= 0;
-        const isNegative = value < 0;
-
-        let colorClass = "bg-gray-100 text-gray-600 border-gray-200";
-
-        if (variant === 'drawdown') {
-            colorClass = "bg-orange-50 text-orange-600 border-orange-200";
-        } else if (variant === 'sharpe') {
-            colorClass = "bg-blue-50 text-blue-600 border-blue-200";
-        } else {
-            // Return logic
-            if (isPositive) {
-                colorClass = "bg-emerald-50 text-emerald-600 border-emerald-200";
-            } else if (isNegative) {
-                colorClass = "bg-red-50 text-red-600 border-red-200";
-            }
-        }
+        // Cream background, gold border, brown text for all values (positive, negative, drawdown)
+        const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
 
         return (
             <span className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}>
@@ -167,6 +153,27 @@ export default function NetEquityPage() {
             </span>
         );
     };
+
+    const sortedSummaries = [...summaries].sort((a, b) => {
+        if (sortOrder === 'alphabetical') {
+            const nameA = a.user_id || a.email;
+            const nameB = b.user_id || b.email;
+            return nameA.localeCompare(nameB);
+        }
+        if (sortOrder === 'net-equity-desc') {
+            return (b.current_net_equity || 0) - (a.current_net_equity || 0);
+        }
+        if (sortOrder === 'return-desc') {
+            return (b.stats?.returnPercentage || 0) - (a.stats?.returnPercentage || 0);
+        }
+        if (sortOrder === 'drawdown-desc') {
+            return (b.stats?.maxDrawdown || 0) - (a.stats?.maxDrawdown || 0);
+        }
+        if (sortOrder === 'sharpe-desc') {
+            return (b.stats?.sharpeRatio || 0) - (a.stats?.sharpeRatio || 0);
+        }
+        return 0;
+    });
 
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
@@ -188,27 +195,16 @@ export default function NetEquityPage() {
                 </Select>
             </div>
 
+            {/* Summary Table */}
+            {sortedSummaries.length > 0 && (
+                <NetEquitySummaryTable
+                    users={sortedSummaries}
+                    onUserClick={(userId) => router.push(`/net-equity/${userId}`)}
+                />
+            )}
+
             <div className="grid grid-cols-1 gap-4">
-                {[...summaries].sort((a, b) => {
-                    if (sortOrder === 'alphabetical') {
-                        const nameA = a.user_id || a.email;
-                        const nameB = b.user_id || b.email;
-                        return nameA.localeCompare(nameB);
-                    }
-                    if (sortOrder === 'net-equity-desc') {
-                        return (b.current_net_equity || 0) - (a.current_net_equity || 0);
-                    }
-                    if (sortOrder === 'return-desc') {
-                        return (b.stats?.returnPercentage || 0) - (a.stats?.returnPercentage || 0);
-                    }
-                    if (sortOrder === 'drawdown-desc') {
-                        return (b.stats?.maxDrawdown || 0) - (a.stats?.maxDrawdown || 0);
-                    }
-                    if (sortOrder === 'sharpe-desc') {
-                        return (b.stats?.sharpeRatio || 0) - (a.stats?.sharpeRatio || 0);
-                    }
-                    return 0;
-                }).map((user) => (
+                {sortedSummaries.map((user) => (
                     <Card
                         key={user.id}
                         className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer py-0"
@@ -291,10 +287,10 @@ export default function NetEquityPage() {
                                                     {user.total_deposit !== undefined && user.total_deposit !== 0 ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit)}</span>) : '0'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    {user.qqqStats ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
+                                                    {user.qqqStats ? ((user.total_deposit || 0) !== 0 ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '0') : '-'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">
-                                                    {user.qldStats ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '-'}
+                                                    {user.qldStats ? ((user.total_deposit || 0) !== 0 ? ((user.total_deposit || 0) > 0 ? formatMoney(user.total_deposit || 0) : <span className="text-red-600">{formatMoney(user.total_deposit || 0)}</span>) : '0') : '-'}
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
@@ -450,4 +446,3 @@ export default function NetEquityPage() {
         </div >
     );
 }
-
