@@ -247,7 +247,13 @@ export default function OptionsPage() {
                                         {displayName}{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
                                     </CardTitle>
                                     <CardDescription className="truncate flex items-center mt-1">
-                                        <span className="bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200 mr-1.5">
+                                        <span
+                                            className="bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200 mr-1.5 cursor-pointer hover:bg-red-100 transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/options/${client.user_id || client.id}?status=未平倉`);
+                                            }}
+                                        >
                                             {client.open_count || 0}
                                         </span>
                                         筆未平倉

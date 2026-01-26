@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +20,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 
-import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2, FilterX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
 import { EditNetEquityDialog } from '@/components/EditNetEquityDialog';
@@ -73,8 +73,9 @@ export default function NetEquityDetailPage() {
     const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
     const [deleteAllOpen, setDeleteAllOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [selectedMonth, setSelectedMonth] = useState<string>('all');
-    const [filterType, setFilterType] = useState<string>('all');
+    const searchParams = useSearchParams();
+    const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get('month') || 'all');
+    const [filterType, setFilterType] = useState<string>(searchParams.get('type') || 'all');
     const [selectedUserValue, setSelectedUserValue] = useState<string>('');
 
 
@@ -301,6 +302,13 @@ export default function NetEquityDetailPage() {
         );
     }
 
+    const resetFilters = () => {
+        setSelectedMonth('all');
+        setFilterType('all');
+        // Clear URL params but keep the page
+        router.push(`/net-equity/${userId}`);
+    };
+
     const isAdmin = ['admin', 'manager'].includes(currentUserRole || '');
 
     return (
@@ -318,7 +326,15 @@ export default function NetEquityDetailPage() {
                             <>
                                 <Select
                                     value={selectedUserValue || userId}
-                                    onValueChange={(newId) => router.push(`/net-equity/${newId}`)}
+                                    onValueChange={(newId) => {
+                                        const params = new URLSearchParams();
+                                        if (selectedMonth !== 'all') params.set('month', selectedMonth);
+                                        if (filterType !== 'all') params.set('type', filterType);
+
+                                        const queryString = params.toString();
+                                        const url = queryString ? `/net-equity/${newId}?${queryString}` : `/net-equity/${newId}`;
+                                        router.push(url);
+                                    }}
                                 >
                                     <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
                                         <SelectValue placeholder="選擇用戶" />
@@ -341,6 +357,24 @@ export default function NetEquityDetailPage() {
 
                 {isAdmin && (
                     <div className="flex items-center gap-2">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={resetFilters}
+                                        className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
+                                    >
+                                        <FilterX className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>重置篩選</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
                         <Select value={filterType} onValueChange={setFilterType}>
                             <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="顯示全部" />

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, FilterX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     AlertDialog,
@@ -202,6 +202,26 @@ export default function StockTradingPage() {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">{mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 股票交易</h1>
                     <div className="flex items-center gap-2">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                        setSelectedUserFilter("All");
+                                        setStatusFilter("All");
+                                        setSymbolFilter("");
+                                    }}
+                                    className="mr-2 text-muted-foreground hover:text-primary"
+                                >
+                                    <FilterX className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>重置篩選</p>
+                            </TooltipContent>
+                        </Tooltip>
+
                         {/* User Filter - Admin/Manager Only */}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
                             <div className="w-[150px]">

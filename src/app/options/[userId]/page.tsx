@@ -76,11 +76,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     // Use global year filter instead of local state
     const { selectedYear, setSelectedYear } = useYearFilter();
-    const [selectedMonth, setSelectedMonth] = useState<string>('All');
-    const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
-    const [selectedType, setSelectedType] = useState<string>('All');
-    const [selectedStatus, setSelectedStatus] = useState<string>('All');
-    const [selectedOperation, setSelectedOperation] = useState<string>('All');
+    const searchParams = useSearchParams();
+    const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get('month') || 'All');
+    const [selectedUnderlying, setSelectedUnderlying] = useState<string>(searchParams.get('underlying') || 'All');
+    const [selectedType, setSelectedType] = useState<string>(searchParams.get('type') || 'All');
+    const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'All');
+    const [selectedOperation, setSelectedOperation] = useState<string>(searchParams.get('operation') || 'All');
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -272,7 +273,18 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <>
                             <Select
                                 value={selectedUserValue || params.userId}
-                                onValueChange={(newId) => router.push(`/options/${newId}`)}
+                                onValueChange={(newId) => {
+                                    const params = new URLSearchParams();
+                                    if (selectedMonth !== 'All') params.set('month', selectedMonth);
+                                    if (selectedUnderlying !== 'All') params.set('underlying', selectedUnderlying);
+                                    if (selectedType !== 'All') params.set('type', selectedType);
+                                    if (selectedStatus !== 'All') params.set('status', selectedStatus);
+                                    if (selectedOperation !== 'All') params.set('operation', selectedOperation);
+
+                                    const queryString = params.toString();
+                                    const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;
+                                    router.push(url);
+                                }}
                             >
                                 <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
                                     <SelectValue placeholder="選擇用戶" />
