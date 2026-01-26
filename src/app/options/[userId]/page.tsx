@@ -101,14 +101,25 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                 // Fetch page owner user
                 const yearForUser = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-                // Fetch all users for selection
-                const res = await fetch(`/api/users?mode=selection`, {
+                const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
+                // Fetch all users for selection with year filtering
+                const res = await fetch(`/api/users?mode=selection${yearParam}`, {
                     credentials: 'include'
                 });
                 const data = await res.json();
                 if (data.users && data.users.length > 0) {
                     // Filter out admin user
-                    const filteredUsers = data.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+                    let filteredUsers = data.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+
+                    // Deduplicate by user_id/email if multiple users (e.g. across years) have same ID
+                    const seen = new Set();
+                    filteredUsers = filteredUsers.filter((u: any) => {
+                        const key = u.user_id || u.email;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+
                     filteredUsers.sort((a: any, b: any) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
                     setUsers(filteredUsers);
                     // Find current owner

@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
             // If NaN, it might be a user_id string (e.g. 'derren')
             if (isNaN(numericId)) {
                 // Look up user by user_id string to get the numeric ID
-                const userRecord = await db.prepare('SELECT id FROM USERS WHERE user_id = ? OR email = ?').bind(userIdParam, userIdParam).first();
+                // Respect the requested year to ensure we get the correct user entity (e.g. scott 2025 vs scott 2026)
+                const userRecord = await db.prepare('SELECT id FROM USERS WHERE (user_id = ? OR email = ?) AND year = ?')
+                    .bind(userIdParam, userIdParam, year)
+                    .first();
                 if (userRecord) {
                     numericId = userRecord.id;
                 }

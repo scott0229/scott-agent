@@ -118,17 +118,28 @@ export default function NetEquityDetailPage() {
                 // The API supports userId param in selection mode.
                 // A better way: fetch from /api/users?mode=selection if specific ID fetch isn't supported by ID column
                 // Removing userId param to fetch all selection candidates (customers) and then find by ID.
-                const userRes = await fetch(`/api/users?mode=selection&roles=customer`);
+                const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
+                const userRes = await fetch(`/api/users?mode=selection&roles=customer${yearParam}`);
                 if (userRes.ok) {
                     const userData = await userRes.json();
                     if (userData.users && userData.users.length > 0) {
-                        // Filter out admin user (usually id 1 or user_id 'admin')
-                        // Assuming user_id or email check
-                        const filteredUsers = userData.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+                        // Filter out admin user
+                        let filteredUsers = userData.users.filter((u: any) => u.user_id !== 'admin' && u.email !== 'admin@example.com' && u.role !== 'admin');
+
+                        // Deduplicate by user_id/email if multiple users (e.g. across years) have same ID
+                        const seen = new Set();
+                        filteredUsers = filteredUsers.filter((u: any) => {
+                            const key = u.user_id || u.email;
+                            if (seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        });
+
                         filteredUsers.sort((a: any, b: any) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
                         setUsers(filteredUsers);
 
                         // Find by DB ID or user_id or email
+                        // When filtering by year (implicit in API call), we get the correct user entity.
                         const user = userData.users.find((u: any) =>
                             u.id.toString() === userId ||
                             u.user_id === userId
