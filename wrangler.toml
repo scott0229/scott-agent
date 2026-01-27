@@ -4,6 +4,7 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 main = ".open-next/worker.js"
 minify = true
+account_id = "9946dede036802fcd2a0b9cef8e13574"
 
 # Assets configuration for static files (OpenNext)
 [assets]
