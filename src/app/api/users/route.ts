@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
                 // Add year filter (only admin crosses years)
                 if (year && year !== 'All') {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
                     whereAdded = true;
                 } else {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, 
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -301,7 +301,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -442,7 +442,7 @@ export async function POST(req: NextRequest) {
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
         // userYear is already defined above
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())')
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, unixepoch(), unixepoch())')
             .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost)
             .run();
 
@@ -564,7 +564,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -574,6 +574,9 @@ export async function PUT(req: NextRequest) {
             ibAccount?: string;
             phone?: string;
             initialCost?: number;
+            initialCash?: number;
+            initialManagementFee?: number;
+            initialDeposit?: number;
         };
 
         if (!id) {
@@ -646,6 +649,21 @@ export async function PUT(req: NextRequest) {
             params.push(initialCost);
         } else if (role && role !== 'customer') {
             updateQuery += ', initial_cost = 0';
+        }
+
+        if (typeof initialCash !== 'undefined') {
+            updateQuery += ', initial_cash = ?';
+            params.push(initialCash);
+        }
+
+        if (typeof initialManagementFee !== 'undefined') {
+            updateQuery += ', initial_management_fee = ?';
+            params.push(initialManagementFee);
+        }
+
+        if (typeof initialDeposit !== 'undefined') {
+            updateQuery += ', initial_deposit = ?';
+            params.push(initialDeposit);
         }
 
         if (password && password.trim() !== '') {

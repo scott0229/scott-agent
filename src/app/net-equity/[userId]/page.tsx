@@ -24,6 +24,7 @@ import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2, FilterX } from "lucide-
 import { cn } from "@/lib/utils";
 import { NewNetEquityDialog } from '@/components/NewNetEquityDialog';
 import { EditNetEquityDialog } from '@/components/EditNetEquityDialog';
+import { EditInitialCostDialog } from '@/components/EditInitialCostDialog';
 import { useToast } from "@/hooks/use-toast";
 import {
     AlertDialog,
@@ -43,6 +44,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { isMarketHoliday } from '@/lib/holidays';
 
 interface PerformanceRecord {
     id: number;
@@ -67,8 +69,13 @@ export default function NetEquityDetailPage() {
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
     const [userName, setUserName] = useState<string>('');
     const [initialCost, setInitialCost] = useState<number>(0);
+    const [initialCash, setInitialCash] = useState<number>(0);
+    const [initialManagementFee, setInitialManagementFee] = useState<number>(0);
+    const [initialDeposit, setInitialDeposit] = useState<number>(0);
+    const [userDbId, setUserDbId] = useState<number | null>(null);
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [isEditInitialCostOpen, setIsEditInitialCostOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState<PerformanceRecord | null>(null);
     const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
     const [deleteAllOpen, setDeleteAllOpen] = useState(false);
@@ -119,7 +126,7 @@ export default function NetEquityDetailPage() {
                 // A better way: fetch from /api/users?mode=selection if specific ID fetch isn't supported by ID column
                 // Removing userId param to fetch all selection candidates (customers) and then find by ID.
                 const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
-                const userRes = await fetch(`/api/users?mode=selection&roles=customer${yearParam}`);
+                const userRes = await fetch(`/api/users?mode=selection&roles=customer${yearParam}`, { cache: 'no-store' });
                 if (userRes.ok) {
                     const userData = await userRes.json();
                     if (userData.users && userData.users.length > 0) {
@@ -151,6 +158,10 @@ export default function NetEquityDetailPage() {
                             setUserName(displayName);
                             setSelectedUserValue(selectorValue);
                             setInitialCost((user as any).initial_cost || 0);
+                            setInitialCash((user as any).initial_cash || 0);
+                            setInitialManagementFee((user as any).initial_management_fee || 0);
+                            setInitialDeposit((user as any).initial_deposit || 0);
+                            setUserDbId(user.id);
                         } else {
                             console.log("User not found in selection list", userId);
                             // Fallback to params.userId if not found ??
@@ -174,7 +185,7 @@ export default function NetEquityDetailPage() {
     const fetchRecords = async () => {
         try {
             const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
-            const res = await fetch(`/api/net-equity?userId=${userId}${yearParam}`);
+            const res = await fetch(`/api/net-equity?userId=${userId}${yearParam}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.success) {
                 setRecords(data.data);
@@ -210,6 +221,25 @@ export default function NetEquityDetailPage() {
 
 
 
+
+
+    const getPreviousTradingDay = (year: number) => {
+        // Start from Dec 31 of previous year
+        let date = new Date(year - 1, 11, 31); // Month is 0-indexed: 11 = Dec
+
+        // Loop backwards until we find a trading day
+        while (true) {
+            const dayOfWeek = date.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+            if (!isWeekend && !isMarketHoliday(date)) {
+                return `${String(date.getFullYear()).slice(2)}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            }
+
+            // Go back one day
+            date.setDate(date.getDate() - 1);
+        }
+    };
 
     const handleEdit = (record: PerformanceRecord) => {
         setRecordToEdit(record);
@@ -558,9 +588,9 @@ export default function NetEquityDetailPage() {
                             </TableRow>
                         ))}
                         {/* Initial Cost Row - Always Visible */}
-                        <TableRow className="bg-muted/30 hover:bg-muted/50 font-medium">
+                        <TableRow className="hover:bg-muted/50 h-9">
                             <TableCell className="text-center font-mono">
-                                年初淨值
+                                年初起始
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
@@ -569,19 +599,67 @@ export default function NetEquityDetailPage() {
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell className="text-center font-mono font-normal">0</TableCell>
+                            <TableCell className="text-center font-mono font-normal">{formatMoney(initialCash)}</TableCell>
                             <TableCell className="text-center font-mono font-normal">
-                                {(() => {
-                                    const sum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
-                                    if (sum === 0) return '0';
-                                    return formatMoney(sum);
-                                })()}
+                                {formatMoney(initialManagementFee)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-normal">
+                                {formatMoney(initialDeposit)}
+                            </TableCell>
+                            <TableCell colSpan={5} className="text-center"></TableCell>
+                            {isAdmin && (
+                                <TableCell className="text-right py-1">
+                                    <div className="flex justify-end gap-1">
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => setIsEditInitialCostOpen(true)}
+                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>編輯</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
+                                </TableCell>
+                            )}
+                        </TableRow>
+                        {/* Summary Row - Total */}
+                        <TableRow className="bg-muted/50 border-t-2 border-slate-200">
+                            <TableCell className="text-center font-mono">
+                                數據統計
+                            </TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
+                            <TableCell className="text-center font-mono">
                                 {(() => {
-                                    const sum = records.reduce((s, r) => s + (r.daily_deposit || 0), 0);
-                                    if (sum === 0) return '0';
-                                    return formatMoney(sum);
+                                    const dailySum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
+                                    return (
+                                        <div className="flex justify-center">
+                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
+                                                {formatMoney(initialManagementFee + dailySum)}
+                                            </Badge>
+                                        </div>
+                                    );
+                                })()}
+                            </TableCell>
+                            <TableCell className="text-center font-mono">
+                                {(() => {
+                                    const dailySum = records.reduce((s, r) => s + (r.daily_deposit || 0), 0);
+                                    return (
+                                        <div className="flex justify-center">
+                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
+                                                {formatMoney(initialDeposit + dailySum)}
+                                            </Badge>
+                                        </div>
+                                    );
                                 })()}
                             </TableCell>
                             <TableCell colSpan={6} className="text-center"></TableCell>
@@ -606,6 +684,19 @@ export default function NetEquityDetailPage() {
                 }}
                 recordToEdit={recordToEdit}
                 onSuccess={fetchRecords}
+            />
+
+            <EditInitialCostDialog
+                open={isEditInitialCostOpen}
+                onOpenChange={setIsEditInitialCostOpen}
+                userDbId={userDbId}
+                initialValues={{
+                    initialCost,
+                    initialCash,
+                    initialManagementFee,
+                    initialDeposit
+                }}
+                onSuccess={() => checkAuthAndFetch()}
             />
 
             <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>

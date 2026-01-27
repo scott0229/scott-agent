@@ -41,8 +41,9 @@ export async function GET(req: NextRequest) {
             }
 
             // Get Initial Cost
-            const userRes = await DB.prepare(`SELECT initial_cost FROM users WHERE id = ?`).bind(userId).first();
+            const userRes = await DB.prepare(`SELECT initial_cost, initial_deposit FROM users WHERE id = ?`).bind(userId).first();
             const initialCost = (userRes?.initial_cost as number) || 10000;
+            const initialDeposit = (userRes?.initial_deposit as number) || 0;
 
             const startDate = userRecords[0].date as number;
             const endDate = userRecords[userRecords.length - 1].date as number;
@@ -121,9 +122,16 @@ export async function GET(req: NextRequest) {
                 prevNavRatio = navRatio;
 
                 return {
-                    id: index,
+                    id: index, // Maintain index for keys
+                    record_id: record.id, // Actual DB ID
                     date: date,
                     net_equity: hypotheticalEquity,
+
+                    // Original User Record Data (for editing)
+                    actual_net_equity: record.net_equity,
+                    cash_balance: record.cash_balance,
+                    management_fee: record.management_fee,
+
                     daily_deposit: dailyDeposit,
                     daily_return: dailyReturn,
                     nav_ratio: navRatio,
@@ -141,7 +149,8 @@ export async function GET(req: NextRequest) {
                 meta: {
                     symbol,
                     basePrice,
-                    initialCost
+                    initialCost,
+                    initialDeposit
                 }
             };
 

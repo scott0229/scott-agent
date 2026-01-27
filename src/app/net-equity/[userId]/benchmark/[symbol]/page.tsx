@@ -336,7 +336,7 @@ export default function BenchmarkDetailPage() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex justify-center">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
                                             {record.close_price ? record.close_price.toFixed(2) : "未知"}
                                         </Badge>
                                     </div>
@@ -393,14 +393,12 @@ export default function BenchmarkDetailPage() {
                         {/* Initial Cost Row */}
                         <TableRow className="bg-muted/30 hover:bg-muted/50">
                             <TableCell className="text-center font-mono font-medium">
-                                {selectedYear && selectedYear !== 'All'
-                                    ? `${(parseInt(selectedYear) - 1).toString().slice(2)}-12-31`
-                                    : "初始"}
+                                年初起始
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
                                     {basePrice > 0 ? (
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200 font-normal text-sm px-2">
+                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
                                             {basePrice.toFixed(2)}
                                         </Badge>
                                     ) : '-'}
