@@ -401,12 +401,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center">No.</TableHead>
-                            <TableHead className="text-center">狀態</TableHead>
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
                             <TableHead className="text-center">到期日</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
-                            <TableHead className="text-center">結算日</TableHead>
+                            <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
                             <TableHead className="text-center">口數</TableHead>
                             <TableHead className="text-center">底層標的</TableHead>
@@ -440,11 +439,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 <TableRow key={opt.id} className="hover:bg-muted/50 text-center">
                                     <TableCell>{filteredOptions.length - index}</TableCell>
                                     <TableCell>
-                                        <Badge variant={opt.status === '已關' ? 'secondary' : 'outline'} className={opt.status === '未平倉' ? 'text-blue-600 border-blue-200 bg-blue-50' : ''}>
-                                            {opt.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
                                         {opt.operation === '中途被行權' ? (
                                             <span className="text-red-600 bg-red-50 px-2 py-1 rounded-sm">
                                                 {opt.operation}
@@ -456,7 +450,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <TableCell>{formatDate(opt.open_date)}</TableCell>
                                     <TableCell>{formatDate(opt.to_date)}</TableCell>
                                     <TableCell>{getDaysToExpire(opt)}</TableCell>
-                                    <TableCell>{formatDate(opt.settlement_date)}</TableCell>
+                                    <TableCell>
+                                        {opt.settlement_date ? (
+                                            formatDate(opt.settlement_date)
+                                        ) : (
+                                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                                                未平倉
+                                            </Badge>
+                                        )}
+                                    </TableCell>
                                     <TableCell>{getDaysHeld(opt)}</TableCell>
                                     <TableCell>{opt.quantity}</TableCell>
                                     <TableCell>{opt.underlying}</TableCell>

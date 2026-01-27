@@ -23,6 +23,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
 import { InterestDialog } from '@/components/InterestDialog';
 import { UserAnalysisPanel } from '@/components/UserAnalysisPanel';
+import { OptionsSummaryPanel } from '@/components/OptionsSummaryPanel';
 import { useWindowSize } from '@/hooks/use-window-size';
 
 interface UserStats {
@@ -153,10 +154,14 @@ export default function OptionsPage() {
             const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
             const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
             return equityB - equityA;
-        } else if (sortOrder === 'profit-asc') {
+        } else if (sortOrder === 'margin-desc') {
             const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
+            const marginRateA = equityA > 0 ? (a.open_put_covered_capital || 0) / equityA : 0;
+
             const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
-            return equityA - equityB;
+            const marginRateB = equityB > 0 ? (b.open_put_covered_capital || 0) / equityB : 0;
+
+            return marginRateB - marginRateA;
         }
         return 0;
     });
@@ -203,10 +208,15 @@ export default function OptionsPage() {
                     <SelectContent>
                         <SelectItem value="alphabetical">按字母</SelectItem>
                         <SelectItem value="profit-desc">當前淨值-從大到小</SelectItem>
-                        <SelectItem value="profit-asc">當前淨值-從小到大</SelectItem>
+                        <SelectItem value="margin-desc">融資需求-從高到低</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
+
+            {/* Summary Panel */}
+            {sortedClients.length > 0 && (
+                <OptionsSummaryPanel users={sortedClients} year={selectedYear} />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {clientsWithPanel.map((item, index) => {

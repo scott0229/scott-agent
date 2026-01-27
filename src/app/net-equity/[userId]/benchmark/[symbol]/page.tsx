@@ -126,7 +126,7 @@ export default function BenchmarkDetailPage() {
                 throw new Error("Failed to save");
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "失敗", description: "無法新增紀錄" });
+            toast({ variant: "destructive", title: "失敗", description: "無法保存價格" });
         } finally {
             setSubmitting(false);
         }
@@ -440,7 +440,7 @@ export default function BenchmarkDetailPage() {
             <Dialog open={addPriceOpen} onOpenChange={setAddPriceOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{isEditing ? '編輯' : '新增'} {symbol} 股價</DialogTitle>
+                        <DialogTitle>{isEditing ? '修改' : '新增'} {symbol} 股價</DialogTitle>
 
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -495,7 +495,7 @@ export default function BenchmarkDetailPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddPriceOpen(false)}>取消</Button>
                         <Button onClick={handleAddPrice} disabled={submitting || !newPriceDate || !newPriceValue}>
-                            {submitting ? "儲存中..." : (isEditing ? "確認修改" : "確認新增")}
+                            {submitting ? "提交中.." : (isEditing ? "確認修改" : "確認新增")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -506,8 +506,8 @@ export default function BenchmarkDetailPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>確定要刪除 {symbol} 的所有股價記錄嗎？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            此動作將刪除資料庫中屬於 {symbol} 的所有歷史股價。<br />
-                            這主要用於測試或重置股價資料。<br />
+                            此動作將刪除資料庫中關於 {symbol} 的所有股價記錄。<br />
+                            這通常用於重新設定股價資料。<br />
                             <span className="text-destructive font-bold">此動作無法復原。</span>
                         </AlertDialogDescription>
                     </AlertDialogHeader>

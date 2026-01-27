@@ -283,7 +283,6 @@ export default function StockTradingPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
-                                <TableHead className="text-center">狀態</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
@@ -298,7 +297,7 @@ export default function StockTradingPage() {
                         <TableBody>
                             {filteredTrades.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={11} className="h-24 text-center">
+                                    <TableCell colSpan={10} className="h-24 text-center">
                                         無交易紀錄
                                     </TableCell>
                                 </TableRow>
@@ -313,21 +312,17 @@ export default function StockTradingPage() {
 
                                     return (
                                         <TableRow key={trade.id}>
-                                            <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Badge
-                                                    variant={isClosed ? "secondary" : "outline"}
-                                                    className={
-                                                        !isClosed
-                                                            ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                                                            : ""
-                                                    }
-                                                >
-                                                    {isClosed ? "已平倉" : "未平倉"}
-                                                </Badge>
-                                            </TableCell>
+                                            <TableCell className="text-center text-muted-foreground font-mono">{filteredTrades.length - index}</TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
-                                            <TableCell className="text-center">{trade.close_date ? formatDate(trade.close_date) : '-'}</TableCell>
+                                            <TableCell className="text-center">
+                                                {trade.close_date ? (
+                                                    formatDate(trade.close_date)
+                                                ) : (
+                                                    <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                                                        未平倉
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
                                             <TableCell className="text-center">{trade.symbol}</TableCell>
                                             <TableCell className="text-center">{trade.quantity}</TableCell>

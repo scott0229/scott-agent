@@ -70,7 +70,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
     // Form State
     const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [symbol, setSymbol] = useState("");
-    const [status, setStatus] = useState<'Holding' | 'Closed'>('Holding');
+    // const [status, setStatus] = useState<'Holding' | 'Closed'>('Holding'); // Derive from closeDate instead
     const [openDate, setOpenDate] = useState<Date | undefined>(undefined);
     const [closeDate, setCloseDate] = useState<Date | undefined>(undefined);
     const [openPrice, setOpenPrice] = useState("");
@@ -90,7 +90,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
             if (tradeToEdit) {
                 // Edit Mode
                 setSymbol(tradeToEdit.symbol);
-                setStatus(tradeToEdit.status);
+                // setStatus(tradeToEdit.status); // Removed
                 setOpenDate(new Date(tradeToEdit.open_date * 1000));
                 setCloseDate(tradeToEdit.close_date ? new Date(tradeToEdit.close_date * 1000) : undefined);
                 setOpenPrice(tradeToEdit.open_price.toString());
@@ -149,7 +149,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
     const resetForm = () => {
         setSymbol("");
-        setStatus("Holding");
+        // setStatus("Holding");
         // setOpenDate is handled in useEffect
         setCloseDate(undefined);
         setOpenPrice("");
@@ -187,8 +187,11 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
         // Validate Year
         // Open Date year check removed as per requirement (allow carry-over)
 
+        // Derive status
+        const derivedStatus = closeDate ? 'Closed' : 'Holding';
+
         // Close Date Validation: Must be in the current year if closed
-        if (status === 'Closed' && closeDate) {
+        if (derivedStatus === 'Closed' && closeDate) {
             if (closeDate.getFullYear() !== year) {
                 toast({
                     variant: "destructive",
@@ -207,7 +210,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
             });
             return;
         }
-        if (status === 'Closed' && (!closeDate || !closePrice)) {
+        if (derivedStatus === 'Closed' && (!closeDate || !closePrice)) {
             toast({
                 variant: "destructive",
                 title: "缺少資料",
@@ -224,7 +227,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
             const payload = {
                 symbol: symbol.toUpperCase(),
-                status,
+                status: derivedStatus,
                 open_date: Math.floor(openDate.getTime() / 1000),
                 close_date: closeDate ? Math.floor(closeDate.getTime() / 1000) : null,
                 open_price: parseFloat(openPrice),
@@ -274,23 +277,8 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    {/* Status - Only visible when editing */}
-                    {tradeToEdit && (
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="status" className="text-right">
-                                狀態
-                            </Label>
-                            <Select value={status} onValueChange={(val: 'Holding' | 'Closed') => setStatus(val)}>
-                                <SelectTrigger className="col-span-3">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Holding">未平倉</SelectItem>
-                                    <SelectItem value="Closed">已平倉</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
+                    {/* Status Dropdown Removed */}
+
                     {/* Open Date */}
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label className="text-right">開倉日期</Label>
@@ -395,8 +383,8 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                         />
                     </div>
 
-                    {/* Close Date (Conditional) */}
-                    {status === 'Closed' && (
+                    {/* Close Date (Visible in Edit Mode) */}
+                    {tradeToEdit && (
                         <>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label className="text-right">平倉日期</Label>
@@ -414,6 +402,18 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
+                                        <div className="p-2 border-b">
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full h-8 text-sm"
+                                                onClick={() => {
+                                                    setCloseDate(undefined);
+                                                    setIsCloseCalendarOpen(false);
+                                                }}
+                                            >
+                                                清除日期 (設為未平倉)
+                                            </Button>
+                                        </div>
                                         <Calendar
                                             mode="single"
                                             selected={closeDate}
@@ -427,8 +427,6 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
                                     </PopoverContent>
                                 </Popover>
                             </div>
-
-
                         </>
                     )}
 

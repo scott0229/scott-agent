@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
             imported,
             skipped,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('Failed to import deposits:', error);
         return NextResponse.json(

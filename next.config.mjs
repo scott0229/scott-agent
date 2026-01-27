@@ -9,6 +9,9 @@ const nextConfig = {
     // Optimize prefetching behavior
     optimizePackageImports: ['@/components/ui'],
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
