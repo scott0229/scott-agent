@@ -59,6 +59,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         lastUpdated: true,
     });
 
+    // Track if settings are saved in localStorage
+    const [hasSavedSettings, setHasSavedSettings] = useState(false);
+
     // Toggle row visibility (no persistence)
     const toggleRow = (rowKey: string) => {
         setVisibleRows(prev => ({
@@ -87,11 +90,13 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         setVisibleRows(allVisible);
         // Also clear from localStorage
         localStorage.removeItem('netEquityTableVisibility');
+        setHasSavedSettings(false);
     };
 
     // Save current visibility state to localStorage
     const saveVisibility = () => {
         localStorage.setItem('netEquityTableVisibility', JSON.stringify(visibleRows));
+        setHasSavedSettings(true);
     };
 
     // Load saved visibility settings on mount
@@ -101,6 +106,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             try {
                 const parsed = JSON.parse(savedSettings);
                 setVisibleRows(parsed);
+                setHasSavedSettings(true);
             } catch (error) {
                 console.error('Failed to parse saved visibility settings:', error);
             }
@@ -171,8 +177,11 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     </button>
                                     <button
                                         onClick={saveVisibility}
-                                        className="inline-flex items-center justify-center w-6 h-6 text-slate-700 hover:text-slate-900 hover:bg-white rounded transition-colors cursor-pointer"
-                                        title="記憶隱藏"
+                                        className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
+                                                ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                                : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                                            }`}
+                                        title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}
                                     >
                                         <Save className="w-4 h-4" />
                                     </button>
