@@ -158,7 +158,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const fetchOptions = async () => {
         try {
             const year = selectedYear; // Allow 'All' to be passed directly
-            const res = await fetch(`/api/options?userId=${params.userId}&year=${year}`, { cache: 'no-store' });
+            // Prioritize ownerId if available
+            const idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
+            const res = await fetch(`/api/options?${idParam}&year=${year}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.options) {
                 setOptions(data.options);
@@ -172,7 +174,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     useEffect(() => {
         fetchOptions();
-    }, [params.userId, selectedYear]);
+    }, [params.userId, selectedYear, ownerId]);
 
     const handleEdit = (option: Option) => {
         setOptionToEdit(option);
