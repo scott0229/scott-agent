@@ -21,6 +21,7 @@ interface EditInitialCostDialogProps {
         initialCash: number;
         initialManagementFee: number;
         initialDeposit: number;
+        initialInterest: number;
     };
 }
 
@@ -69,7 +70,8 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
         initialCost: '',
         initialCash: '',
         initialManagementFee: '',
-        initialDeposit: ''
+        initialDeposit: '',
+        initialInterest: ''
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +83,8 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                 initialCost: formatNumber(initialValues.initialCost.toString()),
                 initialCash: formatNumber(initialValues.initialCash.toString()),
                 initialManagementFee: formatNumber(initialValues.initialManagementFee.toString()),
-                initialDeposit: formatNumber(initialValues.initialDeposit.toString())
+                initialDeposit: formatNumber(initialValues.initialDeposit.toString()),
+                initialInterest: formatNumber(initialValues.initialInterest.toString())
             });
         }
     }, [open, initialValues]);
@@ -111,7 +114,8 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                 initialCost: parseNumber(formData.initialCost),
                 initialCash: parseNumber(formData.initialCash),
                 initialManagementFee: parseNumber(formData.initialManagementFee),
-                initialDeposit: parseNumber(formData.initialDeposit)
+                initialDeposit: parseNumber(formData.initialDeposit),
+                initialInterest: parseNumber(formData.initialInterest)
             };
 
             const res = await fetch('/api/users', {
@@ -209,6 +213,22 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                                 handleChange('initialDeposit', e.currentTarget.value);
                             }}
                             onChange={(e) => handleChange('initialDeposit', e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="initial_interest" className="text-right">利息收支</Label>
+                        <Input
+                            id="initial_interest"
+                            type="text"
+                            className="col-span-3"
+                            value={formData.initialInterest}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                handleChange('initialInterest', e.currentTarget.value);
+                            }}
+                            onChange={(e) => handleChange('initialInterest', e.target.value)}
                         />
                     </div>
 
