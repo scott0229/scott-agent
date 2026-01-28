@@ -93,6 +93,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     // Sync filters with URL params
     useEffect(() => {
         const status = searchParams.get('status');
+        console.log('[DEBUG] Syncing filters from URL - status:', status);
         setSelectedStatus(status || 'All');
 
         const month = searchParams.get('month');
@@ -106,6 +107,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
         const operation = searchParams.get('operation');
         setSelectedOperation(operation || 'All');
+
+        console.log('[DEBUG] After sync - selectedStatus will be:', status || 'All');
     }, [searchParams]);
 
     useEffect(() => {
