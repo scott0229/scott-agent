@@ -89,6 +89,24 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const { toast } = useToast();
     const router = useRouter();
 
+    // Sync filters with URL params
+    useEffect(() => {
+        const status = searchParams.get('status');
+        if (status && status !== 'All') setSelectedStatus(status);
+
+        const month = searchParams.get('month');
+        if (month && month !== 'All') setSelectedMonth(month);
+
+        const underlying = searchParams.get('underlying');
+        if (underlying && underlying !== 'All') setSelectedUnderlying(underlying);
+
+        const type = searchParams.get('type');
+        if (type && type !== 'All') setSelectedType(type);
+
+        const operation = searchParams.get('operation');
+        if (operation && operation !== 'All') setSelectedOperation(operation);
+    }, [searchParams]);
+
     useEffect(() => {
         const fetchUserAndCheckRole = async () => {
             try {

@@ -256,7 +256,7 @@ export default function OptionsPage() {
                                             className="bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200 mr-1.5 cursor-pointer hover:bg-red-100 transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                router.push(`/options/${client.user_id || client.id}?status=未平倉`);
+                                                router.push(`/options/${client.user_id || client.id}?status=${encodeURIComponent('未平倉')}`);
                                             }}
                                         >
                                             {client.open_count || 0}
