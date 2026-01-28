@@ -166,7 +166,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                     {/* Header: Users */}
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 px-2 w-[120px] sticky left-0 bg-muted/40 z-10 border-r">
+                            <td className="py-1 px-2 w-[180px] sticky left-0 bg-muted/40 z-10 border-r">
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
@@ -178,8 +178,8 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <button
                                         onClick={saveVisibility}
                                         className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
-                                                ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                                                : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                                            ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                            : 'text-slate-700 hover:text-slate-900 hover:bg-white'
                                             }`}
                                         title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}
                                     >
