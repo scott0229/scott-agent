@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
     Table,
     TableBody,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Eye, EyeOff } from "lucide-react";
 
 interface UserSummary {
     id: number;
@@ -39,6 +41,30 @@ interface NetEquitySummaryTableProps {
 }
 
 export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTableProps) {
+    // Row visibility state (resets to all visible on page reload)
+    const [visibleRows, setVisibleRows] = useState<Record<string, boolean>>({
+        currentNetEquity: true,
+        initialNetEquity: true,
+        transferRecord: true,
+        netProfit: true,
+        cashBalance: true,
+        returnRate: true,
+        maxDrawdown: true,
+        annualizedReturn: true,
+        annualizedStdDev: true,
+        sharpeRatio: true,
+        newHighCount: true,
+        newHighFreq: true,
+        lastUpdated: true,
+    });
+
+    // Toggle row visibility (no persistence)
+    const toggleRow = (rowKey: string) => {
+        setVisibleRows(prev => ({
+            ...prev,
+            [rowKey]: !prev[rowKey]
+        }));
+    };
 
     const formatMoney = (val: number) => {
         return new Intl.NumberFormat('en-US').format(Math.round(val));
@@ -70,6 +96,20 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         );
     };
 
+    // Row toggle icon component
+    const RowToggleIcon = ({ rowKey, visible }: { rowKey: string, visible: boolean }) => {
+        const Icon = visible ? Eye : EyeOff;
+        return (
+            <button
+                onClick={() => toggleRow(rowKey)}
+                className="inline-flex items-center justify-center w-4 h-4 mr-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title={visible ? "隱藏此列" : "顯示此列"}
+            >
+                <Icon className="w-3.5 h-3.5" />
+            </button>
+        );
+    };
+
     if (!users || users.length === 0) return null;
 
     return (
@@ -95,142 +135,207 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                     </thead>
                     <tbody className="text-[13px]">
                         {/* 1. Current Net Equity */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">當前淨值</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(user.current_net_equity || 0)}
+                        {visibleRows.currentNetEquity && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="currentNetEquity" visible={visibleRows.currentNetEquity} />
+                                    當前淨值
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(user.current_net_equity || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 2. Initial Net Equity */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">年初淨值</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(user.initial_cost || 0)}
+                        {visibleRows.initialNetEquity && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="initialNetEquity" visible={visibleRows.initialNetEquity} />
+                                    年初淨值
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(user.initial_cost || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 3. Transfer Record */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">轉帳記錄</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(user.total_deposit || 0)}
+                        {visibleRows.transferRecord && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="transferRecord" visible={visibleRows.transferRecord} />
+                                    轉帳記錄
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(user.total_deposit || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 4. Net Profit */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">淨利潤</td>
-                            {users.map(user => {
-                                const profit = (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0);
-                                return (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(profit)}
-                                    </td>
-                                );
-                            })}
-                        </tr>
+                        {visibleRows.netProfit && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="netProfit" visible={visibleRows.netProfit} />
+                                    淨利潤
+                                </td>
+                                {users.map(user => {
+                                    const profit = (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0);
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                            {formatMoney(profit)}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
 
                         {/* 5. Cash Balance */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">帳戶現金</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(user.current_cash_balance || 0)}
+                        {visibleRows.cashBalance && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
+                                    帳戶現金
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(user.current_cash_balance || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 6. Return Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">報酬率</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    <StatBadge value={user.stats?.returnPercentage || 0} />
+                        {visibleRows.returnRate && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="returnRate" visible={visibleRows.returnRate} />
+                                    報酬率
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <StatBadge value={user.stats?.returnPercentage || 0} />
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 7. Max Drawdown */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">最大回撤</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
+                        {visibleRows.maxDrawdown && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-1 border-r">
+                                    <RowToggleIcon rowKey="maxDrawdown" visible={visibleRows.maxDrawdown} />
+                                    最大回撤
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 8. Annualized Return */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">年化報酬率</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatPercent(user.stats?.annualizedReturn || 0)}
+                        {visibleRows.annualizedReturn && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="annualizedReturn" visible={visibleRows.annualizedReturn} />
+                                    年化報酬率
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatPercent(user.stats?.annualizedReturn || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 9. Annualized StdDev */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">年化標準差</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatPercent(user.stats?.annualizedStdDev || 0)}
+                        {visibleRows.annualizedStdDev && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="annualizedStdDev" visible={visibleRows.annualizedStdDev} />
+                                    年化標準差
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatPercent(user.stats?.annualizedStdDev || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 10. Sharpe Ratio */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">夏普值</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    <StatBadge value={user.stats?.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} />
+                        {visibleRows.sharpeRatio && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="sharpeRatio" visible={visibleRows.sharpeRatio} />
+                                    夏普值
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <StatBadge value={user.stats?.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} />
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 11. New High Count */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">新高次數</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {user.stats?.newHighCount || 0}
+                        {visibleRows.newHighCount && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="newHighCount" visible={visibleRows.newHighCount} />
+                                    新高次數
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {user.stats?.newHighCount || 0}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 12. New High Freq */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">新高頻率</td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {Math.round((user.stats?.newHighFreq || 0) * 100)}%
+                        {visibleRows.newHighFreq && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="newHighFreq" visible={visibleRows.newHighFreq} />
+                                    新高頻率
                                 </td>
-                            ))}
-                        </tr>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {Math.round((user.stats?.newHighFreq || 0) * 100)}%
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
 
                         {/* 13. Last Updated Date */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">最後更新日</td>
-                            {users.map(user => {
-                                const lastDate = user.equity_history && user.equity_history.length > 0
-                                    ? user.equity_history[user.equity_history.length - 1].date
-                                    : null;
-                                return (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {lastDate ? formatDateYYMMDD(lastDate) : '-'}
-                                    </td>
-                                );
-                            })}
-                        </tr>
+                        {visibleRows.lastUpdated && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="lastUpdated" visible={visibleRows.lastUpdated} />
+                                    最後更新日
+                                </td>
+                                {users.map(user => {
+                                    const lastDate = user.equity_history && user.equity_history.length > 0
+                                        ? user.equity_history[user.equity_history.length - 1].date
+                                        : null;
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                            {lastDate ? formatDateYYMMDD(lastDate) : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
