@@ -66,8 +66,7 @@ const adjustToWorkday = (dateStr: string): string => {
 export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId }: NewOptionDialogProps) {
     const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
-        status: '未平倉',
-        operation: '無',
+        operation: '新開倉',
         open_date: new Date().toISOString().split('T')[0],
 
         to_date: getNextWorkday(),
@@ -113,9 +112,8 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
             const payload = {
                 ...formData,
                 open_date: Math.floor(new Date(formData.open_date).getTime() / 1000),
-
                 to_date: formData.to_date ? Math.floor(new Date(formData.to_date).getTime() / 1000) : null,
-                settlement_date: formData.settlement_date ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
+                settlement_date: (formData.operation !== '新開倉' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
                 quantity: parseFloat(formData.quantity),
                 strike_price: parseFloat(formData.strike_price),
                 premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
@@ -139,8 +137,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 onOpenChange(false);
                 // Reset form
                 setFormData({
-                    status: '未平倉',
-                    operation: '無',
+                    operation: '新開倉',
                     open_date: new Date().toISOString().split('T')[0],
 
                     to_date: getNextWorkday(),
@@ -182,22 +179,6 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     <div className="grid grid-cols-2 gap-4">
 
                         <div className="grid gap-2">
-                            <Label htmlFor="status">狀態</Label>
-                            <Select
-                                value={formData.status}
-                                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="選擇狀態" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="未平倉">未平倉</SelectItem>
-                                    <SelectItem value="已關">已關</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid gap-2">
                             <Label htmlFor="operation">操作</Label>
                             <Select
                                 value={formData.operation}
@@ -207,7 +188,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                     <SelectValue placeholder="選擇操作" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="無">無</SelectItem>
+                                    <SelectItem value="新開倉">新開倉</SelectItem>
                                     <SelectItem value="滾動">滾動</SelectItem>
                                     <SelectItem value="到期">到期</SelectItem>
                                     <SelectItem value="中途被行權">中途被行權</SelectItem>
@@ -303,6 +284,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                     <Button
                                         variant={"outline"}
                                         type="button"
+                                        disabled={formData.operation === '新開倉'}
                                         className={cn(
                                             "w-full justify-start text-left font-normal",
                                             !formData.settlement_date && "text-muted-foreground"

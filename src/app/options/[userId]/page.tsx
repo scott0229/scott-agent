@@ -181,8 +181,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         try {
             const year = selectedYear; // Allow 'All' to be passed directly
             // Prioritize ownerId if available
-            const idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
-            const res = await fetch(`/api/options?${idParam}&year=${year}`, { cache: 'no-store' });
+            // If params.userId is 'All', we don't pass userId or ownerId to get all records
+            let idParam = '';
+            if (params.userId !== 'All') {
+                idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
+            }
+            // If idParam is empty, we just pass year. URLSearchParams handles empty keys mostly fine but let's be clean.
+            const queryParams = [idParam, `year=${year}`].filter(Boolean).join('&');
+
+            const res = await fetch(`/api/options?${queryParams}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.options) {
                 setOptions(data.options);
@@ -280,7 +287,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
     const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
-    const operations = Array.from(new Set(options.map(opt => opt.operation || '無'))).sort();
+    const operations = Array.from(new Set(options.map(opt => opt.operation || '新開倉'))).sort();
 
     const filteredOptions = options.filter(opt => {
         const date = new Date(opt.open_date * 1000);
@@ -289,7 +296,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
         const typeMatch = selectedType === 'All' || opt.type === selectedType;
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
-        const operationMatch = selectedOperation === 'All' || (opt.operation || '無') === selectedOperation;
+        const operationMatch = selectedOperation === 'All' || (opt.operation || '新開倉') === selectedOperation;
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     }).sort((a, b) => b.open_date - a.open_date);
 
@@ -325,6 +332,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <SelectValue placeholder="選擇用戶" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="All">所有用戶</SelectItem>
                                     {users.map((user) => (
                                         <SelectItem key={user.id} value={user.user_id || user.email}>
                                             {user.user_id || user.email}
@@ -381,13 +389,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 <SelectItem value="PUT">PUT</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="狀態" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部狀態</SelectItem>
-                                {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
                         <Select value={selectedOperation} onValueChange={setSelectedOperation}>
                             <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="操作" /></SelectTrigger>
                             <SelectContent>
@@ -425,6 +426,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center">No.</TableHead>
+                            {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
                             <TableHead className="text-center">到期日</TableHead>
@@ -462,25 +464,34 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             filteredOptions.map((opt, index) => (
                                 <TableRow key={opt.id} className="hover:bg-muted/50 text-center">
                                     <TableCell>{filteredOptions.length - index}</TableCell>
+                                    {params.userId === 'All' && (
+                                        <TableCell>
+                                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                {/* Try to find user display name from users list if possible, else just ID */}
+                                                {(() => {
+                                                    const u = users.find(u => u.user_id === opt.user_id || u.id.toString() === opt.user_id);
+                                                    return u ? (u.user_id || u.email) : (opt.user_id || '-');
+                                                })()}
+                                            </span>
+                                        </TableCell>
+                                    )}
                                     <TableCell>
                                         {opt.operation === '中途被行權' ? (
                                             <span className="text-red-600 bg-red-50 px-2 py-1 rounded-sm">
                                                 {opt.operation}
                                             </span>
                                         ) : (
-                                            opt.operation || '無'
+                                            opt.operation || '新開倉'
                                         )}
                                     </TableCell>
                                     <TableCell>{formatDate(opt.open_date)}</TableCell>
                                     <TableCell>{formatDate(opt.to_date)}</TableCell>
                                     <TableCell>{getDaysToExpire(opt)}</TableCell>
                                     <TableCell>
-                                        {opt.settlement_date ? (
-                                            formatDate(opt.settlement_date)
+                                        {(opt.operation === '新開倉' || !opt.settlement_date) ? (
+                                            "-"
                                         ) : (
-                                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                                                未平倉
-                                            </Badge>
+                                            formatDate(opt.settlement_date)
                                         )}
                                     </TableCell>
                                     <TableCell>{getDaysHeld(opt)}</TableCell>
@@ -495,7 +506,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
                                     <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
                                     <TableCell>
-                                        {opt.status === '未平倉' ? (
+                                        {opt.status === '未平倉' || opt.operation === '新開倉' ? (
                                             <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
                                                 {opt.final_profit?.toLocaleString() || '-'}
                                             </Badge>
