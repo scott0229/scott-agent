@@ -160,7 +160,24 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                     {/* Header: Users */}
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 px-2 w-[120px] sticky left-0 bg-muted/40 z-10 border-r"></td>
+                            <td className="py-1 px-2 w-[120px] sticky left-0 bg-muted/40 z-10 border-r">
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={resetVisibility}
+                                        className="inline-flex items-center justify-center w-6 h-6 text-slate-700 hover:text-slate-900 hover:bg-white rounded transition-colors cursor-pointer"
+                                        title="重置隱藏"
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={saveVisibility}
+                                        className="inline-flex items-center justify-center w-6 h-6 text-slate-700 hover:text-slate-900 hover:bg-white rounded transition-colors cursor-pointer"
+                                        title="記憶隱藏"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </td>
                             {users.map((user) => (
                                 <td key={user.id} className="text-center min-w-[140px] px-2 py-1 bg-muted/40">
                                     <div
@@ -378,31 +395,6 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* Settings Controls Row */}
-                        <tr className="border-t">
-                            <td colSpan={users.length + 1} className="h-10 py-2 px-2">
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={resetVisibility}
-                                        className="text-xs h-7"
-                                    >
-                                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                                        重置隱藏
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={saveVisibility}
-                                        className="text-xs h-7"
-                                    >
-                                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                                        記憶隱藏
-                                    </Button>
-                                </div>
-                            </td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
