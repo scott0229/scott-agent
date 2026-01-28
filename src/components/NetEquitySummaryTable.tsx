@@ -20,6 +20,10 @@ interface UserSummary {
     current_net_equity: number;
     current_cash_balance?: number;
     total_deposit?: number;
+    top_holdings?: Array<{
+        symbol: string;
+        quantity: number;
+    }>;
     stats: {
         startDate: number;
         returnPercentage: number;
@@ -49,6 +53,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         transferRecord: true,
         netProfit: true,
         cashBalance: true,
+        holding1: true,
+        holding2: true,
+        holding3: true,
         returnRate: true,
         maxDrawdown: true,
         annualizedReturn: true,
@@ -78,6 +85,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             transferRecord: true,
             netProfit: true,
             cashBalance: true,
+            holding1: true,
+            holding2: true,
+            holding3: true,
             returnRate: true,
             maxDrawdown: true,
             annualizedReturn: true,
@@ -105,7 +115,8 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         if (savedSettings) {
             try {
                 const parsed = JSON.parse(savedSettings);
-                setVisibleRows(parsed);
+                // Merge with initial state to preserve new keys like holding1/2/3
+                setVisibleRows(prev => ({ ...prev, ...parsed }));
                 setHasSavedSettings(true);
             } catch (error) {
                 console.error('Failed to parse saved visibility settings:', error);
@@ -384,7 +395,61 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 13. Last Updated Date */}
+                        {/* 13. Holding 1 */}
+                        {visibleRows.holding1 && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="holding1" visible={visibleRows.holding1} />
+                                    持股一
+                                </td>
+                                {users.map(user => {
+                                    const holding = user.top_holdings?.[0];
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
+                        {/* 14. Holding 2 */}
+                        {visibleRows.holding2 && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="holding2" visible={visibleRows.holding2} />
+                                    持股二
+                                </td>
+                                {users.map(user => {
+                                    const holding = user.top_holdings?.[1];
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
+                        {/* 15. Holding 3 */}
+                        {visibleRows.holding3 && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="holding3" visible={visibleRows.holding3} />
+                                    持股三
+                                </td>
+                                {users.map(user => {
+                                    const holding = user.top_holdings?.[2];
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
+                        {/* 16. Last Updated Date */}
                         {visibleRows.lastUpdated && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">

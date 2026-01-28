@@ -94,13 +94,35 @@ export async function GET(request: NextRequest) {
 
         if (isBulkFetch) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
-            const cacheKey = `net-equity-bulk-${year}-v2`;
+            const cacheKey = `net-equity-bulk-${year}-v3`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
 
                 // Legacy DEPOSITS table query removed. We now use DAILY_NET_EQUITY.deposit
 
                 const users = await db.prepare(`SELECT id, user_id, email, initial_cost FROM USERS WHERE role = 'customer' AND year = ?`).bind(year).all();
+
+                // Fetch stock holdings for all users
+                const stockHoldingsQuery = await db.prepare(`
+                    SELECT owner_id, symbol, SUM(quantity) as total_quantity
+                    FROM STOCK_TRADES
+                    WHERE year = ? AND status = 'Holding'
+                    GROUP BY owner_id, symbol
+                    HAVING total_quantity > 0
+                    ORDER BY owner_id, total_quantity DESC
+                `).bind(year).all();
+
+                // Group holdings by user_id
+                const holdingsByUser = new Map<number, Array<{ symbol: string, quantity: number }>>();
+                for (const holding of (stockHoldingsQuery.results as any[])) {
+                    if (!holdingsByUser.has(holding.owner_id)) {
+                        holdingsByUser.set(holding.owner_id, []);
+                    }
+                    holdingsByUser.get(holding.owner_id)!.push({
+                        symbol: holding.symbol,
+                        quantity: holding.total_quantity
+                    });
+                }
 
                 return (users.results as any[]).map(u => {
                     const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
@@ -111,6 +133,25 @@ export async function GET(request: NextRequest) {
                         amount: Math.abs(r.deposit),
                         transaction_type: r.deposit > 0 ? 'deposit' : 'withdrawal'
                     }));
+
+                    // Get top 3 holdings for this user
+                    const userHoldings = holdingsByUser.get(u.id) || [];
+
+                    // Custom sort: QQQ first, TQQQ second, others by quantity
+                    const sortedHoldings = userHoldings.sort((a, b) => {
+                        // QQQ always comes first
+                        if (a.symbol === 'QQQ') return -1;
+                        if (b.symbol === 'QQQ') return 1;
+
+                        // TQQQ always comes second (after QQQ)
+                        if (a.symbol === 'TQQQ') return -1;
+                        if (b.symbol === 'TQQQ') return 1;
+
+                        // For other symbols, sort by quantity descending
+                        return b.quantity - a.quantity;
+                    });
+
+                    const topHoldings = sortedHoldings.slice(0, 3);
 
                     // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
                     const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
@@ -132,6 +173,7 @@ export async function GET(request: NextRequest) {
                         ...processed.summary, // Merges stats, current_net_equity, equity_history
                         current_cash_balance: currentCashBalance,
                         total_deposit,
+                        top_holdings: topHoldings,
                         qqqStats,
                         qldStats
                     };
