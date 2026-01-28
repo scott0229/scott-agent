@@ -28,18 +28,18 @@ export async function GET(request: NextRequest) {
 
         const db = await getDb();
         const records = await db.prepare(`
-            SELECT date, net_equity 
+            SELECT date, net_equity, interest
             FROM DAILY_NET_EQUITY 
             WHERE user_id = ? 
             ORDER BY date ASC
         `).bind(userId).all();
 
         // Convert to CSV
-        const csvRows = ['Date,NetEquity'];
+        const csvRows = ['Date,NetEquity,Interest'];
         (records.results as any[]).forEach(r => {
             const date = new Date(r.date * 1000);
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            csvRows.push(`${dateStr},${r.net_equity}`);
+            csvRows.push(`${dateStr},${r.net_equity},${r.interest || 0}`);
         });
 
         const csvContent = "\uFEFF" + csvRows.join('\n'); // Add BOM for Excel compatibility

@@ -28,6 +28,7 @@ interface PerformanceRecord {
     net_equity: number;
     cash_balance?: number | null;
     management_fee?: number | null;
+    interest?: number | null;
 }
 
 interface EditNetEquityDialogProps {
@@ -90,7 +91,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
         net_equity: '',
         cash_balance: '',
         management_fee: '',
-        deposit: ''
+        deposit: '',
+        interest: ''
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +106,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 net_equity: formatNumber(recordToEdit.net_equity.toString()),
                 cash_balance: (recordToEdit.cash_balance !== null && recordToEdit.cash_balance !== undefined) ? formatNumber(recordToEdit.cash_balance.toString()) : '',
                 management_fee: (recordToEdit.management_fee !== null && recordToEdit.management_fee !== undefined) ? formatNumber(recordToEdit.management_fee.toString()) : '0',
-                deposit: (recordToEdit as any).deposit !== undefined && (recordToEdit as any).deposit !== null ? formatNumber((recordToEdit as any).deposit.toString()) : '0'
+                deposit: (recordToEdit as any).deposit !== undefined && (recordToEdit as any).deposit !== null ? formatNumber((recordToEdit as any).deposit.toString()) : '0',
+                interest: (recordToEdit.interest !== null && recordToEdit.interest !== undefined) ? formatNumber(recordToEdit.interest.toString()) : '0'
             });
         }
     }, [recordToEdit]);
@@ -123,7 +126,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 net_equity: parseNumber(formData.net_equity),
                 cash_balance: formData.cash_balance ? parseNumber(formData.cash_balance) : null,
                 management_fee: formData.management_fee ? parseNumber(formData.management_fee) : 0,
-                deposit: formData.deposit ? parseNumber(formData.deposit) : 0
+                deposit: formData.deposit ? parseNumber(formData.deposit) : 0,
+                interest: formData.interest ? parseNumber(formData.interest) : 0
             };
 
             const res = await fetch('/api/net-equity', {
@@ -213,6 +217,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                                 setFormData({ ...formData, net_equity: formatted });
                             }}
                             required
+                            autoComplete="off"
                         />
                     </div>
 
@@ -236,6 +241,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                                 const formatted = formatNumber(e.target.value);
                                 setFormData({ ...formData, cash_balance: formatted });
                             }}
+                            autoComplete="off"
                         />
                     </div>
 
@@ -259,6 +265,31 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                                 const formatted = formatNumber(e.target.value);
                                 setFormData({ ...formData, management_fee: formatted });
                             }}
+                            autoComplete="off"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="interest" className="text-right">利息收支</Label>
+                        <Input
+                            id="interest"
+                            type="text"
+                            className="col-span-3"
+                            value={formData.interest}
+                            onCompositionStart={() => isComposing.current = true}
+                            onCompositionEnd={(e) => {
+                                isComposing.current = false;
+                                setFormData({ ...formData, interest: formatNumber(e.currentTarget.value) });
+                            }}
+                            onChange={(e) => {
+                                if (isComposing.current) {
+                                    setFormData({ ...formData, interest: e.target.value });
+                                    return;
+                                }
+                                const formatted = formatNumber(e.target.value);
+                                setFormData({ ...formData, interest: formatted });
+                            }}
+                            autoComplete="off"
                         />
                     </div>
 
@@ -282,6 +313,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                                 const formatted = formatNumber(e.target.value);
                                 setFormData({ ...formData, deposit: formatted });
                             }}
+                            autoComplete="off"
                         />
                     </div>
 

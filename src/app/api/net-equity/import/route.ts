@@ -22,10 +22,11 @@ export async function POST(request: NextRequest) {
 
         const db = await getDb();
         const stmt = db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, year, updated_at)
-            VALUES (?, ?, ?, ?, unixepoch())
+            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, interest, year, updated_at)
+            VALUES (?, ?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
             net_equity = excluded.net_equity,
+            interest = excluded.interest,
             year = excluded.year,
             updated_at = unixepoch()
         `);
@@ -58,7 +59,9 @@ export async function POST(request: NextRequest) {
                 const d = new Date(timestamp * 1000);
                 year = d.getUTCFullYear(); // Priority 3
             }
-            batch.push(stmt.bind(r.user_id, timestamp, r.net_equity, year));
+
+            const interest = r.interest !== undefined ? r.interest : 0;
+            batch.push(stmt.bind(r.user_id, timestamp, r.net_equity, interest, year));
         }
 
         if (batch.length > 0) {

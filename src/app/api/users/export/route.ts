@@ -37,13 +37,13 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             year = ? 
             OR id IN (SELECT DISTINCT user_id FROM DAILY_NET_EQUITY WHERE year = ? AND deposit != 0)
             OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
-            OR id IN (SELECT DISTINCT user_id FROM monthly_interest WHERE year = ?)
+
             OR id IN (SELECT DISTINCT owner_id FROM STOCK_TRADES WHERE year = ?)
         )`);
         params.push(parseInt(year)); // year = ?
         params.push(parseInt(year)); // DEPOSITS activity (via DAILY_NET_EQUITY)
         params.push(parseInt(year)); // OPTIONS activity
-        params.push(parseInt(year)); // interest activity
+
         params.push(parseInt(year)); // stock activity
     }
 
@@ -90,7 +90,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(interest, 0) as interest, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;
@@ -159,20 +159,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             (user as any).options = [];
         }
 
-        let interestQuery = `SELECT year, month, interest FROM monthly_interest WHERE user_id = ?`;
-        const interestParams: any[] = [user.id];
-        if (year && year !== 'All') {
-            interestQuery += ` AND year = ?`;
-            interestParams.push(parseInt(year));
-        }
-        interestQuery += ` ORDER BY year DESC, month DESC`;
-        const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
 
-        if (includeInterestRecords) {
-            (user as any).monthly_interest = interest || [];
-        } else {
-            (user as any).monthly_interest = [];
-        }
 
         let stocksQuery = `
             SELECT 

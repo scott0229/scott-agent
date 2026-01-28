@@ -6,7 +6,6 @@ interface UserStats {
     total_profit: number;
     put_profit: number;
     call_profit: number;
-    interest: number;
     turnover?: number;
 }
 

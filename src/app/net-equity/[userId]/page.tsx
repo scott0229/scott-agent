@@ -52,6 +52,7 @@ interface PerformanceRecord {
     net_equity: number;
     cash_balance?: number | null;
     management_fee?: number | null;
+    interest?: number | null;
     daily_deposit: number;
     daily_return: number;
     nav_ratio: number;
@@ -71,6 +72,7 @@ export default function NetEquityDetailPage() {
     const [initialCost, setInitialCost] = useState<number>(0);
     const [initialCash, setInitialCash] = useState<number>(0);
     const [initialManagementFee, setInitialManagementFee] = useState<number>(0);
+    const [initialInterest, setInitialInterest] = useState<number>(0);
     const [initialDeposit, setInitialDeposit] = useState<number>(0);
     const [userDbId, setUserDbId] = useState<number | null>(null);
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
@@ -160,6 +162,7 @@ export default function NetEquityDetailPage() {
                             setInitialCost((user as any).initial_cost || 0);
                             setInitialCash((user as any).initial_cash || 0);
                             setInitialManagementFee((user as any).initial_management_fee || 0);
+                            setInitialInterest((user as any).initial_interest || 0);
                             setInitialDeposit((user as any).initial_deposit || 0);
                             setUserDbId(user.id);
                         } else {
@@ -475,6 +478,7 @@ export default function NetEquityDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
                             <TableHead className="text-center font-bold text-foreground">管理費支出</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">利息收支</TableHead>
                             <TableHead className="text-center font-bold text-foreground">轉帳記錄</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
@@ -514,6 +518,13 @@ export default function NetEquityDetailPage() {
                                 <TableCell className="text-center py-1">
                                     {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
                                         formatMoney(record.management_fee)
+                                    ) : (
+                                        "0"
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-center py-1">
+                                    {record.interest !== null && record.interest !== undefined && record.interest !== 0 ? (
+                                        formatMoney(record.interest)
                                     ) : (
                                         "0"
                                     )}
@@ -604,6 +615,9 @@ export default function NetEquityDetailPage() {
                                 {formatMoney(initialManagementFee)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-normal">
+                                {formatMoney(initialInterest)}
+                            </TableCell>
+                            <TableCell className="text-center font-mono font-normal">
                                 {formatMoney(initialDeposit)}
                             </TableCell>
                             <TableCell colSpan={5} className="text-center"></TableCell>
@@ -645,6 +659,18 @@ export default function NetEquityDetailPage() {
                                         <div className="flex justify-center">
                                             <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
                                                 {formatMoney(initialManagementFee + dailySum)}
+                                            </Badge>
+                                        </div>
+                                    );
+                                })()}
+                            </TableCell>
+                            <TableCell className="text-center font-mono">
+                                {(() => {
+                                    const dailySum = records.reduce((s, r) => s + (r.interest || 0), 0);
+                                    return (
+                                        <div className="flex justify-center">
+                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
+                                                {formatMoney(initialInterest + dailySum)}
                                             </Badge>
                                         </div>
                                     );
@@ -694,7 +720,8 @@ export default function NetEquityDetailPage() {
                     initialCost,
                     initialCash,
                     initialManagementFee,
-                    initialDeposit
+                    initialDeposit,
+                    initialInterest: initialInterest // Assuming dialog supports it, need to check next
                 }}
                 onSuccess={() => checkAuthAndFetch()}
             />

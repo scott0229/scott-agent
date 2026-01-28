@@ -1,0 +1,2 @@
+-- Add interest column to DAILY_NET_EQUITY table
+ALTER TABLE DAILY_NET_EQUITY ADD COLUMN interest REAL DEFAULT 0;

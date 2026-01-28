@@ -194,9 +194,7 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.options_count || 0), 0);
 
-        const totalInterest = users
-            .filter(u => u.email !== 'admin')
-            .reduce((sum, u) => sum + (u.interest_count || 0), 0);
+
 
         const totalStocks = users
             .filter(u => u.email !== 'admin')
@@ -216,12 +214,7 @@ export default function AdminUsersPage() {
             checked: true
         });
 
-        // Add Interest Records Option
-        exportableUsers.push({
-            id: 'interest_records',
-            display: `用戶利息記錄 (${totalInterest} 筆)`,
-            checked: true
-        });
+
 
         // Add Market Data Option
         exportableUsers.push({
@@ -248,7 +241,6 @@ export default function AdminUsersPage() {
             const includeMarketData = selectedIds.includes('market_data');
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
-            const includeInterestRecords = selectedIds.includes('interest_records');
             const includeStockRecords = selectedIds.includes('stock_trades');
 
             const realUserIds = selectedIds.filter(id =>
@@ -268,7 +260,6 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeInterestRecords: includeInterestRecords,
                     includeStockRecords: includeStockRecords
                 })
             });
@@ -338,7 +329,6 @@ export default function AdminUsersPage() {
 
             // Check for Deposit Records choice REMOVED (Merged into net_equity)
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
-            const totalInterest = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.monthly_interest) ? u.monthly_interest.length : 0), 0);
             const totalStocks = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.stock_trades) ? u.stock_trades.length : 0), 0);
 
             // Check for Options Records choice
@@ -349,13 +339,7 @@ export default function AdminUsersPage() {
                 disabled: totalOptions === 0
             } as any);
 
-            // Check for Interest Records choice
-            importableUsers.push({
-                id: 'interest_records',
-                display: `用戶利息記錄 (${totalInterest} 筆)`,
-                checked: totalInterest > 0,
-                disabled: totalInterest === 0
-            } as any);
+
 
             // Check for Stock Trades choice
             importableUsers.push({
@@ -404,7 +388,6 @@ export default function AdminUsersPage() {
             const importMarketData = selectedIds.includes('market_data');
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
-            const importInterest = selectedIds.includes('interest_records');
             const importStocks = selectedIds.includes('stock_trades');
 
             const selectedUserEmails = selectedIds.filter(id =>
@@ -465,7 +448,6 @@ export default function AdminUsersPage() {
                     const clone = { ...u };
                     // deposit logic removed
                     if (!importOptions) delete clone.options;
-                    if (!importInterest) delete clone.monthly_interest;
                     if (!importStocks) delete clone.stock_trades;
                     return clone;
                 });
@@ -502,9 +484,6 @@ export default function AdminUsersPage() {
                     }
                     if (i === 0 && importOptions && !prev.includes('options_records')) {
                         newIds.push('options_records');
-                    }
-                    if (i === 0 && importInterest && !prev.includes('interest_records')) {
-                        newIds.push('interest_records');
                     }
                     if (i === 0 && importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');

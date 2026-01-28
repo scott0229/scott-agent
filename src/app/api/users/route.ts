@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
-                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
+
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
                     params.push(parseInt(year)); // For open_count subquery
                     params.push(parseInt(year)); // For net_deposit subquery
                     params.push(parseInt(year)); // For deposits_count subquery
-                    params.push(parseInt(year)); // For interest_count subquery
+
                     params.push(parseInt(year)); // For stock_trades_count subquery
                     params.push(parseInt(year)); // For open_put_covered_capital subquery
 
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
-                        (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
+
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
                         (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
@@ -138,15 +138,7 @@ export async function GET(req: NextRequest) {
                     const { results: statsResults } = await db.prepare(statsQuery).bind(year).all();
 
                     // Fetch interest data for the year
-                    const interestQuery = `
-                    SELECT 
-                        user_id,
-                        month,
-                        interest
-                    FROM monthly_interest
-                    WHERE year = ?
-                `;
-                    const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
+
 
                     // Aggregate statistics by user
                     const userStatsMap = new Map();
@@ -171,18 +163,7 @@ export async function GET(req: NextRequest) {
                     });
 
                     // Add interest data to userStatsMap
-                    (interestResults as any[]).forEach((row: any) => {
-                        if (!userStatsMap.has(row.user_id)) {
-                            userStatsMap.set(row.user_id, {});
-                        }
-                        const userStats = userStatsMap.get(row.user_id);
-                        const monthStr = row.month.toString().padStart(2, '0');
-                        if (!userStats[monthStr]) {
-                            userStats[monthStr] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
-                        }
-                        userStats[monthStr].interest = row.interest;
-                        userStats[monthStr].total += row.interest; // Add interest to total
-                    });
+
 
                     // Attach monthly_stats to each user
                     (users as any[]).forEach((user: any) => {
@@ -280,7 +261,6 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
-                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id AND monthly_interest.year = ?) as interest_count,
                 (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity`;
 
             // Params for SELECT subqueries
@@ -288,7 +268,6 @@ export async function GET(req: NextRequest) {
             params.push(parseInt(year)); // deposits_count
             params.push(parseInt(year)); // options_count
             params.push(parseInt(year)); // stock_trades_count
-            params.push(parseInt(year)); // interest_count
         } else {
             // General counts for All years
             additionalSelects = `, 
@@ -296,7 +275,6 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
-                (SELECT COUNT(*) FROM monthly_interest WHERE monthly_interest.user_id = USERS.id) as interest_count,
                 (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity`;
         }
 
@@ -340,27 +318,17 @@ export async function GET(req: NextRequest) {
             const statsQuery = `
                 SELECT 
                     owner_id as user_id,
-                    strftime('%m', datetime(open_date, 'unixepoch')) as month,
                     SUM(COALESCE(final_profit, 0)) as profit
                 FROM OPTIONS
                 WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
-                GROUP BY owner_id, month
+                GROUP BY owner_id
             `;
             const { results: optionsResults } = await db.prepare(statsQuery).bind(year).all();
-
-            const interestQuery = `SELECT user_id, month, interest FROM monthly_interest WHERE year = ?`;
-            const { results: interestResults } = await db.prepare(interestQuery).bind(parseInt(year)).all();
 
             const userProfitMap = new Map<number, number>();
 
             (optionsResults as any[]).forEach(row => {
-                const current = userProfitMap.get(row.user_id) || 0;
-                userProfitMap.set(row.user_id, current + row.profit);
-            });
-
-            (interestResults as any[]).forEach(row => {
-                const current = userProfitMap.get(row.user_id) || 0;
-                userProfitMap.set(row.user_id, current + row.interest);
+                userProfitMap.set(row.user_id, row.profit);
             });
 
             (results as any[]).forEach((user: any) => {
@@ -491,8 +459,7 @@ export async function DELETE(req: NextRequest) {
 
             // 2. DEPOSITS table dropped
 
-            // 3. Delete all monthly_interest for the year (excluding admin)
-            await db.prepare('DELETE FROM monthly_interest WHERE year = ? AND user_id != ?').bind(parseInt(year), admin.id).run();
+
 
             // 4. Delete all DAILY_NET_EQUITY for the year (excluding admin)
             await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE year = ? AND user_id != ?').bind(parseInt(year), admin.id).run();
@@ -543,7 +510,6 @@ export async function DELETE(req: NextRequest) {
         // Explicitly delete related records since Foreign Keys might not cascade or exist (e.g., STOCK_TRADES)
         await db.prepare('DELETE FROM STOCK_TRADES WHERE owner_id = ?').bind(id).run();
         await db.prepare('DELETE FROM OPTIONS WHERE owner_id = ?').bind(id).run();
-        await db.prepare('DELETE FROM monthly_interest WHERE user_id = ?').bind(id).run();
         await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE user_id = ?').bind(id).run();
         // monthly_fees has ON DELETE CASCADE, but safer to leave it if we rely on DB, or add it if we want consistency.
         // For now, these are the main ones.

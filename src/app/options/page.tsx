@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Users, TrendingUp, BarChart3, ChevronUp, ChevronDown } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
-import { InterestDialog } from '@/components/InterestDialog';
 import { UserAnalysisPanel } from '@/components/UserAnalysisPanel';
 import { OptionsSummaryPanel } from '@/components/OptionsSummaryPanel';
 import { useWindowSize } from '@/hooks/use-window-size';
@@ -31,7 +30,6 @@ interface UserStats {
     total_profit: number;
     put_profit: number;
     call_profit: number;
-    interest: number;
     turnover?: number;
 }
 
@@ -59,9 +57,6 @@ export default function OptionsPage() {
     // Changed: Track expanded user ID for inline display instead of dialog
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
-    // Track selected user for interest dialog
-    const [interestDialogOpen, setInterestDialogOpen] = useState(false);
-    const [interestUser, setInterestUser] = useState<User | null>(null);
     const [sortOrder, setSortOrder] = useState('profit-desc');
     const router = useRouter();
 
@@ -361,11 +356,10 @@ export default function OptionsPage() {
                                             <div className="bg-muted border-b">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
                                                     </colgroup>
                                                     <thead>
                                                         <tr className="text-[13px] font-medium text-muted-foreground bg-[#e8e4dc]">
@@ -373,7 +367,6 @@ export default function OptionsPage() {
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">總損益</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">PUT</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">CALL</th>
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">利息</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
@@ -383,11 +376,10 @@ export default function OptionsPage() {
                                             <div className="max-h-[200px] overflow-y-auto relative bg-white [&::-webkit-scrollbar]:!w-[2px]">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
                                                     </colgroup>
                                                     <tbody className="text-[13px]">
                                                         {client.monthly_stats.map((stat, index) => (
@@ -402,9 +394,6 @@ export default function OptionsPage() {
                                                                 <td className="px-2 text-center h-7">
                                                                     {stat.call_profit.toLocaleString()}
                                                                 </td>
-                                                                <td className="px-2 text-center h-7">
-                                                                    {(stat.interest || 0).toLocaleString()}
-                                                                </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -415,11 +404,10 @@ export default function OptionsPage() {
                                             <div className="bg-muted border-t">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
-                                                        <col className="w-[20%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
+                                                        <col className="w-[25%]" />
                                                     </colgroup>
                                                     <tbody>
                                                         <tr>
@@ -432,9 +420,6 @@ export default function OptionsPage() {
                                                             </td>
                                                             <td className="px-2 text-center h-7">
                                                                 {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
-                                                            </td>
-                                                            <td className="px-2 text-center h-7">
-                                                                {client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     </tbody>
@@ -451,7 +436,7 @@ export default function OptionsPage() {
                                     <Button
                                         variant="outline"
                                         onClick={() => router.push(`/options/${client.user_id || client.id}`)}
-                                        className="flex-1 justify-between px-3"
+                                        className="flex-1 justify-center gap-2 px-3"
                                         size="sm"
                                     >
                                         <span>交易記錄</span>
@@ -470,19 +455,7 @@ export default function OptionsPage() {
                                         size="sm"
                                     >
                                         <BarChart3 className="h-4 w-4 mr-1" />
-                                        分析
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setInterestUser(client);
-                                            setInterestDialogOpen(true);
-                                        }}
-                                        className="flex-1"
-                                        size="sm"
-                                    >
-                                        利息
+                                        數據分析
                                     </Button>
                                 </div>
                             </CardContent>
@@ -497,16 +470,6 @@ export default function OptionsPage() {
                 )}
             </div>
 
-            <InterestDialog
-                userId={interestUser?.id}
-                year={selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear)}
-                open={interestDialogOpen}
-                onOpenChange={setInterestDialogOpen}
-                onSuccess={() => {
-                    // Refresh data after saving interest
-                    checkUserAndFetchClients();
-                }}
-            />
         </div>
     );
 }
