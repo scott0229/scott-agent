@@ -114,10 +114,10 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 open_date: Math.floor(new Date(formData.open_date).getTime() / 1000),
                 to_date: formData.to_date ? Math.floor(new Date(formData.to_date).getTime() / 1000) : null,
                 settlement_date: (formData.operation !== '新開倉' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
-                quantity: parseFloat(formData.quantity),
-                strike_price: parseFloat(formData.strike_price),
+                quantity: parseFloat(formData.quantity.toString().replace(/,/g, '')),
+                strike_price: parseFloat(formData.strike_price.toString().replace(/,/g, '')),
                 premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
-                collateral: Math.abs(parseFloat(formData.quantity)) * parseFloat(formData.strike_price) * 100,
+                collateral: Math.abs(parseFloat(formData.quantity.toString().replace(/,/g, ''))) * parseFloat(formData.strike_price.toString().replace(/,/g, '')) * 100,
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
 
@@ -354,10 +354,24 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Label htmlFor="strike_price">行權價</Label>
                             <Input
                                 id="strike_price"
-                                type="number"
-                                step="0.01"
+                                type="text"
                                 value={formData.strike_price}
-                                onChange={(e) => setFormData({ ...formData, strike_price: e.target.value })}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, strike_price: e.target.value });
+                                }}
+                                onFocus={(e) => {
+                                    // Remove commas when user starts typing
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    setFormData({ ...formData, strike_price: cleanValue });
+                                }}
+                                onBlur={(e) => {
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
+                                        const parts = cleanValue.split('.');
+                                        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                        setFormData({ ...formData, strike_price: parts.join('.') });
+                                    }
+                                }}
                             />
                         </div>
 
@@ -368,9 +382,16 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                 type="text"
                                 value={formData.premium}
                                 onChange={(e) => {
-                                    const value = e.target.value;
-                                    const cleanValue = value.replace(/,/g, '');
-                                    if (/^-?\d*\.?\d*$/.test(cleanValue)) {
+                                    setFormData({ ...formData, premium: e.target.value });
+                                }}
+                                onFocus={(e) => {
+                                    // Remove commas when user starts typing
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    setFormData({ ...formData, premium: cleanValue });
+                                }}
+                                onBlur={(e) => {
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
                                         const parts = cleanValue.split('.');
                                         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                                         setFormData({ ...formData, premium: parts.join('.') });

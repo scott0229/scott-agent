@@ -61,7 +61,6 @@ export async function POST(req: NextRequest) {
 
         // Required fields
         const {
-            status,
             operation,
             open_date,
             to_date,
@@ -75,9 +74,9 @@ export async function POST(req: NextRequest) {
             year // Add year
         } = body;
 
-        // Auto-fill final_profit with premium if status is '未平倉' (Open)
+        // Auto-fill final_profit with premium if operation is '新開倉' (New Opening)
         let final_profit = body.final_profit;
-        if ((status === '未平倉' || !status) && (final_profit === undefined || final_profit === null)) {
+        if (operation === '新開倉' && (final_profit === undefined || final_profit === null)) {
             final_profit = premium;
         }
 
@@ -98,14 +97,13 @@ export async function POST(req: NextRequest) {
 
         const result = await db.prepare(`
             INSERT INTO OPTIONS (
-                status, operation, open_date, to_date, settlement_date, 
+                operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
                 delta, iv, capital_efficiency, user_id, owner_id, year, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
-            status || 'Open',
-            operation || '無',
+            operation || '新開倉',
             open_date,
             to_date || null,
             body.settlement_date || null,
@@ -146,7 +144,6 @@ export async function PUT(req: NextRequest) {
         // Required fields for update
         const {
             id,
-            status,
             operation,
             open_date,
             to_date,
@@ -173,13 +170,12 @@ export async function PUT(req: NextRequest) {
 
         await db.prepare(`
             UPDATE OPTIONS SET
-                status = ?, operation = ?, open_date = ?, to_date = ?, settlement_date = ?,
+                operation = ?, open_date = ?, to_date = ?, settlement_date = ?,
                 quantity = ?, underlying = ?, type = ?, strike_price = ?,
                 collateral = ?, premium = ?, final_profit = ?, profit_percent = ?,
                 delta = ?, iv = ?, capital_efficiency = ?, updated_at = unixepoch()
             WHERE id = ?
         `).bind(
-            status,
             operation,
             open_date,
             to_date || null,

@@ -74,6 +74,15 @@ const adjustToWorkday = (dateStr: string): string => {
     return d.toISOString().split('T')[0];
 };
 
+// Format number with thousand separators
+const formatNumberWithCommas = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '';
+    const str = value.toString();
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+};
+
 export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }: EditOptionDialogProps) {
     const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
@@ -107,12 +116,12 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 quantity: optionToEdit.quantity.toString(),
                 underlying: optionToEdit.underlying,
                 type: optionToEdit.type,
-                strike_price: optionToEdit.strike_price.toString(),
-                premium: optionToEdit.premium?.toString() || '',
+                strike_price: formatNumberWithCommas(optionToEdit.strike_price),
+                premium: formatNumberWithCommas(optionToEdit.premium),
                 collateral: optionToEdit.collateral?.toString() || '',
                 iv: optionToEdit.iv?.toString() || '',
                 delta: optionToEdit.delta?.toString() || '',
-                final_profit: optionToEdit.final_profit !== null ? optionToEdit.final_profit.toString() : ''
+                final_profit: formatNumberWithCommas(optionToEdit.final_profit)
             });
         }
     }, [optionToEdit]);
@@ -146,15 +155,15 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 open_date: Math.floor(new Date(formData.open_date).getTime() / 1000),
                 to_date: formData.to_date ? Math.floor(new Date(formData.to_date).getTime() / 1000) : null,
                 settlement_date: (formData.operation !== '新開倉' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
-                quantity: parseFloat(formData.quantity),
-                strike_price: parseFloat(formData.strike_price),
+                quantity: parseFloat(formData.quantity.toString().replace(/,/g, '')),
+                strike_price: parseFloat(formData.strike_price.toString().replace(/,/g, '')),
                 premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
                 // Recalculate collateral on edit? Or keep existing logic? 
                 // Maintaining "auto-calculate" logic as per new creation
-                collateral: Math.abs(parseFloat(formData.quantity)) * parseFloat(formData.strike_price) * 100,
+                collateral: Math.abs(parseFloat(formData.quantity.toString().replace(/,/g, ''))) * parseFloat(formData.strike_price.toString().replace(/,/g, '')) * 100,
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
-                final_profit: formData.final_profit ? parseFloat(formData.final_profit) : null,
+                final_profit: formData.final_profit ? parseFloat(formData.final_profit.toString().replace(/,/g, '')) : null,
             };
 
             const res = await fetch('/api/options', {
@@ -364,10 +373,23 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                         <Label htmlFor="strike_price">行權價</Label>
                         <Input
                             id="strike_price"
-                            type="number"
-                            step="0.01"
+                            type="text"
                             value={formData.strike_price}
-                            onChange={(e) => setFormData({ ...formData, strike_price: e.target.value })}
+                            onChange={(e) => {
+                                setFormData({ ...formData, strike_price: e.target.value });
+                            }}
+                            onFocus={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                setFormData({ ...formData, strike_price: cleanValue });
+                            }}
+                            onBlur={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
+                                    const parts = cleanValue.split('.');
+                                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                    setFormData({ ...formData, strike_price: parts.join('.') });
+                                }
+                            }}
                         />
                     </div>
 
@@ -378,9 +400,15 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             type="text"
                             value={formData.premium}
                             onChange={(e) => {
-                                const value = e.target.value;
-                                const cleanValue = value.replace(/,/g, '');
-                                if (/^-?\d*\.?\d*$/.test(cleanValue)) {
+                                setFormData({ ...formData, premium: e.target.value });
+                            }}
+                            onFocus={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                setFormData({ ...formData, premium: cleanValue });
+                            }}
+                            onBlur={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
                                     const parts = cleanValue.split('.');
                                     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
                                     setFormData({ ...formData, premium: parts.join('.') });
@@ -415,10 +443,23 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                         <Label htmlFor="final_profit">最終損益</Label>
                         <Input
                             id="final_profit"
-                            type="number"
-                            step="0.01"
+                            type="text"
                             value={formData.final_profit}
-                            onChange={(e) => setFormData({ ...formData, final_profit: e.target.value })}
+                            onChange={(e) => {
+                                setFormData({ ...formData, final_profit: e.target.value });
+                            }}
+                            onFocus={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                setFormData({ ...formData, final_profit: cleanValue });
+                            }}
+                            onBlur={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
+                                    const parts = cleanValue.split('.');
+                                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                    setFormData({ ...formData, final_profit: parts.join('.') });
+                                }
+                            }}
                         />
                     </div>
                     <div className="flex justify-end gap-2 col-span-2">

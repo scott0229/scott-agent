@@ -440,10 +440,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">備兌資金</TableHead>
                             <TableHead className="text-center">權利金</TableHead>
                             <TableHead className="text-center">最終損益</TableHead>
-                            <TableHead className="text-center">損益%</TableHead>
+
                             <TableHead className="text-center">DELTA</TableHead>
                             <TableHead className="text-center">隱含波動</TableHead>
-                            <TableHead className="text-center">資金效率</TableHead>
+
                             <TableHead className="text-center"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -494,7 +494,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             formatDate(opt.settlement_date)
                                         )}
                                     </TableCell>
-                                    <TableCell>{getDaysHeld(opt)}</TableCell>
+                                    <TableCell>
+                                        {(opt.operation === '新開倉' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
+                                    </TableCell>
                                     <TableCell>{opt.quantity}</TableCell>
                                     <TableCell>{opt.underlying}</TableCell>
                                     <TableCell>
@@ -506,43 +508,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
                                     <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
                                     <TableCell>
-                                        {opt.status === '未平倉' || opt.operation === '新開倉' ? (
-                                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
-                                                {opt.final_profit?.toLocaleString() || '-'}
-                                            </Badge>
-                                        ) : (
-                                            <span className={opt.final_profit && opt.final_profit > 0 ? 'text-green-600' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}>
-                                                {opt.final_profit?.toLocaleString() || '-'}
-                                            </span>
-                                        )}
+                                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                            {opt.final_profit ? opt.final_profit.toLocaleString('en-US') : '-'}
+                                        </span>
                                     </TableCell>
-                                    <TableCell>
-                                        {(() => {
-                                            if (opt.final_profit !== null && opt.final_profit !== undefined && opt.premium) {
-                                                return `${((opt.final_profit / opt.premium) * 100).toFixed(1)}%`;
-                                            }
-                                            return opt.profit_percent ? `${(opt.profit_percent * 100).toFixed(1)}%` : '-';
-                                        })()}
-                                    </TableCell>
+
                                     <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
                                     <TableCell>{opt.iv || '-'}</TableCell>
-                                    <TableCell>
-                                        {(() => {
-                                            const daysHeld = typeof getDaysHeld(opt) === 'number' ? getDaysHeld(opt) : null;
-                                            if (
-                                                opt.final_profit !== null &&
-                                                opt.final_profit !== undefined &&
-                                                daysHeld &&
-                                                daysHeld > 0 &&
-                                                opt.collateral &&
-                                                opt.collateral > 0
-                                            ) {
-                                                const efficiency = opt.final_profit / (Number(daysHeld) * opt.collateral);
-                                                return `${(efficiency * 100).toFixed(3)}%`;
-                                            }
-                                            return opt.capital_efficiency ? `${(opt.capital_efficiency * 100).toFixed(3)}%` : '-';
-                                        })()}
-                                    </TableCell>
+
                                     <TableCell>
                                         {/* Only non-customer roles can edit/delete */}
                                         {currentUserRole && currentUserRole !== 'customer' && (
