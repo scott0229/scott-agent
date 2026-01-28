@@ -77,11 +77,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     // Use global year filter instead of local state
     const { selectedYear, setSelectedYear } = useYearFilter();
     const searchParams = useSearchParams();
-    const [selectedMonth, setSelectedMonth] = useState<string>(searchParams.get('month') || 'All');
-    const [selectedUnderlying, setSelectedUnderlying] = useState<string>(searchParams.get('underlying') || 'All');
-    const [selectedType, setSelectedType] = useState<string>(searchParams.get('type') || 'All');
-    const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || 'All');
-    const [selectedOperation, setSelectedOperation] = useState<string>(searchParams.get('operation') || 'All');
+    // Initialize to 'All' to avoid hydration mismatch, useEffect will sync from URL
+    const [selectedMonth, setSelectedMonth] = useState<string>('All');
+    const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
+    const [selectedType, setSelectedType] = useState<string>('All');
+    const [selectedStatus, setSelectedStatus] = useState<string>('All');
+    const [selectedOperation, setSelectedOperation] = useState<string>('All');
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -92,19 +93,19 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     // Sync filters with URL params
     useEffect(() => {
         const status = searchParams.get('status');
-        if (status && status !== 'All') setSelectedStatus(status);
+        setSelectedStatus(status || 'All');
 
         const month = searchParams.get('month');
-        if (month && month !== 'All') setSelectedMonth(month);
+        setSelectedMonth(month || 'All');
 
         const underlying = searchParams.get('underlying');
-        if (underlying && underlying !== 'All') setSelectedUnderlying(underlying);
+        setSelectedUnderlying(underlying || 'All');
 
         const type = searchParams.get('type');
-        if (type && type !== 'All') setSelectedType(type);
+        setSelectedType(type || 'All');
 
         const operation = searchParams.get('operation');
-        if (operation && operation !== 'All') setSelectedOperation(operation);
+        setSelectedOperation(operation || 'All');
     }, [searchParams]);
 
     useEffect(() => {
