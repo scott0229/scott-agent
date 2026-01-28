@@ -275,22 +275,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 5. Cash Balance */}
-                        {visibleRows.cashBalance && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
-                                    <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
-                                    帳戶現金
-                                </td>
-                                {users.map(user => (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(user.current_cash_balance || 0)}
-                                    </td>
-                                ))}
-                            </tr>
-                        )}
-
-                        {/* 6. Return Rate */}
+                        {/* 5. Return Rate */}
                         {visibleRows.returnRate && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -395,7 +380,22 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 13. Holding 1 */}
+                        {/* 13. Cash Balance */}
+                        {visibleRows.cashBalance && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
+                                    帳戶現金
+                                </td>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(user.current_cash_balance || 0)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
+
+                        {/* 14. Holding 1 */}
                         {visibleRows.holding1 && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -413,7 +413,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 14. Holding 2 */}
+                        {/* 15. Holding 2 */}
                         {visibleRows.holding2 && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -431,7 +431,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 15. Holding 3 */}
+                        {/* 16. Holding 3 */}
                         {visibleRows.holding3 && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -449,7 +449,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 16. Last Updated Date */}
+                        {/* 17. Last Updated Date */}
                         {visibleRows.lastUpdated && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
