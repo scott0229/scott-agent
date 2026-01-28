@@ -27,6 +27,10 @@ interface UserSummary {
         newHighCount: number;
         newHighFreq: number;
     } | null;
+    equity_history?: {
+        date: number;
+        net_equity: number;
+    }[];
 }
 
 interface NetEquitySummaryTableProps {
@@ -42,6 +46,14 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
     const formatPercent = (val: number) => {
         return `${(val * 100).toFixed(2)}%`;
+    };
+
+    const formatDateYYMMDD = (timestamp: number) => {
+        const date = new Date(timestamp * 1000);
+        const yy = date.getFullYear().toString().slice(-2);
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yy}-${mm}-${dd}`;
     };
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
@@ -205,9 +217,23 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             ))}
                         </tr>
 
+                        {/* 13. Last Updated Date */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">最後更新日</td>
+                            {users.map(user => {
+                                const lastDate = user.equity_history && user.equity_history.length > 0
+                                    ? user.equity_history[user.equity_history.length - 1].date
+                                    : null;
+                                return (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {lastDate ? formatDateYYMMDD(lastDate) : '-'}
+                                    </td>
+                                );
+                            })}
+                        </tr>
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div >
     );
 }
