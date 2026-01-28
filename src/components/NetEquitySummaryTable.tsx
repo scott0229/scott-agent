@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Table,
     TableBody,
@@ -8,8 +8,9 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, RotateCcw, Save } from "lucide-react";
 
 interface UserSummary {
     id: number;
@@ -65,6 +66,46 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             [rowKey]: !prev[rowKey]
         }));
     };
+
+    // Reset all rows to visible
+    const resetVisibility = () => {
+        const allVisible: Record<string, boolean> = {
+            currentNetEquity: true,
+            initialNetEquity: true,
+            transferRecord: true,
+            netProfit: true,
+            cashBalance: true,
+            returnRate: true,
+            maxDrawdown: true,
+            annualizedReturn: true,
+            annualizedStdDev: true,
+            sharpeRatio: true,
+            newHighCount: true,
+            newHighFreq: true,
+            lastUpdated: true,
+        };
+        setVisibleRows(allVisible);
+        // Also clear from localStorage
+        localStorage.removeItem('netEquityTableVisibility');
+    };
+
+    // Save current visibility state to localStorage
+    const saveVisibility = () => {
+        localStorage.setItem('netEquityTableVisibility', JSON.stringify(visibleRows));
+    };
+
+    // Load saved visibility settings on mount
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('netEquityTableVisibility');
+        if (savedSettings) {
+            try {
+                const parsed = JSON.parse(savedSettings);
+                setVisibleRows(parsed);
+            } catch (error) {
+                console.error('Failed to parse saved visibility settings:', error);
+            }
+        }
+    }, []);
 
     const formatMoney = (val: number) => {
         return new Intl.NumberFormat('en-US').format(Math.round(val));
@@ -336,6 +377,32 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 })}
                             </tr>
                         )}
+
+                        {/* Settings Controls Row */}
+                        <tr className="border-t">
+                            <td colSpan={users.length + 1} className="h-10 py-2 px-2">
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={resetVisibility}
+                                        className="text-xs h-7"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                                        重置隱藏
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={saveVisibility}
+                                        className="text-xs h-7"
+                                    >
+                                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                                        記憶隱藏
+                                    </Button>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
