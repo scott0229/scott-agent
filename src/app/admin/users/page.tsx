@@ -39,6 +39,7 @@ interface User {
     total_profit?: number;
     current_net_equity?: number;
     stock_trades_count?: number;
+    strategies_count?: number;
 }
 
 import {
@@ -200,6 +201,10 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.stock_trades_count || 0), 0);
 
+        const totalStrategies = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.strategies_count || 0), 0);
+
         // Add Options Records Option
         exportableUsers.push({
             id: 'options_records',
@@ -211,6 +216,13 @@ export default function AdminUsersPage() {
         exportableUsers.push({
             id: 'stock_trades',
             display: `股票交易記錄 (${totalStocks} 筆)`,
+            checked: true
+        });
+
+        // Add Strategies Option
+        exportableUsers.push({
+            id: 'strategies',
+            display: `投資策略資料 (${totalStrategies} 個)`,
             checked: true
         });
 
@@ -242,13 +254,15 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeStockRecords = selectedIds.includes('stock_trades');
+            const includeStrategies = selectedIds.includes('strategies');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
-                id !== 'fees_records'
+                id !== 'fees_records' &&
+                id !== 'strategies'
             );
 
             // Call POST endpoint with selected IDs
@@ -260,7 +274,8 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeStockRecords: includeStockRecords
+                    includeStockRecords: includeStockRecords,
+                    includeStrategies: includeStrategies
                 })
             });
 
@@ -349,6 +364,15 @@ export default function AdminUsersPage() {
                 disabled: totalStocks === 0
             } as any);
 
+            // Check for Strategies
+            const totalStrategies = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.strategies) ? u.strategies.length : 0), 0);
+            importableUsers.push({
+                id: 'strategies',
+                display: `投資策略資料 (${totalStrategies} 個)`,
+                checked: totalStrategies > 0,
+                disabled: totalStrategies === 0
+            } as any);
+
 
             // Check for Market Data
             if (data.market_prices && data.market_prices.length > 0) {
@@ -389,13 +413,15 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importStocks = selectedIds.includes('stock_trades');
+            const importStrategies = selectedIds.includes('strategies');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
-                id !== 'fees_records'
+                id !== 'fees_records' &&
+                id !== 'strategies'
             );
 
             const allUsers = pendingImportData.users || [];
@@ -449,6 +475,7 @@ export default function AdminUsersPage() {
                     // deposit logic removed
                     if (!importOptions) delete clone.options;
                     if (!importStocks) delete clone.stock_trades;
+                    if (!importStrategies) delete clone.strategies;
                     return clone;
                 });
 

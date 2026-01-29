@@ -21,7 +21,7 @@ async function checkAdmin(req: NextRequest) {
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
-async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true) {
+async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true, includeStrategies: boolean = true) {
     const db = await getDb();
 
     let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, year
@@ -140,7 +140,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             SELECT 
                 id, status, operation, open_date, to_date, settlement_date, days_to_expire, days_held,
                 quantity, underlying, type, strike_price, collateral, premium,
-                final_profit, profit_percent, delta, iv, capital_efficiency, year
+                final_profit, profit_percent, delta, iv, capital_efficiency, code, year
             FROM OPTIONS 
             WHERE owner_id = ?
         `;
@@ -163,7 +163,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
         let stocksQuery = `
             SELECT 
-                id, symbol, status, open_date, close_date, open_price, close_price, quantity, year
+                id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year
             FROM STOCK_TRADES 
             WHERE owner_id = ?
         `;
@@ -179,6 +179,49 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             (user as any).stock_trades = stocks || [];
         } else {
             (user as any).stock_trades = [];
+        }
+
+        // Export strategies
+        if (includeStrategies) {
+            let strategiesQuery = `
+                SELECT id, name, user_id, year
+                FROM STRATEGIES
+                WHERE owner_id = ?
+            `;
+            const strategiesParams: any[] = [user.id];
+            if (year && year !== 'All') {
+                strategiesQuery += ` AND year = ?`;
+                strategiesParams.push(parseInt(year));
+            }
+            strategiesQuery += ` ORDER BY created_at DESC`;
+            const { results: strategies } = await db.prepare(strategiesQuery).bind(...strategiesParams).all();
+
+            // For each strategy, get associated stock and option IDs
+            const strategiesWithRefs = await Promise.all(
+                (strategies || []).map(async (strategy: any) => {
+                    // Get stock trade IDs
+                    const { results: stockLinks } = await db.prepare(`
+                        SELECT stock_trade_id FROM STRATEGY_STOCKS WHERE strategy_id = ?
+                    `).bind(strategy.id).all();
+
+                    // Get option IDs
+                    const { results: optionLinks } = await db.prepare(`
+                        SELECT option_id FROM STRATEGY_OPTIONS WHERE strategy_id = ?
+                    `).bind(strategy.id).all();
+
+                    return {
+                        name: strategy.name,
+                        user_id: strategy.user_id,
+                        year: strategy.year,
+                        stock_trade_ids: (stockLinks || []).map((link: any) => link.stock_trade_id),
+                        option_ids: (optionLinks || []).map((link: any) => link.option_id)
+                    };
+                })
+            );
+
+            (user as any).strategies = strategiesWithRefs;
+        } else {
+            (user as any).strategies = [];
         }
     }
 
@@ -248,7 +291,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const year = searchParams.get('year');
 
-        const data = await executeExport(req, year, null, true, true, true, true, true, true);
+        const data = await executeExport(req, year, null, true, true, true, true, true, true, true);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);
@@ -263,15 +306,16 @@ export async function POST(req: NextRequest) {
         if (!admin) return NextResponse.json({ error: '權限不足' }, { status: 403 });
 
         const body = await req.json();
-        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords, includeStockRecords } = body;
+        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords, includeStockRecords, includeStrategies } = body;
         // Default includeDepositRecords to true if undefined
         const safeIncludeDeposits = includeDepositRecords !== undefined ? includeDepositRecords : true;
         const safeIncludeOptions = includeOptionsRecords !== undefined ? includeOptionsRecords : true;
         const safeIncludeInterest = includeInterestRecords !== undefined ? includeInterestRecords : true;
         const safeIncludeFees = includeFeeRecords !== undefined ? includeFeeRecords : true;
         const safeIncludeStocks = includeStockRecords !== undefined ? includeStockRecords : true;
+        const safeIncludeStrategies = includeStrategies !== undefined ? includeStrategies : true;
 
-        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees, safeIncludeStocks);
+        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees, safeIncludeStocks, safeIncludeStrategies);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);

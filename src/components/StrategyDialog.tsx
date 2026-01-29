@@ -37,6 +37,10 @@ interface Option {
     operation: string;
     user_id: string;
     code: string;
+    to_date?: number | null;
+    quantity?: number;
+    strike_price?: number;
+    type?: string;
 }
 
 interface Strategy {
@@ -243,33 +247,33 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh]">
+            <DialogContent className="max-w-3xl max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>{strategy ? '編輯策略' : '新增策略'}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4 overflow-y-auto max-h-[calc(90vh-180px)]">
+                <div className="space-y-4 py-4 px-1 overflow-y-auto max-h-[calc(90vh-180px)]">
                     {/* Strategy Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="name">策略名稱 *</Label>
+                        <Label htmlFor="name">策略名稱</Label>
                         <Input
                             id="name"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="輸入策略名稱"
+                            autoComplete="off"
                         />
                     </div>
 
                     {/* User Selection */}
                     <div className="space-y-2">
-                        <Label className="inline-block">用戶 *</Label>
+                        <Label className="inline-block">用戶</Label>
                         <Select
                             value={formData.userId}
                             onValueChange={handleUserChange}
                             disabled={!!strategy}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="選擇用戶" />
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 {users.map(user => (
@@ -326,21 +330,32 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                 {options.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">該用戶沒有期權交易記錄</p>
                                 ) : (
-                                    options.map(option => (
-                                        <div key={option.id} className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id={`option-${option.id}`}
-                                                checked={formData.selectedOptions.includes(option.id)}
-                                                onCheckedChange={() => handleOptionToggle(option.id)}
-                                            />
-                                            <label
-                                                htmlFor={`option-${option.id}`}
-                                                className="text-sm cursor-pointer flex-1"
-                                            >
-                                                {option.code} - {option.underlying} ({option.operation})
-                                            </label>
-                                        </div>
-                                    ))
+                                    options.map(option => {
+                                        // Format expiration date as MM-DD
+                                        const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
+                                        const formattedExpiry = toDate
+                                            ? `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
+                                            : '';
+
+                                        const quantity = Math.abs((option as any).quantity || 0);
+                                        const strikePrice = (option as any).strike_price || 0;
+
+                                        return (
+                                            <div key={option.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`option-${option.id}`}
+                                                    checked={formData.selectedOptions.includes(option.id)}
+                                                    onCheckedChange={() => handleOptionToggle(option.id)}
+                                                />
+                                                <label
+                                                    htmlFor={`option-${option.id}`}
+                                                    className="text-sm cursor-pointer flex-1"
+                                                >
+                                                    ({option.code}) {option.underlying}_{(option as any).type || 'CALL'}_{quantity}口_{formattedExpiry}到期_行權價{strikePrice}
+                                                </label>
+                                            </div>
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>

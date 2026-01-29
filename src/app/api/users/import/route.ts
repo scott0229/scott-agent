@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
+import { customAlphabet } from 'nanoid';
+
+const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
 
 // Helper to check for admin or manager role
 async function checkAdmin(req: NextRequest) {
@@ -30,6 +33,7 @@ interface ImportUser {
     options?: any[];
     monthly_interest?: any[];
     stock_trades?: any[];
+    strategies?: any[];
 }
 
 // POST: Import users from JSON array
@@ -221,6 +225,8 @@ export async function POST(req: NextRequest) {
                 }
 
                 // Import nested options trading records
+                // Create ID mapping: old option ID -> new option ID
+                const optionIdMap = new Map<number, number>();
                 if (user.options && Array.isArray(user.options) && targetUserId) {
                     for (const option of user.options) {
                         if (!option.open_date || !option.underlying || !option.type) continue;
@@ -235,13 +241,33 @@ export async function POST(req: NextRequest) {
 
                         if (!existingOption) {
                             try {
-                                await db.prepare(
+                                // Generate code if not present
+                                let code = option.code || generateCode();
+
+                                // Ensure code is unique across both OPTIONS and STOCK_TRADES
+                                let isUnique = false;
+                                let attempts = 0;
+                                while (!isUnique && attempts < 10) {
+                                    const [existingOptionCode, existingStockCode] = await Promise.all([
+                                        db.prepare('SELECT id FROM OPTIONS WHERE code = ?').bind(code).first(),
+                                        db.prepare('SELECT id FROM STOCK_TRADES WHERE code = ?').bind(code).first()
+                                    ]);
+
+                                    if (!existingOptionCode && !existingStockCode) {
+                                        isUnique = true;
+                                    } else {
+                                        code = generateCode();
+                                        attempts++;
+                                    }
+                                }
+
+                                const optionResult = await db.prepare(
                                     `INSERT INTO OPTIONS (
                                         owner_id, user_id, status, operation, open_date, to_date, settlement_date,
                                         quantity, underlying, type, strike_price, collateral, premium,
-                                        final_profit, profit_percent, delta, iv, capital_efficiency, year,
+                                        final_profit, profit_percent, delta, iv, capital_efficiency, code, year,
                                         created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     user.user_id || null,  // Add user_id from the imported user data
@@ -261,8 +287,14 @@ export async function POST(req: NextRequest) {
                                     option.delta || null,
                                     option.iv || null,
                                     option.capital_efficiency || null,
+                                    code,
                                     optionYear
                                 ).run();
+
+                                // Store mapping: old option id -> new option id
+                                if (option.id && optionResult.meta?.last_row_id) {
+                                    optionIdMap.set(option.id, optionResult.meta.last_row_id as number);
+                                }
                             } catch (optErr) {
                                 console.error(`Failed to import option for user ${user.email}:`, optErr);
                             }
@@ -271,6 +303,8 @@ export async function POST(req: NextRequest) {
                 }
 
                 // Import nested stock trades
+                // Create ID mapping: old stock ID -> new stock ID
+                const stockIdMap = new Map<number, number>();
                 if (user.stock_trades && Array.isArray(user.stock_trades) && targetUserId) {
                     for (const trade of user.stock_trades) {
                         if (!trade.open_date || !trade.symbol || !trade.quantity) continue;
@@ -286,11 +320,31 @@ export async function POST(req: NextRequest) {
 
                         if (!existingTrade) {
                             try {
-                                await db.prepare(
+                                // Generate code if not present
+                                let code = trade.code || generateCode();
+
+                                // Ensure code is unique across both OPTIONS and STOCK_TRADES
+                                let isUnique = false;
+                                let attempts = 0;
+                                while (!isUnique && attempts < 10) {
+                                    const [existingOptionCode, existingStockCode] = await Promise.all([
+                                        db.prepare('SELECT id FROM OPTIONS WHERE code = ?').bind(code).first(),
+                                        db.prepare('SELECT id FROM STOCK_TRADES WHERE code = ?').bind(code).first()
+                                    ]);
+
+                                    if (!existingOptionCode && !existingStockCode) {
+                                        isUnique = true;
+                                    } else {
+                                        code = generateCode();
+                                        attempts++;
+                                    }
+                                }
+
+                                const stockResult = await db.prepare(
                                     `INSERT INTO STOCK_TRADES (
                                         owner_id, user_id, symbol, status, open_date, close_date, 
-                                        open_price, close_price, quantity, year, created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                        open_price, close_price, quantity, code, year, created_at, updated_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     user.user_id || null, // API uses string ID
@@ -301,10 +355,83 @@ export async function POST(req: NextRequest) {
                                     trade.open_price,
                                     trade.close_price || null,
                                     trade.quantity,
+                                    code,
                                     tradeYear
                                 ).run();
+
+                                // Store mapping: old stock id -> new stock id
+                                if (trade.id && stockResult.meta?.last_row_id) {
+                                    stockIdMap.set(trade.id, stockResult.meta.last_row_id as number);
+                                }
                             } catch (stockErr) {
                                 console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
+                            }
+                        }
+                    }
+                }
+
+                // Import strategies
+                if (user.strategies && Array.isArray(user.strategies) && targetUserId) {
+                    for (const strategy of user.strategies) {
+                        if (!strategy.name) continue;
+
+                        const strategyYear = strategy.year || targetYear;
+
+                        // Check duplicate strategy (same name, user, year)
+                        const existingStrategy = await db.prepare(
+                            `SELECT id FROM STRATEGIES WHERE owner_id = ? AND name = ? AND year = ?`
+                        ).bind(targetUserId, strategy.name, strategyYear).first();
+
+                        if (!existingStrategy) {
+                            try {
+                                // Create strategy
+                                const strategyResult = await db.prepare(
+                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(
+                                    strategy.name,
+                                    strategy.user_id || user.user_id || null,
+                                    targetUserId,
+                                    strategyYear
+                                ).run();
+
+                                const newStrategyId = strategyResult.meta.last_row_id;
+
+                                // Link stock trades
+                                if (strategy.stock_trade_ids && Array.isArray(strategy.stock_trade_ids)) {
+                                    for (const oldStockId of strategy.stock_trade_ids) {
+                                        const newStockId = stockIdMap.get(oldStockId);
+                                        if (newStockId) {
+                                            try {
+                                                await db.prepare(
+                                                    `INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id)
+                                                     VALUES (?, ?)`
+                                                ).bind(newStrategyId, newStockId).run();
+                                            } catch (linkErr) {
+                                                console.error(`Failed to link stock to strategy for user ${user.email}:`, linkErr);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Link options
+                                if (strategy.option_ids && Array.isArray(strategy.option_ids)) {
+                                    for (const oldOptionId of strategy.option_ids) {
+                                        const newOptionId = optionIdMap.get(oldOptionId);
+                                        if (newOptionId) {
+                                            try {
+                                                await db.prepare(
+                                                    `INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id)
+                                                     VALUES (?, ?)`
+                                                ).bind(newStrategyId, newOptionId).run();
+                                            } catch (linkErr) {
+                                                console.error(`Failed to link option to strategy for user ${user.email}:`, linkErr);
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (stratErr) {
+                                console.error(`Failed to import strategy for user ${user.email}:`, stratErr);
                             }
                         }
                     }

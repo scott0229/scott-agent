@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic'; // Ensure no caching
+
 export async function GET(req: NextRequest) {
     try {
         const token = req.cookies.get('token')?.value;

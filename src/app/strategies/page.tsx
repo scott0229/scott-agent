@@ -148,9 +148,9 @@ export default function StrategiesPage() {
                     <Target className="h-8 w-8" />
                     投資策略
                 </h1>
-                <Button onClick={handleAddStrategy} className="gap-2">
+                <Button onClick={handleAddStrategy} variant="secondary" className="gap-2">
                     <Plus className="h-4 w-4" />
-                    新增策略
+                    新增
                 </Button>
             </div>
 
@@ -160,13 +160,8 @@ export default function StrategiesPage() {
                     <p className="text-muted-foreground">載入中...</p>
                 </div>
             ) : strategies.length === 0 ? (
-                <div className="text-center py-12">
-                    <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground mb-4">尚未建立任何策略</p>
-                    <Button onClick={handleAddStrategy} variant="outline" className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        建立第一個策略
-                    </Button>
+                <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
+                    尚無客戶資料
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -254,7 +249,7 @@ export default function StrategiesPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {strategy.stocks.map(stock => {
+                                                    {strategy.stocks.sort((a, b) => b.open_date - a.open_date).map(stock => {
                                                         const openDate = new Date(stock.open_date * 1000);
                                                         const formattedDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
 
@@ -271,11 +266,11 @@ export default function StrategiesPage() {
 
                                                         return (
                                                             <tr key={stock.id} className="border-b last:border-0">
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-14">{stock.code}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-16">{stock.symbol}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-10">{stock.quantity}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-20">{formattedDate}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-20">{formattedCloseDate}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.code}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-16">{stock.symbol}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-10">{stock.quantity}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedDate}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedCloseDate}</td>
                                                                 <td className="py-1 px-2 text-center w-16">
                                                                     {profit !== null ? (
                                                                         <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -314,7 +309,7 @@ export default function StrategiesPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {strategy.options.map(option => {
+                                                    {strategy.options.sort((a, b) => b.open_date - a.open_date).map(option => {
                                                         const openDate = new Date(option.open_date * 1000);
                                                         const formattedOpenDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
 
@@ -326,11 +321,11 @@ export default function StrategiesPage() {
 
                                                         return (
                                                             <tr key={option.id} className="border-b last:border-0">
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-14">{option.code}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-16">{option.underlying}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-10">{option.quantity}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-20">{formattedOpenDate}</td>
-                                                                <td className="py-1 px-2 text-muted-foreground text-center w-20">{formattedToDate}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-14">{option.code}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-16">{option.underlying}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-10">{option.quantity}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedOpenDate}</td>
+                                                                <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedToDate}</td>
                                                                 <td className="py-1 px-2 text-center w-16">
                                                                     {option.final_profit !== null && option.final_profit !== undefined ? (
                                                                         <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
