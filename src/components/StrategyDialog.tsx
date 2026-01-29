@@ -262,7 +262,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
                     {/* User Selection */}
                     <div className="space-y-2">
-                        <Label>用戶 *</Label>
+                        <Label className="inline-block">用戶 *</Label>
                         <Select
                             value={formData.userId}
                             onValueChange={handleUserChange}
