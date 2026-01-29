@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { customAlphabet } from 'nanoid';
+
+// Generate 5-character uppercase alphanumeric code
+const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
 
 export async function GET(req: NextRequest) {
     try {
@@ -95,13 +99,36 @@ export async function POST(req: NextRequest) {
         const db = await getDb();
         const optionYear = year || new Date().getFullYear();
 
+        // Generate unique code that doesn't conflict with stock trade codes
+        let code = generateCode();
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 20;
+
+        // Ensure code is unique across both OPTIONS and STOCK_TRADES tables
+        while (!isUnique && attempts < maxAttempts) {
+            const existingOption = await db.prepare('SELECT id FROM OPTIONS WHERE code = ?').bind(code).first();
+            const existingStock = await db.prepare('SELECT id FROM STOCK_TRADES WHERE code = ?').bind(code).first();
+
+            if (!existingOption && !existingStock) {
+                isUnique = true;
+            } else {
+                code = generateCode();
+                attempts++;
+            }
+        }
+
+        if (!isUnique) {
+            return NextResponse.json({ error: 'Failed to generate unique code' }, { status: 500 });
+        }
+
         const result = await db.prepare(`
             INSERT INTO OPTIONS (
                 operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
-                delta, iv, capital_efficiency, user_id, owner_id, year, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                delta, iv, capital_efficiency, user_id, owner_id, year, code, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             operation || '新開倉',
             open_date,
@@ -120,7 +147,8 @@ export async function POST(req: NextRequest) {
             body.capital_efficiency || null,
             userId || null,
             ownerId || null, // Bind ownerId
-            optionYear
+            optionYear,
+            code
         ).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });

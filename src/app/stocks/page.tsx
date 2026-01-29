@@ -54,6 +54,7 @@ interface StockTrade {
     open_price: number;
     close_price?: number | null;
     quantity: number;
+    code?: string;
 }
 
 interface User {
@@ -291,13 +292,14 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">開倉價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">損益</TableHead>
+                                <TableHead className="text-center">交易代碼</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredTrades.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={10} className="h-24 text-center">
+                                    <TableCell colSpan={11} className="h-24 text-center">
                                         無交易紀錄
                                     </TableCell>
                                 </TableRow>
@@ -332,6 +334,9 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {pnl !== null ? formatMoney(pnl) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono text-sm">
+                                                {trade.code || '-'}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex justify-end gap-1">

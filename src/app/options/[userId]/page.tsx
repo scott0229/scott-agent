@@ -60,6 +60,7 @@ interface Option {
     iv: number | null;
     capital_efficiency: number | null;
     user_id: string | null;
+    code?: string;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -443,20 +444,20 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                             <TableHead className="text-center">DELTA</TableHead>
                             <TableHead className="text-center">隱含波動</TableHead>
-
+                            <TableHead className="text-center">交易代碼</TableHead>
                             <TableHead className="text-center"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={20} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
                                     載入中...
                                 </TableCell>
                             </TableRow>
                         ) : filteredOptions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={20} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
                                     尚無資料
                                 </TableCell>
                             </TableRow>
@@ -515,7 +516,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                                     <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
                                     <TableCell>{opt.iv || '-'}</TableCell>
-
+                                    <TableCell className="text-center font-mono text-sm">
+                                        {opt.code || '-'}
+                                    </TableCell>
                                     <TableCell>
                                         {/* Only non-customer roles can edit/delete */}
                                         {currentUserRole && currentUserRole !== 'customer' && (
