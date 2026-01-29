@@ -136,8 +136,8 @@ export default function StockTradingPage() {
 
             const res = await fetch(url);
             const data = await res.json();
-            if (data.trades) {
-                setTrades(data.trades);
+            if (data.stocks) {
+                setTrades(data.stocks);
             }
         } catch (error) {
             console.error('Failed to fetch trades', error);

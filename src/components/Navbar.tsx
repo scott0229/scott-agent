@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, Wallet, LineChart } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, Wallet, LineChart, Target } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -54,7 +54,7 @@ export function Navbar() {
     }
 
     const canAccessAdmin = role === 'admin' || role === 'manager';
-    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity') || pathname.startsWith('/stocks');
+    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity') || pathname.startsWith('/stocks') || pathname.startsWith('/strategies');
 
     // Generate year options from 2025 (when the website started) to current year
     const currentYear = new Date().getFullYear();
@@ -138,6 +138,15 @@ export function Navbar() {
                     >
                         <TrendingUp className="h-4 w-4" />
                         期權交易
+                    </Button>
+                </Link>
+                <Link href="/strategies" prefetch={true}>
+                    <Button
+                        variant={pathname.startsWith('/strategies') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <Target className="h-4 w-4" />
+                        投資策略
                     </Button>
                 </Link>
 

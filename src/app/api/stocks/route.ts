@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
         const { results } = await db.prepare(query).bind(...params).all();
 
-        return NextResponse.json({ trades: results });
+        return NextResponse.json({ stocks: results });
     } catch (error) {
         console.error('Fetch stocks error:', error);
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
