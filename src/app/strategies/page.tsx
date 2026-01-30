@@ -284,8 +284,8 @@ export default function StrategiesPage() {
                             }
                         })
                         .map((strategy) => (
-                            <Card key={strategy.id} className="hover:shadow-lg transition-shadow p-0">
-                                <CardHeader className="px-4 pb-0 pt-1">
+                            <Card key={strategy.id} className="hover:shadow-lg transition-shadow p-0 gap-2">
+                                <CardHeader className="px-4 pt-2 pb-0">
                                     {(() => {
                                         // Calculate total profit from stocks
                                         const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -335,7 +335,7 @@ export default function StrategiesPage() {
                                         );
                                     })()}
                                 </CardHeader>
-                                <CardContent className="px-4 space-y-2 pt-0 pb-3">
+                                <CardContent className="px-4 space-y-3 pt-0 pb-3">
                                     {/* Stock Trades Table */}
                                     {strategy.stocks.length > 0 && (() => {
                                         const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -347,7 +347,7 @@ export default function StrategiesPage() {
 
                                         return (
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
+                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded">
                                                     {strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
@@ -415,7 +415,7 @@ export default function StrategiesPage() {
 
                                         return (
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
+                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded">
                                                     {strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
