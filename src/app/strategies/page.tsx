@@ -183,9 +183,8 @@ export default function StrategiesPage() {
         <div className="container mx-auto p-6 space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold flex items-center gap-2">
-                    <Target className="h-8 w-8" />
-                    投資策略
+                <h1 className="text-3xl font-bold">
+                    2026 投資策略
                 </h1>
                 <div className="flex gap-2 items-center">
                     <Select value={selectedUserId} onValueChange={setSelectedUserId}>
