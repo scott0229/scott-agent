@@ -92,9 +92,7 @@ export function Navbar() {
                         專案管理
                     </Button>
                 </Link>
-            </div>
 
-            <div className="flex gap-2 items-center">
                 {/* Admin panel - visible for admin/manager and now customer (read-only) */}
                 {(canAccessAdmin || role === 'customer') && (
                     <Link href="/admin/users" prefetch={true}>
@@ -107,6 +105,9 @@ export function Navbar() {
                         </Button>
                     </Link>
                 )}
+            </div>
+
+            <div className="flex gap-2 items-center">
 
                 <Link href="/stocks" prefetch={true}>
                     <Button

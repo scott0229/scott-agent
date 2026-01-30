@@ -290,22 +290,24 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                         </Select>
                     </div>
 
-                    {/* Status Selection */}
-                    <div className="space-y-2">
-                        <Label>狀態</Label>
-                        <Select
-                            value={formData.status}
-                            onValueChange={(value) => setFormData({ ...formData, status: value })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="進行中">進行中</SelectItem>
-                                <SelectItem value="已結案">已結案</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* Status Selection - Only show in edit mode */}
+                    {strategy && (
+                        <div className="space-y-2">
+                            <Label>狀態</Label>
+                            <Select
+                                value={formData.status}
+                                onValueChange={(value) => setFormData({ ...formData, status: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="進行中">進行中</SelectItem>
+                                    <SelectItem value="已結案">已結案</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
                     {/* Stock Trades Selection */}
                     {formData.userId && (
