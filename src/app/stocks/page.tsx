@@ -254,7 +254,7 @@ export default function StockTradingPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">所有狀態</SelectItem>
-                                    <SelectItem value="Holding">未平倉</SelectItem>
+                                    <SelectItem value="Holding">持有中</SelectItem>
                                     <SelectItem value="Closed">已平倉</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -313,7 +313,7 @@ export default function StockTradingPage() {
                                     }
 
                                     return (
-                                        <TableRow key={trade.id}>
+                                        <TableRow key={trade.id} className={!trade.close_date ? 'bg-gray-100' : ''}>
                                             <TableCell className="text-center text-muted-foreground font-mono">{filteredTrades.length - index}</TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
                                             <TableCell className="text-center">
@@ -321,7 +321,7 @@ export default function StockTradingPage() {
                                                     formatDate(trade.close_date)
                                                 ) : (
                                                     <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                                                        未平倉
+                                                        持有中
                                                     </Badge>
                                                 )}
                                             </TableCell>

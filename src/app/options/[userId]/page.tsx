@@ -288,7 +288,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
     const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
-    const operations = Array.from(new Set(options.map(opt => opt.operation || '新開倉'))).sort();
+    const operations = Array.from(new Set(options.map(opt => opt.operation || '持有中'))).sort();
 
     const filteredOptions = options.filter(opt => {
         const date = new Date(opt.open_date * 1000);
@@ -297,7 +297,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
         const typeMatch = selectedType === 'All' || opt.type === selectedType;
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
-        const operationMatch = selectedOperation === 'All' || (opt.operation || '新開倉') === selectedOperation;
+        const operationMatch = selectedOperation === 'All' || (opt.operation || '持有中') === selectedOperation;
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     }).sort((a, b) => b.open_date - a.open_date);
 
@@ -463,7 +463,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </TableRow>
                         ) : (
                             filteredOptions.map((opt, index) => (
-                                <TableRow key={opt.id} className="hover:bg-muted/50 text-center">
+                                <TableRow
+                                    key={opt.id}
+                                    className={`hover:bg-muted/50 text-center ${(opt.operation || '持有中') === '持有中' ? 'bg-gray-100' : ''}`}
+                                >
                                     <TableCell>{filteredOptions.length - index}</TableCell>
                                     {params.userId === 'All' && (
                                         <TableCell>
@@ -482,21 +485,21 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 {opt.operation}
                                             </span>
                                         ) : (
-                                            opt.operation || '新開倉'
+                                            opt.operation || '持有中'
                                         )}
                                     </TableCell>
                                     <TableCell>{formatDate(opt.open_date)}</TableCell>
                                     <TableCell>{formatDate(opt.to_date)}</TableCell>
                                     <TableCell>{getDaysToExpire(opt)}</TableCell>
                                     <TableCell>
-                                        {(opt.operation === '新開倉' || !opt.settlement_date) ? (
+                                        {(opt.operation === '持有中' || !opt.settlement_date) ? (
                                             "-"
                                         ) : (
                                             formatDate(opt.settlement_date)
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        {(opt.operation === '新開倉' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
+                                        {(opt.operation === '持有中' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
                                     </TableCell>
                                     <TableCell>{opt.quantity}</TableCell>
                                     <TableCell>{opt.underlying}</TableCell>

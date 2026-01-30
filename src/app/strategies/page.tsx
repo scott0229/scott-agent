@@ -309,7 +309,7 @@ export default function StrategiesPage() {
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="flex items-center gap-2">
                                                     <span>
-                                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-sm">{strategy.user_id}</span> {strategy.name}, 當前收益 <span className={totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{Math.round(totalProfit).toLocaleString()}</span>
+                                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-sm">{strategy.user_id}</span> {strategy.name}, 當前收益 <span className={totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(totalProfit).toLocaleString()}</span>
                                                         {strategy.status === '已結案' && (
                                                             <span className="ml-2 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>
                                                         )}
@@ -348,13 +348,13 @@ export default function StrategiesPage() {
                                         return (
                                             <div className="space-y-1">
                                                 <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
-                                                    {strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span>
+                                                    {strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-fixed text-xs">
                                                         <thead>
                                                             <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">代碼</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">狀態</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">標的</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">股數</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
@@ -379,15 +379,15 @@ export default function StrategiesPage() {
                                                                 }
 
                                                                 return (
-                                                                    <tr key={stock.id} className="border-b last:border-0">
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.code}</td>
+                                                                    <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.close_date ? '已關倉' : '持有中'}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-16">{stock.symbol}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-10">{stock.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedDate}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedCloseDate}</td>
                                                                         <td className="py-1 px-2 text-center w-16">
                                                                             {profit !== null ? (
-                                                                                <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                                <span className={`font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                                                                                     {Math.round(profit).toLocaleString('en-US')}
                                                                                 </span>
                                                                             ) : (
@@ -416,13 +416,13 @@ export default function StrategiesPage() {
                                         return (
                                             <div className="space-y-1">
                                                 <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
-                                                    {strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span>
+                                                    {strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-fixed text-xs">
                                                         <thead>
                                                             <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">代碼</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">操作</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">標的</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">口數</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
@@ -442,15 +442,15 @@ export default function StrategiesPage() {
                                                                 }
 
                                                                 return (
-                                                                    <tr key={option.id} className="border-b last:border-0">
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{option.code}</td>
+                                                                    <tr key={option.id} className={`border-b last:border-0 ${option.operation === '持有中' ? 'bg-gray-100' : ''}`}>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{option.operation}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-16">{option.underlying}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-10">{option.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedOpenDate}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedToDate}</td>
                                                                         <td className="py-1 px-2 text-center w-16">
                                                                             {option.final_profit !== null && option.final_profit !== undefined ? (
-                                                                                <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                                                <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                                                                                     {Math.round(option.final_profit).toLocaleString('en-US')}
                                                                                 </span>
                                                                             ) : (
