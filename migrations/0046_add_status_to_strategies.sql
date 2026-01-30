@@ -1,0 +1,2 @@
+-- Add status column to STRATEGIES table
+ALTER TABLE STRATEGIES ADD COLUMN status TEXT NOT NULL DEFAULT '進行中';

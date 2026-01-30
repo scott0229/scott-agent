@@ -82,6 +82,7 @@ export default function LoginPage() {
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
                 className="bg-white/50"
+                autoComplete="off"
               />
             </div>
             <div className="grid gap-2">

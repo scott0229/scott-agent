@@ -65,7 +65,7 @@ export async function PUT(
         }
 
         const body = await req.json();
-        const { name, stockTradeIds, optionIds } = body;
+        const { name, status, stockTradeIds, optionIds } = body;
 
         if (!name) {
             return NextResponse.json({ error: '策略名稱為必填' }, { status: 400 });
@@ -110,11 +110,11 @@ export async function PUT(
             }
         }
 
-        // Update strategy name
+        // Update strategy
         await db.prepare(`
-            UPDATE STRATEGIES SET name = ?, updated_at = unixepoch()
+            UPDATE STRATEGIES SET name = ?, status = ?, updated_at = unixepoch()
             WHERE id = ?
-        `).bind(name, params.id).run();
+        `).bind(name, status || '進行中', params.id).run();
 
         // Delete existing associations
         await db.prepare('DELETE FROM STRATEGY_STOCKS WHERE strategy_id = ?').bind(params.id).run();

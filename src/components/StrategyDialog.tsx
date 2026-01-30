@@ -49,6 +49,7 @@ interface Strategy {
     user_id: string;
     owner_id: number;
     year: number;
+    status?: string;
     stocks?: StockTrade[];
     options?: Option[];
 }
@@ -72,6 +73,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
         name: '',
         userId: '',
         ownerId: 0,
+        status: '進行中',
         selectedStocks: [] as number[],
         selectedOptions: [] as number[],
     });
@@ -85,6 +87,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     name: strategy.name,
                     userId: strategy.user_id,
                     ownerId: strategy.owner_id,
+                    status: strategy.status || '進行中',
                     selectedStocks: strategy.stocks?.map(s => s.id) || [],
                     selectedOptions: strategy.options?.map(o => o.id) || [],
                 });
@@ -96,6 +99,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     name: '',
                     userId: '',
                     ownerId: 0,
+                    status: '進行中',
                     selectedStocks: [],
                     selectedOptions: [],
                 });
@@ -218,6 +222,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     userId: formData.userId,
                     ownerId: formData.ownerId,
                     year: parseInt(currentYear),
+                    status: formData.status,
                     stockTradeIds: formData.selectedStocks,
                     optionIds: formData.selectedOptions,
                 }),
@@ -281,6 +286,23 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                         {user.user_id}
                                     </SelectItem>
                                 ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Status Selection */}
+                    <div className="space-y-2">
+                        <Label>狀態</Label>
+                        <Select
+                            value={formData.status}
+                            onValueChange={(value) => setFormData({ ...formData, status: value })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="進行中">進行中</SelectItem>
+                                <SelectItem value="已結案">已結案</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

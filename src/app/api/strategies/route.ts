@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { name, userId, ownerId, year, stockTradeIds, optionIds } = body;
+        const { name, userId, ownerId, year, status, stockTradeIds, optionIds } = body;
 
         if (!name) {
             return NextResponse.json({ error: '策略名稱為必填' }, { status: 400 });
@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
 
         const db = await getDb();
         const strategyYear = year || new Date().getFullYear();
+        const strategyStatus = status || '進行中';
 
         // Validate that all stock trades belong to the same user
         if (stockTradeIds && stockTradeIds.length > 0) {
@@ -124,9 +125,9 @@ export async function POST(req: NextRequest) {
 
         // Create strategy
         const result = await db.prepare(`
-            INSERT INTO STRATEGIES (name, user_id, owner_id, year, updated_at)
-            VALUES (?, ?, ?, ?, unixepoch())
-        `).bind(name, userId || null, ownerId || null, strategyYear).run();
+            INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, updated_at)
+            VALUES (?, ?, ?, ?, ?, unixepoch())
+        `).bind(name, userId || null, ownerId || null, strategyYear, strategyStatus).run();
 
         const strategyId = result.meta.last_row_id;
 
