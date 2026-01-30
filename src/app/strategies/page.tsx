@@ -148,7 +148,7 @@ export default function StrategiesPage() {
                     <Target className="h-8 w-8" />
                     投資策略
                 </h1>
-                <Button onClick={handleAddStrategy} variant="secondary" className="gap-2">
+                <Button onClick={handleAddStrategy} variant="secondary" className="gap-2 hover:bg-accent hover:text-accent-foreground">
                     <Plus className="h-4 w-4" />
                     新增
                 </Button>
@@ -219,21 +219,7 @@ export default function StrategiesPage() {
                                 {/* Stock Trades Table */}
                                 {strategy.stocks.length > 0 && (
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-sm font-medium">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            >
-                                                <path d="M3 3v18h18" />
-                                                <path d="m19 9-5 5-4-4-3 3" />
-                                            </svg>
+                                        <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
                                             股票交易: {strategy.stocks.length} 筆
                                         </div>
                                         <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
@@ -274,7 +260,7 @@ export default function StrategiesPage() {
                                                                 <td className="py-1 px-2 text-center w-16">
                                                                     {profit !== null ? (
                                                                         <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                            {profit >= 0 ? '+' : ''}{profit.toFixed(2)}
+                                                                            {Math.round(profit).toLocaleString('en-US')}
                                                                         </span>
                                                                     ) : (
                                                                         <span className="text-muted-foreground">-</span>
@@ -292,8 +278,7 @@ export default function StrategiesPage() {
                                 {/* Options Table */}
                                 {strategy.options.length > 0 && (
                                     <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-sm font-medium">
-                                            <TrendingUp className="h-4 w-4" />
+                                        <div className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded">
                                             期權交易: {strategy.options.length} 筆
                                         </div>
                                         <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
@@ -329,7 +314,7 @@ export default function StrategiesPage() {
                                                                 <td className="py-1 px-2 text-center w-16">
                                                                     {option.final_profit !== null && option.final_profit !== undefined ? (
                                                                         <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                                            {option.final_profit >= 0 ? '+' : ''}{option.final_profit.toFixed(2)}
+                                                                            {Math.round(option.final_profit).toLocaleString('en-US')}
                                                                         </span>
                                                                     ) : (
                                                                         <span className="text-muted-foreground">-</span>
