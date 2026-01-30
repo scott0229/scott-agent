@@ -243,26 +243,10 @@ export default function OptionsPage() {
                             )}
 
                             <CardHeader className="flex flex-row items-center gap-4 pb-0">
-                                <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
-                                    <AvatarImage src={client.avatar_url || undefined} />
-                                    <AvatarFallback>{initials}</AvatarFallback>
-                                </Avatar>
                                 <div className="flex flex-col overflow-hidden">
                                     <CardTitle className="text-lg truncate">
-                                        {displayName}{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
+                                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">{displayName}</span>{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
                                     </CardTitle>
-                                    <CardDescription className="truncate flex items-center mt-1">
-                                        <span
-                                            className="bg-red-50 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-medium border border-red-200 mr-1.5 cursor-pointer hover:bg-red-100 transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                router.push(`/options/${client.user_id || client.id}?operation=${encodeURIComponent('新開倉')}`);
-                                            }}
-                                        >
-                                            {client.open_count || 0}
-                                        </span>
-                                        筆新開倉
-                                    </CardDescription>
                                 </div>
                             </CardHeader>
                             <CardContent className="-mt-2">
