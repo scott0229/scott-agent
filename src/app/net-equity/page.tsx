@@ -13,14 +13,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useToast } from '@/hooks/use-toast';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { NetEquitySummaryTable } from '@/components/NetEquitySummaryTable';
 
-import { Pencil, BarChart3, Coins, Plus } from "lucide-react";
+import { Pencil, BarChart3, Coins } from "lucide-react";
 
 interface UserSummary {
     id: number;
@@ -83,6 +84,8 @@ export default function NetEquityPage() {
     const router = useRouter();
     const [editCostDialog, setEditCostDialog] = useState<{ open: boolean; userId: number; currentCost: number } | null>(null);
     const [sortOrder, setSortOrder] = useState('net-equity-desc');
+    const [isBackfilling, setIsBackfilling] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         fetchData();
@@ -114,6 +117,40 @@ export default function NetEquityPage() {
             console.error('Failed to fetch data:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleBackfillMarketData = async () => {
+        setIsBackfilling(true);
+        try {
+            const res = await fetch('/api/market-data/backfill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: '1' // Admin user ID
+                    // Omit symbol to update all symbols (QQQ, QLD, TQQQ)
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                toast({
+                    title: "更新成功",
+                    description: data.message || `已更新 ${data.totalInserted} 筆資料`
+                });
+                fetchData(); // Refresh data
+            } else {
+                throw new Error(data.error || "Failed to update");
+            }
+        } catch (e: any) {
+            toast({
+                variant: "destructive",
+                title: "更新失敗",
+                description: e.message || "無法取得市場資料"
+            });
+        } finally {
+            setIsBackfilling(false);
         }
     };
 
@@ -184,18 +221,38 @@ export default function NetEquityPage() {
                 <h1 className="text-3xl font-bold">
                     {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 績效總覽
                 </h1>
-                <Select value={sortOrder} onValueChange={setSortOrder}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="排序方式" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="alphabetical">按字母</SelectItem>
-                        <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
-                        <SelectItem value="return-desc">報酬率-從高到低</SelectItem>
-                        <SelectItem value="drawdown-desc">最大回撤-從少到多</SelectItem>
-                        <SelectItem value="sharpe-desc">夏普值-從優到劣</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        onClick={handleBackfillMarketData}
+                        disabled={isBackfilling}
+                    >
+                        {isBackfilling ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                更新中...
+                            </>
+                        ) : (
+                            <>
+                                <Plus className="h-4 w-4" />
+                                更新市場資料
+                            </>
+                        )}
+                    </Button>
+                    <Select value={sortOrder} onValueChange={setSortOrder}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="排序方式" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="alphabetical">按字母</SelectItem>
+                            <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
+                            <SelectItem value="return-desc">報酬率-從高到低</SelectItem>
+                            <SelectItem value="drawdown-desc">最大回撤-從少到多</SelectItem>
+                            <SelectItem value="sharpe-desc">夏普值-從優到劣</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* Summary Table */}

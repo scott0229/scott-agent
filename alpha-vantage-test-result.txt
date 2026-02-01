@@ -1,0 +1,45 @@
+Testing Alpha Vantage API (Free Tier) for QQQ...
+URL: https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=QQQ&outputsize=compact&apikey=BJ9X47DS0OLOPYM0
+
+HTTP Status: 200 OK
+
+=== First 500 chars of API Response ===
+{
+  "Meta Data": {
+    "1. Information": "Daily Prices (open, high, low, close) and Volumes",
+    "2. Symbol": "QQQ",
+    "3. Last Refreshed": "2026-01-30",
+    "4. Output Size": "Compact",
+    "5. Time Zone": "US/Eastern"
+  },
+  "Time Series (Daily)": {
+    "2026-01-30": {
+      "1. open": "625.7100",
+      "2. high": "628.2560",
+      "3. low": "619.2975",
+      "4. close": "621.8700",
+      "5. volume": "65650714"
+    },
+    "2026-01-29": {
+      "1. open": "632.6500",
+      "2. high": "633.6...
+
+
+=== Analysis ===
+
+✅ Meta Data found!
+{
+  "1. Information": "Daily Prices (open, high, low, close) and Volumes",
+  "2. Symbol": "QQQ",
+  "3. Last Refreshed": "2026-01-30",
+  "4. Output Size": "Compact",
+  "5. Time Zone": "US/Eastern"
+}
+
+✅ Time Series Data found! (100 days total)
+First 5 dates:
+  2026-01-30: $621.8700
+  2026-01-29: $629.4300
+  2026-01-28: $633.2200
+  2026-01-27: $631.1300
+  2026-01-26: $625.4600

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         console.log(`Using admin's API key for market data backfill`);
 
         // Symbols to process - use symbol from request if provided, otherwise update all symbols
-        const symbols = symbol ? [symbol] : ['QQQ', 'QLD', 'TQQQ'];
+        const symbols = symbol ? [symbol] : ['QQQ', 'QLD'];
         let totalInserted = 0;
         const errors: string[] = [];
 

@@ -1,0 +1,10 @@
+Testing Alpha Vantage API with outputsize=full for QQQ...
+URL: https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=QQQ&outputsize=full&apikey=BJ9X47DS0OLOPYM0
+
+HTTP Status: 200 OK
+
+=== Response Structure ===
+Keys: Information
+
+
+⚠️  API Information: Thank you for using Alpha Vantage! The outputsize=full parameter value is a premium feature for the TIME_SERIES_DAILY endpoint. You may subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly unlock all premium features

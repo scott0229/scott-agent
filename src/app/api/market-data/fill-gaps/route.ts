@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { clearMarketDataCache } from '@/lib/market-data';
-import { clearCache } from '@/lib/response-cache';
+import { clearCache, clearCacheByPattern } from '@/lib/response-cache';
 
 // Use environment variable in staging/production, fallback to localhost key
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'BJ9X47DS0OLOPYM0';
@@ -155,11 +155,11 @@ export async function POST(request: Request) {
             await DB.batch(batch);
             console.log(`Inserted ${batch.length} missing records for ${symbol}`);
 
-            // Clear caches
+            // Clear caches for all users (not just specific user)
             clearMarketDataCache(symbol);
-            if (userId) {
-                clearCache(`benchmark-${userId}-${symbol}`);
-            }
+            // Clear ALL benchmark caches that involve this symbol (for all users)
+            // Pattern: benchmark-{userId}-{symbol}-{year}
+            clearCacheByPattern(`benchmark-.*-${symbol}-.*`);
         }
 
         return NextResponse.json({

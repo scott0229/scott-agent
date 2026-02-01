@@ -22,6 +22,7 @@ import {
 import { Loader2, ArrowLeft, Star, Plus } from "lucide-react";
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useToast } from '@/hooks/use-toast';
 
 
 
@@ -43,6 +44,7 @@ interface BenchmarkRecord {
 export default function BenchmarkDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { toast } = useToast();
     const [records, setRecords] = useState<BenchmarkRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [userName, setUserName] = useState<string>('');
@@ -77,8 +79,8 @@ export default function BenchmarkDetailPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId,
-                    symbol
+                    userId
+                    // Omit symbol to update all symbols (QQQ, QLD, TQQQ)
                 })
             });
 

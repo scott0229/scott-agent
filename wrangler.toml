@@ -28,6 +28,9 @@ routes = [
   { pattern = "staging.scott-agent.com", custom_domain = true }
 ]
 
+[env.staging.vars]
+ALPHA_VANTAGE_API_KEY = "689OIA6MG6XVUX5A"
+
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "scott-agent-staging"

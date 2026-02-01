@@ -41,3 +41,18 @@ export function clearCache(key?: string) {
         console.log('[Cache CLEAR] All cache cleared');
     }
 }
+
+// Clear all cache entries matching a pattern (e.g., "benchmark-*-QQQ")
+export function clearCacheByPattern(pattern: string) {
+    const regex = new RegExp(pattern.replace('*', '.*'));
+    let cleared = 0;
+
+    for (const key of cache.keys()) {
+        if (regex.test(key)) {
+            cache.delete(key);
+            cleared++;
+        }
+    }
+
+    console.log(`[Cache CLEAR] Cleared ${cleared} entries matching pattern: ${pattern}`);
+}

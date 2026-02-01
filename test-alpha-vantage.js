@@ -1,0 +1,68 @@
+// Test script to check Alpha Vantage API (Free Tier)
+const fs = require('fs');
+const ALPHA_VANTAGE_API_KEY = 'BJ9X47DS0OLOPYM0';
+
+async function testAlphaVantage() {
+    const symbol = 'QQQ';
+    // Using free tier endpoint
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${ALPHA_VANTAGE_API_KEY}`;
+
+    let output = '';
+    output += `Testing Alpha Vantage API (Free Tier) for ${symbol}...\n`;
+    output += `URL: ${url}\n\n`;
+
+    try {
+        const response = await fetch(url);
+        output += `HTTP Status: ${response.status} ${response.statusText}\n`;
+
+        if (!response.ok) {
+            output += 'Failed to fetch data from Alpha Vantage\n';
+            console.log(output);
+            fs.writeFileSync('alpha-vantage-test-result.txt', output);
+            return;
+        }
+
+        const data = await response.json();
+
+        output += '\n=== First 500 chars of API Response ===\n';
+        output += JSON.stringify(data, null, 2).substring(0, 500) + '...\n';
+        output += '\n\n=== Analysis ===\n';
+
+        // Check for errors
+        if (data['Error Message']) {
+            output += `\n❌ API Error: ${data['Error Message']}\n`;
+        } else if (data['Note']) {
+            output += `\n⚠️  API Note (Rate Limit): ${data['Note']}\n`;
+        } else if (data['Information']) {
+            output += `\n⚠️  API Information: ${data['Information']}\n`;
+        } else if (data['Meta Data']) {
+            output += '\n✅ Meta Data found!\n';
+            output += JSON.stringify(data['Meta Data'], null, 2) + '\n';
+
+            if (data['Time Series (Daily)']) {
+                const dates = Object.keys(data['Time Series (Daily)']);
+                output += `\n✅ Time Series Data found! (${dates.length} days total)\n`;
+                output += 'First 5 dates:\n';
+                dates.slice(0, 5).forEach(date => {
+                    const price = data['Time Series (Daily)'][date]['4. close'];
+                    output += `  ${date}: $${price}\n`;
+                });
+            } else {
+                output += '\n❌ No Time Series Data found\n';
+            }
+        } else {
+            output += '\n❌ Unexpected response structure\n';
+            output += 'Response keys: ' + Object.keys(data).join(', ') + '\n';
+        }
+
+    } catch (error) {
+        output += `Error: ${error.message}\n`;
+        output += error.stack + '\n';
+    }
+
+    console.log(output);
+    fs.writeFileSync('alpha-vantage-test-result.txt', output);
+    console.log('\n📝 Full results saved to: alpha-vantage-test-result.txt');
+}
+
+testAlphaVantage();
