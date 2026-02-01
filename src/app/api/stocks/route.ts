@@ -23,12 +23,31 @@ export async function GET(req: NextRequest) {
         const symbol = searchParams.get('symbol');
 
         const db = await getDb();
+
+        // Get today's date at midnight UTC for market price lookup
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const todayTimestamp = Math.floor(today.getTime() / 1000);
+
         let query = `
-            SELECT ST.*, U.user_id as user_name 
+            SELECT 
+                ST.*, 
+                U.user_id as user_name,
+                MP.close_price as current_market_price
             FROM STOCK_TRADES ST
             JOIN USERS U ON ST.owner_id = U.id
+            LEFT JOIN (
+                SELECT symbol, close_price
+                FROM market_prices
+                WHERE (symbol, date) IN (
+                    SELECT symbol, MAX(date) as latest_date
+                    FROM market_prices
+                    WHERE date <= ?
+                    GROUP BY symbol
+                )
+            ) MP ON ST.symbol = MP.symbol
         `;
-        const params: any[] = [];
+        const params: any[] = [todayTimestamp];
         let whereAdded = false;
 
         // Add year filter

@@ -39,8 +39,29 @@ export async function POST(request: Request) {
         const apiKey = (adminResult as any)?.api_key || process.env.ALPHA_VANTAGE_API_KEY || 'BJ9X47DS0OLOPYM0';
         console.log(`Using admin's API key for market data backfill`);
 
-        // Symbols to process - use symbol from request if provided, otherwise update all symbols
-        const symbols = symbol ? [symbol] : ['QQQ', 'QLD'];
+        // Symbols to process
+        let symbols: string[];
+
+        if (symbol) {
+            // If specific symbol provided, use it
+            symbols = [symbol];
+        } else {
+            // Otherwise, dynamically fetch all unique symbols from all stock trades
+            const { results: holdingSymbols } = await DB.prepare(
+                `SELECT DISTINCT symbol FROM STOCK_TRADES ORDER BY symbol`
+            ).all();
+
+            symbols = (holdingSymbols as any[]).map((row: any) => row.symbol);
+
+            // If no holdings found, fall back to default symbols
+            if (symbols.length === 0) {
+                symbols = ['QQQ', 'QLD'];
+                console.log('No stock trades found, using default symbols:', symbols);
+            } else {
+                console.log('Fetched all stock symbols from database:', symbols);
+            }
+        }
+
         let totalInserted = 0;
         const errors: string[] = [];
 

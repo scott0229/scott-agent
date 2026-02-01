@@ -235,8 +235,8 @@ export default function NetEquityPage() {
                         </SelectContent>
                     </Select>
                     <Button
-                        variant="outline"
-                        className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        variant="secondary"
+                        className="hover:bg-accent hover:text-accent-foreground"
                         onClick={handleBackfillMarketData}
                         disabled={isBackfilling}
                     >
@@ -247,7 +247,6 @@ export default function NetEquityPage() {
                             </>
                         ) : (
                             <>
-                                <Plus className="h-4 w-4" />
                                 更新市場資料
                             </>
                         )}

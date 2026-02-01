@@ -4,6 +4,10 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 main = ".open-next/worker.js"
 minify = true
+
+# Cron Triggers for scheduled tasks
+[triggers]
+crons = ["*/15 * * * *"]  # Run every 15 minutes
 account_id = "9946dede036802fcd2a0b9cef8e13574"
 
 # Assets configuration for static files (OpenNext)

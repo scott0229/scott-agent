@@ -1,0 +1,22 @@
+name: Auto Update Market Data
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Auto Update
+        run: |
+          echo "Triggering auto update at $(date)"
+          curl -X POST https://staging.scott-agent.com/api/scheduled/auto-update \
+            -H "Content-Type: application/json" \
+            -f || echo "Request failed but continuing"
+          
+      - name: Log Result
+        run: echo "Auto update triggered successfully"

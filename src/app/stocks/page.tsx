@@ -26,9 +26,11 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
-import { Pencil, Trash2, Plus, FilterX } from "lucide-react";
+import { Pencil, Trash2, Plus, FilterX, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     AlertDialog,
@@ -55,6 +57,7 @@ interface StockTrade {
     close_price?: number | null;
     quantity: number;
     code?: string;
+    current_market_price?: number | null; // Current closing price from market_prices table
 }
 
 interface User {
@@ -69,6 +72,8 @@ export default function StockTradingPage() {
     const [trades, setTrades] = useState<StockTrade[]>([]);
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<User[]>([]);
+    const [isUpdatingMarketData, setIsUpdatingMarketData] = useState(false);
+    const { toast } = useToast();
 
     // Filters
     const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
@@ -170,6 +175,15 @@ export default function StockTradingPage() {
         return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
     };
 
+    const formatPnL = (val: number | null | undefined) => {
+        if (val === null || val === undefined) return '-';
+        // Format with up to 2 decimal places, automatically removing trailing zeros
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(val);
+    };
+
     // Filter Logic
     const filteredTrades = trades.filter(trade => {
         // User Filter
@@ -201,12 +215,50 @@ export default function StockTradingPage() {
 
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
+    const handleUpdateMarketData = async () => {
+        setIsUpdatingMarketData(true);
+        toast({
+            title: "正在更新市場數據...",
+            description: "請稍候,這可能需要幾秒鐘。",
+        });
+
+        try {
+            const res = await fetch('/api/market-data/backfill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser?.id || 1 })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                toast({
+                    title: "更新成功!",
+                    description: data.message || `成功更新 ${data.totalInserted} 筆市場資料`,
+                });
+                // Refresh trades to get updated market prices
+                await fetchTrades();
+            } else {
+                throw new Error(data.error || '更新失敗');
+            }
+        } catch (error: any) {
+            toast({
+                title: "更新失敗",
+                description: error.message || '無法更新市場數據',
+                variant: "destructive",
+            });
+        } finally {
+            setIsUpdatingMarketData(false);
+        }
+    };
+
     return (
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">{mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 股票交易</h1>
                     <div className="flex items-center gap-2">
+
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -270,6 +322,15 @@ export default function StockTradingPage() {
                         </div>
 
                         <Button
+                            variant="secondary"
+                            onClick={handleUpdateMarketData}
+                            disabled={isUpdatingMarketData}
+                            className="hover:bg-accent hover:text-accent-foreground"
+                        >
+                            更新市場資料
+                        </Button>
+
+                        <Button
                             onClick={() => { setTradeToEdit(null); setDialogOpen(true); }}
                             variant="secondary"
                             className="hover:bg-accent hover:text-accent-foreground"
@@ -289,9 +350,10 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">股數</TableHead>
+                                <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">開倉價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
-                                <TableHead className="text-center">損益</TableHead>
+                                <TableHead className="text-center">當前損益</TableHead>
                                 <TableHead className="text-center">交易代碼</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -299,17 +361,22 @@ export default function StockTradingPage() {
                         <TableBody>
                             {filteredTrades.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={11} className="h-24 text-center">
+                                    <TableCell colSpan={12} className="h-24 text-center">
                                         無交易紀錄
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredTrades.map((trade, index) => {
                                     const isClosed = trade.status === 'Closed';
-                                    // Calculate simple P/L if close_price exists
+
+                                    // Calculate P/L based on trade status
                                     let pnl: number | null = null;
-                                    if (trade.close_price) {
-                                        pnl = (trade.close_price - trade.open_price) * trade.quantity;
+                                    if (isClosed && trade.close_price) {
+                                        // For closed positions: use close_price
+                                        pnl = Math.round((trade.close_price - trade.open_price) * trade.quantity * 100) / 100;
+                                    } else if (!isClosed && trade.current_market_price) {
+                                        // For holding positions: use current_market_price (收盤價)
+                                        pnl = Math.round((trade.current_market_price - trade.open_price) * trade.quantity * 100) / 100;
                                     }
 
                                     return (
@@ -328,12 +395,19 @@ export default function StockTradingPage() {
                                             <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
                                             <TableCell className="text-center">{trade.symbol}</TableCell>
                                             <TableCell className="text-center">{trade.quantity}</TableCell>
+                                            <TableCell className="text-center">
+                                                {trade.current_market_price ? formatMoney(trade.current_market_price) : '-'}
+                                            </TableCell>
                                             <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.close_price ? formatMoney(trade.close_price) : '-'}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {pnl !== null ? formatMoney(pnl) : '-'}
+                                                {pnl !== null ? (
+                                                    <span className={pnl >= 0 ? 'text-green-700' : 'text-red-600'}>
+                                                        {formatPnL(pnl)}
+                                                    </span>
+                                                ) : '-'}
                                             </TableCell>
                                             <TableCell className="text-center font-mono text-sm">
                                                 {trade.code || '-'}
@@ -405,6 +479,7 @@ export default function StockTradingPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                <Toaster />
             </div>
         </TooltipProvider>
     );
