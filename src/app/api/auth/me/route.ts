@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const user = await db.prepare(
-      'SELECT id, email, user_id, avatar_url, role FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url, role, api_key FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     if (!user) {
@@ -48,11 +48,12 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
-    const { userId, avatarUrl, currentPassword, newPassword } = await req.json() as {
+    const { userId, avatarUrl, currentPassword, newPassword, apiKey } = await req.json() as {
       userId?: string;
       avatarUrl?: string;
       currentPassword?: string;
       newPassword?: string;
+      apiKey?: string;
     };
 
     const db = await getDb();
@@ -93,11 +94,11 @@ export async function PUT(req: NextRequest) {
     }
 
     await db.prepare(
-      'UPDATE USERS SET user_id = ?, avatar_url = ?, updated_at = unixepoch() WHERE id = ?'
-    ).bind(userId || null, avatarUrl !== undefined ? avatarUrl : null, payload.id).run();
+      'UPDATE USERS SET user_id = ?, avatar_url = ?, api_key = ?, updated_at = unixepoch() WHERE id = ?'
+    ).bind(userId || null, avatarUrl !== undefined ? avatarUrl : null, apiKey !== undefined ? apiKey : null, payload.id).run();
 
     const user = await db.prepare(
-      'SELECT id, email, user_id, avatar_url FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url, api_key FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     return NextResponse.json({ success: true, user });

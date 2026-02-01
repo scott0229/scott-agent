@@ -30,6 +30,7 @@ interface User {
     user_id: string | null;
     avatar_url: string | null;
     role?: string;
+    api_key?: string | null;
 }
 
 export function UserProfileMenu() {
@@ -39,6 +40,7 @@ export function UserProfileMenu() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [editUserId, setEditUserId] = useState('');
     const [editAvatarUrl, setEditAvatarUrl] = useState('');
+    const [editApiKey, setEditApiKey] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -55,8 +57,11 @@ export function UserProfileMenu() {
                 const data = await res.json();
                 if (data.success && data.user) {
                     setUser(data.user);
+                    console.log('UserProfileMenu - User data:', data.user);
+                    console.log('UserProfileMenu - User role:', data.user.role);
                     setEditUserId(data.user.user_id || '');
                     setEditAvatarUrl(data.user.avatar_url || '');
+                    setEditApiKey(data.user.api_key || '');
                 }
             }
         } catch (error) {
@@ -142,7 +147,8 @@ export function UserProfileMenu() {
         try {
             const payload: any = {
                 userId: editUserId,
-                avatarUrl: editAvatarUrl || null
+                avatarUrl: editAvatarUrl || null,
+                apiKey: editApiKey || null
             };
 
             // Include password fields if changing password
@@ -254,7 +260,7 @@ export function UserProfileMenu() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid gap-2">
+                            <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                 <Label htmlFor="edit-userId">帳號</Label>
                                 <Input
                                     id="edit-userId"
@@ -264,10 +270,23 @@ export function UserProfileMenu() {
                                     disabled={user.user_id === 'admin'}
                                 />
                             </div>
+                            {/* API KEY - Only for admin users */}
+                            {user.role === 'admin' && (
+                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                    <Label htmlFor="edit-apiKey">API KEY</Label>
+                                    <Input
+                                        id="edit-apiKey"
+                                        value={editApiKey}
+                                        onChange={(e) => setEditApiKey(e.target.value)}
+                                        placeholder="輸入您的 Alpha Vantage API KEY"
+                                        type="text"
+                                    />
+                                </div>
+                            )}
 
                             <div className="col-span-full">
                                 <div className="grid gap-3">
-                                    <div className="grid gap-2">
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <Label htmlFor="current-password">當前密碼</Label>
                                         <Input
                                             id="current-password"
@@ -277,7 +296,7 @@ export function UserProfileMenu() {
                                             placeholder="輸入當前密碼"
                                         />
                                     </div>
-                                    <div className="grid gap-2">
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <Label htmlFor="new-password">新密碼</Label>
                                         <Input
                                             id="new-password"
@@ -287,7 +306,7 @@ export function UserProfileMenu() {
                                             placeholder="至少 6 個字元"
                                         />
                                     </div>
-                                    <div className="grid gap-2">
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <Label htmlFor="confirm-password">確認新密碼</Label>
                                         <Input
                                             id="confirm-password"
