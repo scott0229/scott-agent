@@ -222,6 +222,18 @@ export default function NetEquityPage() {
                     {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 績效總覽
                 </h1>
                 <div className="flex items-center gap-2">
+                    <Select value={sortOrder} onValueChange={setSortOrder}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="排序方式" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="alphabetical">按字母</SelectItem>
+                            <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
+                            <SelectItem value="return-desc">報酬率-從高到低</SelectItem>
+                            <SelectItem value="drawdown-desc">最大回撤-從少到多</SelectItem>
+                            <SelectItem value="sharpe-desc">夏普值-從優到劣</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <Button
                         variant="outline"
                         className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
@@ -240,18 +252,6 @@ export default function NetEquityPage() {
                             </>
                         )}
                     </Button>
-                    <Select value={sortOrder} onValueChange={setSortOrder}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="排序方式" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="alphabetical">按字母</SelectItem>
-                            <SelectItem value="net-equity-desc">當前淨值-從大到小</SelectItem>
-                            <SelectItem value="return-desc">報酬率-從高到低</SelectItem>
-                            <SelectItem value="drawdown-desc">最大回撤-從少到多</SelectItem>
-                            <SelectItem value="sharpe-desc">夏普值-從優到劣</SelectItem>
-                        </SelectContent>
-                    </Select>
                 </div>
             </div>
 
