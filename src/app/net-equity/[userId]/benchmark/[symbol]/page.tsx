@@ -86,9 +86,9 @@ export default function BenchmarkDetailPage() {
     const [newPriceDate, setNewPriceDate] = useState('');
     const [newPriceValue, setNewPriceValue] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [deletePricesOpen, setDeletePricesOpen] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [isBackfilling, setIsBackfilling] = useState(false);
+
 
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -137,26 +137,42 @@ export default function BenchmarkDetailPage() {
 
 
 
-    const handleDeletePrices = async () => {
-        setIsDeleting(true);
+
+
+    const handleBackfillMarketData = async () => {
+        setIsBackfilling(true);
         try {
-            const res = await fetch(`/api/market-data?mode=all&symbol=${symbol}`, {
-                method: 'DELETE',
+            const res = await fetch('/api/market-data/backfill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    symbol
+                })
             });
 
-            if (res.ok) {
+            const data = await res.json();
 
-                setDeletePricesOpen(false);
+            if (data.success) {
+                toast({
+                    title: "更新成功",
+                    description: data.message || `已更新 ${data.totalInserted} 筆資料`
+                });
                 fetchData(); // Refresh data
             } else {
-                throw new Error("Failed to delete market data");
+                throw new Error(data.error || "Failed to update");
             }
-        } catch (e) {
-            toast({ variant: "destructive", title: "刪除失敗", description: "無法刪除資料" });
+        } catch (e: any) {
+            toast({
+                variant: "destructive",
+                title: "更新失敗",
+                description: e.message || "無法取得市場資料"
+            });
         } finally {
-            setIsDeleting(false);
+            setIsBackfilling(false);
         }
     };
+
 
     const filteredRecords = records.filter(record => {
         if (selectedMonth === 'all') return true;
@@ -264,12 +280,24 @@ export default function BenchmarkDetailPage() {
 
                     <Button
                         variant="outline"
-                        className="gap-2 bg-[#F9F4EF] hover:bg-[#F0E6DD] text-[#4A3728] border-[#EAE0D5]"
-                        onClick={() => setDeletePricesOpen(true)}
+                        className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        onClick={handleBackfillMarketData}
+                        disabled={isBackfilling}
                     >
-                        <Trash2 className="h-4 w-4" />
-                        刪除股價記錄
+                        {isBackfilling ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                更新中...
+                            </>
+                        ) : (
+                            <>
+                                <Plus className="h-4 w-4" />
+                                更新市場資料
+                            </>
+                        )}
                     </Button>
+
+
                     <Button
                         className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
                         onClick={() => {
@@ -386,6 +414,7 @@ export default function BenchmarkDetailPage() {
                                         >
                                             <Pencil className="h-4 w-4" />
                                         </Button>
+
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -500,25 +529,8 @@ export default function BenchmarkDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            {/* Delete Prices Confirmation Dialog */}
-            <AlertDialog open={deletePricesOpen} onOpenChange={setDeletePricesOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>確定要刪除 {symbol} 的所有股價記錄嗎？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            此動作將刪除資料庫中關於 {symbol} 的所有股價記錄。<br />
-                            這通常用於重新設定股價資料。<br />
-                            <span className="text-destructive font-bold">此動作無法復原。</span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeletePrices} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "確認刪除"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+
+
         </div >
     );
 }

@@ -48,6 +48,13 @@ export async function DELETE(request: Request) {
             }
 
             const result = await DB.prepare('DELETE FROM market_prices WHERE symbol = ?').bind(symbol).run();
+
+            // Clear caches after deletion
+            const { clearMarketDataCache } = await import('@/lib/market-data');
+            const { clearCache } = await import('@/lib/response-cache');
+            clearMarketDataCache(symbol);
+            clearCache(); // Clear all benchmark caches
+
             return NextResponse.json({ success: true, deleted: result.meta.changes });
         }
 
@@ -57,9 +64,15 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }
 
-        await DB.prepare('DELETE FROM market_prices WHERE symbol = ? AND date = ?')
+        const result = await DB.prepare('DELETE FROM market_prices WHERE symbol = ? AND date = ?')
             .bind(symbol, date)
             .run();
+
+        // Clear caches after deletion
+        const { clearMarketDataCache } = await import('@/lib/market-data');
+        const { clearCache } = await import('@/lib/response-cache');
+        clearMarketDataCache(symbol);
+        clearCache(); // Clear all benchmark caches
 
         return NextResponse.json({ success: true });
 
