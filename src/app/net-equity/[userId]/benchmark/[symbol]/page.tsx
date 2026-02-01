@@ -19,42 +19,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Loader2, ArrowLeft, Star, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Star, Plus } from "lucide-react";
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { useYearFilter } from '@/contexts/YearFilterContext';
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { isMarketHoliday } from '@/lib/holidays';
 
 
 
@@ -75,18 +43,12 @@ interface BenchmarkRecord {
 export default function BenchmarkDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { toast } = useToast();
     const [records, setRecords] = useState<BenchmarkRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [userName, setUserName] = useState<string>('');
     const [initialCost, setInitialCost] = useState<number>(0);
     const [basePrice, setBasePrice] = useState<number>(0);
 
-    const [addPriceOpen, setAddPriceOpen] = useState(false);
-    const [newPriceDate, setNewPriceDate] = useState('');
-    const [newPriceValue, setNewPriceValue] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
     const [isBackfilling, setIsBackfilling] = useState(false);
 
 
@@ -99,38 +61,7 @@ export default function BenchmarkDetailPage() {
     const userId = typeof params.userId === 'string' ? params.userId : '';
     const symbol = typeof params.symbol === 'string' ? params.symbol : '';
 
-    const handleAddPrice = async () => {
-        if (!newPriceDate || !newPriceValue) return;
-        setSubmitting(true);
-        try {
-            const dateObj = new Date(newPriceDate);
-            const utcTimestamp = Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()) / 1000;
 
-            const res = await fetch('/api/market-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    symbol,
-                    date: utcTimestamp,
-                    price: parseFloat(newPriceValue)
-                })
-            });
-
-            if (res.ok) {
-
-                setAddPriceOpen(false);
-                setNewPriceDate('');
-                setNewPriceValue('');
-                fetchData(); // Refresh data
-            } else {
-                throw new Error("Failed to save");
-            }
-        } catch (e) {
-            toast({ variant: "destructive", title: "失敗", description: "無法保存價格" });
-        } finally {
-            setSubmitting(false);
-        }
-    };
 
 
 
@@ -298,18 +229,7 @@ export default function BenchmarkDetailPage() {
                     </Button>
 
 
-                    <Button
-                        className="gap-2 bg-[#EAE0D5] hover:bg-[#DBC9BA] text-[#4A3728] border-none"
-                        onClick={() => {
-                            setIsEditing(false);
-                            setNewPriceDate('');
-                            setNewPriceValue('');
-                            setAddPriceOpen(true);
-                        }}
-                    >
-                        <Plus className="h-4 w-4" />
-                        新增
-                    </Button>
+
                 </div>
             </div>
 
@@ -346,13 +266,12 @@ export default function BenchmarkDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">前高</TableHead>
                             <TableHead className="text-center font-bold text-foreground">回撤</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
-                            <TableHead className="w-[100px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredRecords.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
@@ -397,26 +316,6 @@ export default function BenchmarkDetailPage() {
                                         </div>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-center px-2">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:bg-primary/20 hover:text-primary"
-                                            onClick={() => {
-                                                const date = new Date(record.date * 1000);
-                                                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                                                setNewPriceDate(dateStr);
-                                                setNewPriceValue(record.close_price?.toFixed(2) || '');
-                                                setIsEditing(true);
-                                                setAddPriceOpen(true);
-                                            }}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-
-                                    </div>
-                                </TableCell>
                             </TableRow>
                         ))}
                         {/* Initial Cost Row */}
@@ -439,96 +338,13 @@ export default function BenchmarkDetailPage() {
                             <TableCell className="text-center font-mono">
                                 {formatMoney(initialCost)}
                             </TableCell>
-                            <TableCell colSpan={6}></TableCell>
-                            <TableCell className="text-center px-2">
-                                <div className="flex items-center justify-end gap-1">
-                                    {selectedYear && selectedYear !== 'All' && (
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:bg-primary/20 hover:text-primary"
-                                            onClick={() => {
-                                                const year = parseInt(selectedYear) - 1;
-                                                const dateStr = `${year}-12-31`;
-                                                setNewPriceDate(dateStr);
-                                                setNewPriceValue(basePrice > 0 ? basePrice.toFixed(2) : '');
-                                                setIsEditing(true);
-                                                setAddPriceOpen(true);
-                                            }}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            </TableCell>
+                            <TableCell colSpan={7}></TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
             </div>
 
-            <Dialog open={addPriceOpen} onOpenChange={setAddPriceOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{isEditing ? '修改' : '新增'} {symbol} 股價</DialogTitle>
 
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="date" className="text-right">
-                                日期
-                            </Label>
-                            <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "col-span-3 justify-start text-left font-normal",
-                                            !newPriceDate && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {newPriceDate ? format(new Date(newPriceDate), "yyyy-MM-dd") : <span>選擇日期</span>}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={newPriceDate ? new Date(newPriceDate) : undefined}
-                                        onSelect={(date) => {
-                                            if (date) {
-                                                setNewPriceDate(format(date, "yyyy-MM-dd"));
-                                                setIsCalendarOpen(false);
-                                            }
-                                        }}
-                                        disabled={(date) => date.getDay() === 0 || date.getDay() === 6 || isMarketHoliday(date)}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="price" className="text-right">
-                                收盤價
-                            </Label>
-                            <Input
-                                id="price"
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                value={newPriceValue}
-                                onChange={(e) => setNewPriceValue(e.target.value)}
-                                className="col-span-3"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAddPriceOpen(false)}>取消</Button>
-                        <Button onClick={handleAddPrice} disabled={submitting || !newPriceDate || !newPriceValue}>
-                            {submitting ? "提交中.." : (isEditing ? "確認修改" : "確認新增")}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
 
         </div >

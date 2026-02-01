@@ -50,3 +50,21 @@ export async function getMarketData(symbol: string, startDate: number, endDate: 
         return [];
     }
 }
+
+// Clear market data cache (useful after backfill)
+export function clearMarketDataCache(symbol?: string) {
+    if (symbol) {
+        // Clear all cache entries for a specific symbol
+        const keysToDelete: string[] = [];
+        marketDataCache.forEach((_, key) => {
+            if (key.startsWith(`${symbol}-`)) {
+                keysToDelete.push(key);
+            }
+        });
+        keysToDelete.forEach(key => marketDataCache.delete(key));
+        console.log(`[Market Data Cache CLEAR] Cleared ${keysToDelete.length} entries for ${symbol}`);
+    } else {
+        marketDataCache.clear();
+        console.log('[Market Data Cache CLEAR] All cache cleared');
+    }
+}
