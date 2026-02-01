@@ -19,10 +19,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Loader2, ArrowLeft, Star, Plus } from "lucide-react";
+import { Loader2, ArrowLeft, Star } from "lucide-react";
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { useYearFilter } from '@/contexts/YearFilterContext';
-import { useToast } from '@/hooks/use-toast';
+
 
 
 
@@ -44,14 +44,11 @@ interface BenchmarkRecord {
 export default function BenchmarkDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { toast } = useToast();
     const [records, setRecords] = useState<BenchmarkRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [userName, setUserName] = useState<string>('');
     const [initialCost, setInitialCost] = useState<number>(0);
     const [basePrice, setBasePrice] = useState<number>(0);
-
-    const [isBackfilling, setIsBackfilling] = useState(false);
 
 
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -72,39 +69,6 @@ export default function BenchmarkDetailPage() {
 
 
 
-    const handleBackfillMarketData = async () => {
-        setIsBackfilling(true);
-        try {
-            const res = await fetch('/api/market-data/backfill', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId
-                    // Omit symbol to update all symbols (QQQ, QLD, TQQQ)
-                })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                toast({
-                    title: "更新成功",
-                    description: data.message || `已更新 ${data.totalInserted} 筆資料`
-                });
-                fetchData(); // Refresh data
-            } else {
-                throw new Error(data.error || "Failed to update");
-            }
-        } catch (e: any) {
-            toast({
-                variant: "destructive",
-                title: "更新失敗",
-                description: e.message || "無法取得市場資料"
-            });
-        } finally {
-            setIsBackfilling(false);
-        }
-    };
 
 
     const filteredRecords = records.filter(record => {
@@ -210,26 +174,6 @@ export default function BenchmarkDetailPage() {
                             ))}
                         </SelectContent>
                     </Select>
-
-                    <Button
-                        variant="outline"
-                        className="gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                        onClick={handleBackfillMarketData}
-                        disabled={isBackfilling}
-                    >
-                        {isBackfilling ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                更新中...
-                            </>
-                        ) : (
-                            <>
-                                <Plus className="h-4 w-4" />
-                                更新市場資料
-                            </>
-                        )}
-                    </Button>
-
 
 
                 </div>
