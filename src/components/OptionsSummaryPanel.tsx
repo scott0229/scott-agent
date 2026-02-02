@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
 
 interface UserStats {
     month: string;
@@ -31,6 +32,82 @@ interface OptionsSummaryPanelProps {
 
 export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     if (!users || users.length === 0) return null;
+
+    // Column visibility state
+    const [columnVisibility, setColumnVisibility] = useState<{
+        allUsers: boolean;
+        users: Record<string, boolean>;
+    }>({
+        allUsers: true,
+        users: {}
+    });
+    const [hasSavedSettings, setHasSavedSettings] = useState(false);
+
+    // Initialize user visibility on mount
+    useEffect(() => {
+        const savedSetting = localStorage.getItem('optionsSummaryColumnVisibility');
+        if (savedSetting !== null) {
+            try {
+                const parsed = JSON.parse(savedSetting);
+                setColumnVisibility(parsed);
+                setHasSavedSettings(true);
+            } catch (e) {
+                // If parsing fails, use default
+                const defaultVisibility = {
+                    allUsers: true,
+                    users: users.reduce((acc, user) => {
+                        acc[user.user_id || user.id.toString()] = true;
+                        return acc;
+                    }, {} as Record<string, boolean>)
+                };
+                setColumnVisibility(defaultVisibility);
+            }
+        } else {
+            // Initialize all users as visible
+            const defaultVisibility = {
+                allUsers: true,
+                users: users.reduce((acc, user) => {
+                    acc[user.user_id || user.id.toString()] = true;
+                    return acc;
+                }, {} as Record<string, boolean>)
+            };
+            setColumnVisibility(defaultVisibility);
+        }
+    }, [users]);
+
+    // Toggle column visibility
+    const toggleColumn = (columnKey: string) => {
+        setColumnVisibility(prev => {
+            if (columnKey === 'allUsers') {
+                return { ...prev, allUsers: !prev.allUsers };
+            } else {
+                return {
+                    ...prev,
+                    users: { ...prev.users, [columnKey]: !prev.users[columnKey] }
+                };
+            }
+        });
+    };
+
+    // Reset visibility to default (show all)
+    const resetVisibility = () => {
+        const defaultVisibility = {
+            allUsers: true,
+            users: users.reduce((acc, user) => {
+                acc[user.user_id || user.id.toString()] = true;
+                return acc;
+            }, {} as Record<string, boolean>)
+        };
+        setColumnVisibility(defaultVisibility);
+        localStorage.removeItem('optionsSummaryColumnVisibility');
+        setHasSavedSettings(false);
+    };
+
+    // Save current visibility state
+    const saveVisibility = () => {
+        localStorage.setItem('optionsSummaryColumnVisibility', JSON.stringify(columnVisibility));
+        setHasSavedSettings(true);
+    };
 
     // --- Helpers ---
     const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
@@ -116,129 +193,220 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     return (
         <div className="rounded-md border bg-white mb-8 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-                <table className="w-full text-[13px] table-fixed min-w-[800px]">
+                <table className="w-full text-[13px] table-auto">
                     <colgroup>
                         <col className="w-[180px]" /> {/* Label Column */}
-                        <col className="w-[140px]" /> {/* All Users Column */}
-                        {users.map(u => <col key={u.id} className="min-w-[120px]" />)}
+                        {columnVisibility.allUsers && <col className="w-[140px]" />} {/* All Users Column */}
+                        {users.map(u => {
+                            const userKey = u.user_id || u.id.toString();
+                            const isVisible = columnVisibility.users[userKey] !== false;
+                            return isVisible ? <col key={u.id} className="w-[120px]" /> : null;
+                        })}
                     </colgroup>
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 px-2 sticky left-0 bg-muted/40 z-10 border-r whitespace-nowrap"></td>
-                            <td className="text-center px-2 py-1 bg-muted/40 text-foreground border-r">
-                                全體用戶
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="text-center px-2 py-1 bg-muted/40 text-foreground">
-                                    <Link
-                                        href={`/options/${user.user_id || user.id}`}
-                                        className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                            <td className="py-1 px-2 sticky left-0 bg-muted/40 z-10 border-r whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={resetVisibility}
+                                        className="inline-flex items-center justify-center w-6 h-6 text-slate-700 hover:text-slate-900 hover:bg-white rounded transition-colors cursor-pointer"
+                                        title="重置隱藏"
                                     >
-                                        <div className="h-2 w-2 rounded-full bg-blue-600" />
-                                        <span>{user.user_id || user.email.split('@')[0]}</span>
-                                    </Link>
+                                        <RotateCcw className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={saveVisibility}
+                                        className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
+                                            ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                            : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                                            }`}
+                                        title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}
+                                    >
+                                        <Save className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </td>
+                            {columnVisibility.allUsers && (
+                                <td className="text-center px-2 py-1 bg-muted/40 text-foreground border-r">
+                                    <div className="inline-flex items-center gap-0">
+                                        <span>全體用戶</span>
+                                        <button
+                                            onClick={() => toggleColumn('allUsers')}
+                                            className="inline-flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                            title={columnVisibility.allUsers ? "隱藏此列" : "顯示此列"}
+                                        >
+                                            {columnVisibility.allUsers ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+
+                                return isVisible ? (
+                                    <td key={user.id} className="text-center px-2 py-1 bg-muted/40 text-foreground">
+                                        <div className="inline-flex items-center gap-0">
+                                            <Link
+                                                href={`/options/${user.user_id || user.id}`}
+                                                className="inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                            >
+                                                <div className="h-2 w-2 rounded-full bg-blue-600" />
+                                                <span>{user.user_id || user.email.split('@')[0]}</span>
+                                            </Link>
+                                            <button
+                                                onClick={() => toggleColumn(userKey)}
+                                                className="inline-flex items-center justify-center w-4 h-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                                                title={isVisible ? "隱藏此列" : "顯示此列"}
+                                            >
+                                                {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                            </button>
+                                        </div>
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                     </thead>
                     <tbody className="text-[13px]">
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">融資需求率</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                <StatBadge>{formatPercent(aggregates.marginRate)}</StatBadge>
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    <StatBadge>{formatPercent(calculateUserMetrics(user).marginRate)}</StatBadge>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    <StatBadge>{formatPercent(aggregates.marginRate)}</StatBadge>
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <StatBadge>{formatPercent(calculateUserMetrics(user).marginRate)}</StatBadge>
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Turnover Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">月資金流水率</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                {formatPercent(aggregates.turnoverRate)}
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatPercent(calculateUserMetrics(user).turnoverRate)}
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
+                                    {formatPercent(aggregates.turnoverRate)}
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatPercent(calculateUserMetrics(user).turnoverRate)}
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Quarterly Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-Q{currentQuarter}</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                <StatBadge>{formatMoney(aggregates.quarterPremium)}</StatBadge>
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    <StatBadge>{formatMoney(calculateUserMetrics(user).quarterPremium)}</StatBadge>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    <StatBadge>{formatMoney(aggregates.quarterPremium)}</StatBadge>
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <StatBadge>{formatMoney(calculateUserMetrics(user).quarterPremium)}</StatBadge>
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Quarterly Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-Q{currentQuarter}-目標</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                {formatMoney(aggregates.quarterTarget)}
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(calculateUserMetrics(user).quarterTarget)}
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
+                                    {formatMoney(aggregates.quarterTarget)}
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).quarterTarget)}
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Annual Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-{displayYear}</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                {formatMoney(aggregates.annualPremium)}
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(calculateUserMetrics(user).annualPremium)}
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {formatMoney(aggregates.annualPremium)}
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).annualPremium)}
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Annual Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-{displayYear}-目標</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                {formatMoney(aggregates.annualTarget)}
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                    {formatMoney(calculateUserMetrics(user).annualTarget)}
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
+                                    {formatMoney(aggregates.annualTarget)}
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).annualTarget)}
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                         {/* Open Position Count */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">新開倉數</td>
-                            <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                <Link
-                                    href={`/options/All?operation=${encodeURIComponent('持有中')}`}
-                                    className="cursor-pointer"
-                                >
-                                    <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
-                                        {totalOpenCount}
-                                    </span>
-                                </Link>
-                            </td>
-                            {users.map(user => (
-                                <td key={user.id} className="h-7 py-1 px-2 text-center">
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
                                     <Link
-                                        href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('持有中')}`}
+                                        href={`/options/All?operation=${encodeURIComponent('持有中')}`}
                                         className="cursor-pointer"
                                     >
-                                        <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${(user.open_count || 0) > 0 ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300' : 'text-muted-foreground'}`}>
-                                            {user.open_count || 0}
+                                        <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
+                                            {totalOpenCount}
                                         </span>
                                     </Link>
                                 </td>
-                            ))}
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <Link
+                                            href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('持有中')}`}
+                                            className="cursor-pointer"
+                                        >
+                                            <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${(user.open_count || 0) > 0 ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300' : 'text-muted-foreground'}`}>
+                                                {user.open_count || 0}
+                                            </span>
+                                        </Link>
+                                    </td>
+                                ) : null;
+                            })}
                         </tr>
                     </tbody>
                 </table>
