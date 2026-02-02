@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
         if (isBulkFetch) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
-            const cacheKey = `net-equity-bulk-${year}-v3`;
+            const cacheKey = `net-equity-bulk-${year}-v4`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
 
