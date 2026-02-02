@@ -160,8 +160,10 @@ export async function GET(
 
         const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.profit || 0), 0);
 
-        // Calculate targets (4% annual, quarterly is 1/4 of that)
-        const annualTarget = Math.round(accountNetWorth * 0.04);
+        // Calculate targets using the same formula as the options page
+        // equity = initial_cost + net_deposit + total_profit
+        const equity = (user.initial_cost || 0) + totalDeposit + annualPremium;
+        const annualTarget = Math.round(equity * 0.04);
         const quarterlyTarget = Math.round(annualTarget / 4);
 
         // 8. Get margin rate from open put positions (using operation='持有中' to identify open positions)
