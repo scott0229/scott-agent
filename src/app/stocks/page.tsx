@@ -196,7 +196,7 @@ export default function StockTradingPage() {
 
         // Symbol Filter
         if (symbolFilter) {
-            if (!trade.symbol.includes(symbolFilter.toUpperCase())) return false;
+            if (trade.symbol !== symbolFilter.toUpperCase()) return false;
         }
 
         // Status Filter

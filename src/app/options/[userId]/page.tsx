@@ -494,11 +494,21 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     )}
                                     <TableCell>
                                         {opt.operation === '中途被行權' ? (
-                                            <span className="text-red-600 bg-red-50 px-2 py-1 rounded-sm">
+                                            <span
+                                                className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
+                                                onClick={() => setSelectedOperation(opt.operation || '持有中')}
+                                                title={`點擊過濾 ${opt.operation} 的交易`}
+                                            >
                                                 {opt.operation}
                                             </span>
                                         ) : (
-                                            opt.operation || '持有中'
+                                            <span
+                                                className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
+                                                onClick={() => setSelectedOperation(opt.operation || '持有中')}
+                                                title={`點擊過濾 ${opt.operation || '持有中'} 的交易`}
+                                            >
+                                                {opt.operation || '持有中'}
+                                            </span>
                                         )}
                                     </TableCell>
                                     <TableCell>{formatDate(opt.open_date)}</TableCell>
@@ -515,7 +525,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         {(opt.operation === '持有中' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
                                     </TableCell>
                                     <TableCell>{opt.quantity}</TableCell>
-                                    <TableCell>{opt.underlying}</TableCell>
+                                    <TableCell>
+                                        <span
+                                            className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
+                                            onClick={() => setSelectedUnderlying(opt.underlying)}
+                                            title={`點擊過濾 ${opt.underlying} 的交易`}
+                                        >
+                                            {opt.underlying}
+                                        </span>
+                                    </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={opt.type === 'CALL' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
                                             {opt.type}
