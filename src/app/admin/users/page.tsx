@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
@@ -58,6 +58,14 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -85,6 +93,10 @@ export default function AdminUsersPage() {
     // In-Dialog Progress State (Export)
     const [exportProcessing, setExportProcessing] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
+
+    // Report Generation State
+    const [reportDialog, setReportDialog] = useState<{ open: boolean; userId: number; report: string } | null>(null);
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
@@ -177,6 +189,86 @@ export default function AdminUsersPage() {
             });
         } finally {
             setUserToDelete(null);
+        }
+    };
+
+    const formatUserReport = (data: any) => {
+        const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
+        const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
+
+        let report = `${data.user_id}\n`;
+        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
+        report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
+        report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
+        report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
+        report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
+        report += `----------------------------------------\n`;
+        report += `統計至前一日的績效\n`;
+        report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
+        report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
+        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
+        report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
+        report += `----------------------------------------\n`;
+
+        // Stock positions
+        if (data.stockPositions && data.stockPositions.length > 0) {
+            data.stockPositions.forEach((pos: any) => {
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股\n`;
+            });
+            report += `----------------------------------------\n`;
+        }
+
+        // Quarterly premium
+        report += `季-累積權利金 : $${formatMoney(data.quarterlyPremium)}\n`;
+        report += `季-目標權利金 : $${formatMoney(data.quarterlyTarget)}\n`;
+        report += `----------------------------------------\n`;
+
+        // Annual premium
+        report += `年-累積權利金 : $${formatMoney(data.annualPremium)}\n`;
+        report += `年-目標權利金 : $${formatMoney(data.annualTarget)}\n`;
+        report += `----------------------------------------\n`;
+
+        // Open options
+        if (data.openOptions && data.openOptions.length > 0) {
+            data.openOptions.forEach((opt: any) => {
+                // to_date is Unix timestamp, convert to date string
+                const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
+                const expiry = expiryDate ? `${String(expiryDate.getMonth() + 1).padStart(2, '0')}/${String(expiryDate.getDate()).padStart(2, '0')}` : '';
+                const quantity = Math.abs(opt.quantity);
+                const optType = opt.type.toLowerCase();
+                // Premium is negative for sold options in the database
+                report += `${quantity}口 ${expiry} sell-${opt.underlying}-${optType} ${opt.strike_price}, 權利金 ${formatMoney(Math.abs(opt.premium))}\n`;
+            });
+        }
+
+        return report;
+    };
+
+    const handleGenerateReport = async (userId: number) => {
+        setIsGeneratingReport(true);
+        try {
+            const res = await fetch(`/api/users/${userId}/report`);
+            const data = await res.json();
+
+            if (data.success) {
+                const report = formatUserReport(data.reportData);
+                setReportDialog({ open: true, userId, report });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "錯誤",
+                    description: data.error || '無法生成報告',
+                });
+            }
+        } catch (error) {
+            console.error('Failed to generate report:', error);
+            toast({
+                variant: "destructive",
+                title: "錯誤",
+                description: '無法生成報告',
+            });
+        } finally {
+            setIsGeneratingReport(false);
         }
     };
 
@@ -756,6 +848,25 @@ export default function AdminUsersPage() {
                                                             </TooltipContent>
                                                         </Tooltip>
 
+                                                        {user.role === 'customer' && (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleGenerateReport(user.id)}
+                                                                        className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                                                        disabled={isGeneratingReport}
+                                                                    >
+                                                                        <FileText className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>生成報告</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button
@@ -781,6 +892,37 @@ export default function AdminUsersPage() {
                         </TableBody>
                     </Table>
                 </div>
+
+                <Dialog open={reportDialog?.open || false} onOpenChange={(open) => !open && setReportDialog(null)}>
+                    <DialogContent className="w-[400px] max-w-[90vw]">
+                        <DialogHeader>
+                            <div className="flex items-center gap-2">
+                                <DialogTitle>用戶報告</DialogTitle>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => {
+                                        if (reportDialog?.report) {
+                                            navigator.clipboard.writeText(reportDialog.report);
+                                            toast({
+                                                title: "已複製",
+                                                description: "報告已複製到剪貼簿",
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </DialogHeader>
+                        <Textarea
+                            value={reportDialog?.report || ''}
+                            readOnly
+                            className="font-mono text-xs min-h-[450px] resize-none"
+                        />
+                    </DialogContent>
+                </Dialog>
 
                 <AdminUserDialog
                     open={dialogOpen}

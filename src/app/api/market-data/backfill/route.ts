@@ -64,6 +64,7 @@ export async function POST(request: Request) {
 
         let totalInserted = 0;
         const errors: string[] = [];
+        const symbolResults: { symbol: string; status: 'success' | 'failed' | 'skipped'; recordsInserted: number; error?: string }[] = [];
 
         // Helper function to check if a date is a trading day
         const isTradingDay = (date: Date): boolean => {
@@ -87,9 +88,10 @@ export async function POST(request: Request) {
 
 
 
-
         for (const sym of symbols) {
             try {
+                console.log(`\n=== Processing ${sym} ===`);
+
                 // Check for existing data
                 const { results: latestResults } = await DB.prepare(
                     `SELECT MAX(date) as latest_date, COUNT(*) as record_count FROM market_prices WHERE symbol = ?`
@@ -108,6 +110,13 @@ export async function POST(request: Request) {
                     latestDate.setDate(latestDate.getDate() + 1); // Start from next day
                     datesToFill = getTradingDaysBetween(latestDate, today);
                     console.log(`${sym}: Found existing data up to ${new Date(latestTimestamp * 1000).toISOString().split('T')[0]}, filling ${datesToFill.length} missing days`);
+
+                    // If no missing days, skip this symbol
+                    if (datesToFill.length === 0) {
+                        console.log(`${sym}: Already up to date, skipping API call`);
+                        symbolResults.push({ symbol: sym, status: 'skipped', recordsInserted: 0 });
+                        continue;
+                    }
                 } else {
                     // No existing data - we'll fetch all available data from API (compact = 100 days)
                     console.log(`${sym}: No existing data, will fetch all available data`);
@@ -117,29 +126,36 @@ export async function POST(request: Request) {
                 // Note: Free tier only supports outputsize=compact (last 100 days)
                 const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${sym}&outputsize=compact&apikey=${apiKey}`;
 
-                console.log(`Fetching Alpha Vantage data for ${sym}...`);
+                console.log(`${sym}: Fetching from Alpha Vantage...`);
                 const response = await fetch(url);
 
                 if (!response.ok) {
-                    errors.push(`Failed to fetch ${sym}: HTTP ${response.status}`);
+                    const errorMsg = `HTTP ${response.status}`;
+                    console.error(`${sym}: Failed to fetch - ${errorMsg}`);
+                    errors.push(`${sym}: ${errorMsg}`);
+                    symbolResults.push({ symbol: sym, status: 'failed', recordsInserted: 0, error: errorMsg });
                     continue;
                 }
 
                 const data: AlphaVantageResponse = await response.json();
 
-                console.log(`Alpha Vantage API response for ${sym}:`, JSON.stringify(data).substring(0, 300));
+                console.log(`${sym}: API response received`, JSON.stringify(data).substring(0, 200));
 
-                // Check for API errors
+                // Check for API errors (rate limiting, invalid symbol, etc.)
                 if (data['Meta Data'] === undefined) {
-                    const errorMsg = `Invalid response for ${sym}: ${JSON.stringify(data)}`;
-                    console.error(errorMsg);
-                    errors.push(errorMsg);
+                    const errorMsg = `Invalid API response: ${JSON.stringify(data).substring(0, 200)}`;
+                    console.error(`${sym}: ${errorMsg}`);
+                    errors.push(`${sym}: ${errorMsg}`);
+                    symbolResults.push({ symbol: sym, status: 'failed', recordsInserted: 0, error: errorMsg });
                     continue;
                 }
 
                 const timeSeries = data['Time Series (Daily)'];
                 if (!timeSeries) {
-                    errors.push(`No time series data for ${sym}`);
+                    const errorMsg = 'No time series data in response';
+                    console.error(`${sym}: ${errorMsg}`);
+                    errors.push(`${sym}: ${errorMsg}`);
+                    symbolResults.push({ symbol: sym, status: 'failed', recordsInserted: 0, error: errorMsg });
                     continue;
                 }
 
@@ -176,38 +192,57 @@ export async function POST(request: Request) {
                     }
                 }
 
-                console.log(`Prepared ${batch.length} records for ${sym}`);
+                console.log(`${sym}: Prepared ${batch.length} records for insertion`);
 
                 // Execute batch
                 if (batch.length > 0) {
                     await DB.batch(batch);
                     totalInserted += batch.length;
-                    console.log(`Inserted ${batch.length} records for ${sym}`);
+                    console.log(`${sym}: ✅ Successfully inserted ${batch.length} records`);
+                    symbolResults.push({ symbol: sym, status: 'success', recordsInserted: batch.length });
 
                     // Clear caches for this symbol to ensure fresh data is fetched
                     clearMarketDataCache(sym);
                     // Clear ALL benchmark caches that involve this symbol (for all users)
                     // Pattern: benchmark-{userId}-{symbol}-{year}
                     clearCacheByPattern(`benchmark-.*-${sym}-.*`);
+                } else {
+                    console.log(`${sym}: No new records to insert`);
+                    symbolResults.push({ symbol: sym, status: 'skipped', recordsInserted: 0 });
                 }
 
                 // Add delay between API calls to respect rate limits (5 calls/minute = 12 seconds between calls)
                 if (symbols.indexOf(sym) < symbols.length - 1) {
+                    console.log(`Waiting 13 seconds before next API call to respect rate limits...`);
                     await new Promise(resolve => setTimeout(resolve, 13000));
                 }
 
             } catch (error: any) {
-                console.error(`Error processing ${sym}:`, error);
-                errors.push(`Error processing ${sym}: ${error.message}`);
+                const errorMsg = error.message || 'Unknown error';
+                console.error(`${sym}: ❌ Error - ${errorMsg}`, error);
+                errors.push(`${sym}: ${errorMsg}`);
+                symbolResults.push({ symbol: sym, status: 'failed', recordsInserted: 0, error: errorMsg });
             }
         }
 
+        // Generate summary message
+        const successCount = symbolResults.filter(r => r.status === 'success').length;
+        const failedCount = symbolResults.filter(r => r.status === 'failed').length;
+        const skippedCount = symbolResults.filter(r => r.status === 'skipped').length;
+
+        let message = `完成處理 ${symbols.length} 個標的`;
+        if (successCount > 0) message += ` | ✅ 成功: ${successCount}`;
+        if (skippedCount > 0) message += ` | ⏭️  跳過: ${skippedCount}`;
+        if (failedCount > 0) message += ` | ❌ 失敗: ${failedCount}`;
+        message += ` | 共新增 ${totalInserted} 筆資料`;
+
         return NextResponse.json({
-            success: true,
+            success: failedCount === 0, // Only success if no failures
             totalInserted,
             symbols,
+            symbolResults, // Detailed per-symbol results
             errors: errors.length > 0 ? errors : undefined,
-            message: `成功回填/更新 ${totalInserted} 筆市場資料`
+            message
         });
 
     } catch (error: any) {

@@ -135,13 +135,27 @@ export default function NetEquityPage() {
             const data = await res.json();
 
             if (data.success) {
+                let description = data.message || `已更新 ${data.totalInserted} 筆資料`;
+
+                // Add detailed symbol breakdown if available
+                if (data.symbolResults && data.symbolResults.length > 0) {
+                    const failed = data.symbolResults.filter((r: any) => r.status === 'failed');
+                    if (failed.length > 0) {
+                        description += `\n\n失敗: ${failed.map((r: any) => `${r.symbol} (${r.error})`).join(', ')}`;
+                    }
+                }
+
                 toast({
                     title: "更新成功",
-                    description: data.message || `已更新 ${data.totalInserted} 筆資料`
+                    description
                 });
                 fetchData(); // Refresh data
             } else {
-                throw new Error(data.error || "Failed to update");
+                let errorDetails = data.message || '更新失敗';
+                if (data.errors && data.errors.length > 0) {
+                    errorDetails += '\n\n錯誤詳情:\n' + data.errors.join('\n');
+                }
+                throw new Error(errorDetails);
             }
         } catch (e: any) {
             toast({

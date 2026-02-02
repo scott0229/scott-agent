@@ -53,14 +53,14 @@ export async function GET(req: NextRequest) {
                 if (year && year !== 'All') {
                     query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉') as open_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = '持有中') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id AND STRATEGIES.year = ?) as strategies_count,
-                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
+                        (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = '持有中' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
                         FROM USERS`;
 
@@ -82,14 +82,14 @@ export async function GET(req: NextRequest) {
                 } else {
                     query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
-                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉') as open_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = '持有中') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id) as strategies_count,
-                        (SELECT COALESCE(SUM(collateral), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.status = '未平倉' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
+                        (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = '持有中' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity
                         FROM USERS`;
                 }
