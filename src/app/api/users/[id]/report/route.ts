@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { calculateUserTwr } from '@/lib/twr';
+import { getMarketData } from '@/lib/market-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,12 +40,9 @@ export async function GET(
 
         const currentYear = new Date().getFullYear();
 
-        // 2. Get latest daily net equity record for cash balance and net worth
+        // 2. Get latest daily net equity record
         const latestEquity = await db.prepare(`
-            SELECT 
-                net_equity,
-                cash_balance,
-                date
+            SELECT net_equity, cash_balance, date
             FROM DAILY_NET_EQUITY
             WHERE user_id = ? AND year = ?
             ORDER BY date DESC
@@ -53,7 +52,7 @@ export async function GET(
         const accountNetWorth = latestEquity?.net_equity || 0;
         const cashBalance = latestEquity?.cash_balance || 0;
 
-        // 3. Get deposits sum for current year
+        // 3. Get deposits sum
         const depositsResult = await db.prepare(`
             SELECT COALESCE(SUM(deposit), 0) as total_deposit
             FROM DAILY_NET_EQUITY
@@ -62,107 +61,63 @@ export async function GET(
 
         const totalDeposit = depositsResult?.total_deposit || 0;
 
-        // 4. Calculate current year cost and profit
+        // 4. Calculate cost and profit
         const cost2026 = (user.initial_cost || 0) + totalDeposit;
         const netProfit2026 = accountNetWorth - cost2026;
 
-        // 5. Get performance statistics from all daily records this year
+        // 5. Get performance statistics using THE SAME calculation as performance overview
         const { results: equityRecords } = await db.prepare(`
-            SELECT 
-                date,
-                net_equity
+            SELECT date, net_equity, cash_balance, deposit
             FROM DAILY_NET_EQUITY
             WHERE user_id = ? AND year = ?
             ORDER BY date ASC
         `).bind(userId, currentYear).all();
 
+        // Prepare data in the format expected by calculateUserTwr (same as net-equity API)
+        const uEq = equityRecords || [];
+        const uDep = uEq.filter((r: any) => r.deposit && r.deposit !== 0).map((r: any) => ({
+            deposit_date: r.date,
+            amount: Math.abs(r.deposit),
+            transaction_type: r.deposit > 0 ? 'deposit' : 'withdrawal'
+        }));
 
-        // 5. Get deposits for TWR calculation
-        const { results: deposits } = await db.prepare(`
-            SELECT 
-                date as deposit_date,
-                deposit as amount
-            FROM DAILY_NET_EQUITY
-            WHERE user_id = ? AND year = ? AND deposit != 0
-            ORDER BY date ASC
-        `).bind(userId, currentYear).all();
+        // Fetch market data
+        const startOfYear = new Date(Date.UTC(currentYear, 0, 1)).getTime() / 1000;
+        const prevYearDec31 = new Date(Date.UTC(currentYear - 1, 11, 31)).getTime() / 1000;
+        const endOfYear = Math.floor(Date.now() / 1000);
 
-        // Map deposits by date
-        const depositMap = new Map<number, number>();
-        (deposits || []).forEach((d: any) => {
-            const dateObj = new Date(d.deposit_date * 1000);
-            const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-            depositMap.set(midnight, (depositMap.get(midnight) || 0) + d.amount);
-        });
-
-        let ytdReturn = 0;
-        let maxDrawdown = 0;
-        let sharpeRatio = 0;
-        let annualStdDev = 0;
-
-        if (equityRecords && equityRecords.length > 0) {
-            // Use TWR methodology matching performance overview page
-            let prevNavRatio = 1.0;
-            let prevEquity = equityRecords[0].net_equity;
-            let peakNavRatio = 1.0;
-            let maxDD = 0;
-            const dailyReturns = [];
-
-            for (let i = 0; i < equityRecords.length; i++) {
-                const record = equityRecords[i];
-                const equity = record.net_equity;
-                const date = record.date;
-
-                // Get deposit for this date
-                const dateObj = new Date(date * 1000);
-                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
-                const dailyDeposit = depositMap.get(midnight) || 0;
-
-                let dailyReturn = 0;
-                if (i > 0) {
-                    // Calculate daily return using TWR formula
-                    if (prevEquity + dailyDeposit !== 0) {
-                        dailyReturn = (equity - dailyDeposit - prevEquity) / (prevEquity + dailyDeposit);
-                    }
-                }
-
-                dailyReturns.push(dailyReturn);
-                const navRatio = i === 0 ? 1.0 : prevNavRatio * (1 + dailyReturn);
-
-                // Track peak for drawdown calculation
-                if (navRatio > peakNavRatio) {
-                    peakNavRatio = navRatio;
-                }
-
-                const dd = (navRatio - peakNavRatio) / peakNavRatio;
-                if (dd < maxDD) maxDD = dd;
-
-                prevNavRatio = navRatio;
-                prevEquity = equity;
-            }
-
-            // YTD Return using final NAV ratio
-            ytdReturn = prevNavRatio - 1;
-            maxDrawdown = maxDD;
-
-            // Standard Deviation and Sharpe Ratio
-            if (dailyReturns.length > 1) {
-                const mean = dailyReturns.reduce((sum: number, r: number) => sum + r, 0) / dailyReturns.length;
-                const variance = dailyReturns.reduce((sum: number, r: number) => sum + Math.pow(r - mean, 2), 0) / (dailyReturns.length - 1);
-                const dailyStdDev = Math.sqrt(variance);
-                annualStdDev = dailyStdDev * Math.sqrt(252); // Annualize (252 trading days)
-
-                // Sharpe Ratio matching performance overview calculation
-                const annualizedReturn = mean * 252;
-                sharpeRatio = annualStdDev > 0 ? (annualizedReturn - 0.04) / annualStdDev : 0;
-            }
+        let qqqData: any[] = [];
+        let qldData: any[] = [];
+        try {
+            const [qData, lData] = await Promise.all([
+                getMarketData('QQQ', startOfYear - 86400 * 5, endOfYear),
+                getMarketData('QLD', startOfYear - 86400 * 5, endOfYear)
+            ]);
+            qqqData = qData;
+            qldData = lData;
+        } catch (error) {
+            console.error('Failed to fetch market data:', error);
         }
 
-        // 6. Get stock positions (aggregate open positions by symbol)
+        //  Call the SHARED calculation function - guarantees matching performance overview!
+        const twrResult = calculateUserTwr(
+            uEq as any,
+            uDep as any,
+            user.initial_cost || 0,
+            prevYearDec31,
+            qqqData,
+            qldData
+        );
+
+        // Extract stats - these will match performance overview 100%
+        const ytdReturn = twrResult.summary.stats?.returnPercentage || 0;
+        const maxDrawdown = twrResult.summary.stats?.maxDrawdown || 0;
+        const sharpeRatio = twrResult.summary.stats?.sharpeRatio || 0;
+        const annualStdDev = twrResult.summary.stats?.annualizedStdDev || 0;
+
+        // 6. Get stock positions
         const { results: stockPositions } = await db.prepare(`
-            SELECT 
-                symbol,
-                SUM(quantity) as quantity
+            SELECT symbol, SUM(quantity) as quantity
             FROM STOCK_TRADES
             WHERE owner_id = ? AND year = ? AND status = 'Holding'
             GROUP BY symbol
@@ -170,7 +125,7 @@ export async function GET(
             ORDER BY symbol
         `).bind(userId, currentYear).all();
 
-        // 7. Get monthly stats for premium calculation using settlement_date
+        // 7. Get monthly premium stats
         const { results: monthlyStats } = await db.prepare(`
             SELECT 
                 CAST(strftime('%m', datetime(settlement_date, 'unixepoch')) AS INTEGER) as month,
@@ -182,7 +137,7 @@ export async function GET(
         `).bind(userId, currentYear).all();
 
         // Calculate quarterly and annual premium
-        const currentMonth = new Date().getMonth() + 1; // 1-12
+        const currentMonth = new Date().getMonth() + 1;
         const currentQuarter = Math.ceil(currentMonth / 3);
         const startMonth = (currentQuarter - 1) * 3 + 1;
         const endMonth = startMonth + 2;
@@ -193,34 +148,23 @@ export async function GET(
 
         const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.profit || 0), 0);
 
-        // Calculate targets using the same formula as the options page
-        // equity = initial_cost + net_deposit + total_profit
+        // Calculate targets
         const equity = (user.initial_cost || 0) + totalDeposit + annualPremium;
         const annualTarget = Math.round(equity * 0.04);
         const quarterlyTarget = Math.round(annualTarget / 4);
 
-        // 8. Get margin rate from open put positions (using operation='持有中' to identify open positions)
+        // 8. Get margin rate
         const marginResult = await db.prepare(`
-            SELECT 
-                COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) as open_put_covered_capital
+            SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) as open_put_covered_capital
             FROM OPTIONS
-            WHERE owner_id = ? 
-              AND year = ?
-              AND operation = '持有中' 
-              AND type = 'PUT'
+            WHERE owner_id = ? AND year = ? AND operation = '持有中' AND type = 'PUT'
         `).bind(userId, currentYear).first();
 
         const marginRate = accountNetWorth > 0 ? (marginResult?.open_put_covered_capital || 0) / accountNetWorth : 0;
 
-        // 9. Get open option positions
+        // 9. Get open positions
         const { results: openOptions } = await db.prepare(`
-            SELECT 
-                quantity,
-                to_date,
-                type,
-                underlying,
-                strike_price,
-                premium
+            SELECT quantity, to_date, type, underlying, strike_price, premium
             FROM OPTIONS
             WHERE owner_id = ? AND year = ? AND operation = '持有中'
             ORDER BY to_date, underlying, type
