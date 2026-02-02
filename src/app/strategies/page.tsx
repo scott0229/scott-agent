@@ -236,6 +236,9 @@ export default function StrategiesPage() {
                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
                                 if (stock.close_price && stock.open_price) {
                                     return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                } else if (!stock.close_price && stock.current_market_price) {
+                                    // Include unrealized P&L for open positions
+                                    return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
                                 }
                                 return sum;
                             }, 0);
@@ -290,6 +293,9 @@ export default function StrategiesPage() {
                                         const stockProfit = strategy.stocks.reduce((sum, stock) => {
                                             if (stock.close_price && stock.open_price) {
                                                 return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                            } else if (!stock.close_price && stock.current_market_price) {
+                                                // Include unrealized P&L for open positions
+                                                return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
                                             }
                                             return sum;
                                         }, 0);
@@ -340,6 +346,9 @@ export default function StrategiesPage() {
                                         const stockProfit = strategy.stocks.reduce((sum, stock) => {
                                             if (stock.close_price && stock.open_price) {
                                                 return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                            } else if (!stock.close_price && stock.current_market_price) {
+                                                // Include unrealized P&L for open positions
+                                                return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
                                             }
                                             return sum;
                                         }, 0);
@@ -358,7 +367,7 @@ export default function StrategiesPage() {
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">股數</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">平倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">損益</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">盈虧</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -373,8 +382,21 @@ export default function StrategiesPage() {
                                                                 }
 
                                                                 let profit: number | null = null;
+                                                                console.log(`💹 Calculating P&L for ${stock.symbol}:`, {
+                                                                    close_price: stock.close_price,
+                                                                    current_market_price: stock.current_market_price,
+                                                                    open_price: stock.open_price,
+                                                                    quantity: stock.quantity
+                                                                });
                                                                 if (stock.close_price) {
-                                                                    profit = (stock.close_price - stock.open_price) * stock.quantity;
+                                                                    // Realized P&L for closed positions
+                                                                    profit = Math.round((stock.close_price - stock.open_price) * stock.quantity * 100) / 100;
+                                                                } else if (stock.current_market_price) {
+                                                                    // Unrealized P&L for open positions using current market price
+                                                                    profit = Math.round((stock.current_market_price - stock.open_price) * stock.quantity * 100) / 100;
+                                                                    console.log(`✅ Calculated unrealized P&L for ${stock.symbol}:`, profit);
+                                                                } else {
+                                                                    console.warn(`⚠️ No market price found for ${stock.symbol}`);
                                                                 }
 
                                                                 return (
@@ -426,7 +448,7 @@ export default function StrategiesPage() {
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">口數</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
                                                                 <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">到期日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">損益</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">盈虧</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>

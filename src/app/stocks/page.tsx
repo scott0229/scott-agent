@@ -232,14 +232,30 @@ export default function StockTradingPage() {
             const data = await res.json();
 
             if (data.success) {
+                // Show detailed results if available
+                let description = data.message || `成功更新 ${data.totalInserted} 筆市場資料`;
+
+                // Add detailed symbol breakdown if available
+                if (data.symbolResults && data.symbolResults.length > 0) {
+                    const failed = data.symbolResults.filter((r: any) => r.status === 'failed');
+                    if (failed.length > 0) {
+                        description += `\n\n失敗: ${failed.map((r: any) => `${r.symbol} (${r.error})`).join(', ')}`;
+                    }
+                }
+
                 toast({
                     title: "更新成功!",
-                    description: data.message || `成功更新 ${data.totalInserted} 筆市場資料`,
+                    description,
                 });
                 // Refresh trades to get updated market prices
                 await fetchTrades();
             } else {
-                throw new Error(data.error || '更新失敗');
+                // Show errors from symbolResults if available
+                let errorDetails = data.message || '更新失敗';
+                if (data.errors && data.errors.length > 0) {
+                    errorDetails += '\n\n錯誤詳情:\n' + data.errors.join('\n');
+                }
+                throw new Error(errorDetails);
             }
         } catch (error: any) {
             toast({
@@ -345,15 +361,15 @@ export default function StockTradingPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
+                                <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
-                                <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">股數</TableHead>
-                                <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">開倉價</TableHead>
+                                <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
-                                <TableHead className="text-center">當前損益</TableHead>
+                                <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="text-center">交易代碼</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -382,6 +398,7 @@ export default function StockTradingPage() {
                                     return (
                                         <TableRow key={trade.id} className={!trade.close_date ? 'bg-gray-100' : ''}>
                                             <TableCell className="text-center text-muted-foreground font-mono">{filteredTrades.length - index}</TableCell>
+                                            <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.close_date ? (
@@ -392,13 +409,12 @@ export default function StockTradingPage() {
                                                     </Badge>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
                                             <TableCell className="text-center">{trade.symbol}</TableCell>
                                             <TableCell className="text-center">{trade.quantity}</TableCell>
+                                            <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.current_market_price ? formatMoney(trade.current_market_price) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.close_price ? formatMoney(trade.close_price) : '-'}
                                             </TableCell>

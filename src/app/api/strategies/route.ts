@@ -46,13 +46,31 @@ export async function GET(req: NextRequest) {
         // Fetch associated stocks and options for each strategy
         const strategiesWithDetails = await Promise.all(
             (results as any[]).map(async (strategy) => {
-                // Get stock trades
+                // Get today's date at midnight UTC for market price lookup
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+                const todayTimestamp = Math.floor(today.getTime() / 1000);
+
+                // Get stock trades with current market prices
                 const stocksQuery = `
-                    SELECT st.* FROM STOCK_TRADES st
+                    SELECT 
+                        st.*,
+                        MP.close_price as current_market_price
+                    FROM STOCK_TRADES st
                     INNER JOIN STRATEGY_STOCKS ss ON st.id = ss.stock_trade_id
+                    LEFT JOIN (
+                        SELECT symbol, close_price
+                        FROM market_prices
+                        WHERE (symbol, date) IN (
+                            SELECT symbol, MAX(date) as latest_date
+                            FROM market_prices
+                            WHERE date <= ?
+                            GROUP BY symbol
+                        )
+                    ) MP ON st.symbol = MP.symbol
                     WHERE ss.strategy_id = ?
                 `;
-                const { results: stocks } = await db.prepare(stocksQuery).bind(strategy.id).all();
+                const { results: stocks } = await db.prepare(stocksQuery).bind(todayTimestamp, strategy.id).all();
 
                 // Get options
                 const optionsQuery = `
