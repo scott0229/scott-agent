@@ -76,52 +76,85 @@ export async function GET(
             ORDER BY date ASC
         `).bind(userId, currentYear).all();
 
+
+        // 5. Get deposits for TWR calculation
+        const { results: deposits } = await db.prepare(`
+            SELECT 
+                date as deposit_date,
+                deposit as amount
+            FROM DAILY_NET_EQUITY
+            WHERE user_id = ? AND year = ? AND deposit != 0
+            ORDER BY date ASC
+        `).bind(userId, currentYear).all();
+
+        // Map deposits by date
+        const depositMap = new Map<number, number>();
+        (deposits || []).forEach((d: any) => {
+            const dateObj = new Date(d.deposit_date * 1000);
+            const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
+            depositMap.set(midnight, (depositMap.get(midnight) || 0) + d.amount);
+        });
+
         let ytdReturn = 0;
         let maxDrawdown = 0;
         let sharpeRatio = 0;
         let annualStdDev = 0;
 
         if (equityRecords && equityRecords.length > 0) {
-            const startEquity = equityRecords[0].net_equity;
-            const currentEquity = equityRecords[equityRecords.length - 1].net_equity;
-
-            // YTD Return
-            ytdReturn = startEquity > 0 ? (currentEquity - startEquity) / startEquity : 0;
-
-            // Calculate returns array for statistics
-            const returns = [];
-            for (let i = 1; i < equityRecords.length; i++) {
-                const prevEquity = equityRecords[i - 1].net_equity;
-                if (prevEquity > 0) {
-                    const dailyReturn = (equityRecords[i].net_equity - prevEquity) / prevEquity;
-                    returns.push(dailyReturn);
-                }
-            }
-
-            // Max Drawdown
-            let peak = equityRecords[0].net_equity;
+            // Use TWR methodology matching performance overview page
+            let prevNavRatio = 1.0;
+            let prevEquity = equityRecords[0].net_equity;
+            let peakNavRatio = 1.0;
             let maxDD = 0;
-            for (const record of equityRecords) {
-                if (record.net_equity > peak) {
-                    peak = record.net_equity;
+            const dailyReturns = [];
+
+            for (let i = 0; i < equityRecords.length; i++) {
+                const record = equityRecords[i];
+                const equity = record.net_equity;
+                const date = record.date;
+
+                // Get deposit for this date
+                const dateObj = new Date(date * 1000);
+                const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
+                const dailyDeposit = depositMap.get(midnight) || 0;
+
+                let dailyReturn = 0;
+                if (i > 0) {
+                    // Calculate daily return using TWR formula
+                    if (prevEquity + dailyDeposit !== 0) {
+                        dailyReturn = (equity - dailyDeposit - prevEquity) / (prevEquity + dailyDeposit);
+                    }
                 }
-                const drawdown = (peak - record.net_equity) / peak;
-                if (drawdown > maxDD) {
-                    maxDD = drawdown;
+
+                dailyReturns.push(dailyReturn);
+                const navRatio = i === 0 ? 1.0 : prevNavRatio * (1 + dailyReturn);
+
+                // Track peak for drawdown calculation
+                if (navRatio > peakNavRatio) {
+                    peakNavRatio = navRatio;
                 }
+
+                const dd = (navRatio - peakNavRatio) / peakNavRatio;
+                if (dd < maxDD) maxDD = dd;
+
+                prevNavRatio = navRatio;
+                prevEquity = equity;
             }
+
+            // YTD Return using final NAV ratio
+            ytdReturn = prevNavRatio - 1;
             maxDrawdown = maxDD;
 
-            // Standard Deviation
-            if (returns.length > 1) {
-                const mean = returns.reduce((sum: number, r: number) => sum + r, 0) / returns.length;
-                const variance = returns.reduce((sum: number, r: number) => sum + Math.pow(r - mean, 2), 0) / (returns.length - 1);
+            // Standard Deviation and Sharpe Ratio
+            if (dailyReturns.length > 1) {
+                const mean = dailyReturns.reduce((sum: number, r: number) => sum + r, 0) / dailyReturns.length;
+                const variance = dailyReturns.reduce((sum: number, r: number) => sum + Math.pow(r - mean, 2), 0) / (dailyReturns.length - 1);
                 const dailyStdDev = Math.sqrt(variance);
                 annualStdDev = dailyStdDev * Math.sqrt(252); // Annualize (252 trading days)
 
-                // Sharpe Ratio (assuming 0% risk-free rate for simplicity)
-                const annualizedReturn = Math.pow(1 + mean, 252) - 1;
-                sharpeRatio = annualStdDev > 0 ? annualizedReturn / annualStdDev : 0;
+                // Sharpe Ratio matching performance overview calculation
+                const annualizedReturn = mean * 252;
+                sharpeRatio = annualStdDev > 0 ? (annualizedReturn - 0.04) / annualStdDev : 0;
             }
         }
 
