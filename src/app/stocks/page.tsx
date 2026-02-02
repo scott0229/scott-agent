@@ -411,7 +411,15 @@ export default function StockTradingPage() {
                                     return (
                                         <TableRow key={trade.id} className={!trade.close_date ? 'bg-gray-100' : ''}>
                                             <TableCell className="text-center text-muted-foreground font-mono">{sortedTrades.length - index}</TableCell>
-                                            <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
+                                            <TableCell className="text-center">
+                                                <span
+                                                    className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
+                                                    onClick={() => setSelectedUserFilter(trade.user_id || '')}
+                                                    title={`點擊過濾 ${trade.user_id} 的交易`}
+                                                >
+                                                    {trade.user_id || '-'}
+                                                </span>
+                                            </TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.close_date ? (
@@ -422,7 +430,15 @@ export default function StockTradingPage() {
                                                     </Badge>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-center">{trade.symbol}</TableCell>
+                                            <TableCell className="text-center">
+                                                <span
+                                                    className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
+                                                    onClick={() => setSymbolFilter(trade.symbol)}
+                                                    title={`點擊過濾 ${trade.symbol} 的交易`}
+                                                >
+                                                    {trade.symbol}
+                                                </span>
+                                            </TableCell>
                                             <TableCell className="text-center">{trade.quantity}</TableCell>
                                             <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center">
