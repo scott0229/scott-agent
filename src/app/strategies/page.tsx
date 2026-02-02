@@ -36,6 +36,7 @@ interface StockTrade {
     open_price: number;
     close_price?: number | null;
     close_date?: number | null;
+    current_market_price?: number | null;
 }
 
 interface Option {
