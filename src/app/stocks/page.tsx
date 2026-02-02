@@ -207,6 +207,19 @@ export default function StockTradingPage() {
         return true;
     });
 
+    // Sort trades: open positions first (by open_date desc), then closed positions (by open_date desc)
+    const sortedTrades = filteredTrades.sort((a, b) => {
+        const aIsOpen = a.status === 'Holding';
+        const bIsOpen = b.status === 'Holding';
+
+        // If one is open and the other is closed, open comes first
+        if (aIsOpen && !bIsOpen) return -1;
+        if (!aIsOpen && bIsOpen) return 1;
+
+        // If both have the same status, sort by open_date (newest first)
+        return b.open_date - a.open_date;
+    });
+
     const canEdit = (trade: StockTrade) => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin' || currentUser.role === 'manager') return true;
@@ -375,14 +388,14 @@ export default function StockTradingPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredTrades.length === 0 ? (
+                            {sortedTrades.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={12} className="h-24 text-center">
                                         無交易紀錄
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredTrades.map((trade, index) => {
+                                sortedTrades.map((trade, index) => {
                                     const isClosed = trade.status === 'Closed';
 
                                     // Calculate P/L based on trade status
@@ -397,7 +410,7 @@ export default function StockTradingPage() {
 
                                     return (
                                         <TableRow key={trade.id} className={!trade.close_date ? 'bg-gray-100' : ''}>
-                                            <TableCell className="text-center text-muted-foreground font-mono">{filteredTrades.length - index}</TableCell>
+                                            <TableCell className="text-center text-muted-foreground font-mono">{sortedTrades.length - index}</TableCell>
                                             <TableCell className="text-center">{trade.user_id || '-'}</TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
                                             <TableCell className="text-center">

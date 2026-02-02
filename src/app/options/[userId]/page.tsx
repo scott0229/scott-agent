@@ -299,7 +299,20 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || '持有中') === selectedOperation;
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
-    }).sort((a, b) => b.open_date - a.open_date);
+    });
+
+    // Sort options: open positions (持有中) first (by open_date desc), then closed positions (by open_date desc)
+    const sortedOptions = filteredOptions.sort((a, b) => {
+        const aIsOpen = (a.operation || '持有中') === '持有中';
+        const bIsOpen = (b.operation || '持有中') === '持有中';
+
+        // If one is open and the other is closed, open comes first
+        if (aIsOpen && !bIsOpen) return -1;
+        if (!aIsOpen && bIsOpen) return 1;
+
+        // If both have the same status, sort by open_date (newest first)
+        return b.open_date - a.open_date;
+    });
 
     return (
         <div className="container mx-auto py-10 max-w-[1600px]">
@@ -455,19 +468,19 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     載入中...
                                 </TableCell>
                             </TableRow>
-                        ) : filteredOptions.length === 0 ? (
+                        ) : sortedOptions.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
                                     尚無資料
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredOptions.map((opt, index) => (
+                            sortedOptions.map((opt, index) => (
                                 <TableRow
                                     key={opt.id}
                                     className={`hover:bg-muted/50 text-center ${(opt.operation || '持有中') === '持有中' ? 'bg-gray-100' : ''}`}
                                 >
-                                    <TableCell>{filteredOptions.length - index}</TableCell>
+                                    <TableCell>{sortedOptions.length - index}</TableCell>
                                     {params.userId === 'All' && (
                                         <TableCell>
                                             <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
