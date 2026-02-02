@@ -57,7 +57,7 @@ export default function OptionsPage() {
     // Changed: Track expanded user ID for inline display instead of dialog
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
-    const [sortOrder, setSortOrder] = useState('profit-desc');
+    const [sortOrder, setSortOrder] = useState('margin-desc');
     const router = useRouter();
 
     // Use window size for responsive grid calculation
@@ -242,14 +242,7 @@ export default function OptionsPage() {
                                 <div className="absolute -bottom-[10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-primary z-10"></div>
                             )}
 
-                            <CardHeader className="flex flex-row items-center gap-4 pb-0">
-                                <div className="flex flex-col overflow-hidden">
-                                    <CardTitle className="text-lg truncate">
-                                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">{displayName}</span>{client.ib_account ? <span className="text-muted-foreground text-sm"> - {client.ib_account}</span> : ''}
-                                    </CardTitle>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="-mt-2">
+                            <CardContent>
                                 {client.monthly_stats && client.monthly_stats.length > 0 ? (
                                     <div>
 
@@ -265,7 +258,11 @@ export default function OptionsPage() {
                                                     </colgroup>
                                                     <thead>
                                                         <tr className="text-[13px] font-medium text-muted-foreground bg-[#e8e4dc]">
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground"></th>
+                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">
+                                                                <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm">
+                                                                    {displayName}
+                                                                </span>
+                                                            </th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">總損益</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">PUT</th>
                                                             <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">CALL</th>

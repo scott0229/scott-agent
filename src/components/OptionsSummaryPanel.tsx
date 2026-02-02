@@ -400,7 +400,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                             href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('持有中')}`}
                                             className="cursor-pointer"
                                         >
-                                            <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${(user.open_count || 0) > 0 ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300' : 'text-muted-foreground'}`}>
+                                            <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
                                                 {user.open_count || 0}
                                             </span>
                                         </Link>
