@@ -535,7 +535,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </span>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className={opt.type === 'CALL' ? 'text-green-600 border-green-200 bg-green-50' : 'text-red-600 border-red-200 bg-red-50'}>
+                                        <Badge
+                                            variant="outline"
+                                            className={`cursor-pointer transition-all duration-150 ${opt.type === 'CALL'
+                                                    ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
+                                                    : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
+                                                }`}
+                                            onClick={() => setSelectedType(opt.type)}
+                                            title={`點擊過濾 ${opt.type} 的交易`}
+                                        >
                                             {opt.type}
                                         </Badge>
                                     </TableCell>
