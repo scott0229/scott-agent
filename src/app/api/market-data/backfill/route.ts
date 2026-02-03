@@ -232,6 +232,16 @@ export async function POST(request: Request) {
                 errors.push(`${sym}: ${errorMsg}`);
                 symbolResults.push({ symbol: sym, status: 'failed', recordsInserted: 0, error: errorMsg });
             }
+
+            // Add delay between API requests to avoid rate limiting
+            // Alpha Vantage free tier: 5 calls/minute = 12 seconds between calls
+            // Alpha Vantage paid tier: varies, but safer to add delay
+            // Using 13 seconds to be safe
+            const symbolIndex = symbols.indexOf(sym);
+            if (symbolIndex < symbols.length - 1) {
+                console.log(`Waiting 13 seconds before processing next symbol...`);
+                await new Promise(resolve => setTimeout(resolve, 13000));
+            }
         }
 
         // Generate summary message
