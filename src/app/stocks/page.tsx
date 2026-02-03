@@ -207,7 +207,7 @@ export default function StockTradingPage() {
         return true;
     });
 
-    // Sort trades: open positions first (by open_date desc), then closed positions (by open_date desc)
+    // Sort trades: status first (Holding > Closed), then by user, then by date (newest first)
     const sortedTrades = filteredTrades.sort((a, b) => {
         const aIsOpen = a.status === 'Holding';
         const bIsOpen = b.status === 'Holding';
@@ -216,7 +216,11 @@ export default function StockTradingPage() {
         if (aIsOpen && !bIsOpen) return -1;
         if (!aIsOpen && bIsOpen) return 1;
 
-        // If both have the same status, sort by open_date (newest first)
+        // If both have the same status, group by user_id
+        const userCompare = (a.user_id || '').localeCompare(b.user_id || '');
+        if (userCompare !== 0) return userCompare;
+
+        // If same status and same user, sort by open_date (newest first)
         return b.open_date - a.open_date;
     });
 

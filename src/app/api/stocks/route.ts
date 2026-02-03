@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
             whereAdded = true;
         }
 
-        query += ' ORDER BY ST.open_date DESC';
+        query += ' ORDER BY ST.status DESC, U.user_id, ST.open_date DESC';
 
         const { results } = await db.prepare(query).bind(...params).all();
 
