@@ -232,45 +232,44 @@ export function UserProfileMenu() {
                     </DialogHeader>
                     <form onSubmit={handleUpdateProfile}>
                         <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
+                            {/* Avatar Section */}
+                            <div className="flex items-center gap-4">
                                 <Label>頭像</Label>
-                                <div className="flex items-center gap-4">
-                                    <Avatar className="h-16 w-16 border">
-                                        <AvatarImage src={editAvatarUrl || undefined} />
-                                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
-                                            {initials}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col gap-2">
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={handleAvatarUpload}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={isUploading}
-                                        >
-                                            {isUploading ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    上傳中...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Upload className="mr-2 h-4 w-4" />
-                                                    上傳圖片
-                                                </>
-                                            )}
-                                        </Button>
-                                    </div>
-                                </div>
+                                <Avatar className="h-16 w-16 border">
+                                    <AvatarImage src={editAvatarUrl || undefined} />
+                                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleAvatarUpload}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            上傳中...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="mr-2 h-4 w-4" />
+                                            上傳圖片
+                                        </>
+                                    )}
+                                </Button>
                             </div>
+
+                            {/* Username Section */}
                             <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                 <Label htmlFor="edit-userId">帳號</Label>
                                 <Input
