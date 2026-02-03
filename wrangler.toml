@@ -33,7 +33,8 @@ routes = [
 ]
 
 [env.staging.vars]
-ALPHA_VANTAGE_API_KEY = "689OIA6MG6XVUX5A"
+# API Key is now stored ONLY in database (USERS.api_key for admin user)
+# No environment variable fallback - admin must configure via settings page
 
 [[env.staging.d1_databases]]
 binding = "DB"

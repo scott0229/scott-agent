@@ -3,8 +3,8 @@ import { getDb } from '@/lib/db';
 import { clearMarketDataCache } from '@/lib/market-data';
 import { clearCache, clearCacheByPattern } from '@/lib/response-cache';
 
-// Use environment variable in staging/production, fallback to localhost key
-const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'BJ9X47DS0OLOPYM0';
+// API Key is now read ONLY from database (admin user's api_key field)
+// No environment variable fallback - admin must configure via settings page
 
 // Check if a date is a trading day (Mon-Fri, exclude US holidays)
 function isTradingDay(date: Date): boolean {
@@ -56,9 +56,18 @@ export async function POST(request: Request) {
             'SELECT api_key FROM USERS WHERE user_id = ? OR id = ?'
         ).bind('admin', 1).first();
 
-        // Use admin's API key if available, otherwise fall back to environment variable
-        const apiKey = (adminResult as any)?.api_key || process.env.ALPHA_VANTAGE_API_KEY || 'BJ9X47DS0OLOPYM0';
-        console.log(`Using admin's API key for market data fill-gaps`);
+        // ONLY use database value - no fallback to environment variables
+        const apiKey = (adminResult as any)?.api_key;
+
+        if (!apiKey) {
+            return NextResponse.json({
+                success: false,
+                error: 'API Key not configured. Please set Alpha Vantage API Key in admin settings.',
+                message: 'Alpha Vantage API Key 未設定，請在管理員設定頁面中設定 API Key。'
+            }, { status: 500 });
+        }
+
+        console.log(`Using admin's API key from database for market data fill-gaps`);
 
 
         // Get the latest date in market_prices for this symbol

@@ -24,9 +24,18 @@ export async function GET(request: Request) {
             'SELECT api_key FROM USERS WHERE user_id = ? OR id = ?'
         ).bind('admin', 1).first();
 
-        // Use admin's API key if available, otherwise fall back to environment variable
-        const ALPHA_VANTAGE_API_KEY = (adminResult as any)?.api_key || process.env.ALPHA_VANTAGE_API_KEY || 'BJ9X47DS0OLOPYM0';
-        console.log(`Using admin's API key for Alpha Vantage test`);
+        // ONLY use database value - no fallback to environment variables
+        const ALPHA_VANTAGE_API_KEY = (adminResult as any)?.api_key;
+
+        if (!ALPHA_VANTAGE_API_KEY) {
+            return NextResponse.json({
+                success: false,
+                error: 'API Key not configured. Please set Alpha Vantage API Key in admin settings.',
+                message: 'Alpha Vantage API Key 未設定，請在管理員設定頁面中設定 API Key。'
+            }, { status: 500 });
+        }
+
+        console.log(`Using admin's API key from database for Alpha Vantage test`);
 
 
         const { searchParams } = new URL(request.url);
