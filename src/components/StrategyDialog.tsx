@@ -252,7 +252,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogContent className="w-[35vw] max-w-none sm:max-w-none max-h-[95vh]">
                 <DialogHeader>
                     <DialogTitle>{strategy ? '編輯策略' : '新增策略'}</DialogTitle>
                 </DialogHeader>
@@ -309,78 +309,79 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                         </div>
                     )}
 
-                    {/* Stock Trades Selection */}
+                    {/* Stock Trades and Options Selection - Side by Side */}
                     {formData.userId && (
-                        <div className="space-y-2">
-                            <Label>股票交易</Label>
-                            <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
-                                {stockTrades.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">該用戶沒有股票交易記錄</p>
-                                ) : (
-                                    stockTrades.map(stock => {
-                                        // Format date as YY-MM-DD
-                                        const openDate = new Date(stock.open_date * 1000);
-                                        const formattedDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Stock Trades Selection */}
+                            <div className="space-y-2">
+                                <Label>股票交易</Label>
+                                <div className="border rounded-md p-3 h-64 overflow-y-auto space-y-2">
+                                    {stockTrades.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">該用戶沒有股票交易記錄</p>
+                                    ) : (
+                                        stockTrades.map(stock => {
+                                            // Format date as YY-MM-DD
+                                            const openDate = new Date(stock.open_date * 1000);
+                                            const formattedDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
 
-                                        // Get quantity from stock trade (assuming it has a quantity field)
-                                        const quantity = (stock as any).quantity || 0;
+                                            // Get quantity from stock trade (assuming it has a quantity field)
+                                            const quantity = (stock as any).quantity || 0;
 
-                                        return (
-                                            <div key={stock.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`stock-${stock.id}`}
-                                                    checked={formData.selectedStocks.includes(stock.id)}
-                                                    onCheckedChange={() => handleStockToggle(stock.id)}
-                                                />
-                                                <label
-                                                    htmlFor={`stock-${stock.id}`}
-                                                    className="text-sm cursor-pointer flex-1"
-                                                >
-                                                    ({stock.code}) {stock.symbol}_{quantity}股_{formattedDate}開倉
-                                                </label>
-                                            </div>
-                                        );
-                                    })
-                                )}
+                                            return (
+                                                <div key={stock.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`stock-${stock.id}`}
+                                                        checked={formData.selectedStocks.includes(stock.id)}
+                                                        onCheckedChange={() => handleStockToggle(stock.id)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`stock-${stock.id}`}
+                                                        className="text-xs cursor-pointer flex-1 whitespace-nowrap"
+                                                    >
+                                                        {stock.symbol}_{quantity}股_{formattedDate}開倉
+                                                    </label>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Options Selection */}
-                    {formData.userId && (
-                        <div className="space-y-2">
-                            <Label>期權交易</Label>
-                            <div className="border rounded-md p-3 max-h-32 overflow-y-auto space-y-2">
-                                {options.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">該用戶沒有期權交易記錄</p>
-                                ) : (
-                                    options.map(option => {
-                                        // Format expiration date as MM-DD
-                                        const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
-                                        const formattedExpiry = toDate
-                                            ? `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
-                                            : '';
+                            {/* Options Selection */}
+                            <div className="space-y-2">
+                                <Label>期權交易</Label>
+                                <div className="border rounded-md p-3 h-64 overflow-y-auto space-y-2">
+                                    {options.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">該用戶沒有期權交易記錄</p>
+                                    ) : (
+                                        options.map(option => {
+                                            // Format expiration date as MM-DD
+                                            const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
+                                            const formattedExpiry = toDate
+                                                ? `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
+                                                : '';
 
-                                        const quantity = Math.abs((option as any).quantity || 0);
-                                        const strikePrice = (option as any).strike_price || 0;
+                                            const quantity = Math.abs((option as any).quantity || 0);
+                                            const strikePrice = (option as any).strike_price || 0;
 
-                                        return (
-                                            <div key={option.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`option-${option.id}`}
-                                                    checked={formData.selectedOptions.includes(option.id)}
-                                                    onCheckedChange={() => handleOptionToggle(option.id)}
-                                                />
-                                                <label
-                                                    htmlFor={`option-${option.id}`}
-                                                    className="text-sm cursor-pointer flex-1"
-                                                >
-                                                    ({option.code}) {option.underlying}_{(option as any).type || 'CALL'}_{quantity}口_{formattedExpiry}到期_行權價{strikePrice}
-                                                </label>
-                                            </div>
-                                        );
-                                    })
-                                )}
+                                            return (
+                                                <div key={option.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`option-${option.id}`}
+                                                        checked={formData.selectedOptions.includes(option.id)}
+                                                        onCheckedChange={() => handleOptionToggle(option.id)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`option-${option.id}`}
+                                                        className="text-xs cursor-pointer flex-1 whitespace-nowrap"
+                                                    >
+                                                        {option.underlying}_{(option as any).type || 'CALL'}_{quantity}口_{formattedExpiry}到期_行權價{strikePrice}
+                                                    </label>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
