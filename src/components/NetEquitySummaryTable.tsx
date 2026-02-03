@@ -266,8 +266,15 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 </td>
                                 {users.map(user => {
                                     const profit = (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0);
+                                    const isNegative = profit < 0;
                                     return (
-                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <td
+                                            key={user.id}
+                                            className={cn(
+                                                "h-7 py-1 px-2 text-center",
+                                                isNegative && "bg-pink-50"
+                                            )}
+                                        >
                                             {formatMoney(profit)}
                                         </td>
                                     );
@@ -387,11 +394,21 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
                                     帳戶現金
                                 </td>
-                                {users.map(user => (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(user.current_cash_balance || 0)}
-                                    </td>
-                                ))}
+                                {users.map(user => {
+                                    const cashBalance = user.current_cash_balance || 0;
+                                    const isNegative = cashBalance < 0;
+                                    return (
+                                        <td
+                                            key={user.id}
+                                            className={cn(
+                                                "h-7 py-1 px-2 text-center",
+                                                isNegative && "bg-pink-50"
+                                            )}
+                                        >
+                                            {formatMoney(cashBalance)}
+                                        </td>
+                                    );
+                                })}
                             </tr>
                         )}
 
