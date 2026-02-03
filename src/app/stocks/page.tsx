@@ -26,10 +26,19 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
+import { MarketDataProgressDialog } from '@/components/MarketDataProgressDialog';
 import { Pencil, Trash2, Plus, FilterX, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -74,6 +83,7 @@ export default function StockTradingPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isUpdatingMarketData, setIsUpdatingMarketData] = useState(false);
     const { toast } = useToast();
+    const [progressDialogOpen, setProgressDialogOpen] = useState(false);
 
     // Filters
     const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
@@ -232,57 +242,12 @@ export default function StockTradingPage() {
 
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
-    const handleUpdateMarketData = async () => {
-        setIsUpdatingMarketData(true);
-        toast({
-            title: "正在更新市場數據...",
-            description: "請稍候,這可能需要幾秒鐘。",
-        });
+    const handleUpdateMarketData = () => {
+        setProgressDialogOpen(true);
+    };
 
-        try {
-            const res = await fetch('/api/market-data/backfill', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: currentUser?.id || 1 })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                // Show detailed results if available
-                let description = data.message || `成功更新 ${data.totalInserted} 筆市場資料`;
-
-                // Add detailed symbol breakdown if available
-                if (data.symbolResults && data.symbolResults.length > 0) {
-                    const failed = data.symbolResults.filter((r: any) => r.status === 'failed');
-                    if (failed.length > 0) {
-                        description += `\n\n失敗: ${failed.map((r: any) => `${r.symbol} (${r.error})`).join(', ')}`;
-                    }
-                }
-
-                toast({
-                    title: "更新成功!",
-                    description,
-                });
-                // Refresh trades to get updated market prices
-                await fetchTrades();
-            } else {
-                // Show errors from symbolResults if available
-                let errorDetails = data.message || '更新失敗';
-                if (data.errors && data.errors.length > 0) {
-                    errorDetails += '\n\n錯誤詳情:\n' + data.errors.join('\n');
-                }
-                throw new Error(errorDetails);
-            }
-        } catch (error: any) {
-            toast({
-                title: "更新失敗",
-                description: error.message || '無法更新市場數據',
-                variant: "destructive",
-            });
-        } finally {
-            setIsUpdatingMarketData(false);
-        }
+    const handleProgressComplete = () => {
+        fetchTrades(); // Refresh trades after update completes
     };
 
     return (
@@ -528,6 +493,14 @@ export default function StockTradingPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                {/* Market Data Progress Dialog */}
+                <MarketDataProgressDialog
+                    open={progressDialogOpen}
+                    onOpenChange={setProgressDialogOpen}
+                    userId={currentUser?.id || 1}
+                    onComplete={handleProgressComplete}
+                />
                 <Toaster />
             </div>
         </TooltipProvider>

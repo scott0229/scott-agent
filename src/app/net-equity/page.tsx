@@ -13,6 +13,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useYearFilter } from '@/contexts/YearFilterContext';
@@ -20,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { NetEquitySummaryTable } from '@/components/NetEquitySummaryTable';
+import { MarketDataProgressDialog } from '@/components/MarketDataProgressDialog';
 
 import { Pencil, BarChart3, Coins } from "lucide-react";
 
@@ -86,6 +95,7 @@ export default function NetEquityPage() {
     const [sortOrder, setSortOrder] = useState('net-equity-desc');
     const [isBackfilling, setIsBackfilling] = useState(false);
     const { toast } = useToast();
+    const [progressDialogOpen, setProgressDialogOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -120,52 +130,12 @@ export default function NetEquityPage() {
         }
     };
 
-    const handleBackfillMarketData = async () => {
-        setIsBackfilling(true);
-        try {
-            const res = await fetch('/api/market-data/backfill', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: '1' // Admin user ID
-                    // Omit symbol to update all symbols (QQQ, QLD, TQQQ)
-                })
-            });
+    const handleBackfillMarketData = () => {
+        setProgressDialogOpen(true);
+    };
 
-            const data = await res.json();
-
-            if (data.success) {
-                let description = data.message || `已更新 ${data.totalInserted} 筆資料`;
-
-                // Add detailed symbol breakdown if available
-                if (data.symbolResults && data.symbolResults.length > 0) {
-                    const failed = data.symbolResults.filter((r: any) => r.status === 'failed');
-                    if (failed.length > 0) {
-                        description += `\n\n失敗: ${failed.map((r: any) => `${r.symbol} (${r.error})`).join(', ')}`;
-                    }
-                }
-
-                toast({
-                    title: "更新成功",
-                    description
-                });
-                fetchData(); // Refresh data
-            } else {
-                let errorDetails = data.message || '更新失敗';
-                if (data.errors && data.errors.length > 0) {
-                    errorDetails += '\n\n錯誤詳情:\n' + data.errors.join('\n');
-                }
-                throw new Error(errorDetails);
-            }
-        } catch (e: any) {
-            toast({
-                variant: "destructive",
-                title: "更新失敗",
-                description: e.message || "無法取得市場資料"
-            });
-        } finally {
-            setIsBackfilling(false);
-        }
+    const handleProgressComplete = () => {
+        fetchData(); // Refresh data after update completes
     };
 
     const formatDate = (timestamp: number) => {
@@ -516,6 +486,14 @@ export default function NetEquityPage() {
                     />
                 )
             }
+
+            {/* Market Data Progress Dialog */}
+            <MarketDataProgressDialog
+                open={progressDialogOpen}
+                onOpenChange={setProgressDialogOpen}
+                userId={1}
+                onComplete={handleProgressComplete}
+            />
         </div >
     );
 }

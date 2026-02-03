@@ -49,7 +49,6 @@ export function UserProfileMenu() {
     const [autoUpdateMinute, setAutoUpdateMinute] = useState<string>('0');
     const [isUpdating, setIsUpdating] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [isTriggeringUpdate, setIsTriggeringUpdate] = useState(false);
     const [error, setError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
@@ -314,10 +313,10 @@ export function UserProfileMenu() {
                                                     setAutoUpdateHour('');
                                                 }
                                             }}
-                                            className="w-20"
+                                            className="flex-1"
                                             placeholder="00"
                                         />
-                                        <span>:</span>
+                                        <span className="text-gray-500">:</span>
                                         <Input
                                             type="number"
                                             min="0"
@@ -331,41 +330,9 @@ export function UserProfileMenu() {
                                                     setAutoUpdateMinute('');
                                                 }
                                             }}
-                                            className="w-20"
+                                            className="flex-1"
                                             placeholder="00"
                                         />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={async () => {
-                                                try {
-                                                    setIsTriggeringUpdate(true);
-                                                    setError('');
-                                                    const res = await fetch('/api/scheduled/auto-update', { method: 'POST' });
-                                                    if (res.ok) {
-                                                        const result = await res.json();
-                                                        toast({
-                                                            title: "更新成功",
-                                                            description: "市場資料已更新",
-                                                        });
-                                                    } else {
-                                                        throw new Error('更新失敗');
-                                                    }
-                                                } catch (err: any) {
-                                                    toast({
-                                                        title: "更新失敗",
-                                                        description: err.message,
-                                                        variant: "destructive",
-                                                    });
-                                                } finally {
-                                                    setIsTriggeringUpdate(false);
-                                                }
-                                            }}
-                                            disabled={isTriggeringUpdate}
-                                        >
-                                            {isTriggeringUpdate ? '更新中...' : '立即更新'}
-                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -429,7 +396,7 @@ export function UserProfileMenu() {
                         </DialogFooter>
                     </form>
                 </DialogContent>
-            </Dialog >
+            </Dialog>
         </>
     );
 }

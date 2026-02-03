@@ -125,16 +125,63 @@ export async function GET(
             ORDER BY symbol
         `).bind(userId, currentYear).all();
 
-        // 7. Get monthly premium stats
-        const { results: monthlyStats } = await db.prepare(`
+        // 7. Get monthly premium stats - USE SAME QUERY AS /api/users for consistency
+        const statsQuery = `
             SELECT 
-                CAST(strftime('%m', datetime(settlement_date, 'unixepoch')) AS INTEGER) as month,
-                SUM(final_profit) as profit
+                owner_id as user_id,
+                strftime('%m', datetime(open_date, 'unixepoch')) as month,
+                type,
+                SUM(COALESCE(final_profit, 0)) as profit,
+                SUM(
+                    (strike_price * ABS(quantity) * 100) * 
+                    (
+                        (
+                            CASE 
+                                WHEN settlement_date IS NOT NULL THEN settlement_date 
+                                WHEN to_date IS NOT NULL THEN to_date
+                                ELSE unixepoch() 
+                            END - open_date
+                        ) / 86400.0
+                    )
+                ) as turnover
             FROM OPTIONS
-            WHERE owner_id = ? AND year = ? AND operation != '持有中' AND settlement_date IS NOT NULL
-            GROUP BY month
-            ORDER BY month
-        `).bind(userId, currentYear).all();
+            WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
+            AND owner_id = ?
+            GROUP BY month, type
+        `;
+
+        const { results: statsResults } = await db.prepare(statsQuery).bind(currentYear.toString(), userId).all();
+
+        // Aggregate statistics by month
+        const monthlyData: Record<string, { total: number; put: number; call: number; turnover: number }> = {};
+
+        (statsResults as any[]).forEach((row: any) => {
+            if (!monthlyData[row.month]) {
+                monthlyData[row.month] = { total: 0, put: 0, call: 0, turnover: 0 };
+            }
+
+            monthlyData[row.month].total += row.profit;
+            monthlyData[row.month].turnover += (row.turnover || 0);
+            if (row.type === 'PUT') {
+                monthlyData[row.month].put += row.profit;
+            } else if (row.type === 'CALL') {
+                monthlyData[row.month].call += row.profit;
+            }
+        });
+
+        // Create monthly stats array (all 12 months)
+        const monthlyStats = [];
+        for (let i = 1; i <= 12; i++) {
+            const monthStr = i.toString().padStart(2, '0');
+            const data = monthlyData[monthStr] || { total: 0, put: 0, call: 0, turnover: 0 };
+            monthlyStats.push({
+                month: parseInt(monthStr),
+                total_profit: data.total,
+                put_profit: data.put,
+                call_profit: data.call,
+                turnover: data.turnover
+            });
+        }
 
         // Calculate quarterly and annual premium
         const currentMonth = new Date().getMonth() + 1;
@@ -144,9 +191,9 @@ export async function GET(
 
         const quarterlyPremium = monthlyStats
             .filter((s: any) => s.month >= startMonth && s.month <= endMonth)
-            .reduce((sum: number, s: any) => sum + (s.profit || 0), 0);
+            .reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
 
-        const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.profit || 0), 0);
+        const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
 
         // Calculate targets
         const equity = (user.initial_cost || 0) + totalDeposit + annualPremium;
