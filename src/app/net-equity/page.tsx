@@ -492,6 +492,7 @@ export default function NetEquityPage() {
                 open={progressDialogOpen}
                 onOpenChange={setProgressDialogOpen}
                 userId={1}
+                year={selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear)}
                 onComplete={handleProgressComplete}
             />
         </div >

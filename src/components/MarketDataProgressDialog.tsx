@@ -16,10 +16,11 @@ interface MarketDataProgressDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     userId: number;
+    year?: number;
     onComplete?: () => void;
 }
 
-export function MarketDataProgressDialog({ open, onOpenChange, userId, onComplete }: MarketDataProgressDialogProps) {
+export function MarketDataProgressDialog({ open, onOpenChange, userId, year, onComplete }: MarketDataProgressDialogProps) {
     const [isComplete, setIsComplete] = useState(false);
     const [finalMessage, setFinalMessage] = useState('');
     const [isError, setIsError] = useState(false);
@@ -44,7 +45,7 @@ export function MarketDataProgressDialog({ open, onOpenChange, userId, onComplet
                 const response = await fetch('/api/market-data/backfill', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
+                    body: JSON.stringify({ userId, year })
                 });
 
                 if (!response.body) {

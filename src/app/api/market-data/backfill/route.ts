@@ -27,7 +27,7 @@ function sendSSE(controller: ReadableStreamDefaultController, data: any) {
 
 export async function POST(request: Request) {
     const body = await request.json();
-    const { userId, symbol } = body;
+    const { userId, symbol, year } = body;
 
     if (!userId) {
         return NextResponse.json({ success: false, error: 'Missing userId' }, { status: 400 });
@@ -56,21 +56,36 @@ export async function POST(request: Request) {
                 }
 
                 console.log(`Using admin's API key from database for market data backfill`);
+                console.log(`[Market Data Update] Received parameters:`, { userId, symbol, year });
 
                 // Determine symbols to process
                 let symbols: string[];
                 if (symbol) {
                     symbols = [symbol];
                 } else {
-                    const { results: holdingSymbols } = await DB.prepare(
-                        `SELECT DISTINCT symbol FROM STOCK_TRADES ORDER BY symbol`
-                    ).all();
+                    // Build query with optional year filter
+                    let query = 'SELECT DISTINCT symbol FROM STOCK_TRADES';
+                    const params: any[] = [];
+
+                    if (year) {
+                        query += ' WHERE year = ?';
+                        params.push(year);
+                    }
+
+                    query += ' ORDER BY symbol';
+
+                    const stmt = DB.prepare(query);
+                    const { results: holdingSymbols } = params.length > 0
+                        ? await stmt.bind(...params).all()
+                        : await stmt.all();
+
                     symbols = (holdingSymbols as any[]).map((row: any) => row.symbol);
                     if (symbols.length === 0) {
                         symbols = ['QQQ', 'QLD'];
                         console.log('No stock trades found, using default symbols:', symbols);
                     } else {
-                        console.log('Fetched all stock symbols from database:', symbols);
+                        const yearInfo = year ? ` for year ${year}` : '';
+                        console.log(`Fetched stock symbols from database${yearInfo}:`, symbols);
                     }
                 }
 
@@ -195,6 +210,7 @@ export async function POST(request: Request) {
                         }
 
                         // Prepare batch insert
+                        // Always insert/update all data from API to ensure latest prices
                         const insertStmt = DB.prepare(
                             `INSERT INTO market_prices (symbol, date, close_price) 
                              VALUES (?, ?, ?) 
@@ -203,22 +219,12 @@ export async function POST(request: Request) {
 
                         const batch: any[] = [];
 
-                        if (hasData && datesToFill.length > 0) {
-                            for (const missingDate of datesToFill) {
-                                const dateStr = `${missingDate.getFullYear()}-${String(missingDate.getMonth() + 1).padStart(2, '0')}-${String(missingDate.getDate()).padStart(2, '0')}`;
-                                if (timeSeries[dateStr]) {
-                                    const closePrice = parseFloat(timeSeries[dateStr]['4. close']);
-                                    const timestamp = Date.UTC(missingDate.getFullYear(), missingDate.getMonth(), missingDate.getDate()) / 1000;
-                                    batch.push(insertStmt.bind(sym, timestamp, closePrice));
-                                }
-                            }
-                        } else {
-                            for (const [dateStr, values] of Object.entries(timeSeries)) {
-                                const closePrice = parseFloat(values['4. close']);
-                                const [year, month, day] = dateStr.split('-').map(Number);
-                                const timestamp = Date.UTC(year, month - 1, day) / 1000;
-                                batch.push(insertStmt.bind(sym, timestamp, closePrice));
-                            }
+                        // Process all dates from the API response
+                        for (const [dateStr, values] of Object.entries(timeSeries)) {
+                            const closePrice = parseFloat(values['4. close']);
+                            const [year, month, day] = dateStr.split('-').map(Number);
+                            const timestamp = Date.UTC(year, month - 1, day) / 1000;
+                            batch.push(insertStmt.bind(sym, timestamp, closePrice));
                         }
 
                         console.log(`${sym}: Prepared ${batch.length} records for insertion`);

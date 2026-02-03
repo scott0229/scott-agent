@@ -499,6 +499,7 @@ export default function StockTradingPage() {
                     open={progressDialogOpen}
                     onOpenChange={setProgressDialogOpen}
                     userId={currentUser?.id || 1}
+                    year={displayYear}
                     onComplete={handleProgressComplete}
                 />
                 <Toaster />
