@@ -195,9 +195,9 @@ export async function GET(
 
         const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
 
-        // Calculate targets
-        const equity = (user.initial_cost || 0) + totalDeposit + annualPremium;
-        const annualTarget = Math.round(equity * 0.04);
+        // Calculate targets - Use initial cost instead of current equity
+        const initialCost = (user.initial_cost || 0) + totalDeposit;
+        const annualTarget = Math.round(initialCost * 0.04);
         const quarterlyTarget = Math.round(annualTarget / 4);
 
         // 8. Get margin rate

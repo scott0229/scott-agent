@@ -136,8 +136,9 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
             return m >= startMonth && m <= endMonth;
         }).reduce((s, stat) => s + stat.total_profit, 0) || 0;
 
-        // QX Target
-        const annualTarget = Math.round(equity * 0.04);
+        // QX Target - Use initial cost instead of current equity
+        const initialCost = (user.initial_cost || 0) + (user.net_deposit || 0);
+        const annualTarget = Math.round(initialCost * 0.04);
         const quarterTarget = Math.round(annualTarget / 4);
 
         // Annual Premium

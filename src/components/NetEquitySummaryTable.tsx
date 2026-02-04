@@ -51,6 +51,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         currentNetEquity: true,
         initialNetEquity: true,
         transferRecord: true,
+        initialCost: true,
         netProfit: true,
         cashBalance: true,
         holding1: true,
@@ -83,6 +84,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             currentNetEquity: true,
             initialNetEquity: true,
             transferRecord: true,
+            initialCost: true,
             netProfit: true,
             cashBalance: true,
             holding1: true,
@@ -257,7 +259,22 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 4. Net Profit */}
+                        {/* 4. Initial Cost */}
+                        {visibleRows.initialCost && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                    <RowToggleIcon rowKey="initialCost" visible={visibleRows.initialCost} />
+                                    初始成本
+                                </td>
+                                {users.map(user => (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney((user.initial_cost || 0) + (user.total_deposit || 0))}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
+
+                        {/* 5. Net Profit */}
                         {visibleRows.netProfit && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -282,7 +299,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 5. Return Rate */}
+                        {/* 6. Return Rate */}
                         {visibleRows.returnRate && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -297,7 +314,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 7. Max Drawdown */}
+                        {/* 8. Max Drawdown */}
                         {visibleRows.maxDrawdown && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-1 border-r">
@@ -312,7 +329,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 8. Annualized Return */}
+                        {/* 9. Annualized Return */}
                         {visibleRows.annualizedReturn && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -327,7 +344,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 9. Annualized StdDev */}
+                        {/* 10. Annualized StdDev */}
                         {visibleRows.annualizedStdDev && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -342,7 +359,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 10. Sharpe Ratio */}
+                        {/* 11. Sharpe Ratio */}
                         {visibleRows.sharpeRatio && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -357,7 +374,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 11. New High Count */}
+                        {/* 12. New High Count */}
                         {visibleRows.newHighCount && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -372,7 +389,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 12. New High Freq */}
+                        {/* 13. New High Freq */}
                         {visibleRows.newHighFreq && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -387,7 +404,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 13. Cash Balance */}
+                        {/* 14. Cash Balance */}
                         {visibleRows.cashBalance && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -412,7 +429,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 14. Holding 1 */}
+                        {/* 15. Holding 1 */}
                         {visibleRows.holding1 && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -430,7 +447,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 15. Holding 2 */}
+                        {/* 16. Holding 2 */}
                         {visibleRows.holding2 && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
@@ -448,7 +465,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 16. Holding 3 */}
+                        {/* 17. Holding 3 */}
                         {visibleRows.holding3 && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
@@ -466,7 +483,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 17. Last Updated Date */}
+                        {/* 18. Last Updated Date */}
                         {visibleRows.lastUpdated && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
