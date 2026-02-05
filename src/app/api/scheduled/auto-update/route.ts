@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
                     }
 
                     // Call the market data backfill API
+                    // Only update QQQ (primary benchmark) to avoid timeout
                     const backfillUrl = new URL('/api/market-data/backfill', req.url);
                     const backfillResponse = await fetch(backfillUrl.toString(), {
                         method: 'POST',
@@ -91,7 +92,8 @@ export async function GET(req: NextRequest) {
                         },
                         body: JSON.stringify({
                             apiKey,
-                            userId: user.user_id || user.email  // Add userId parameter
+                            userId: user.user_id || user.email,
+                            symbol: 'QQQ'  // Only update primary benchmark
                         })
                     });
 
