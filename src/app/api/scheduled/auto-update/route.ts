@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
                         const reader = backfillResponse.body?.getReader();
                         const decoder = new TextDecoder();
                         let completeEvent: any = null;
+                        let errorEvent: any = null;
 
                         if (reader) {
                             try {
@@ -103,6 +104,8 @@ export async function GET(req: NextRequest) {
                                                 const data = JSON.parse(line.substring(6));
                                                 if (data.type === 'complete') {
                                                     completeEvent = data;
+                                                } else if (data.type === 'error') {
+                                                    errorEvent = data;
                                                 }
                                             } catch (e) {
                                                 // Ignore parse errors for partial chunks
@@ -126,6 +129,13 @@ export async function GET(req: NextRequest) {
                             ).bind(successMessage, user.id).run();
 
                             updatedUsers.push(user.user_id || user.email);
+                        } else if (errorEvent) {
+                            console.error(`[Auto Update] Error from backfill API for ${user.user_id || user.email}:`, errorEvent);
+
+                            const errorMessage = errorEvent.message || '更新失敗';
+                            await db.prepare(
+                                `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
+                            ).bind(errorMessage.substring(0, 100), user.id).run();
                         } else {
                             console.error(`[Auto Update] No complete event received for ${user.user_id || user.email}`);
 
