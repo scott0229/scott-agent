@@ -96,7 +96,13 @@ export async function PUT(req: NextRequest) {
 
     await db.prepare(
       'UPDATE USERS SET user_id = ?, avatar_url = ?, api_key = ?, auto_update_time = ?, updated_at = unixepoch() WHERE id = ?'
-    ).bind(userId || null, avatarUrl !== undefined ? avatarUrl : null, apiKey !== undefined ? apiKey : null, autoUpdateTime || '06:00', payload.id).run();
+    ).bind(
+      userId || null,
+      avatarUrl !== undefined ? avatarUrl : null,
+      apiKey !== undefined ? apiKey : null,
+      autoUpdateTime || null,
+      payload.id
+    ).run();
 
     const user = await db.prepare(
       'SELECT id, email, user_id, avatar_url, role, api_key, auto_update_time FROM USERS WHERE id = ?'
