@@ -62,6 +62,11 @@ export async function GET(req: NextRequest) {
                 console.log(`[Auto Update] Triggering update for user: ${user.user_id || user.email} at ${user.auto_update_time}`);
 
                 try {
+                    // Mark update as running
+                    await db.prepare(
+                        `UPDATE USERS SET last_auto_update_time = ?, last_auto_update_status = 'running', last_auto_update_message = '正在更新市場資料...' WHERE id = ?`
+                    ).bind(Math.floor(Date.now() / 1000), user.id).run();
+
                     // Get API key from admin user
                     const { results: adminUsers } = await db.prepare(
                         `SELECT api_key FROM USERS WHERE role = 'admin' LIMIT 1`
@@ -71,6 +76,9 @@ export async function GET(req: NextRequest) {
 
                     if (!apiKey) {
                         console.error('[Auto Update] No API key found for admin user');
+                        await db.prepare(
+                            `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = '未找到 API 金鑰' WHERE id = ?`
+                        ).bind(user.id).run();
                         continue;
                     }
 
@@ -87,13 +95,31 @@ export async function GET(req: NextRequest) {
                     if (backfillResponse.ok) {
                         const result = await backfillResponse.json();
                         console.log(`[Auto Update] Successfully updated market data for ${user.user_id || user.email}:`, result);
+
+                        // Count updated symbols
+                        const symbolCount = result.results ? Object.keys(result.results).length : 0;
+                        const successMessage = `成功更新 ${symbolCount} 個標的`;
+
+                        await db.prepare(
+                            `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
+                        ).bind(successMessage, user.id).run();
+
                         updatedUsers.push(user.user_id || user.email);
                     } else {
                         const error = await backfillResponse.text();
                         console.error(`[Auto Update] Failed to update market data for ${user.user_id || user.email}:`, error);
+
+                        await db.prepare(
+                            `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
+                        ).bind(`更新失敗: ${error.substring(0, 100)}`, user.id).run();
                     }
                 } catch (error) {
                     console.error(`[Auto Update] Error updating market data for ${user.user_id || user.email}:`, error);
+
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    await db.prepare(
+                        `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
+                    ).bind(`錯誤: ${errorMessage.substring(0, 100)}`, user.id).run();
                 }
             }
         }

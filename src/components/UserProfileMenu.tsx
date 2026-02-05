@@ -336,6 +336,61 @@ export function UserProfileMenu() {
                                 </div>
                             )}
 
+                            {/* Last Auto Update Status - Only for admin users */}
+                            {user.role === 'admin' && (user as any).last_auto_update_time && (
+                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                    <Label>上次更新</Label>
+                                    <div className="text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {(() => {
+                                                const lastUpdateTime = (user as any).last_auto_update_time;
+                                                const status = (user as any).last_auto_update_status;
+                                                const message = (user as any).last_auto_update_message;
+
+                                                // Format time as relative time
+                                                const now = Date.now();
+                                                const updateTime = lastUpdateTime * 1000;
+                                                const diffMs = now - updateTime;
+                                                const diffMins = Math.floor(diffMs / 60000);
+                                                const diffHours = Math.floor(diffMins / 60);
+                                                const diffDays = Math.floor(diffHours / 24);
+
+                                                let timeAgo = '';
+                                                if (diffDays > 0) {
+                                                    timeAgo = `${diffDays} 天前`;
+                                                } else if (diffHours > 0) {
+                                                    timeAgo = `${diffHours} 小時前`;
+                                                } else if (diffMins > 0) {
+                                                    timeAgo = `${diffMins} 分鐘前`;
+                                                } else {
+                                                    timeAgo = '剛剛';
+                                                }
+
+                                                // Status badge
+                                                let statusBadge;
+                                                if (status === 'success') {
+                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ 成功</span>;
+                                                } else if (status === 'failed') {
+                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ 失敗</span>;
+                                                } else if (status === 'running') {
+                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">⟳ 執行中</span>;
+                                                } else {
+                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">-</span>;
+                                                }
+
+                                                return (
+                                                    <>
+                                                        <span className="text-muted-foreground">{timeAgo}</span>
+                                                        {statusBadge}
+                                                        {message && <span className="text-muted-foreground">- {message}</span>}
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="col-span-full">
                                 <div className="grid gap-3">
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">

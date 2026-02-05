@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const user = await db.prepare(
-      'SELECT id, email, user_id, avatar_url, role, api_key, auto_update_time FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url, role, api_key, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     if (!user) {
@@ -105,7 +105,7 @@ export async function PUT(req: NextRequest) {
     ).run();
 
     const user = await db.prepare(
-      'SELECT id, email, user_id, avatar_url, role, api_key, auto_update_time FROM USERS WHERE id = ?'
+      'SELECT id, email, user_id, avatar_url, role, api_key, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message FROM USERS WHERE id = ?'
     ).bind(payload.id).first();
 
     return NextResponse.json({ success: true, user });
