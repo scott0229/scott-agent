@@ -378,7 +378,7 @@ export default function StockTradingPage() {
                                     }
 
                                     return (
-                                        <TableRow key={trade.id} className={!trade.close_date ? 'bg-gray-100' : ''}>
+                                        <TableRow key={trade.id}>
                                             <TableCell className="text-center text-muted-foreground font-mono">{sortedTrades.length - index}</TableCell>
                                             <TableCell className="text-center">
                                                 <span
@@ -390,14 +390,8 @@ export default function StockTradingPage() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
-                                            <TableCell className="text-center">
-                                                {trade.close_date ? (
-                                                    formatDate(trade.close_date)
-                                                ) : (
-                                                    <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                                                        持有中
-                                                    </Badge>
-                                                )}
+                                            <TableCell className={cn("text-center", !trade.close_date && "bg-pink-50")}>
+                                                {trade.close_date ? formatDate(trade.close_date) : '持有中'}
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <span

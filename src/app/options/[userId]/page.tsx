@@ -478,7 +478,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             sortedOptions.map((opt, index) => (
                                 <TableRow
                                     key={opt.id}
-                                    className={`hover:bg-muted/50 text-center ${(opt.operation || '持有中') === '持有中' ? 'bg-gray-100' : ''}`}
+                                    className="hover:bg-muted/50 text-center"
                                 >
                                     <TableCell>{sortedOptions.length - index}</TableCell>
                                     {params.userId === 'All' && (
@@ -492,7 +492,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             </span>
                                         </TableCell>
                                     )}
-                                    <TableCell>
+                                    <TableCell className={(opt.operation || '持有中') === '持有中' ? 'bg-pink-50' : ''}>
                                         {opt.operation === '中途被行權' ? (
                                             <span
                                                 className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
@@ -538,8 +538,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <Badge
                                             variant="outline"
                                             className={`cursor-pointer transition-all duration-150 ${opt.type === 'CALL'
-                                                    ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
-                                                    : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
+                                                ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
+                                                : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
                                                 }`}
                                             onClick={() => setSelectedType(opt.type)}
                                             title={`點擊過濾 ${opt.type} 的交易`}
