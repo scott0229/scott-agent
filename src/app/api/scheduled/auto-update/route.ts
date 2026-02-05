@@ -67,89 +67,81 @@ export async function GET(req: NextRequest) {
                         `UPDATE USERS SET last_auto_update_time = ?, last_auto_update_status = 'running', last_auto_update_message = '正在更新市場資料...' WHERE id = ?`
                     ).bind(Math.floor(Date.now() / 1000), user.id).run();
 
-                    // Call the market data backfill API
-                    // Only update QQQ (primary benchmark) to avoid timeout
-                    // Note: backfill API fetches its own API key from database
-                    const backfillUrl = new URL('/api/market-data/backfill', req.url);
-                    const backfillResponse = await fetch(backfillUrl.toString(), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            userId: user.user_id || user.email,
-                            symbol: 'QQQ'  // Only update primary benchmark
-                        })
-                    });
+                    try {
+                        // Get admin API key
+                        const { results: adminUsers } = await db.prepare(
+                            `SELECT api_key FROM USERS WHERE role = 'admin' LIMIT 1`
+                        ).all();
 
-                    if (backfillResponse.ok) {
-                        // Read SSE stream and extract final result
-                        const reader = backfillResponse.body?.getReader();
-                        const decoder = new TextDecoder();
-                        let completeEvent: any = null;
-                        let errorEvent: any = null;
+                        const apiKey = (adminUsers[0] as any)?.api_key;
 
-                        if (reader) {
-                            try {
-                                while (true) {
-                                    const { done, value } = await reader.read();
-                                    if (done) break;
-
-                                    const chunk = decoder.decode(value);
-                                    const lines = chunk.split('\n');
-
-                                    for (const line of lines) {
-                                        if (line.startsWith('data: ')) {
-                                            try {
-                                                const data = JSON.parse(line.substring(6));
-                                                if (data.type === 'complete') {
-                                                    completeEvent = data;
-                                                } else if (data.type === 'error') {
-                                                    errorEvent = data;
-                                                }
-                                            } catch (e) {
-                                                // Ignore parse errors for partial chunks
-                                            }
-                                        }
-                                    }
-                                }
-                            } finally {
-                                reader.releaseLock();
-                            }
+                        if (!apiKey) {
+                            await db.prepare(
+                                `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = '未找到 API 金鑰' WHERE id = ?`
+                            ).bind(user.id).run();
+                            continue;
                         }
 
-                        if (completeEvent) {
-                            console.log(`[Auto Update] Successfully updated market data for ${user.user_id || user.email}:`, completeEvent);
+                        // Directly fetch QQQ price from Alpha Vantage (simplified, no backfill API)
+                        const symbol = 'QQQ';
+                        const avUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${apiKey}`;
 
-                            const symbolCount = completeEvent.symbols?.length || 0;
-                            const successMessage = `成功更新 ${symbolCount} 個標的`;
+                        console.log(`[Auto Update] Fetching ${symbol} from Alpha Vantage for ${user.user_id || user.email}`);
 
-                            await db.prepare(
-                                `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
-                            ).bind(successMessage, user.id).run();
+                        const avResponse = await fetch(avUrl, {
+                            signal: AbortSignal.timeout(20000) // 20 second timeout
+                        });
 
-                            updatedUsers.push(user.user_id || user.email);
-                        } else if (errorEvent) {
-                            console.error(`[Auto Update] Error from backfill API for ${user.user_id || user.email}:`, errorEvent);
-
-                            const errorMessage = errorEvent.message || '更新失敗';
-                            await db.prepare(
-                                `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
-                            ).bind(errorMessage.substring(0, 100), user.id).run();
-                        } else {
-                            console.error(`[Auto Update] No complete event received for ${user.user_id || user.email}`);
-
-                            await db.prepare(
-                                `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
-                            ).bind('未收到完整響應', user.id).run();
+                        if (!avResponse.ok) {
+                            throw new Error(`Alpha Vantage API returned ${avResponse.status}`);
                         }
-                    } else {
-                        const error = await backfillResponse.text();
-                        console.error(`[Auto Update] Failed to update market data for ${user.user_id || user.email}:`, error);
+
+                        const avData: any = await avResponse.json();
+
+                        if (!avData['Meta Data'] || !avData['Time Series (Daily)']) {
+                            throw new Error(`Invalid API response: ${JSON.stringify(avData).substring(0, 100)}`);
+                        }
+
+                        // Insert latest prices into database
+                        const timeSeries = avData['Time Series (Daily)'];
+                        const dates = Object.keys(timeSeries).sort().reverse().slice(0, 10); // Last 10 days
+
+                        let inserted = 0;
+                        for (const dateStr of dates) {
+                            const timestamp = Math.floor(new Date(dateStr).getTime() / 1000);
+                            const dayData = timeSeries[dateStr];
+
+                            // Upsert (insert or replace)
+                            await db.prepare(
+                                `INSERT OR REPLACE INTO market_prices (symbol, date, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)`
+                            ).bind(
+                                symbol,
+                                timestamp,
+                                parseFloat(dayData['1. open']),
+                                parseFloat(dayData['2. high']),
+                                parseFloat(dayData['3. low']),
+                                parseFloat(dayData['4. close']),
+                                parseInt(dayData['5. volume'])
+                            ).run();
+
+                            inserted++;
+                        }
+
+                        console.log(`[Auto Update] Successfully inserted/updated ${inserted} records for ${symbol}`);
+
+                        await db.prepare(
+                            `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
+                        ).bind(`成功更新 ${symbol}（${inserted} 筆記錄）`, user.id).run();
+
+                        updatedUsers.push(user.user_id || user.email);
+
+                    } catch (fetchError) {
+                        const errorMsg = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+                        console.error(`[Auto Update] Error fetching market data for ${user.user_id || user.email}:`, errorMsg);
 
                         await db.prepare(
                             `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
-                        ).bind(`更新失敗: ${error.substring(0, 100)}`, user.id).run();
+                        ).bind(`更新失敗: ${errorMsg.substring(0, 100)}`, user.id).run();
                     }
                 } catch (error) {
                     console.error(`[Auto Update] Error updating market data for ${user.user_id || user.email}:`, error);
