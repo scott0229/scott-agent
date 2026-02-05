@@ -89,22 +89,63 @@ export async function GET(req: NextRequest) {
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ apiKey })
+                        body: JSON.stringify({
+                            apiKey,
+                            userId: user.user_id || user.email  // Add userId parameter
+                        })
                     });
 
                     if (backfillResponse.ok) {
-                        const result = await backfillResponse.json();
-                        console.log(`[Auto Update] Successfully updated market data for ${user.user_id || user.email}:`, result);
+                        // Read SSE stream and extract final result
+                        const reader = backfillResponse.body?.getReader();
+                        const decoder = new TextDecoder();
+                        let completeEvent: any = null;
 
-                        // Count updated symbols
-                        const symbolCount = result.results ? Object.keys(result.results).length : 0;
-                        const successMessage = `成功更新 ${symbolCount} 個標的`;
+                        if (reader) {
+                            try {
+                                while (true) {
+                                    const { done, value } = await reader.read();
+                                    if (done) break;
 
-                        await db.prepare(
-                            `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
-                        ).bind(successMessage, user.id).run();
+                                    const chunk = decoder.decode(value);
+                                    const lines = chunk.split('\n');
 
-                        updatedUsers.push(user.user_id || user.email);
+                                    for (const line of lines) {
+                                        if (line.startsWith('data: ')) {
+                                            try {
+                                                const data = JSON.parse(line.substring(6));
+                                                if (data.type === 'complete') {
+                                                    completeEvent = data;
+                                                }
+                                            } catch (e) {
+                                                // Ignore parse errors for partial chunks
+                                            }
+                                        }
+                                    }
+                                }
+                            } finally {
+                                reader.releaseLock();
+                            }
+                        }
+
+                        if (completeEvent) {
+                            console.log(`[Auto Update] Successfully updated market data for ${user.user_id || user.email}:`, completeEvent);
+
+                            const symbolCount = completeEvent.symbols?.length || 0;
+                            const successMessage = `成功更新 ${symbolCount} 個標的`;
+
+                            await db.prepare(
+                                `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
+                            ).bind(successMessage, user.id).run();
+
+                            updatedUsers.push(user.user_id || user.email);
+                        } else {
+                            console.error(`[Auto Update] No complete event received for ${user.user_id || user.email}`);
+
+                            await db.prepare(
+                                `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = ? WHERE id = ?`
+                            ).bind('未收到完整響應', user.id).run();
+                        }
                     } else {
                         const error = await backfillResponse.text();
                         console.error(`[Auto Update] Failed to update market data for ${user.user_id || user.email}:`, error);
