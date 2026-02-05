@@ -112,15 +112,17 @@ export async function GET(req: NextRequest) {
                             const dayData = timeSeries[dateStr];
 
                             // Upsert (insert or replace)
+                            const closePrice = parseFloat(dayData['4. close']);
                             await db.prepare(
-                                `INSERT OR REPLACE INTO market_prices (symbol, date, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)`
+                                `INSERT OR REPLACE INTO market_prices (symbol, date, close_price, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
                             ).bind(
                                 symbol,
                                 timestamp,
+                                closePrice,  // close_price (legacy NOT NULL column)
                                 parseFloat(dayData['1. open']),
                                 parseFloat(dayData['2. high']),
                                 parseFloat(dayData['3. low']),
-                                parseFloat(dayData['4. close']),
+                                closePrice,  // close (new column, same value)
                                 parseInt(dayData['5. volume'])
                             ).run();
 
