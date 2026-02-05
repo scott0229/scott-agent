@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
 
                         await db.prepare(
                             `UPDATE USERS SET last_auto_update_status = 'success', last_auto_update_message = ? WHERE id = ?`
-                        ).bind(`成功更新 ${symbol}（${inserted} 筆記錄）`, user.id).run();
+                        ).bind(`成功更新 ${symbol}`, user.id).run();
 
                         updatedUsers.push(user.user_id || user.email);
 
