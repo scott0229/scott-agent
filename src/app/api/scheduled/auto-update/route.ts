@@ -20,14 +20,15 @@ export async function GET(req: NextRequest) {
 
         // Convert to HKT (UTC+8)
         const hktHours = (utcHours + 8) % 24;
-        const currentTime = `${hktHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`;
+        const hktMinutes = utcMinutes; // Minutes don't change with timezone
+        const currentTime = `${hktHours.toString().padStart(2, '0')}:${hktMinutes.toString().padStart(2, '0')}`;
 
         console.log(`[Auto Update] Current HKT time: ${currentTime}`);
 
         // Find users whose auto_update_time matches current time (within 15-minute window)
         // Since cron runs every 15 minutes, we need to check if current time is within the scheduled time
         const currentHour = hktHours;
-        const currentMinute = utcMinutes;
+        const currentMinute = hktMinutes;
 
         // Query all users with auto_update_time set
         const { results: users } = await db.prepare(
@@ -42,11 +43,20 @@ export async function GET(req: NextRequest) {
             const [targetHour, targetMinute] = user.auto_update_time.split(':').map(Number);
 
             // Check if we should update for this user
-            // Update if current time is within 15 minutes after the scheduled time
+            // Calculate the total minutes since midnight for easier comparison
+            const currentTotalMinutes = currentHour * 60 + currentMinute;
+            const targetTotalMinutes = targetHour * 60 + targetMinute;
+
+            // Update if current time is within the same 15-minute window as the target time
+            // Cron runs at 00, 15, 30, 45 minutes past each hour
+            // We want to trigger if the target time falls within the current 15-minute window
+            const cronWindowStart = Math.floor(currentMinute / 15) * 15;
+            const cronWindowEnd = cronWindowStart + 15;
+
             const shouldUpdate =
                 currentHour === targetHour &&
-                currentMinute >= targetMinute &&
-                currentMinute < targetMinute + 15;
+                targetMinute >= cronWindowStart &&
+                targetMinute < cronWindowEnd;
 
             if (shouldUpdate) {
                 console.log(`[Auto Update] Triggering update for user: ${user.user_id || user.email} at ${user.auto_update_time}`);
