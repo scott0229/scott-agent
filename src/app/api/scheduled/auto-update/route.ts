@@ -67,23 +67,9 @@ export async function GET(req: NextRequest) {
                         `UPDATE USERS SET last_auto_update_time = ?, last_auto_update_status = 'running', last_auto_update_message = '正在更新市場資料...' WHERE id = ?`
                     ).bind(Math.floor(Date.now() / 1000), user.id).run();
 
-                    // Get API key from admin user
-                    const { results: adminUsers } = await db.prepare(
-                        `SELECT api_key FROM USERS WHERE role = 'admin' LIMIT 1`
-                    ).all();
-
-                    const apiKey = (adminUsers[0] as any)?.api_key;
-
-                    if (!apiKey) {
-                        console.error('[Auto Update] No API key found for admin user');
-                        await db.prepare(
-                            `UPDATE USERS SET last_auto_update_status = 'failed', last_auto_update_message = '未找到 API 金鑰' WHERE id = ?`
-                        ).bind(user.id).run();
-                        continue;
-                    }
-
                     // Call the market data backfill API
                     // Only update QQQ (primary benchmark) to avoid timeout
+                    // Note: backfill API fetches its own API key from database
                     const backfillUrl = new URL('/api/market-data/backfill', req.url);
                     const backfillResponse = await fetch(backfillUrl.toString(), {
                         method: 'POST',
@@ -91,7 +77,6 @@ export async function GET(req: NextRequest) {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            apiKey,
                             userId: user.user_id || user.email,
                             symbol: 'QQQ'  // Only update primary benchmark
                         })
