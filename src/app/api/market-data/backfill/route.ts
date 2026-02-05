@@ -26,7 +26,19 @@ function sendSSE(controller: ReadableStreamDefaultController, data: any) {
 }
 
 export async function POST(request: Request) {
-    const body = await request.json();
+    let body: any;
+    try {
+        const text = await request.text();
+        console.log('[Backfill API] Raw request body:', text.substring(0, 200));
+        body = JSON.parse(text);
+    } catch (error) {
+        console.error('[Backfill API] JSON parse error:', error);
+        return NextResponse.json({
+            success: false,
+            error: `Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }, { status: 400 });
+    }
+
     const { userId, symbol, year } = body;
 
     if (!userId) {
