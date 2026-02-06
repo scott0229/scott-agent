@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
             SELECT 
                 ST.*, 
                 U.user_id as user_name,
-                MP.close_price as current_market_price
+                MP.close_price as current_market_price,
+                UserMaxDate.max_open_date
             FROM STOCK_TRADES ST
             JOIN USERS U ON ST.owner_id = U.id
             LEFT JOIN (
@@ -46,6 +47,11 @@ export async function GET(req: NextRequest) {
                     GROUP BY symbol
                 )
             ) MP ON ST.symbol = MP.symbol
+            LEFT JOIN (
+                SELECT owner_id, status, year, MAX(open_date) as max_open_date
+                FROM STOCK_TRADES
+                GROUP BY owner_id, status, year
+            ) UserMaxDate ON ST.owner_id = UserMaxDate.owner_id AND ST.status = UserMaxDate.status AND ST.year = UserMaxDate.year
         `;
         const params: any[] = [todayTimestamp];
         let whereAdded = false;
@@ -73,7 +79,8 @@ export async function GET(req: NextRequest) {
             whereAdded = true;
         }
 
-        query += ' ORDER BY ST.status DESC, U.user_id, ST.open_date DESC';
+        // Sort by: status (Holding first), then user's latest open_date, then individual open_date
+        query += ` ORDER BY ST.status DESC, UserMaxDate.max_open_date DESC, ST.open_date DESC`;
 
         const { results } = await db.prepare(query).bind(...params).all();
 

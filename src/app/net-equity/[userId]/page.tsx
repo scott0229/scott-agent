@@ -508,7 +508,7 @@ export default function NetEquityDetailPage() {
                                         </Badge>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center py-1">
+                                <TableCell className={`text-center py-1 ${record.cash_balance !== null && record.cash_balance !== undefined && record.cash_balance < 0 ? 'bg-red-50' : ''}`}>
                                     {record.cash_balance !== null && record.cash_balance !== undefined ? (
                                         formatMoney(record.cash_balance)
                                     ) : (
@@ -529,7 +529,7 @@ export default function NetEquityDetailPage() {
                                         "0"
                                     )}
                                 </TableCell>
-                                <TableCell className="text-center font-mono py-1">
+                                <TableCell className={`text-center font-mono py-1 ${(record as any).deposit && (record as any).deposit !== 0 ? 'bg-red-50' : ''}`}>
                                     {(record as any).deposit && (record as any).deposit !== 0 ? (
                                         formatMoney((record as any).deposit)
                                     ) : (
