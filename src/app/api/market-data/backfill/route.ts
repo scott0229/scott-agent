@@ -92,6 +92,15 @@ export async function POST(request: Request) {
                         : await stmt.all();
 
                     symbols = (holdingSymbols as any[]).map((row: any) => row.symbol);
+
+                    // Always ensure QQQ and QLD are included as core benchmarks
+                    const coreBenchmarks = ['QQQ', 'QLD'];
+                    for (const benchmark of coreBenchmarks) {
+                        if (!symbols.includes(benchmark)) {
+                            symbols.push(benchmark);
+                        }
+                    }
+
                     if (symbols.length === 0) {
                         symbols = ['QQQ', 'QLD'];
                         console.log('No stock trades found, using default symbols:', symbols);

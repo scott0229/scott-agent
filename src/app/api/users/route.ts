@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
                 // Add year filter (only admin crosses years)
                 if (year && year !== 'All') {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = '持有中') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
                     whereAdded = true;
                 } else {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = '持有中') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -285,7 +285,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -654,6 +654,9 @@ export async function PUT(req: NextRequest) {
         params.push(id);
 
         await db.prepare(updateQuery).bind(...params).run();
+
+        // Clear user cache to ensure fresh data on next fetch
+        clearCache();
 
         return NextResponse.json({ success: true });
 

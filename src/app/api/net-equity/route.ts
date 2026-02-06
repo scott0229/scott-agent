@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
 import { calculateBenchmarkStats, calculateUserTwr, findPrice } from '@/lib/twr';
-import { cacheResponse } from '@/lib/response-cache';
+import { cacheResponse, clearCache } from '@/lib/response-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -366,6 +366,9 @@ export async function POST(request: NextRequest) {
         updated_at = unixepoch()
     `).bind(user_id, date, net_equity, cash_balance, depositVal, feeVal, interestVal, targetYear).run();
 
+        // Clear cache to ensure fresh data on next fetch
+        clearCache();
+
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
 
     } catch (error: any) {
@@ -403,6 +406,9 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
         }
 
+        // Clear cache to ensure fresh data on next fetch
+        clearCache();
+
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
@@ -434,6 +440,9 @@ export async function DELETE(request: NextRequest) {
             // Unlike previous version, we DO NOT delete market data (QQQ/QLD) as that is global data shared across users.
             const deleteResult = await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE user_id = ? AND year = ?`).bind(user_id, year).run();
 
+            // Clear cache to ensure fresh data on next fetch
+            clearCache();
+
             return NextResponse.json({ success: true, deleted: deleteResult.meta.changes });
 
         } else {
@@ -445,6 +454,10 @@ export async function DELETE(request: NextRequest) {
             if (result.meta.changes === 0) {
                 return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
             }
+
+            // Clear cache to ensure fresh data on next fetch
+            clearCache();
+
             return NextResponse.json({ success: true });
         }
 
