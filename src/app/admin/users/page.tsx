@@ -107,6 +107,7 @@ export default function AdminUsersPage() {
     const [ibImportPreview, setIbImportPreview] = useState<any>(null);
     const [ibImportFile, setIbImportFile] = useState<File | null>(null);
     const [ibImporting, setIbImporting] = useState(false);
+    const [ibStockPreview, setIbStockPreview] = useState<any>(null);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -665,6 +666,7 @@ export default function AdminUsersPage() {
         event.target.value = ''; // Reset input
 
         try {
+            // Parse net equity
             const formData = new FormData();
             formData.append('file', file);
 
@@ -678,7 +680,23 @@ export default function AdminUsersPage() {
                 throw new Error(data.error || '解析失敗');
             }
 
+            // Also parse stock trades
+            let stockData = null;
+            try {
+                const stockFormData = new FormData();
+                stockFormData.append('file', file);
+                const stockRes = await fetch('/api/stocks/import-ib', {
+                    method: 'POST',
+                    body: stockFormData,
+                });
+                stockData = await stockRes.json();
+                if (!stockRes.ok) stockData = null;
+            } catch {
+                // Stock trade parsing is optional
+            }
+
             setIbImportPreview(data);
+            setIbStockPreview(stockData);
             setIbImportFile(file);
             setIbImportDialogOpen(true);
         } catch (error: any) {
@@ -694,6 +712,7 @@ export default function AdminUsersPage() {
         if (!ibImportFile) return;
         setIbImporting(true);
         try {
+            // 1. Import net equity
             const formData = new FormData();
             formData.append('file', ibImportFile);
             formData.append('confirm', 'true');
@@ -708,13 +727,38 @@ export default function AdminUsersPage() {
                 throw new Error(data.error || '匯入失敗');
             }
 
+            let stockMsg = '';
+            // 2. Import stock trades if there are actions
+            if (ibStockPreview?.actions?.length > 0) {
+                try {
+                    const stockFormData = new FormData();
+                    stockFormData.append('file', ibImportFile);
+                    stockFormData.append('confirm', 'true');
+                    const stockRes = await fetch('/api/stocks/import-ib', {
+                        method: 'POST',
+                        body: stockFormData,
+                    });
+                    const stockData = await stockRes.json();
+                    if (stockRes.ok) {
+                        const parts = [];
+                        if (stockData.created) parts.push(`開倉 ${stockData.created}`);
+                        if (stockData.closed) parts.push(`平倉 ${stockData.closed}`);
+                        if (stockData.split) parts.push(`拆單 ${stockData.split}`);
+                        if (parts.length > 0) stockMsg = `，股票：${parts.join('、')}`;
+                    }
+                } catch {
+                    // Stock import failure is non-fatal
+                }
+            }
+
             toast({
                 title: "匯入成功",
-                description: `${data.userName} ${data.dateStr} 淨值記錄已${data.action === 'updated' ? '更新' : '新增'}`,
+                description: `${data.userName} ${data.dateStr} 淨值記錄已${data.action === 'updated' ? '更新' : '新增'}${stockMsg}`,
             });
 
             setIbImportDialogOpen(false);
             setIbImportPreview(null);
+            setIbStockPreview(null);
             setIbImportFile(null);
             fetchUsers(true);
         } catch (error: any) {
@@ -1181,58 +1225,100 @@ export default function AdminUsersPage() {
                     if (!open) {
                         setIbImportDialogOpen(false);
                         setIbImportPreview(null);
+                        setIbStockPreview(null);
                         setIbImportFile(null);
                     }
                 }}>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="max-w-lg">
                         <AlertDialogHeader>
                             <AlertDialogTitle>
-                                確認匯入 IB 報表
+                                確認匯入 IB 報表：{ibImportPreview?.parsed?.userName} ({ibImportPreview?.parsed?.dateStr})
                             </AlertDialogTitle>
                             <AlertDialogDescription asChild>
                                 <div className="space-y-3" style={{ color: '#1e293b' }}>
                                     {ibImportPreview?.parsed && (
                                         <>
-                                            <div className="text-sm">
-                                                <span className="font-medium">用戶：</span>{ibImportPreview.parsed.userName}
-                                                <span className="mx-2">|</span>
-                                                <span className="font-medium">日期：</span>{ibImportPreview.parsed.dateStr}
-                                            </div>
-                                            <table className="w-full text-sm border rounded">
+
+                                            <table className="w-full text-xs border rounded">
                                                 <thead>
                                                     <tr className="bg-muted">
-                                                        <th className="text-left p-2">欄位</th>
-                                                        <th className="text-right p-2">解析值</th>
-                                                        {ibImportPreview.existing && <th className="text-right p-2">現有值</th>}
+                                                        <th className="text-left p-1.5">欄位</th>
+                                                        <th className="text-right p-1.5">解析值</th>
+                                                        {ibImportPreview.existing && <th className="text-right p-1.5">現有值</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <tr className="border-t">
-                                                        <td className="p-2">帳戶淨值</td>
-                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.netEquity)}</td>
-                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.netEquity)}</td>}
+                                                        <td className="p-1.5">帳戶淨值</td>
+                                                        <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.netEquity)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.netEquity)}</td>}
                                                     </tr>
                                                     <tr className="border-t">
-                                                        <td className="p-2">帳戶現金</td>
-                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.cashBalance)}</td>
-                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.cashBalance)}</td>}
+                                                        <td className="p-1.5">帳戶現金</td>
+                                                        <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.cashBalance)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.cashBalance)}</td>}
                                                     </tr>
                                                     <tr className="border-t">
-                                                        <td className="p-2">應計利息</td>
-                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.interest)}</td>
-                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.interest)}</td>}
+                                                        <td className="p-1.5">應計利息</td>
+                                                        <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.interest)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.interest)}</td>}
                                                     </tr>
                                                     <tr className="border-t">
-                                                        <td className="p-2">顧問費用</td>
-                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.managementFee)}</td>
-                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.managementFee)}</td>}
+                                                        <td className="p-1.5">顧問費用</td>
+                                                        <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.managementFee)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.managementFee)}</td>}
                                                     </tr>
                                                 </tbody>
                                             </table>
-                                            {ibImportPreview.existing && (
-                                                <p className="text-amber-600 text-xs">⚠️ 該日期已有記錄，確認後將覆蓋現有值</p>
-                                            )}
+
                                         </>
+                                    )}
+
+                                    {/* Stock Trade Actions */}
+                                    {ibStockPreview?.actions?.length > 0 && (
+                                        <>
+
+                                            <table className="w-full text-xs border rounded">
+                                                <thead>
+                                                    <tr className="bg-muted">
+                                                        <th className="text-left p-1.5">操作</th>
+                                                        <th className="text-left p-1.5">代碼</th>
+                                                        <th className="text-right p-1.5">數量</th>
+                                                        <th className="text-right p-1.5">價格</th>
+                                                        <th className="text-right p-1.5">說明</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {ibStockPreview.actions.map((action: any, i: number) => (
+                                                        <tr key={i} className="border-t">
+                                                            <td className="p-1.5">
+                                                                {action.type === 'open' && <span className="text-green-600">開倉</span>}
+                                                                {action.type === 'close_full' && <span className="text-red-600">平倉</span>}
+                                                                {action.type === 'close_split' && <span className="text-orange-600">拆單平倉</span>}
+                                                            </td>
+                                                            <td className="p-1.5 font-mono">{action.symbol}</td>
+                                                            <td className="text-right p-1.5 font-mono">{action.quantity.toLocaleString()}</td>
+                                                            <td className="text-right p-1.5 font-mono">{action.price.toFixed(2)}</td>
+                                                            <td className="p-1.5 text-right text-muted-foreground">
+                                                                {action.type === 'open' && '新增持倉'}
+                                                                {action.type === 'close_full' && `(${action.existingCode}) ${action.existingQuantity}股全平`}
+                                                                {action.type === 'close_split' && `(${action.existingCode}) ${action.existingQuantity}→${action.remainingQuantity}股`}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </>
+                                    )}
+                                    {ibStockPreview?.warnings?.length > 0 && (
+                                        <div className="text-red-600 text-xs space-y-1">
+                                            {ibStockPreview.warnings.map((w: string, i: number) => (
+                                                <p key={i}>{w}</p>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {ibStockPreview?.trades?.length === 0 && (
+                                        <div className="text-xs text-muted-foreground">報表中無股票交易記錄</div>
                                     )}
                                 </div>
                             </AlertDialogDescription>
