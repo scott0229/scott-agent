@@ -159,7 +159,29 @@ export async function POST(request: NextRequest) {
         }
 
         const html = await file.text();
-        const { trades, date, dateStr, year, userAlias } = parseIBStockTrades(html);
+        const { trades: rawTrades, date, dateStr, year, userAlias } = parseIBStockTrades(html);
+
+        // Merge same-day same-symbol open trades (weighted average price)
+        const mergedMap = new Map<string, typeof rawTrades[0]>();
+        const trades: typeof rawTrades = [];
+        for (const t of rawTrades) {
+            if (t.isOpen && !t.isClose) {
+                const key = `${t.symbol}`;
+                const existing = mergedMap.get(key);
+                if (existing) {
+                    // Weighted average price
+                    const totalQty = existing.quantity + t.quantity;
+                    existing.tradePrice = (existing.tradePrice * existing.quantity + t.tradePrice * t.quantity) / totalQty;
+                    existing.quantity = totalQty;
+                } else {
+                    const clone = { ...t };
+                    mergedMap.set(key, clone);
+                    trades.push(clone);
+                }
+            } else {
+                trades.push(t);
+            }
+        }
 
         if (trades.length === 0) {
             return NextResponse.json({

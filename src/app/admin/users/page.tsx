@@ -1268,6 +1268,13 @@ export default function AdminUsersPage() {
                                                         <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.managementFee)}</td>
                                                         {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.managementFee)}</td>}
                                                     </tr>
+                                                    {(ibImportPreview.parsed.deposit !== 0 || ibImportPreview.existing?.deposit !== 0) && (
+                                                        <tr className="border-t">
+                                                            <td className="p-1.5">存款和取款</td>
+                                                            <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.deposit)}</td>
+                                                            {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.deposit)}</td>}
+                                                        </tr>
+                                                    )}
                                                 </tbody>
                                             </table>
 

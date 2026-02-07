@@ -201,7 +201,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="initial_deposit" className="text-right">轉帳記錄</Label>
+                        <Label htmlFor="initial_deposit" className="text-right">存款和取款</Label>
                         <Input
                             id="initial_deposit"
                             type="text"

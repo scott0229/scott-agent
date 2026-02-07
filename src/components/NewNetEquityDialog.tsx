@@ -328,7 +328,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="deposit" className="text-right">
-                            轉帳記錄
+                            存款和取款
                         </Label>
                         <Input
                             id="deposit"

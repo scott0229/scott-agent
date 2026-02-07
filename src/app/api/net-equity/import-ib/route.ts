@@ -86,6 +86,13 @@ function parseIBStatement(html: string) {
         managementFee = parseNumber(feeMatch[1]);
     }
 
+    // Extract 存款和取款 from the right-side NAV changes panel
+    let deposit = 0;
+    const depositMatch = html.match(/存款和取款<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/);
+    if (depositMatch) {
+        deposit = parseNumber(depositMatch[1]);
+    }
+
     // Format date string for display: YY-MM-DD
     const dateStr = `${String(year).slice(2)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -98,6 +105,7 @@ function parseIBStatement(html: string) {
         interest,
         netEquity,
         managementFee,
+        deposit,
     };
 }
 
@@ -133,9 +141,9 @@ export async function POST(request: NextRequest) {
 
         // Check for existing record
         const existing = await db.prepare(
-            'SELECT id, net_equity, cash_balance, interest, management_fee FROM DAILY_NET_EQUITY WHERE user_id = ? AND date = ?'
+            'SELECT id, net_equity, cash_balance, interest, management_fee, deposit FROM DAILY_NET_EQUITY WHERE user_id = ? AND date = ?'
         ).bind(userResult.id, parsed.date).first<{
-            id: number; net_equity: number; cash_balance: number; interest: number; management_fee: number;
+            id: number; net_equity: number; cash_balance: number; interest: number; management_fee: number; deposit: number;
         }>();
 
         // Preview mode: return parsed values for confirmation
@@ -153,12 +161,14 @@ export async function POST(request: NextRequest) {
                     cashBalance: parsed.cashBalance,
                     interest: parsed.interest,
                     managementFee: parsed.managementFee,
+                    deposit: parsed.deposit,
                 },
                 existing: existing ? {
                     netEquity: existing.net_equity,
                     cashBalance: existing.cash_balance,
                     interest: existing.interest,
                     managementFee: existing.management_fee,
+                    deposit: existing.deposit,
                 } : null,
             });
         }
@@ -166,11 +176,12 @@ export async function POST(request: NextRequest) {
         // Confirm mode: upsert
         await db.prepare(`
             INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, interest, deposit, management_fee, year, updated_at)
-            VALUES (?, ?, ?, ?, ?, 0, ?, ?, unixepoch())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
             ON CONFLICT(user_id, date) DO UPDATE SET
                 net_equity = excluded.net_equity,
                 cash_balance = excluded.cash_balance,
                 interest = excluded.interest,
+                deposit = excluded.deposit,
                 management_fee = excluded.management_fee,
                 updated_at = unixepoch()
         `).bind(
@@ -179,6 +190,7 @@ export async function POST(request: NextRequest) {
             parsed.netEquity,
             parsed.cashBalance,
             parsed.interest,
+            parsed.deposit,
             parsed.managementFee,
             parsed.year
         ).run();

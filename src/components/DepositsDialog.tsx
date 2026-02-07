@@ -178,13 +178,13 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
             <DialogTrigger asChild>
                 <Button variant="outline" className="hover:bg-accent hover:text-accent-foreground">
                     <Wallet className="h-4 w-4 mr-2" />
-                    轉帳記錄
+                    存款和取款
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl w-full h-[60vh] flex flex-col">
                 <DialogHeader>
                     <div className="flex items-center justify-between mr-8">
-                        <DialogTitle className="text-xl">轉帳記錄</DialogTitle>
+                        <DialogTitle className="text-xl">存款和取款</DialogTitle>
                         <div className="flex items-center gap-2">
                             {/* Transaction Type Filter */}
                             <Select value={selectedTransactionType} onValueChange={setSelectedTransactionType}>

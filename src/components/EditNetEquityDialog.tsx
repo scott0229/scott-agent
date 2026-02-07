@@ -294,7 +294,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="deposit" className="text-right">轉帳記錄</Label>
+                        <Label htmlFor="deposit" className="text-right">存款和取款</Label>
                         <Input
                             id="deposit"
                             type="text"

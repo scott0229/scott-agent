@@ -325,7 +325,7 @@ export default function NetEquityPage() {
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-7 py-1 px-2">轉帳記錄</td>
+                                                <td className="h-7 py-1 px-2">存款和取款</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {user.total_deposit !== undefined && user.total_deposit !== 0 ? (user.total_deposit > 0 ? formatMoney(user.total_deposit) : <span className="text-red-600">{formatMoney(user.total_deposit)}</span>) : '0'}
                                                 </td>
