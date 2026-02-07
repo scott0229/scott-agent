@@ -465,7 +465,7 @@ export default function StrategiesPage() {
                                                                 }
 
                                                                 return (
-                                                                    <tr key={option.id} className={`border-b last:border-0 ${option.operation === '持有中' ? 'bg-gray-100' : ''}`}>
+                                                                    <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-14">{option.operation}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-16">{option.underlying}_{option.type}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-10">{option.quantity}</td>

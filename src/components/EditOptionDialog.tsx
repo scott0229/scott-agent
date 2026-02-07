@@ -193,7 +193,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 <DialogHeader>
                     <DialogTitle>編輯交易</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4" autoComplete="off">
                     {error && (
                         <div className="col-span-2 bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm border border-red-200">
                             {error}
@@ -210,12 +210,11 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                 <SelectValue placeholder="選擇操作" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="持有中">持有中</SelectItem>
-                                <SelectItem value="滾動">滾動</SelectItem>
-                                <SelectItem value="到期">到期</SelectItem>
-                                <SelectItem value="中途被行權">中途被行權</SelectItem>
-                                <SelectItem value="到期-被行權">到期-被行權</SelectItem>
-                                <SelectItem value="提早平倉">提早平倉</SelectItem>
+                                <SelectItem value="Open">Open</SelectItem>
+                                <SelectItem value="Closed">Closed</SelectItem>
+                                <SelectItem value="Expired">Expired</SelectItem>
+                                <SelectItem value="Assigned">Assigned</SelectItem>
+                                <SelectItem value="Exercised">Exercised</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -440,7 +439,9 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="final_profit">最終損益</Label>
+                        <Label htmlFor="final_profit" className="text-right">
+                            已實現損益
+                        </Label>
                         <Input
                             id="final_profit"
                             type="text"

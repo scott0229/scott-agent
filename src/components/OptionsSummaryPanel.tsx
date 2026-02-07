@@ -23,6 +23,7 @@ interface User {
     net_deposit?: number;
     initial_cost?: number;
     open_put_covered_capital?: number;
+    current_cash_balance?: number;
 }
 
 interface OptionsSummaryPanelProps {
@@ -122,8 +123,10 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const calculateUserMetrics = (user: User) => {
         const equity = (user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0);
 
-        // Margin Rate
-        const marginRate = equity > 0 ? (user.open_put_covered_capital || 0) / equity : 0;
+        // Margin Rate: (Put Capital + Debt) / Equity
+        const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
+        const marginUsed = (user.open_put_covered_capital || 0) + debt;
+        const marginRate = equity > 0 ? marginUsed / equity : 0;
 
         // Turnover Rate
         const currentMonthStats = user.monthly_stats?.find((s) => parseInt(s.month.replace('月', '')) === currentMonthStr);
@@ -157,7 +160,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     // Calculate Aggregates
     const totalNetEquity = users.reduce((sum, user) => sum + (user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0), 0);
     const totalOpenPutCapital = users.reduce((sum, user) => sum + (user.open_put_covered_capital || 0), 0);
-    const aggregateMarginRate = totalNetEquity > 0 ? totalOpenPutCapital / totalNetEquity : 0;
+    const totalDebt = users.reduce((sum, user) => sum + Math.abs(Math.min(0, user.current_cash_balance || 0)), 0);
+    const aggregateMarginRate = totalNetEquity > 0 ? (totalOpenPutCapital + totalDebt) / totalNetEquity : 0;
     const totalOpenCount = users.reduce((sum, user) => sum + (user.open_count || 0), 0);
 
     const totalMonthlyTurnover = users.reduce((sum, user) => {
@@ -228,7 +232,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 </div>
                             </td>
                             {columnVisibility.allUsers && (
-                                <td className="text-center px-2 py-1 bg-muted/40 text-foreground border-r">
+                                <td className="text-center px-2 py-1 bg-muted/40 text-foreground border-r whitespace-nowrap">
                                     <div className="inline-flex items-center gap-0">
                                         <span>全體用戶</span>
                                         <button

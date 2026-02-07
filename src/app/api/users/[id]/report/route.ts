@@ -204,7 +204,7 @@ export async function GET(
         const marginResult = await db.prepare(`
             SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) as open_put_covered_capital
             FROM OPTIONS
-            WHERE owner_id = ? AND year = ? AND operation = '持有中' AND type = 'PUT'
+            WHERE owner_id = ? AND year = ? AND operation = 'Open' AND type = 'PUT'
         `).bind(userId, currentYear).first();
 
         const marginRate = accountNetWorth > 0 ? (marginResult?.open_put_covered_capital || 0) / accountNetWorth : 0;
@@ -213,7 +213,7 @@ export async function GET(
         const { results: openOptions } = await db.prepare(`
             SELECT quantity, to_date, type, underlying, strike_price, premium
             FROM OPTIONS
-            WHERE owner_id = ? AND year = ? AND operation = '持有中'
+            WHERE owner_id = ? AND year = ? AND operation = 'Open'
             ORDER BY to_date, underlying, type
         `).bind(userId, currentYear).all();
 

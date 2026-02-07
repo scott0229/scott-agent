@@ -610,7 +610,7 @@ export default function NetEquityDetailPage() {
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell className="text-center font-mono font-normal">{formatMoney(initialCash)}</TableCell>
+                            <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-red-50' : ''}`}>{formatMoney(initialCash)}</TableCell>
                             <TableCell className="text-center font-mono font-normal">
                                 {formatMoney(initialManagementFee)}
                             </TableCell>

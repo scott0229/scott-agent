@@ -453,7 +453,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">行權價</TableHead>
                             <TableHead className="text-center">備兌資金</TableHead>
                             <TableHead className="text-center">權利金</TableHead>
-                            <TableHead className="text-center">最終損益</TableHead>
+                            <TableHead className="text-center">已實現損益</TableHead>
 
                             <TableHead className="text-center">DELTA</TableHead>
                             <TableHead className="text-center">隱含波動</TableHead>
@@ -475,136 +475,146 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            sortedOptions.map((opt, index) => (
-                                <TableRow
-                                    key={opt.id}
-                                    className="hover:bg-muted/50 text-center"
-                                >
-                                    <TableCell>{sortedOptions.length - index}</TableCell>
-                                    {params.userId === 'All' && (
-                                        <TableCell>
-                                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                                                {/* Try to find user display name from users list if possible, else just ID */}
-                                                {(() => {
-                                                    const u = users.find(u => u.user_id === opt.user_id || u.id.toString() === opt.user_id);
-                                                    return u ? (u.user_id || u.email) : (opt.user_id || '-');
-                                                })()}
-                                            </span>
+                            sortedOptions.map((opt, index) => {
+                                const isLastInGroup = index < sortedOptions.length - 1 &&
+                                    formatDate(opt.open_date) !== formatDate(sortedOptions[index + 1].open_date);
+
+                                return (
+                                    <TableRow
+                                        key={opt.id}
+                                        className={`hover:bg-muted/50 text-center ${isLastInGroup ? 'border-b-4 border-orange-200' : ''}`}
+                                    >
+                                        <TableCell>{sortedOptions.length - index}</TableCell>
+                                        {params.userId === 'All' && (
+                                            <TableCell>
+                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                    {/* Try to find user display name from users list if possible, else just ID */}
+                                                    {(() => {
+                                                        const u = users.find(u => u.user_id === opt.user_id || u.id.toString() === opt.user_id);
+                                                        return u ? (u.user_id || u.email) : (opt.user_id || '-');
+                                                    })()}
+                                                </span>
+                                            </TableCell>
+                                        )}
+                                        <TableCell className={(opt.operation || 'Open') === 'Open' ? 'bg-pink-50' : ''}>
+                                            {opt.operation === 'Assigned' ? (
+                                                <span
+                                                    className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
+                                                    // onClick={() => setSelectedOperation(opt.operation || 'Open')}
+                                                    // onClick={() => setSelectedOperation(opt.operation || 'Open')}
+                                                    title={`點擊過濾 ${opt.operation} 的交易`}
+                                                >
+                                                    {opt.operation}
+                                                </span>
+                                            ) : (
+                                                <div
+                                                    className={`cursor-pointer min-w-[34px] flex justify-center`}
+                                                    onClick={() => setSelectedOperation(opt.operation || 'Open')}
+                                                    title={`點擊過濾 ${opt.operation || 'Open'} 的交易`}
+                                                >
+                                                    {opt.operation === 'Expired' ? (
+                                                        <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none font-normal text-sm px-2 py-0.5">
+                                                            Expired
+                                                        </Badge>
+                                                    ) : (
+                                                        opt.operation || 'Open'
+                                                    )}
+                                                </div>
+                                            )}
                                         </TableCell>
-                                    )}
-                                    <TableCell className={(opt.operation || '持有中') === '持有中' ? 'bg-pink-50' : ''}>
-                                        {opt.operation === '中途被行權' ? (
-                                            <span
-                                                className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
-                                                onClick={() => setSelectedOperation(opt.operation || '持有中')}
-                                                title={`點擊過濾 ${opt.operation} 的交易`}
-                                            >
-                                                {opt.operation}
-                                            </span>
-                                        ) : (
+                                        <TableCell>{formatDate(opt.open_date)}</TableCell>
+                                        <TableCell>{formatDate(opt.to_date)}</TableCell>
+                                        <TableCell>{getDaysToExpire(opt)}</TableCell>
+                                        <TableCell>
+                                            {(opt.operation === 'Open' || !opt.settlement_date) ? (
+                                                "-"
+                                            ) : (
+                                                formatDate(opt.settlement_date)
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {(opt.operation === 'Open' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
+                                        </TableCell>
+                                        <TableCell>{opt.quantity}</TableCell>
+                                        <TableCell>
                                             <span
                                                 className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
-                                                onClick={() => setSelectedOperation(opt.operation || '持有中')}
-                                                title={`點擊過濾 ${opt.operation || '持有中'} 的交易`}
+                                                onClick={() => setSelectedUnderlying(opt.underlying)}
+                                                title={`點擊過濾 ${opt.underlying} 的交易`}
                                             >
-                                                {opt.operation || '持有中'}
+                                                {opt.underlying}
                                             </span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{formatDate(opt.open_date)}</TableCell>
-                                    <TableCell>{formatDate(opt.to_date)}</TableCell>
-                                    <TableCell>{getDaysToExpire(opt)}</TableCell>
-                                    <TableCell>
-                                        {(opt.operation === '持有中' || !opt.settlement_date) ? (
-                                            "-"
-                                        ) : (
-                                            formatDate(opt.settlement_date)
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {(opt.operation === '持有中' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
-                                    </TableCell>
-                                    <TableCell>{opt.quantity}</TableCell>
-                                    <TableCell>
-                                        <span
-                                            className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
-                                            onClick={() => setSelectedUnderlying(opt.underlying)}
-                                            title={`點擊過濾 ${opt.underlying} 的交易`}
-                                        >
-                                            {opt.underlying}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={`cursor-pointer transition-all duration-150 ${opt.type === 'CALL'
-                                                ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
-                                                : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
-                                                }`}
-                                            onClick={() => setSelectedType(opt.type)}
-                                            title={`點擊過濾 ${opt.type} 的交易`}
-                                        >
-                                            {opt.type}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{opt.strike_price}</TableCell>
-                                    <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
-                                    <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
-                                    <TableCell>
-                                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className={`cursor-pointer transition-all duration-150 ${opt.type === 'CALL'
+                                                    ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
+                                                    : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
+                                                    }`}
+                                                onClick={() => setSelectedType(opt.type)}
+                                                title={`點擊過濾 ${opt.type} 的交易`}
+                                            >
+                                                {opt.type}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{opt.strike_price}</TableCell>
+                                        <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
+                                        <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
+                                        <TableCell className={opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
                                             {opt.final_profit ? opt.final_profit.toLocaleString('en-US') : '-'}
-                                        </span>
-                                    </TableCell>
+                                        </TableCell>
 
-                                    <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
-                                    <TableCell>{opt.iv || '-'}</TableCell>
-                                    <TableCell className="text-center font-mono text-sm">
-                                        {opt.code || '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {/* Only non-customer roles can edit/delete */}
-                                        {currentUserRole && currentUserRole !== 'customer' && (
-                                            <div className="flex justify-center gap-1">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEdit(opt)}
-                                                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>編輯</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                        <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
+                                        <TableCell>{opt.iv || '-'}</TableCell>
+                                        <TableCell className="text-center font-mono text-sm">
+                                            {opt.code || '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {/* Only non-customer roles can edit/delete */}
+                                            {currentUserRole && currentUserRole !== 'customer' && (
+                                                <div className="flex justify-center gap-1">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEdit(opt)}
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>編輯</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
 
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleDelete(opt.id)}
-                                                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>刪除</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleDelete(opt.id)}
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>刪除</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>

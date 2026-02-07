@@ -396,12 +396,8 @@ export default function StockTradingPage() {
                                             <TableCell className="text-center">
                                                 {trade.close_price ? formatMoney(trade.close_price) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center">
-                                                {pnl !== null ? (
-                                                    <span className={pnl >= 0 ? 'text-green-700' : 'text-red-600'}>
-                                                        {formatPnL(pnl)}
-                                                    </span>
-                                                ) : '-'}
+                                            <TableCell className={cn("text-center", pnl !== null && pnl < 0 && 'bg-pink-50')}>
+                                                {pnl !== null ? formatPnL(pnl) : '-'}
                                             </TableCell>
                                             <TableCell className="text-center font-mono text-sm">
                                                 {trade.code || '-'}

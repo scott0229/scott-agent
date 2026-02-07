@@ -46,6 +46,7 @@ interface User {
     net_deposit?: number;
     initial_cost?: number;
     open_put_covered_capital?: number;
+    current_cash_balance?: number;
 }
 
 export default function OptionsPage() {

@@ -188,12 +188,11 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                     <SelectValue placeholder="選擇操作" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="持有中">持有中</SelectItem>
-                                    <SelectItem value="滾動">滾動</SelectItem>
-                                    <SelectItem value="到期">到期</SelectItem>
-                                    <SelectItem value="中途被行權">中途被行權</SelectItem>
-                                    <SelectItem value="到期-被行權">到期-被行權</SelectItem>
-                                    <SelectItem value="提早平倉">提早平倉</SelectItem>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
+                                    <SelectItem value="Expired">Expired</SelectItem>
+                                    <SelectItem value="Assigned">Assigned</SelectItem>
+                                    <SelectItem value="Exercised">Exercised</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
