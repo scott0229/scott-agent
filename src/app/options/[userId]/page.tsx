@@ -288,7 +288,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
     const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
-    const operations = Array.from(new Set(options.map(opt => opt.operation || '持有中'))).sort();
+    const operations = Array.from(new Set(options.map(opt => opt.operation || 'Open'))).sort();
 
     const filteredOptions = options.filter(opt => {
         const date = new Date(opt.open_date * 1000);
@@ -297,14 +297,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
         const typeMatch = selectedType === 'All' || opt.type === selectedType;
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
-        const operationMatch = selectedOperation === 'All' || (opt.operation || '持有中') === selectedOperation;
+        const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation;
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     });
 
-    // Sort options: open positions (持有中) first (by open_date desc), then closed positions (by open_date desc)
+    // Sort options: open positions (Open) first (by open_date desc), then closed positions (by open_date desc)
     const sortedOptions = filteredOptions.sort((a, b) => {
-        const aIsOpen = (a.operation || '持有中') === '持有中';
-        const bIsOpen = (b.operation || '持有中') === '持有中';
+        const aIsOpen = (a.operation || 'Open') === 'Open';
+        const bIsOpen = (b.operation || 'Open') === 'Open';
 
         // If one is open and the other is closed, open comes first
         if (aIsOpen && !bIsOpen) return -1;

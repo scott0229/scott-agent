@@ -185,7 +185,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="initial_management_fee" className="text-right">管理費支出</Label>
+                        <Label htmlFor="initial_management_fee" className="text-right">顧問費用</Label>
                         <Input
                             id="initial_management_fee"
                             type="text"
@@ -217,7 +217,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="initial_interest" className="text-right">利息收支</Label>
+                        <Label htmlFor="initial_interest" className="text-right">應計利息</Label>
                         <Input
                             id="initial_interest"
                             type="text"

@@ -278,7 +278,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="managementFee" className="text-right">
-                            管理費支出
+                            顧問費用
                         </Label>
                         <Input
                             id="managementFee"
@@ -303,7 +303,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="interest" className="text-right">
-                            利息收支
+                            應計利息
                         </Label>
                         <Input
                             id="interest"

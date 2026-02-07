@@ -45,7 +45,7 @@ interface StockTrade {
     owner_id?: number;
     year?: number;
     symbol: string;
-    status: 'Holding' | 'Closed';
+    status: 'Open' | 'Closed';
     open_date: number;
     close_date?: number | null;
     open_price: number;
@@ -70,7 +70,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
     // Form State
     const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [symbol, setSymbol] = useState("");
-    // const [status, setStatus] = useState<'Holding' | 'Closed'>('Holding'); // Derive from closeDate instead
+    // const [status, setStatus] = useState<'Open' | 'Closed'>('Open'); // Derive from closeDate instead
     const [openDate, setOpenDate] = useState<Date | undefined>(undefined);
     const [closeDate, setCloseDate] = useState<Date | undefined>(undefined);
     const [openPrice, setOpenPrice] = useState("");
@@ -149,7 +149,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
 
     const resetForm = () => {
         setSymbol("");
-        // setStatus("Holding");
+        // setStatus("Open");
         // setOpenDate is handled in useEffect
         setCloseDate(undefined);
         setOpenPrice("");
@@ -188,7 +188,7 @@ export function StockTradeDialog({ open, onOpenChange, tradeToEdit, onSuccess, y
         // Open Date year check removed as per requirement (allow carry-over)
 
         // Derive status
-        const derivedStatus = closeDate ? 'Closed' : 'Holding';
+        const derivedStatus = closeDate ? 'Closed' : 'Open';
 
         // Close Date Validation: Must be in the current year if closed
         if (derivedStatus === 'Closed' && closeDate) {

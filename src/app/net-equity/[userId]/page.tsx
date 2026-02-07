@@ -425,7 +425,7 @@ export default function NetEquityDetailPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">顯示全部</SelectItem>
-                                <SelectItem value="management_fee">顯示管理費支出</SelectItem>
+                                <SelectItem value="management_fee">顯示顧問費用</SelectItem>
                                 <SelectItem value="transfer">顯示轉帳記錄</SelectItem>
                             </SelectContent>
                         </Select>
@@ -477,8 +477,8 @@ export default function NetEquityDetailPage() {
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">管理費支出</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">利息收支</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">顧問費用</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">應計利息</TableHead>
                             <TableHead className="text-center font-bold text-foreground">轉帳記錄</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
@@ -515,7 +515,7 @@ export default function NetEquityDetailPage() {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-center py-1">
+                                <TableCell className={`text-center py-1 ${record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? 'bg-red-50' : ''}`}>
                                     {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
                                         formatMoney(record.management_fee)
                                     ) : (

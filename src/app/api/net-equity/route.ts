@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
                 const stockHoldingsQuery = await db.prepare(`
                     SELECT owner_id, symbol, SUM(quantity) as total_quantity
                     FROM STOCK_TRADES
-                    WHERE year = ? AND status = 'Holding'
+                    WHERE year = ? AND status = 'Open'
                     GROUP BY owner_id, symbol
                     HAVING total_quantity > 0
                     ORDER BY owner_id, total_quantity DESC

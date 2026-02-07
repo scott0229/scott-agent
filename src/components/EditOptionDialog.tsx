@@ -86,7 +86,7 @@ const formatNumberWithCommas = (value: number | null | undefined): string => {
 export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }: EditOptionDialogProps) {
     const { selectedYear } = useYearFilter();
     const [formData, setFormData] = useState({
-        operation: '持有中',
+        operation: 'Open',
         open_date: '',
         to_date: '',
         settlement_date: '',
@@ -109,7 +109,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
     useEffect(() => {
         if (optionToEdit) {
             setFormData({
-                operation: optionToEdit.operation || '持有中',
+                operation: optionToEdit.operation || 'Open',
                 open_date: formatDateForInput(optionToEdit.open_date),
                 to_date: formatDateForInput(optionToEdit.to_date),
                 settlement_date: formatDateForInput(optionToEdit.settlement_date),
@@ -154,7 +154,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 ...formData,
                 open_date: Math.floor(new Date(formData.open_date).getTime() / 1000),
                 to_date: formData.to_date ? Math.floor(new Date(formData.to_date).getTime() / 1000) : null,
-                settlement_date: (formData.operation !== '持有中' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
+                settlement_date: (formData.operation !== 'Open' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
                 quantity: parseFloat(formData.quantity.toString().replace(/,/g, '')),
                 strike_price: parseFloat(formData.strike_price.toString().replace(/,/g, '')),
                 premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
@@ -303,7 +303,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                 <Button
                                     variant={"outline"}
                                     type="button"
-                                    disabled={formData.operation === '持有中'}
+                                    disabled={formData.operation === 'Open'}
                                     className={cn(
                                         "w-full justify-start text-left font-normal",
                                         !formData.settlement_date && "text-muted-foreground"

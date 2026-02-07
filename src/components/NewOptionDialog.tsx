@@ -63,20 +63,40 @@ const adjustToWorkday = (dateStr: string): string => {
     return d.toISOString().split('T')[0];
 };
 
+interface OptionFormData {
+    type: 'CALL' | 'PUT';
+    status: string;
+    operation: string;
+    open_date: string;
+    to_date: string;
+    settlement_date: string;
+    close_date: string;
+    quantity: number | string;
+    strike_price: number | string;
+    premium: number | string;
+    close_price: number | string;
+    underlying: string;
+    collateral: number | string;
+    iv: string;
+    delta: string;
+}
+
 export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId }: NewOptionDialogProps) {
     const { selectedYear } = useYearFilter();
-    const [formData, setFormData] = useState({
-        operation: '持有中',
+    const [formData, setFormData] = useState<OptionFormData>({
+        type: 'PUT',
+        status: 'Open',
+        operation: 'Open',
         open_date: new Date().toISOString().split('T')[0],
-
-        to_date: getNextWorkday(),
-        settlement_date: getNextWorkday(),
-        quantity: '',
+        to_date: '',
+        settlement_date: '',
+        close_date: '',
+        quantity: 1,
+        strike_price: 0,
+        premium: 0,
+        close_price: 0,
         underlying: '',
-        type: 'CALL',
-        strike_price: '',
-        premium: '',
-        collateral: '',
+        collateral: 0,
         iv: '',
         delta: ''
     });
@@ -90,7 +110,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (parseFloat(formData.quantity) === 0) {
+        if (parseFloat(formData.quantity.toString()) === 0) {
             setError('口數不能為 0');
             return;
         }
@@ -113,7 +133,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 ...formData,
                 open_date: Math.floor(new Date(formData.open_date).getTime() / 1000),
                 to_date: formData.to_date ? Math.floor(new Date(formData.to_date).getTime() / 1000) : null,
-                settlement_date: (formData.operation !== '持有中' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
+                settlement_date: (formData.operation !== 'Open' && formData.settlement_date) ? Math.floor(new Date(formData.settlement_date).getTime() / 1000) : null,
                 quantity: parseFloat(formData.quantity.toString().replace(/,/g, '')),
                 strike_price: parseFloat(formData.strike_price.toString().replace(/,/g, '')),
                 premium: formData.premium ? parseFloat(formData.premium.toString().replace(/,/g, '')) : 0,
@@ -137,7 +157,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 onOpenChange(false);
                 // Reset form
                 setFormData({
-                    operation: '持有中',
+                    operation: 'Open',
                     open_date: new Date().toISOString().split('T')[0],
 
                     to_date: getNextWorkday(),
@@ -149,7 +169,10 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     premium: '',
                     collateral: '',
                     iv: '',
-                    delta: ''
+                    delta: '',
+                    status: 'Open',
+                    close_date: '',
+                    close_price: 0
                 });
                 setIsSettlementDateDirty(false);
             } else {
@@ -283,7 +306,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                     <Button
                                         variant={"outline"}
                                         type="button"
-                                        disabled={formData.operation === '持有中'}
+                                        disabled={formData.operation === 'Open'}
                                         className={cn(
                                             "w-full justify-start text-left font-normal",
                                             !formData.settlement_date && "text-muted-foreground"
@@ -337,7 +360,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                             <Label htmlFor="type">類型</Label>
                             <Select
                                 value={formData.type}
-                                onValueChange={(value) => setFormData({ ...formData, type: value })}
+                                onValueChange={(value) => setFormData({ ...formData, type: value as 'CALL' | 'PUT' })}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="選擇類型" />

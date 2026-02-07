@@ -59,7 +59,7 @@ interface StockTrade {
     owner_id: number;
     year: number;
     symbol: string;
-    status: 'Holding' | 'Closed';
+    status: 'Open' | 'Closed';
     open_date: number;
     close_date?: number | null;
     open_price: number;
@@ -290,8 +290,8 @@ export default function StockTradingPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">所有狀態</SelectItem>
-                                    <SelectItem value="Holding">持有中</SelectItem>
-                                    <SelectItem value="Closed">已平倉</SelectItem>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -377,7 +377,7 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
                                             <TableCell className={cn("text-center", !trade.close_date && "bg-pink-50")}>
-                                                {trade.close_date ? formatDate(trade.close_date) : '持有中'}
+                                                {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <span

@@ -119,7 +119,7 @@ export async function GET(
         const { results: stockPositions } = await db.prepare(`
             SELECT symbol, SUM(quantity) as quantity
             FROM STOCK_TRADES
-            WHERE owner_id = ? AND year = ? AND status = 'Holding'
+            WHERE owner_id = ? AND year = ? AND status = 'Open'
             GROUP BY symbol
             HAVING quantity > 0
             ORDER BY symbol

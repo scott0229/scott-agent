@@ -403,7 +403,7 @@ export default function StrategiesPage() {
 
                                                                 return (
                                                                     <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.close_date ? '已關倉' : '持有中'}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.close_date ? '已關倉' : 'Open'}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-16">{stock.symbol}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-10">{stock.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedDate}</td>

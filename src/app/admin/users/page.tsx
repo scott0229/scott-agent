@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
@@ -101,6 +101,12 @@ export default function AdminUsersPage() {
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
     const [pendingImportData, setPendingImportData] = useState<any>(null); // To hold parsed JSON before import
+
+    // IB Statement Import State
+    const [ibImportDialogOpen, setIbImportDialogOpen] = useState(false);
+    const [ibImportPreview, setIbImportPreview] = useState<any>(null);
+    const [ibImportFile, setIbImportFile] = useState<File | null>(null);
+    const [ibImporting, setIbImporting] = useState(false);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -652,6 +658,80 @@ export default function AdminUsersPage() {
     // I will stick to updating functions first.
 
 
+    // IB Statement Import Handlers
+    const handleIbImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        event.target.value = ''; // Reset input
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/net-equity/import-ib', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || '解析失敗');
+            }
+
+            setIbImportPreview(data);
+            setIbImportFile(file);
+            setIbImportDialogOpen(true);
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "IB 報表解析失敗",
+                description: error.message,
+            });
+        }
+    };
+
+    const confirmIbImport = async () => {
+        if (!ibImportFile) return;
+        setIbImporting(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', ibImportFile);
+            formData.append('confirm', 'true');
+
+            const res = await fetch('/api/net-equity/import-ib', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || '匯入失敗');
+            }
+
+            toast({
+                title: "匯入成功",
+                description: `${data.userName} ${data.dateStr} 淨值記錄已${data.action === 'updated' ? '更新' : '新增'}`,
+            });
+
+            setIbImportDialogOpen(false);
+            setIbImportPreview(null);
+            setIbImportFile(null);
+            fetchUsers(true);
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "匯入失敗",
+                description: error.message,
+            });
+        } finally {
+            setIbImporting(false);
+        }
+    };
+
+    const formatIbMoney = (val: number) => {
+        return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+    };
+
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
 
     const confirmDeleteAll = async () => {
@@ -743,6 +823,19 @@ export default function AdminUsersPage() {
                                         onChange={handleImportFile}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                         disabled={importing}
+                                    />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="hover:bg-accent hover:text-accent-foreground relative"
+                                >
+                                    <FileUp className="h-4 w-4 mr-2" />
+                                    匯入報表
+                                    <input
+                                        type="file"
+                                        accept=".htm,.html"
+                                        onChange={handleIbImportFile}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
                                     />
                                 </Button>
                                 {selectedYear !== 'All' && (
@@ -1082,6 +1175,76 @@ export default function AdminUsersPage() {
                         }
                     }}
                 />
+
+                {/* IB Statement Import Confirmation Dialog */}
+                <AlertDialog open={ibImportDialogOpen} onOpenChange={(open) => {
+                    if (!open) {
+                        setIbImportDialogOpen(false);
+                        setIbImportPreview(null);
+                        setIbImportFile(null);
+                    }
+                }}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                確認匯入 IB 報表
+                            </AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                                <div className="space-y-3" style={{ color: '#1e293b' }}>
+                                    {ibImportPreview?.parsed && (
+                                        <>
+                                            <div className="text-sm">
+                                                <span className="font-medium">用戶：</span>{ibImportPreview.parsed.userName}
+                                                <span className="mx-2">|</span>
+                                                <span className="font-medium">日期：</span>{ibImportPreview.parsed.dateStr}
+                                            </div>
+                                            <table className="w-full text-sm border rounded">
+                                                <thead>
+                                                    <tr className="bg-muted">
+                                                        <th className="text-left p-2">欄位</th>
+                                                        <th className="text-right p-2">解析值</th>
+                                                        {ibImportPreview.existing && <th className="text-right p-2">現有值</th>}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr className="border-t">
+                                                        <td className="p-2">帳戶淨值</td>
+                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.netEquity)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.netEquity)}</td>}
+                                                    </tr>
+                                                    <tr className="border-t">
+                                                        <td className="p-2">帳戶現金</td>
+                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.cashBalance)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.cashBalance)}</td>}
+                                                    </tr>
+                                                    <tr className="border-t">
+                                                        <td className="p-2">應計利息</td>
+                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.interest)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.interest)}</td>}
+                                                    </tr>
+                                                    <tr className="border-t">
+                                                        <td className="p-2">顧問費用</td>
+                                                        <td className="text-right p-2 font-mono">{formatIbMoney(ibImportPreview.parsed.managementFee)}</td>
+                                                        {ibImportPreview.existing && <td className="text-right p-2 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.managementFee)}</td>}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            {ibImportPreview.existing && (
+                                                <p className="text-amber-600 text-xs">⚠️ 該日期已有記錄，確認後將覆蓋現有值</p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmIbImport} disabled={ibImporting}>
+                                {ibImporting ? '匯入中...' : '確認匯入'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <ProgressDialog
                     open={progressOpen}

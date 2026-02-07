@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
                                     targetUserId,
                                     user.user_id || null, // API uses string ID
                                     trade.symbol,
-                                    trade.status || 'Holding',
+                                    trade.status || 'Open',
                                     trade.open_date,
                                     trade.close_date || null,
                                     trade.open_price,

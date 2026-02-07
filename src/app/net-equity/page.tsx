@@ -118,7 +118,7 @@ export default function NetEquityPage() {
 
             // Fetch summaries (Admin/Manager) with Year
             const yearParam = selectedYear === 'All' ? '' : `?year=${selectedYear}`;
-            const res = await fetch(`/api/net-equity${yearParam}`);
+            const res = await fetch(`/api/net-equity${yearParam}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.success) {
                 setSummaries(data.data);

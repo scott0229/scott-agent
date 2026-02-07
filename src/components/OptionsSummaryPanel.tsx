@@ -387,12 +387,10 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
                                     <Link
-                                        href={`/options/All?operation=${encodeURIComponent('持有中')}`}
-                                        className="cursor-pointer"
+                                        href={`/options/All?operation=${encodeURIComponent('Open')}`}
+                                        className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 font-bold"
                                     >
-                                        <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
-                                            {totalOpenCount}
-                                        </span>
+                                        {totalOpenCount}
                                     </Link>
                                 </td>
                             )}
@@ -402,7 +400,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 return isVisible ? (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         <Link
-                                            href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('持有中')}`}
+                                            href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('Open')}`}
                                             className="cursor-pointer"
                                         >
                                             <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
@@ -416,6 +414,6 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div >
     );
 }

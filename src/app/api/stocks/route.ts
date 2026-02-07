@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
             whereAdded = true;
         }
 
-        // Sort by: status (Holding first), then user's latest open_date, then individual open_date
+        // Sort by: status (Open first), then user's latest open_date, then individual open_date
         query += ` ORDER BY ST.status DESC, UserMaxDate.max_open_date DESC, ST.open_date DESC`;
 
         const { results } = await db.prepare(query).bind(...params).all();
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
         const {
             symbol,
-            status, // 'Holding' or 'Closed'
+            status, // 'Open' or 'Closed'
             open_date,
             close_date,
             open_price,
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             symbol,
-            status || 'Holding',
+            status || 'Open',
             open_date,
             close_date || null,
             open_price,
