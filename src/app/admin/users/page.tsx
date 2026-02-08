@@ -1290,9 +1290,24 @@ export default function AdminUsersPage() {
                                             )}
 
                                             {ibImportPreview.parsed.openPositions?.length > 0 && (
-                                                <p className="text-xs text-green-700 bg-green-50 px-2 py-1.5 rounded">
-                                                    📊 偵測到 {ibImportPreview.parsed.openPositions.length} 筆股票持倉，將自動同步
-                                                </p>
+                                                <table className="w-full text-xs border rounded">
+                                                    <thead>
+                                                        <tr className="bg-muted">
+                                                            <th className="text-left p-1.5">持倉代碼</th>
+                                                            <th className="text-right p-1.5">數量</th>
+                                                            <th className="text-right p-1.5">成本價格</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {ibImportPreview.parsed.openPositions.map((pos: any, i: number) => (
+                                                            <tr key={i} className="border-t">
+                                                                <td className="p-1.5">{pos.symbol}</td>
+                                                                <td className="text-right p-1.5 font-mono">{pos.quantity.toLocaleString()}</td>
+                                                                <td className="text-right p-1.5 font-mono">{formatIbMoney(pos.costPrice)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             )}
 
                                         </>
