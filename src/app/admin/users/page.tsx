@@ -712,23 +712,8 @@ export default function AdminUsersPage() {
         if (!ibImportFile) return;
         setIbImporting(true);
         try {
-            // 1. Import net equity
-            const formData = new FormData();
-            formData.append('file', ibImportFile);
-            formData.append('confirm', 'true');
-
-            const res = await fetch('/api/net-equity/import-ib', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.error || '匯入失敗');
-            }
-
             let stockMsg = '';
-            // 2. Import stock trades if there are actions
+            // 1. Import stock trades FIRST (so position sync can find existing records)
             if (ibStockPreview?.actions?.length > 0) {
                 try {
                     const stockFormData = new FormData();
@@ -749,6 +734,21 @@ export default function AdminUsersPage() {
                 } catch {
                     // Stock import failure is non-fatal
                 }
+            }
+
+            // 2. Import net equity (includes position sync)
+            const formData = new FormData();
+            formData.append('file', ibImportFile);
+            formData.append('confirm', 'true');
+
+            const res = await fetch('/api/net-equity/import-ib', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || '匯入失敗');
             }
 
             // Build positions sync message
