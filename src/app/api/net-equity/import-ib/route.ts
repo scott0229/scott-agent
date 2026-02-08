@@ -99,6 +99,30 @@ function parseIBStatement(html: string) {
     // Check if this is January 1st (year start)
     const isYearStart = month === 1 && day === 1;
 
+    // 4. Extract Open Stock Positions (未平倉持倉)
+    const openPositions: Array<{ symbol: string; quantity: number; costPrice: number }> = [];
+    const openPosSectionMatch = html.match(/id="tblOpenPositions_[^"]*Body"[^>]*>([\s\S]*?)<\/div>/);
+    if (openPosSectionMatch) {
+        const openPosHtml = openPosSectionMatch[1];
+        // Find the stock section: starts with header-asset "股票", ends before next header-asset or end
+        const stockSectionMatch = openPosHtml.match(/header-asset[^>]*>股票<\/td>[\s\S]*?<\/tbody>([\s\S]*?)(?=<thead>|<\/table>)/);
+        if (stockSectionMatch) {
+            const stockHtml = stockSectionMatch[1];
+            // Match data rows: each tbody contains a single data row
+            // Pattern: <tbody><tr><td>SYMBOL</td><td align="right">QTY</td><td align="right">MULT</td><td align="right">COST_PRICE</td>...
+            const posRowRegex = /<tbody>\s*<tr>\s*<td>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>[^<]*<\/td>\s*<td[^>]*>([^<]+)<\/td>/g;
+            let posMatch;
+            while ((posMatch = posRowRegex.exec(stockHtml)) !== null) {
+                const symbol = posMatch[1].trim();
+                const quantity = parseNumber(posMatch[2]);
+                const costPrice = parseNumber(posMatch[3]);
+                if (symbol && quantity > 0 && costPrice > 0) {
+                    openPositions.push({ symbol, quantity, costPrice });
+                }
+            }
+        }
+    }
+
     return {
         date: dateUnix,
         dateStr,
@@ -110,6 +134,7 @@ function parseIBStatement(html: string) {
         managementFee,
         deposit,
         isYearStart,
+        openPositions,
     };
 }
 
@@ -167,6 +192,7 @@ export async function POST(request: NextRequest) {
                     managementFee: parsed.managementFee,
                     deposit: parsed.deposit,
                     isYearStart: parsed.isYearStart,
+                    openPositions: parsed.openPositions,
                 },
                 existing: existing ? {
                     netEquity: existing.net_equity,
@@ -223,6 +249,42 @@ export async function POST(request: NextRequest) {
             ).run();
         }
 
+        // Sync open stock positions to STOCK_TRADES
+        const positionsSync = { added: 0, updated: 0, unchanged: 0 };
+        if (parsed.openPositions.length > 0) {
+            for (const pos of parsed.openPositions) {
+                // Check existing open position for this symbol
+                const existingTrade = await db.prepare(
+                    `SELECT id, quantity, open_price FROM STOCK_TRADES WHERE owner_id = ? AND symbol = ? AND year = ? AND status = 'Open' LIMIT 1`
+                ).bind(userResult.id, pos.symbol, parsed.year).first<{ id: number; quantity: number; open_price: number }>();
+
+                if (!existingTrade) {
+                    // Insert new position
+                    await db.prepare(`
+                        INSERT INTO STOCK_TRADES (owner_id, user_id, year, symbol, status, open_date, open_price, quantity, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, 'Open', ?, ?, ?, unixepoch(), unixepoch())
+                    `).bind(
+                        userResult.id,
+                        parsed.userAlias,
+                        parsed.year,
+                        pos.symbol,
+                        parsed.date,
+                        pos.costPrice,
+                        pos.quantity
+                    ).run();
+                    positionsSync.added++;
+                } else if (existingTrade.quantity !== pos.quantity || Math.abs(existingTrade.open_price - pos.costPrice) > 0.01) {
+                    // Update quantity and/or cost price
+                    await db.prepare(`
+                        UPDATE STOCK_TRADES SET quantity = ?, open_price = ?, updated_at = unixepoch() WHERE id = ?
+                    `).bind(pos.quantity, pos.costPrice, existingTrade.id).run();
+                    positionsSync.updated++;
+                } else {
+                    positionsSync.unchanged++;
+                }
+            }
+        }
+
         clearCache();
 
         return NextResponse.json({
@@ -231,6 +293,7 @@ export async function POST(request: NextRequest) {
             dateStr: parsed.dateStr,
             userName: userResult.name || userResult.user_id,
             yearStartUpdated,
+            positionsSync,
         });
 
     } catch (error: any) {

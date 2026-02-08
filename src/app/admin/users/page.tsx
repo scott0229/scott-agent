@@ -751,9 +751,19 @@ export default function AdminUsersPage() {
                 }
             }
 
+            // Build positions sync message
+            let posMsg = '';
+            if (data.positionsSync) {
+                const ps = data.positionsSync;
+                const posParts = [];
+                if (ps.added) posParts.push(`新增 ${ps.added}`);
+                if (ps.updated) posParts.push(`更新 ${ps.updated}`);
+                if (posParts.length > 0) posMsg = `，持倉：${posParts.join('、')}`;
+            }
+
             toast({
                 title: "匯入成功",
-                description: `${data.userName} ${data.dateStr} ${data.yearStartUpdated ? '年初起始已更新' : `淨值記錄已${data.action === 'updated' ? '更新' : '新增'}`}${stockMsg}`,
+                description: `${data.userName} ${data.dateStr} ${data.yearStartUpdated ? '年初起始已更新' : `淨值記錄已${data.action === 'updated' ? '更新' : '新增'}`}${stockMsg}${posMsg}`,
             });
 
             setIbImportDialogOpen(false);
@@ -1276,6 +1286,12 @@ export default function AdminUsersPage() {
                                             {ibImportPreview.parsed.isYearStart && (
                                                 <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1.5 rounded">
                                                     📌 此為 1/1 報表，將同步更新年初起始數據
+                                                </p>
+                                            )}
+
+                                            {ibImportPreview.parsed.openPositions?.length > 0 && (
+                                                <p className="text-xs text-green-700 bg-green-50 px-2 py-1.5 rounded">
+                                                    📊 偵測到 {ibImportPreview.parsed.openPositions.length} 筆股票持倉，將自動同步
                                                 </p>
                                             )}
 
