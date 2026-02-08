@@ -601,7 +601,7 @@ export default function NetEquityDetailPage() {
                         {/* Initial Cost Row - Always Visible */}
                         <TableRow className="hover:bg-muted/50 h-9">
                             <TableCell className="text-center font-mono">
-                                年初起始
+                                年初起始 (1/1)
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">

@@ -178,31 +178,11 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Confirm mode: upsert daily net equity
-        await db.prepare(`
-            INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, interest, deposit, management_fee, year, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
-            ON CONFLICT(user_id, date) DO UPDATE SET
-                net_equity = excluded.net_equity,
-                cash_balance = excluded.cash_balance,
-                interest = excluded.interest,
-                deposit = excluded.deposit,
-                management_fee = excluded.management_fee,
-                updated_at = unixepoch()
-        `).bind(
-            userResult.id,
-            parsed.date,
-            parsed.netEquity,
-            parsed.cashBalance,
-            parsed.interest,
-            parsed.deposit,
-            parsed.managementFee,
-            parsed.year
-        ).run();
-
-        // If Jan 1st, also update year-start fields in USERS table
+        // Confirm mode
         let yearStartUpdated = false;
+
         if (parsed.isYearStart) {
+            // Jan 1st: only update year-start fields in USERS table, no daily record
             await db.prepare(`
                 UPDATE USERS SET
                     initial_cost = ?,
@@ -219,13 +199,35 @@ export async function POST(request: NextRequest) {
                 userResult.id
             ).run();
             yearStartUpdated = true;
+        } else {
+            // Normal day: upsert daily net equity record
+            await db.prepare(`
+                INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, interest, deposit, management_fee, year, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                ON CONFLICT(user_id, date) DO UPDATE SET
+                    net_equity = excluded.net_equity,
+                    cash_balance = excluded.cash_balance,
+                    interest = excluded.interest,
+                    deposit = excluded.deposit,
+                    management_fee = excluded.management_fee,
+                    updated_at = unixepoch()
+            `).bind(
+                userResult.id,
+                parsed.date,
+                parsed.netEquity,
+                parsed.cashBalance,
+                parsed.interest,
+                parsed.deposit,
+                parsed.managementFee,
+                parsed.year
+            ).run();
         }
 
         clearCache();
 
         return NextResponse.json({
             success: true,
-            action: existing ? 'updated' : 'created',
+            action: yearStartUpdated ? 'year_start' : (existing ? 'updated' : 'created'),
             dateStr: parsed.dateStr,
             userName: userResult.name || userResult.user_id,
             yearStartUpdated,

@@ -267,7 +267,7 @@ export default function BenchmarkDetailPage() {
                         {/* Initial Cost Row */}
                         <TableRow className="bg-muted/30 hover:bg-muted/50">
                             <TableCell className="text-center font-mono font-medium">
-                                年初起始
+                                年初起始 (1/1)
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
