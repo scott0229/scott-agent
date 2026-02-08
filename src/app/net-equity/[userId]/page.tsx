@@ -302,6 +302,12 @@ export default function NetEquityDetailPage() {
             if (res.ok) {
 
                 setDeleteAllOpen(false);
+                // Reset year-start values
+                setInitialCost(0);
+                setInitialCash(0);
+                setInitialManagementFee(0);
+                setInitialInterest(0);
+                setInitialDeposit(0);
                 fetchRecords(); // Refresh data
             } else {
                 throw new Error("Failed to delete all");

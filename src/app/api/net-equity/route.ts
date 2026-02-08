@@ -440,6 +440,18 @@ export async function DELETE(request: NextRequest) {
             // Unlike previous version, we DO NOT delete market data (QQQ/QLD) as that is global data shared across users.
             const deleteResult = await db.prepare(`DELETE FROM DAILY_NET_EQUITY WHERE user_id = ? AND year = ?`).bind(user_id, year).run();
 
+            // 2. Reset year-start fields to 0
+            await db.prepare(`
+                UPDATE USERS SET
+                    initial_cost = 0,
+                    initial_cash = 0,
+                    initial_management_fee = 0,
+                    initial_interest = 0,
+                    initial_deposit = 0,
+                    updated_at = unixepoch()
+                WHERE id = ?
+            `).bind(user_id).run();
+
             // Clear cache to ensure fresh data on next fetch
             clearCache();
 
