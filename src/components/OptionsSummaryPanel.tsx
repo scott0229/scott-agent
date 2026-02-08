@@ -452,7 +452,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {formatMoney(aggregates.annualPremium)}
+                                    <StatBadge>{formatMoney(aggregates.annualPremium)}</StatBadge>
                                 </td>
                             )}
                             {users.map(user => {
@@ -460,7 +460,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 const isVisible = columnVisibility.users[userKey] !== false;
                                 return isVisible ? (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(calculateUserMetrics(user).annualPremium)}
+                                        <StatBadge>{formatMoney(calculateUserMetrics(user).annualPremium)}</StatBadge>
                                     </td>
                                 ) : null;
                             })}
