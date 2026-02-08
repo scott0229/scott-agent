@@ -914,8 +914,6 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">管理費率</TableHead>
                                 <TableHead className="text-center">管理費預估</TableHead>
 
-
-                                <TableHead className="text-center">年初淨值</TableHead>
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 <TableHead className="text-center">IB 帳號</TableHead>
                                 <TableHead className="text-center">手機號碼</TableHead>
@@ -981,8 +979,6 @@ export default function AdminUsersPage() {
                                                     {user.role === 'customer' && (user.management_fee ?? 0) > 0 ? formatMoney(estimatedFee) : '-'}
                                                 </TableCell>
 
-
-                                                <TableCell className="text-center">{user.role === 'customer' ? formatMoney(user.initial_cost) : '-'}</TableCell>
                                                 <TableCell className="text-center">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
@@ -1051,7 +1047,6 @@ export default function AdminUsersPage() {
                                         <TableCell className="text-center">總計</TableCell>
                                         <TableCell colSpan={3} className="text-center"></TableCell>
                                         <TableCell className="text-center">{formatMoney(totalEstimatedFee)}</TableCell>
-                                        <TableCell className="text-center"></TableCell>
                                         <TableCell className="text-center">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={4}></TableCell>
                                     </TableRow>
