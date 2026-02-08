@@ -131,6 +131,89 @@ function parseIBStatement(html: string) {
         }
     }
 
+    // 4b. Extract Open Option Positions (未平倉持倉 - 股票和指數期權)
+    const openOptionPositions: Array<{
+        underlying: string;
+        toDate: number;
+        toDateStr: string;
+        strikePrice: number;
+        type: string;
+        quantity: number;
+        costPrice: number;
+        premium: number;
+    }> = [];
+    if (openPosSectionMatch) {
+        const openPosHtml = openPosSectionMatch[1];
+        // Find option subsection: after "股票和指數期權" header
+        const optionPosSectionMatch = openPosHtml.match(/header-asset[^>]*>股票和指數期權<\/td>[\s\S]*?<\/tbody>([\s\S]*?)(?=<thead>|<\/table>)/);
+        if (optionPosSectionMatch) {
+            const optionPosHtml = optionPosSectionMatch[1];
+            const rows = optionPosHtml.split(/<\/tr>/i);
+            for (const row of rows) {
+                const cols: string[] = [];
+                const colRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+                let colMatch;
+                while ((colMatch = colRegex.exec(row)) !== null) {
+                    cols.push(colMatch[1].replace(/&nbsp;/g, '').trim());
+                }
+                // Open positions table: 代碼 | 數量 | 合約乘數 | 成本價格 | 成本基礎 | 收盤價格 | 價值 | 未實現的損益 | 代碼
+                // Need at least 8 columns
+                if (cols.length < 8) continue;
+                const codeStr = cols[0];
+                const qtyStr = cols[1];
+                // cols[2] = 合約乘數 (contract multiplier, usually 100)
+                const costPriceStr = cols[3];
+                const costBasisStr = cols[4];
+                // cols[5] = 收盤價格
+                // cols[6] = 價值
+                // cols[7] = 未實現的損益
+
+                // Skip header/subtotal rows
+                if (codeStr === '代碼' || codeStr.includes('Symbol') || codeStr.startsWith('總數') || !codeStr) continue;
+
+                // Parse option code: "GOOGL 09JAN26 302.5 P"
+                const codeParts = codeStr.split(/\s+/);
+                if (codeParts.length < 4) continue;
+
+                const underlying = codeParts[0];
+                const expiryStr = codeParts[1];
+                const strikePrice = parseFloat(codeParts[2]);
+                const typeCode = codeParts[3];
+
+                if (!underlying || isNaN(strikePrice) || !typeCode) continue;
+
+                // Parse expiry date: 09JAN26 -> 2026-01-09
+                const expiryMatch = expiryStr.match(/^(\d{2})([A-Z]{3})(\d{2})$/);
+                if (!expiryMatch) continue;
+                const exDay = parseInt(expiryMatch[1]);
+                const exMonthStr = expiryMatch[2];
+                const exYear = 2000 + parseInt(expiryMatch[3]);
+                const exMonth = EN_MONTH_MAP[exMonthStr];
+                if (!exMonth) continue;
+                const toDate = Math.floor(new Date(Date.UTC(exYear, exMonth - 1, exDay)).getTime() / 1000);
+                const toDateStr = `${String(exYear).slice(2)}-${String(exMonth).padStart(2, '0')}-${String(exDay).padStart(2, '0')}`;
+
+                const quantity = Math.abs(parseNumber(qtyStr));
+                const costPrice = parseNumber(costPriceStr);
+                const premium = Math.abs(parseNumber(costBasisStr));
+                const type = typeCode === 'P' ? 'PUT' : 'CALL';
+
+                if (quantity > 0) {
+                    openOptionPositions.push({
+                        underlying,
+                        toDate,
+                        toDateStr,
+                        strikePrice,
+                        type,
+                        quantity,
+                        costPrice,
+                        premium,
+                    });
+                }
+            }
+        }
+    }
+
     // 5. Extract Option Trades (股票和指數期權)
     // Table columns: 代碼 | 日期/時間 | 數量 | 交易價格 | 收盤價格 | 收益 | 佣金/稅 | 基礎 | 已實現的損益 | 按市值計算的損益 | 代碼
     const optionTrades: Array<{
@@ -177,9 +260,9 @@ function parseIBStatement(html: string) {
                 const qtyStr = cols[2];
                 // index 3: Trade Price
                 // index 4: Close Price
-                const proceedsStr = cols[5];
+                // index 5: Proceeds
                 // index 6: Comm/Tax
-                // index 7: Basis
+                const basisStr = cols[7]; // 基礎 = 權利金（含佣金）
                 const realizedStr = cols[8];
                 // index 9: Mtm P/L
                 const actionCode = cols[10];
@@ -223,7 +306,7 @@ function parseIBStatement(html: string) {
                 )).getTime() / 1000);
 
                 const quantity = Math.abs(parseNumber(qtyStr));
-                const premium = Math.abs(parseNumber(proceedsStr));
+                const premium = Math.abs(parseNumber(basisStr));
                 const realizedPnl = parseNumber(realizedStr);
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
@@ -264,6 +347,7 @@ function parseIBStatement(html: string) {
         deposit,
         isYearStart,
         openPositions,
+        openOptionPositions,
         optionTrades,
     };
 }
@@ -317,6 +401,34 @@ export async function POST(request: NextRequest) {
                 if (!existingTrade) {
                     positionActions.push({ type: 'sync_add', symbol: pos.symbol, quantity: pos.quantity, costPrice: pos.costPrice });
                 }
+            }
+
+            // Preview open option positions sync
+            // Build set of option trades being added (Open trades) to avoid duplicating with open positions
+            const optionTradeKeys = new Set(
+                parsed.optionTrades
+                    .filter(t => t.tradeAction === 'O')
+                    .map(t => `${t.underlying}|${t.strikePrice}|${t.toDate}|${t.type}`)
+            );
+            const openOptionActions: Array<{ action: string; underlying: string; type: string; strikePrice: number; toDateStr: string; quantity: number; premium: number }> = [];
+            for (const pos of parsed.openOptionPositions) {
+                // Skip if already covered by an option trade being added
+                const posKey = `${pos.underlying}|${pos.strikePrice}|${pos.toDate}|${pos.type}`;
+                if (optionTradeKeys.has(posKey)) continue;
+
+                const existingOpt = await db.prepare(
+                    `SELECT id FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open' LIMIT 1`
+                ).bind(userResult.id, pos.underlying, pos.strikePrice, pos.toDate, pos.type).first<{ id: number }>();
+
+                openOptionActions.push({
+                    action: existingOpt ? 'skip_exists' : 'sync_add',
+                    underlying: pos.underlying,
+                    type: pos.type,
+                    strikePrice: pos.strikePrice,
+                    toDateStr: pos.toDateStr,
+                    quantity: pos.quantity,
+                    premium: pos.premium,
+                });
             }
 
             // Filter option trades: only Open trades, check for duplicates
@@ -451,6 +563,7 @@ export async function POST(request: NextRequest) {
                     deposit: parsed.deposit,
                     isYearStart: parsed.isYearStart,
                     positionActions,
+                    openOptionActions,
                     optionActions,
                 },
                 existing: existing ? {
@@ -544,6 +657,61 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Sync open option positions: ADD-ONLY (skip if already covered by option trades)
+        const openOptionsSync = { added: 0, skipped: 0 };
+        const confirmOptionTradeKeys = new Set(
+            parsed.optionTrades
+                .filter(t => t.tradeAction === 'O')
+                .map(t => `${t.underlying}|${t.strikePrice}|${t.toDate}|${t.type}`)
+        );
+        if (parsed.openOptionPositions.length > 0) {
+            for (const pos of parsed.openOptionPositions) {
+                // Skip if already covered by an option trade being added
+                const posKey = `${pos.underlying}|${pos.strikePrice}|${pos.toDate}|${pos.type}`;
+                if (confirmOptionTradeKeys.has(posKey)) {
+                    openOptionsSync.skipped++;
+                    continue;
+                }
+
+                const existingOpt = await db.prepare(
+                    `SELECT id FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open' LIMIT 1`
+                ).bind(userResult.id, pos.underlying, pos.strikePrice, pos.toDate, pos.type).first<{ id: number }>();
+
+                if (!existingOpt) {
+                    let code = generateCode();
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        const existsOpt = await db.prepare('SELECT 1 FROM OPTIONS WHERE code = ?').bind(code).first();
+                        const existsStock = await db.prepare('SELECT 1 FROM STOCK_TRADES WHERE code = ?').bind(code).first();
+                        if (!existsOpt && !existsStock) break;
+                        code = generateCode();
+                    }
+
+                    await db.prepare(`
+                        INSERT INTO OPTIONS (
+                            operation, open_date, to_date, quantity, underlying, type, strike_price,
+                            premium, final_profit, user_id, owner_id, year, code, updated_at
+                        ) VALUES ('Open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                    `).bind(
+                        parsed.date,
+                        pos.toDate,
+                        pos.quantity,
+                        pos.underlying,
+                        pos.type,
+                        pos.strikePrice,
+                        pos.premium,
+                        pos.premium, // final_profit defaults to premium
+                        parsed.userAlias,
+                        userResult.id,
+                        parsed.year,
+                        code
+                    ).run();
+                    openOptionsSync.added++;
+                } else {
+                    openOptionsSync.skipped++;
+                }
+            }
+        }
+
         // Sync option trades: Handle Open and Close trades
         const optionsSync = { added: 0, skipped: 0, closed: 0, closedSkipped: 0 };
         if (parsed.optionTrades.length > 0) {
@@ -580,7 +748,16 @@ export async function POST(request: NextRequest) {
 
                         // Calculate P/L portion for this specific trade close
                         // If we are closing 3 options total with $300 profit, and this trade is 1 option, it gets $100 profit.
-                        const tradePnl = (closeQty / closeTotalQty) * totalRealizedPnl;
+                        let tradePnl = (closeQty / closeTotalQty) * totalRealizedPnl;
+
+                        // FIX: For Assigned trades (A;C), IB often reports 0.00 Realized P/L (as it transfers to stock basis).
+                        // However, for the Option trade record, the profit is the full premium collected.
+                        if (isAssignment && totalRealizedPnl === 0) {
+                            // Calculates the premium portion for this specific closed quantity
+                            // trade.premium is the total premium for the original trade.quantity
+                            const portionPremium = (closeQty / trade.quantity) * trade.premium;
+                            tradePnl = portionPremium;
+                        }
 
                         if (isPartialClose) {
                             // Partial Close: Split the existing trade
@@ -722,6 +899,7 @@ export async function POST(request: NextRequest) {
             userName: userResult.name || userResult.user_id,
             yearStartUpdated,
             positionsSync,
+            openOptionsSync,
             optionsSync,
         });
 

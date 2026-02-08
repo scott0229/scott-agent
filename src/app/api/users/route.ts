@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as active_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id AND STRATEGIES.year = ?) as strategies_count,
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
                         (SELECT COALESCE(SUM(deposit), 0) 
                          FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
                         (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
+                        (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as active_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id) as strategies_count,

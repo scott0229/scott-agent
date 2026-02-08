@@ -456,8 +456,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">權利金</TableHead>
                             <TableHead className="text-center">已實現損益</TableHead>
 
-                            <TableHead className="text-center">DELTA</TableHead>
-                            <TableHead className="text-center">隱含波動</TableHead>
+
                             <TableHead className="text-center">交易代碼</TableHead>
                             <TableHead className="text-center"></TableHead>
                         </TableRow>
@@ -471,7 +470,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </TableRow>
                         ) : sortedOptions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={21} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={19} className="text-center py-8 text-muted-foreground">
                                     尚無資料
                                 </TableCell>
                             </TableRow>
@@ -566,8 +565,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             {opt.final_profit ? opt.final_profit.toLocaleString('en-US') : '-'}
                                         </TableCell>
 
-                                        <TableCell>{opt.delta?.toFixed(3) || '-'}</TableCell>
-                                        <TableCell>{opt.iv || '-'}</TableCell>
+
                                         <TableCell className="text-center font-mono text-sm">
                                             {opt.code || '-'}
                                         </TableCell>

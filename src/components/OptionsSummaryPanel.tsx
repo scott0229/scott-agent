@@ -18,6 +18,7 @@ interface User {
     ib_account: string | null;
     options_count: number;
     open_count: number;
+    active_count?: number;
     monthly_stats?: UserStats[];
     total_profit?: number;
     net_deposit?: number;
@@ -134,10 +135,14 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const turnoverRate = (equity * daysInCurrentMonth) > 0 ? monthlyTurnover / (equity * daysInCurrentMonth) : 0;
 
         // QX Premium
-        const quarterPremium = user.monthly_stats?.filter((stat) => {
+        const quarterStats = user.monthly_stats?.filter((stat) => {
             const m = parseInt(stat.month.replace('月', ''));
             return m >= startMonth && m <= endMonth;
-        }).reduce((s, stat) => s + stat.total_profit, 0) || 0;
+        }) || [];
+
+        const quarterPremium = quarterStats.reduce((s, stat) => s + stat.total_profit, 0);
+        const quarterPutPremium = quarterStats.reduce((s, stat) => s + stat.put_profit, 0);
+        const quarterCallPremium = quarterStats.reduce((s, stat) => s + stat.call_profit, 0);
 
         // QX Target - Use initial cost instead of current equity
         const initialCost = (user.initial_cost || 0) + (user.net_deposit || 0);
@@ -146,13 +151,19 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
         // Annual Premium
         const annualPremium = user.total_profit || 0;
+        const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
+        const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
 
         return {
             marginRate,
             turnoverRate,
             quarterPremium,
+            quarterPutPremium,
+            quarterCallPremium,
             quarterTarget,
             annualPremium,
+            annualPutPremium,
+            annualCallPremium,
             annualTarget
         };
     };
@@ -163,6 +174,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const totalDebt = users.reduce((sum, user) => sum + Math.abs(Math.min(0, user.current_cash_balance || 0)), 0);
     const aggregateMarginRate = totalNetEquity > 0 ? (totalOpenPutCapital + totalDebt) / totalNetEquity : 0;
     const totalOpenCount = users.reduce((sum, user) => sum + (user.open_count || 0), 0);
+    const totalActiveCount = users.reduce((sum, user) => sum + (user.active_count || 0), 0);
+    const totalOptionsCount = users.reduce((sum, user) => sum + (user.options_count || 0), 0);
 
     const totalMonthlyTurnover = users.reduce((sum, user) => {
         const currentMonthStats = user.monthly_stats?.find((s) => parseInt(s.month.replace('月', '')) === currentMonthStr);
@@ -171,16 +184,24 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const aggregateTurnoverRate = (totalNetEquity * daysInCurrentMonth) > 0 ? totalMonthlyTurnover / (totalNetEquity * daysInCurrentMonth) : 0;
 
     const totalQuarterPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterPremium, 0);
+    const totalQuarterPutPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterPutPremium, 0);
+    const totalQuarterCallPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterCallPremium, 0);
     const totalQuarterTarget = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterTarget, 0);
     const totalAnnualPremium = users.reduce((sum, user) => sum + (user.total_profit || 0), 0);
+    const totalAnnualPutPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualPutPremium, 0);
+    const totalAnnualCallPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualCallPremium, 0);
     const totalAnnualTarget = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualTarget, 0);
 
     const aggregates = {
         marginRate: aggregateMarginRate,
         turnoverRate: aggregateTurnoverRate,
         quarterPremium: totalQuarterPremium,
+        quarterPutPremium: totalQuarterPutPremium,
+        quarterCallPremium: totalQuarterCallPremium,
         quarterTarget: totalQuarterTarget,
         annualPremium: totalAnnualPremium,
+        annualPutPremium: totalAnnualPutPremium,
+        annualCallPremium: totalAnnualCallPremium,
         annualTarget: totalAnnualTarget
     };
 
@@ -188,7 +209,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     // --- Badge Component ---
     const StatBadge = ({ children }: { children: React.ReactNode }) => (
-        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]">
+        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]">
             {children}
         </span>
     );
@@ -272,6 +293,52 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                     </thead>
                     <tbody className="text-[13px]">
+                        {/* Open Position Count */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    <div className="flex items-center justify-center gap-1">
+                                        <Link
+                                            href={`/options/All?year=All&operation=${encodeURIComponent('Open')}`}
+                                            className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 font-medium text-red-600"
+                                        >
+                                            {totalActiveCount}
+                                        </Link>
+                                        <span className="text-muted-foreground">/</span>
+                                        <Link
+                                            href={`/options/All?year=${year === 'All' ? 'All' : year}`}
+                                            className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 text-foreground"
+                                        >
+                                            {totalOptionsCount}
+                                        </Link>
+                                    </div>
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Link
+                                                href={`/options/${user.user_id || user.id}?year=All&operation=${encodeURIComponent('Open')}`}
+                                                className="cursor-pointer text-red-600 hover:text-red-700 hover:underline decoration-2 underline-offset-4 text-xs font-medium transition-colors"
+                                            >
+                                                {user.active_count || 0}
+                                            </Link>
+                                            <span className="text-muted-foreground text-xs">/</span>
+                                            <Link
+                                                href={`/options/${user.user_id || user.id}?year=${year === 'All' ? 'All' : year}`}
+                                                className="cursor-pointer hover:text-primary hover:underline decoration-2 underline-offset-4 text-xs text-foreground pl-0.5"
+                                            >
+                                                {user.options_count || 0}
+                                            </Link>
+                                        </div>
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">融資需求率</td>
@@ -310,7 +377,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-Q{currentQuarter}</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
                                     <StatBadge>{formatMoney(aggregates.quarterPremium)}</StatBadge>
@@ -326,9 +393,45 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
+                        {/* Quarterly Put Premium */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-PUT</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {formatMoney(aggregates.quarterPutPremium)}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).quarterPutPremium)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
+                        {/* Quarterly Call Premium */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-CALL</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {formatMoney(aggregates.quarterCallPremium)}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).quarterCallPremium)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
                         {/* Quarterly Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-Q{currentQuarter}-目標</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-季-目標</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
                                     {formatMoney(aggregates.quarterTarget)}
@@ -346,7 +449,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-{displayYear}</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
                                     {formatMoney(aggregates.annualPremium)}
@@ -362,9 +465,45 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
+                        {/* Annual Put Premium */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-PUT</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {formatMoney(aggregates.annualPutPremium)}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).annualPutPremium)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
+                        {/* Annual Call Premium */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-CALL</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {formatMoney(aggregates.annualCallPremium)}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).annualCallPremium)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
                         {/* Annual Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-{displayYear}-目標</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-年-目標</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
                                     {formatMoney(aggregates.annualTarget)}
@@ -380,36 +519,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
-                        {/* Open Position Count */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">新開倉數</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    <Link
-                                        href={`/options/All?operation=${encodeURIComponent('Open')}`}
-                                        className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 font-bold"
-                                    >
-                                        {totalOpenCount}
-                                    </Link>
-                                </td>
-                            )}
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                return isVisible ? (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        <Link
-                                            href={`/options/${user.user_id || user.id}?operation=${encodeURIComponent('Open')}`}
-                                            className="cursor-pointer"
-                                        >
-                                            <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors">
-                                                {user.open_count || 0}
-                                            </span>
-                                        </Link>
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
+
                     </tbody>
                 </table>
             </div>

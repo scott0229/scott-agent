@@ -757,6 +757,10 @@ export default function AdminUsersPage() {
                 const ps = data.positionsSync;
                 if (ps.added) posMsg = `，持倉：新增 ${ps.added}`;
             }
+            if (data.openOptionsSync) {
+                const os = data.openOptionsSync;
+                if (os.added) posMsg += `，期權持倉：新增 ${os.added}`;
+            }
 
             toast({
                 title: "匯入成功",
@@ -1348,6 +1352,42 @@ export default function AdminUsersPage() {
                                             </>
                                         );
                                     })()}
+
+                                    {/* Open Option Position Sync */}
+                                    {ibImportPreview?.parsed?.openOptionActions?.filter((a: any) => a.action === 'sync_add')?.length > 0 && (
+                                        <table className="w-full text-xs border rounded">
+                                            <thead>
+                                                <tr className="bg-muted">
+                                                    <th className="text-left p-1.5">操作</th>
+                                                    <th className="text-left p-1.5">標的</th>
+                                                    <th className="text-left p-1.5">類型</th>
+                                                    <th className="text-right p-1.5">行權價</th>
+                                                    <th className="text-right p-1.5">到期日</th>
+                                                    <th className="text-right p-1.5">口數</th>
+                                                    <th className="text-right p-1.5">權利金</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ibImportPreview.parsed.openOptionActions.filter((a: any) => a.action === 'sync_add').map((pos: any, i: number) => (
+                                                    <tr key={`oopt-${i}`} className="border-t">
+                                                        <td className="p-1.5">
+                                                            <span className="text-blue-600">同步持倉</span>
+                                                        </td>
+                                                        <td className="p-1.5 font-mono">{pos.underlying}</td>
+                                                        <td className="p-1.5">
+                                                            <span className={pos.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
+                                                                {pos.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="text-right p-1.5 font-mono">{pos.strikePrice}</td>
+                                                        <td className="text-right p-1.5 font-mono">{pos.toDateStr}</td>
+                                                        <td className="text-right p-1.5 font-mono">{pos.quantity}</td>
+                                                        <td className="text-right p-1.5 font-mono">${pos.premium.toFixed(0)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
 
                                     {/* Option Trade Actions */}
                                     {ibImportPreview?.parsed?.optionActions?.length > 0 && (
