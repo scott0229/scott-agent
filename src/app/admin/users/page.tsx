@@ -753,7 +753,7 @@ export default function AdminUsersPage() {
 
             toast({
                 title: "匯入成功",
-                description: `${data.userName} ${data.dateStr} 淨值記錄已${data.action === 'updated' ? '更新' : '新增'}${stockMsg}`,
+                description: `${data.userName} ${data.dateStr} 淨值記錄已${data.action === 'updated' ? '更新' : '新增'}${stockMsg}${data.yearStartUpdated ? '，年初起始已同步更新' : ''}`,
             });
 
             setIbImportDialogOpen(false);
@@ -1277,6 +1277,12 @@ export default function AdminUsersPage() {
                                                     )}
                                                 </tbody>
                                             </table>
+
+                                            {ibImportPreview.parsed.isYearStart && (
+                                                <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1.5 rounded">
+                                                    📌 此為 1/1 報表，將同步更新年初起始數據
+                                                </p>
+                                            )}
 
                                         </>
                                     )}

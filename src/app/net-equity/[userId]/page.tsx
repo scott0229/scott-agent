@@ -293,7 +293,7 @@ export default function NetEquityDetailPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     mode: 'all',
-                    user_id: userId,
+                    user_id: userDbId,
                     year: selectedYear
                     // Removed delete_benchmarks: true as QQQ/QLD are global shared data
                 })

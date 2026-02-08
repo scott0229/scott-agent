@@ -96,6 +96,9 @@ function parseIBStatement(html: string) {
     // Format date string for display: YY-MM-DD
     const dateStr = `${String(year).slice(2)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+    // Check if this is January 1st (year start)
+    const isYearStart = month === 1 && day === 1;
+
     return {
         date: dateUnix,
         dateStr,
@@ -106,6 +109,7 @@ function parseIBStatement(html: string) {
         netEquity,
         managementFee,
         deposit,
+        isYearStart,
     };
 }
 
@@ -162,6 +166,7 @@ export async function POST(request: NextRequest) {
                     interest: parsed.interest,
                     managementFee: parsed.managementFee,
                     deposit: parsed.deposit,
+                    isYearStart: parsed.isYearStart,
                 },
                 existing: existing ? {
                     netEquity: existing.net_equity,
@@ -173,7 +178,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Confirm mode: upsert
+        // Confirm mode: upsert daily net equity
         await db.prepare(`
             INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, interest, deposit, management_fee, year, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
@@ -195,6 +200,27 @@ export async function POST(request: NextRequest) {
             parsed.year
         ).run();
 
+        // If Jan 1st, also update year-start fields in USERS table
+        let yearStartUpdated = false;
+        if (parsed.isYearStart) {
+            await db.prepare(`
+                UPDATE USERS SET
+                    initial_cost = ?,
+                    initial_cash = ?,
+                    initial_management_fee = ?,
+                    initial_interest = ?,
+                    updated_at = unixepoch()
+                WHERE id = ?
+            `).bind(
+                parsed.netEquity,
+                parsed.cashBalance,
+                parsed.managementFee,
+                parsed.interest,
+                userResult.id
+            ).run();
+            yearStartUpdated = true;
+        }
+
         clearCache();
 
         return NextResponse.json({
@@ -202,6 +228,7 @@ export async function POST(request: NextRequest) {
             action: existing ? 'updated' : 'created',
             dateStr: parsed.dateStr,
             userName: userResult.name || userResult.user_id,
+            yearStartUpdated,
         });
 
     } catch (error: any) {
