@@ -175,8 +175,23 @@ export async function POST(request: NextRequest) {
             id: number; net_equity: number; cash_balance: number; interest: number; management_fee: number; deposit: number;
         }>();
 
-        // Preview mode: return parsed values for confirmation
+        // Preview mode: check position changes and return parsed values
         if (!confirm) {
+            // Check which positions will have changes
+            const positionActions: Array<{ type: string; symbol: string; quantity: number; costPrice: number; existingQuantity?: number; existingPrice?: number }> = [];
+            for (const pos of parsed.openPositions) {
+                const existingTrade = await db.prepare(
+                    `SELECT id, quantity, open_price FROM STOCK_TRADES WHERE owner_id = ? AND symbol = ? AND year = ? AND status = 'Open' LIMIT 1`
+                ).bind(userResult.id, pos.symbol, parsed.year).first<{ id: number; quantity: number; open_price: number }>();
+
+                if (!existingTrade) {
+                    positionActions.push({ type: 'sync_add', symbol: pos.symbol, quantity: pos.quantity, costPrice: pos.costPrice });
+                } else if (existingTrade.quantity !== pos.quantity || Math.abs(existingTrade.open_price - pos.costPrice) > 0.01) {
+                    positionActions.push({ type: 'sync_update', symbol: pos.symbol, quantity: pos.quantity, costPrice: pos.costPrice, existingQuantity: existingTrade.quantity, existingPrice: existingTrade.open_price });
+                }
+                // unchanged positions are not included
+            }
+
             return NextResponse.json({
                 preview: true,
                 parsed: {
@@ -192,7 +207,7 @@ export async function POST(request: NextRequest) {
                     managementFee: parsed.managementFee,
                     deposit: parsed.deposit,
                     isYearStart: parsed.isYearStart,
-                    openPositions: parsed.openPositions,
+                    positionActions,
                 },
                 existing: existing ? {
                     netEquity: existing.net_equity,

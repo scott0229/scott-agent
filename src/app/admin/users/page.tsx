@@ -1289,32 +1289,14 @@ export default function AdminUsersPage() {
                                                 </p>
                                             )}
 
-                                            {ibImportPreview.parsed.openPositions?.length > 0 && (
-                                                <table className="w-full text-xs border rounded">
-                                                    <thead>
-                                                        <tr className="bg-muted">
-                                                            <th className="text-left p-1.5">持倉代碼</th>
-                                                            <th className="text-right p-1.5">數量</th>
-                                                            <th className="text-right p-1.5">成本價格</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {ibImportPreview.parsed.openPositions.map((pos: any, i: number) => (
-                                                            <tr key={i} className="border-t">
-                                                                <td className="p-1.5">{pos.symbol}</td>
-                                                                <td className="text-right p-1.5 font-mono">{pos.quantity.toLocaleString()}</td>
-                                                                <td className="text-right p-1.5 font-mono">{formatIbMoney(pos.costPrice)}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            )}
+
+
 
                                         </>
                                     )}
 
-                                    {/* Stock Trade Actions */}
-                                    {ibStockPreview?.actions?.length > 0 && (
+                                    {/* Stock Trade Actions + Position Sync */}
+                                    {(ibStockPreview?.actions?.length > 0 || ibImportPreview?.parsed?.positionActions?.length > 0) && (
                                         <>
 
                                             <table className="w-full text-xs border rounded">
@@ -1328,8 +1310,8 @@ export default function AdminUsersPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {ibStockPreview.actions.map((action: any, i: number) => (
-                                                        <tr key={i} className="border-t">
+                                                    {ibStockPreview?.actions?.map((action: any, i: number) => (
+                                                        <tr key={`stock-${i}`} className="border-t">
                                                             <td className="p-1.5">
                                                                 {action.type === 'open' && <span className="text-green-600">開倉</span>}
                                                                 {action.type === 'close_full' && <span className="text-red-600">平倉</span>}
@@ -1345,6 +1327,21 @@ export default function AdminUsersPage() {
                                                             </td>
                                                         </tr>
                                                     ))}
+                                                    {ibImportPreview?.parsed?.positionActions?.map((pos: any, i: number) => (
+                                                        <tr key={`pos-${i}`} className="border-t">
+                                                            <td className="p-1.5">
+                                                                {pos.type === 'sync_add' && <span className="text-blue-600">同步持倉</span>}
+                                                                {pos.type === 'sync_update' && <span className="text-purple-600">更新持倉</span>}
+                                                            </td>
+                                                            <td className="p-1.5 font-mono">{pos.symbol}</td>
+                                                            <td className="text-right p-1.5 font-mono">{pos.quantity.toLocaleString()}</td>
+                                                            <td className="text-right p-1.5 font-mono">{pos.costPrice.toFixed(2)}</td>
+                                                            <td className="p-1.5 text-right text-muted-foreground">
+                                                                {pos.type === 'sync_add' && '新增'}
+                                                                {pos.type === 'sync_update' && `${pos.existingQuantity}→${pos.quantity}股`}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
                                                 </tbody>
                                             </table>
                                         </>
@@ -1356,7 +1353,7 @@ export default function AdminUsersPage() {
                                             ))}
                                         </div>
                                     )}
-                                    {ibStockPreview?.trades?.length === 0 && (
+                                    {ibStockPreview?.trades?.length === 0 && (!ibImportPreview?.parsed?.positionActions?.length) && (
                                         <div className="text-xs text-muted-foreground">報表中無股票交易記錄</div>
                                     )}
                                 </div>
