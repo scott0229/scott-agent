@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { clearCache } from '@/lib/response-cache';
+import { customAlphabet } from 'nanoid';
+
+const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
 
 export const dynamic = 'force-dynamic';
 
@@ -274,10 +277,16 @@ export async function POST(request: NextRequest) {
                 ).bind(userResult.id, pos.symbol, parsed.year).first<{ id: number; quantity: number; open_price: number }>();
 
                 if (!existingTrade) {
-                    // Insert new position
+                    // Insert new position with generated code
+                    let code = generateCode();
+                    for (let attempt = 0; attempt < 5; attempt++) {
+                        const exists = await db.prepare('SELECT 1 FROM STOCK_TRADES WHERE code = ?').bind(code).first();
+                        if (!exists) break;
+                        code = generateCode();
+                    }
                     await db.prepare(`
-                        INSERT INTO STOCK_TRADES (owner_id, user_id, year, symbol, status, open_date, open_price, quantity, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, 'Open', ?, ?, ?, unixepoch(), unixepoch())
+                        INSERT INTO STOCK_TRADES (owner_id, user_id, year, symbol, status, open_date, open_price, quantity, code, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, 'Open', ?, ?, ?, ?, unixepoch(), unixepoch())
                     `).bind(
                         userResult.id,
                         parsed.userAlias,
@@ -285,7 +294,8 @@ export async function POST(request: NextRequest) {
                         pos.symbol,
                         parsed.date,
                         pos.costPrice,
-                        pos.quantity
+                        pos.quantity,
+                        code
                     ).run();
                     positionsSync.added++;
                 } else if (existingTrade.quantity !== pos.quantity || Math.abs(existingTrade.open_price - pos.costPrice) > 0.01) {
