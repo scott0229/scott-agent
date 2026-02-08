@@ -164,7 +164,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const handleDeleteAll = async () => {
         try {
-            const res = await fetch(`/api/options?userId=${params.userId}&year=${selectedYear}`, {
+            const idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
+            const res = await fetch(`/api/options?${idParam}&year=${selectedYear}`, {
                 method: 'DELETE',
             });
 
@@ -451,7 +452,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">底層標的</TableHead>
                             <TableHead className="text-center">多空</TableHead>
                             <TableHead className="text-center">行權價</TableHead>
-                            <TableHead className="text-center">備兌資金</TableHead>
+
                             <TableHead className="text-center">權利金</TableHead>
                             <TableHead className="text-center">已實現損益</TableHead>
 
@@ -559,7 +560,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             </Badge>
                                         </TableCell>
                                         <TableCell>{opt.strike_price}</TableCell>
-                                        <TableCell>{opt.collateral?.toLocaleString() || '-'}</TableCell>
+
                                         <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
                                         <TableCell className={opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
                                             {opt.final_profit ? opt.final_profit.toLocaleString('en-US') : '-'}

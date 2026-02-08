@@ -137,16 +137,12 @@ export async function GET(request: NextRequest) {
                     // Get top 3 holdings for this user
                     const userHoldings = holdingsByUser.get(u.id) || [];
 
-                    // Custom sort: QQQ first, TQQQ second, others by quantity
+                    // Custom sort: QQQ first, QLD second, TQQQ third, others by quantity
+                    const priorityOrder: Record<string, number> = { 'QQQ': 0, 'QLD': 1, 'TQQQ': 2 };
                     const sortedHoldings = userHoldings.sort((a, b) => {
-                        // QQQ always comes first
-                        if (a.symbol === 'QQQ') return -1;
-                        if (b.symbol === 'QQQ') return 1;
-
-                        // TQQQ always comes second (after QQQ)
-                        if (a.symbol === 'TQQQ') return -1;
-                        if (b.symbol === 'TQQQ') return 1;
-
+                        const pa = priorityOrder[a.symbol] ?? 999;
+                        const pb = priorityOrder[b.symbol] ?? 999;
+                        if (pa !== pb) return pa - pb;
                         // For other symbols, sort by quantity descending
                         return b.quantity - a.quantity;
                     });

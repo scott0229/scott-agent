@@ -242,16 +242,33 @@ export async function DELETE(req: NextRequest) {
 
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get('userId');
+        const ownerId = searchParams.get('ownerId');
         const year = searchParams.get('year');
 
-        if (!userId || !year) {
-            return NextResponse.json({ error: 'Missing userId or year' }, { status: 400 });
+        if ((!userId && !ownerId) || !year) {
+            return NextResponse.json({ error: 'Missing userId/ownerId or year' }, { status: 400 });
         }
 
         const db = await getDb();
-        const result = await db.prepare('DELETE FROM OPTIONS WHERE user_id = ? AND year = ?')
-            .bind(userId, parseInt(year))
-            .run();
+        let query = 'DELETE FROM OPTIONS WHERE ';
+        const params: any[] = [];
+
+        // Use ownerId if provided, otherwise fallback to user_id
+        if (ownerId) {
+            query += 'owner_id = ?';
+            params.push(parseInt(ownerId));
+        } else {
+            query += 'user_id = ?';
+            params.push(userId);
+        }
+
+        // Handle 'All' year — delete all years
+        if (year !== 'All') {
+            query += ' AND year = ?';
+            params.push(parseInt(year));
+        }
+
+        const result = await db.prepare(query).bind(...params).all();
 
         return NextResponse.json({ success: true, deleted: result.meta.changes });
     } catch (error) {

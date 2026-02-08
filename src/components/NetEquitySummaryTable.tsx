@@ -67,6 +67,34 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         lastUpdated: true,
     });
 
+    // Column (user) visibility state
+    const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
+
+    // Initialize column visibility when users change
+    useEffect(() => {
+        const savedColSettings = localStorage.getItem('netEquityTableColumnVisibility');
+        if (savedColSettings) {
+            try {
+                setVisibleColumns(JSON.parse(savedColSettings));
+            } catch {
+                const defaults = users.reduce((acc, u) => { acc[u.user_id || u.id.toString()] = true; return acc; }, {} as Record<string, boolean>);
+                setVisibleColumns(defaults);
+            }
+        } else {
+            const defaults = users.reduce((acc, u) => { acc[u.user_id || u.id.toString()] = true; return acc; }, {} as Record<string, boolean>);
+            setVisibleColumns(defaults);
+        }
+    }, [users]);
+
+    const toggleColumn = (colKey: string) => {
+        setVisibleColumns(prev => ({ ...prev, [colKey]: !prev[colKey] }));
+    };
+
+    const isColumnVisible = (user: UserSummary) => {
+        const key = user.user_id || user.id.toString();
+        return visibleColumns[key] !== false;
+    };
+
     // Track if settings are saved in localStorage
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
 
@@ -78,7 +106,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         }));
     };
 
-    // Reset all rows to visible
+    // Reset all rows and columns to visible
     const resetVisibility = () => {
         const allVisible: Record<string, boolean> = {
             currentNetEquity: true,
@@ -100,14 +128,18 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             lastUpdated: true,
         };
         setVisibleRows(allVisible);
+        const allColsVisible = users.reduce((acc, u) => { acc[u.user_id || u.id.toString()] = true; return acc; }, {} as Record<string, boolean>);
+        setVisibleColumns(allColsVisible);
         // Also clear from localStorage
         localStorage.removeItem('netEquityTableVisibility');
+        localStorage.removeItem('netEquityTableColumnVisibility');
         setHasSavedSettings(false);
     };
 
     // Save current visibility state to localStorage
     const saveVisibility = () => {
         localStorage.setItem('netEquityTableVisibility', JSON.stringify(visibleRows));
+        localStorage.setItem('netEquityTableColumnVisibility', JSON.stringify(visibleColumns));
         setHasSavedSettings(true);
     };
 
@@ -200,17 +232,29 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     </button>
                                 </div>
                             </td>
-                            {users.map((user) => (
-                                <td key={user.id} className="text-center min-w-[140px] px-2 py-1 bg-muted/40">
-                                    <div
-                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer hover:bg-black/5 rounded-md px-2 py-1 transition-colors"
-                                        onClick={() => onUserClick(user.id)}
-                                    >
-                                        <div className="h-2 w-2 rounded-full bg-blue-600" />
-                                        <span className="font-bold text-foreground">{user.user_id || user.email.split('@')[0]}</span>
-                                    </div>
-                                </td>
-                            ))}
+                            {users.map((user) => {
+                                if (!isColumnVisible(user)) return null;
+                                const colKey = user.user_id || user.id.toString();
+                                return (
+                                    <td key={user.id} className="text-center min-w-[140px] px-2 py-1 bg-muted/40">
+                                        <div className="inline-flex items-center justify-center gap-0">
+                                            <button
+                                                onClick={() => toggleColumn(colKey)}
+                                                className="inline-flex items-center justify-center w-5 h-5 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                                                title="隱藏此列"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                            </button>
+                                            <span
+                                                className="font-bold text-foreground cursor-pointer hover:bg-black/5 rounded-md px-1 py-0.5 transition-colors"
+                                                onClick={() => onUserClick(user.id)}
+                                            >
+                                                {user.user_id || user.email.split('@')[0]}
+                                            </span>
+                                        </div>
+                                    </td>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody className="text-[13px]">
@@ -221,7 +265,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="currentNetEquity" visible={visibleRows.currentNetEquity} />
                                     當前淨值
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatMoney(user.current_net_equity || 0)}
                                     </td>
@@ -236,7 +280,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="initialNetEquity" visible={visibleRows.initialNetEquity} />
                                     年初淨值
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatMoney(user.initial_cost || 0)}
                                     </td>
@@ -251,7 +295,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="transferRecord" visible={visibleRows.transferRecord} />
                                     存款和取款
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatMoney(user.total_deposit || 0)}
                                     </td>
@@ -266,7 +310,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="initialCost" visible={visibleRows.initialCost} />
                                     初始成本
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatMoney((user.initial_cost || 0) + (user.total_deposit || 0))}
                                     </td>
@@ -281,7 +325,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="netProfit" visible={visibleRows.netProfit} />
                                     淨利潤
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const profit = (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0);
                                     const isNegative = profit < 0;
                                     return (
@@ -306,7 +350,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="returnRate" visible={visibleRows.returnRate} />
                                     報酬率
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         <StatBadge value={user.stats?.returnPercentage || 0} />
                                     </td>
@@ -321,7 +365,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="maxDrawdown" visible={visibleRows.maxDrawdown} />
                                     最大回撤
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
                                     </td>
@@ -336,7 +380,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="annualizedReturn" visible={visibleRows.annualizedReturn} />
                                     年化報酬率
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatPercent(user.stats?.annualizedReturn || 0)}
                                     </td>
@@ -351,7 +395,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="annualizedStdDev" visible={visibleRows.annualizedStdDev} />
                                     年化標準差
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatPercent(user.stats?.annualizedStdDev || 0)}
                                     </td>
@@ -366,7 +410,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="sharpeRatio" visible={visibleRows.sharpeRatio} />
                                     夏普值
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         <StatBadge value={user.stats?.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} />
                                     </td>
@@ -381,7 +425,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="newHighCount" visible={visibleRows.newHighCount} />
                                     新高次數
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {user.stats?.newHighCount || 0}
                                     </td>
@@ -396,7 +440,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="newHighFreq" visible={visibleRows.newHighFreq} />
                                     新高頻率
                                 </td>
-                                {users.map(user => (
+                                {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {Math.round((user.stats?.newHighFreq || 0) * 100)}%
                                     </td>
@@ -411,7 +455,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
                                     帳戶現金
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const cashBalance = user.current_cash_balance || 0;
                                     const isNegative = cashBalance < 0;
                                     return (
@@ -436,11 +480,11 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="holding1" visible={visibleRows.holding1} />
                                     持股一
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[0];
                                     return (
                                         <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );
                                 })}
@@ -454,11 +498,11 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="holding2" visible={visibleRows.holding2} />
                                     持股二
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[1];
                                     return (
                                         <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );
                                 })}
@@ -472,11 +516,11 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="holding3" visible={visibleRows.holding3} />
                                     持股三
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[2];
                                     return (
                                         <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity)}` : '-'}
+                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );
                                 })}
@@ -490,7 +534,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <RowToggleIcon rowKey="lastUpdated" visible={visibleRows.lastUpdated} />
                                     最後更新日
                                 </td>
-                                {users.map(user => {
+                                {users.filter(isColumnVisible).map(user => {
                                     const lastDate = user.equity_history && user.equity_history.length > 0
                                         ? user.equity_history[user.equity_history.length - 1].date
                                         : null;

@@ -483,8 +483,8 @@ export default function NetEquityDetailPage() {
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">顧問費用</TableHead>
                             <TableHead className="text-center font-bold text-foreground">應計利息</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">顧問費用</TableHead>
                             <TableHead className="text-center font-bold text-foreground">存款和取款</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
                             <TableHead className="text-center font-bold text-foreground">淨值率</TableHead>
@@ -521,16 +521,16 @@ export default function NetEquityDetailPage() {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell className={`text-center py-1 ${record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? 'bg-red-50' : ''}`}>
-                                    {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
-                                        formatMoney(record.management_fee)
+                                <TableCell className="text-center py-1">
+                                    {record.interest !== null && record.interest !== undefined && record.interest !== 0 ? (
+                                        formatMoney(record.interest)
                                     ) : (
                                         "0"
                                     )}
                                 </TableCell>
-                                <TableCell className="text-center py-1">
-                                    {record.interest !== null && record.interest !== undefined && record.interest !== 0 ? (
-                                        formatMoney(record.interest)
+                                <TableCell className={`text-center py-1 ${record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? 'bg-red-50' : ''}`}>
+                                    {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
+                                        formatMoney(record.management_fee)
                                     ) : (
                                         "0"
                                     )}
@@ -607,7 +607,7 @@ export default function NetEquityDetailPage() {
                         {/* Initial Cost Row - Always Visible */}
                         <TableRow className="hover:bg-muted/50 h-9">
                             <TableCell className="text-center font-mono">
-                                年初起始 (1/1)
+                                帳戶起始
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
@@ -618,10 +618,10 @@ export default function NetEquityDetailPage() {
                             </TableCell>
                             <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-red-50' : ''}`}>{formatMoney(initialCash)}</TableCell>
                             <TableCell className="text-center font-mono font-normal">
-                                {formatMoney(initialManagementFee)}
+                                {formatMoney(initialInterest)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-normal">
-                                {formatMoney(initialInterest)}
+                                {formatMoney(initialManagementFee)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-normal">
                                 {formatMoney(initialDeposit)}
@@ -660,11 +660,12 @@ export default function NetEquityDetailPage() {
                             <TableCell className="text-center"></TableCell>
                             <TableCell className="text-center font-mono">
                                 {(() => {
-                                    const dailySum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
+                                    // Accrued interest is a running balance, use the latest record's value
+                                    const latestInterest = records.length > 0 ? (records[0].interest || 0) : 0;
                                     return (
                                         <div className="flex justify-center">
                                             <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                                                {formatMoney(initialManagementFee + dailySum)}
+                                                {formatMoney(latestInterest)}
                                             </Badge>
                                         </div>
                                     );
@@ -672,11 +673,11 @@ export default function NetEquityDetailPage() {
                             </TableCell>
                             <TableCell className="text-center font-mono">
                                 {(() => {
-                                    const dailySum = records.reduce((s, r) => s + (r.interest || 0), 0);
+                                    const dailySum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
                                     return (
                                         <div className="flex justify-center">
                                             <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                                                {formatMoney(initialInterest + dailySum)}
+                                                {formatMoney(initialManagementFee + dailySum)}
                                             </Badge>
                                         </div>
                                     );

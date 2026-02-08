@@ -388,7 +388,7 @@ export default function StockTradingPage() {
                                                     {trade.symbol}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-center">{trade.quantity}</TableCell>
+                                            <TableCell className="text-center">{trade.quantity.toLocaleString()}</TableCell>
                                             <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center">
                                                 {trade.current_market_price ? formatMoney(trade.current_market_price) : '-'}

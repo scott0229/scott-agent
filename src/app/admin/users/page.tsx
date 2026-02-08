@@ -736,7 +736,7 @@ export default function AdminUsersPage() {
                 }
             }
 
-            // 2. Import net equity (includes position sync)
+            // 2. Import net equity
             const formData = new FormData();
             formData.append('file', ibImportFile);
             formData.append('confirm', 'true');
@@ -755,10 +755,7 @@ export default function AdminUsersPage() {
             let posMsg = '';
             if (data.positionsSync) {
                 const ps = data.positionsSync;
-                const posParts = [];
-                if (ps.added) posParts.push(`新增 ${ps.added}`);
-                if (ps.updated) posParts.push(`更新 ${ps.updated}`);
-                if (posParts.length > 0) posMsg = `，持倉：${posParts.join('、')}`;
+                if (ps.added) posMsg = `，持倉：新增 ${ps.added}`;
             }
 
             toast({
@@ -1295,9 +1292,8 @@ export default function AdminUsersPage() {
                                         </>
                                     )}
 
-                                    {/* Stock Trade Actions + Position Sync */}
+                                    {/* Stock Trade Actions + New Position Sync */}
                                     {(() => {
-                                        // Filter out position actions for symbols already handled by stock trade actions
                                         const stockActionSymbols = new Set(ibStockPreview?.actions?.map((a: any) => a.symbol) || []);
                                         const filteredPositionActions = (ibImportPreview?.parsed?.positionActions || []).filter((pos: any) => !stockActionSymbols.has(pos.symbol));
                                         const hasActions = (ibStockPreview?.actions?.length > 0) || filteredPositionActions.length > 0;
@@ -1339,16 +1335,12 @@ export default function AdminUsersPage() {
                                                         {filteredPositionActions.map((pos: any, i: number) => (
                                                             <tr key={`pos-${i}`} className="border-t">
                                                                 <td className="p-1.5">
-                                                                    {pos.type === 'sync_add' && <span className="text-blue-600">同步持倉</span>}
-                                                                    {pos.type === 'sync_update' && <span className="text-purple-600">更新持倉</span>}
+                                                                    <span className="text-blue-600">同步持倉</span>
                                                                 </td>
                                                                 <td className="p-1.5 font-mono">{pos.symbol}</td>
                                                                 <td className="text-right p-1.5 font-mono">{pos.quantity.toLocaleString()}</td>
                                                                 <td className="text-right p-1.5 font-mono">{pos.costPrice.toFixed(2)}</td>
-                                                                <td className="p-1.5 text-right text-muted-foreground">
-                                                                    {pos.type === 'sync_add' && '新增'}
-                                                                    {pos.type === 'sync_update' && `${pos.existingQuantity}→${pos.quantity}股`}
-                                                                </td>
+                                                                <td className="p-1.5 text-right text-muted-foreground">新增</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -1356,6 +1348,51 @@ export default function AdminUsersPage() {
                                             </>
                                         );
                                     })()}
+
+                                    {/* Option Trade Actions */}
+                                    {ibImportPreview?.parsed?.optionActions?.length > 0 && (
+                                        <table className="w-full text-xs border rounded">
+                                            <thead>
+                                                <tr className="bg-muted">
+                                                    <th className="text-left p-1.5">操作</th>
+                                                    <th className="text-left p-1.5">標的</th>
+                                                    <th className="text-left p-1.5">類型</th>
+                                                    <th className="text-right p-1.5">行權價</th>
+                                                    <th className="text-right p-1.5">到期日</th>
+                                                    <th className="text-right p-1.5">口數</th>
+                                                    <th className="text-right p-1.5">權利金</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ibImportPreview.parsed.optionActions.map((opt: any, i: number) => (
+                                                    <tr key={`opt-${i}`} className={`border-t ${opt.action === 'skip_close' ? 'opacity-40' : opt.action === 'skip_exists' ? 'opacity-60' : ''}`}>
+                                                        <td className="p-1.5">
+                                                            {opt.action === 'add' && <span className="text-green-600">新增期權</span>}
+                                                            {opt.action === 'close' && <span className="text-red-600">平倉</span>}
+                                                            {opt.action === 'assign' && <span className="text-purple-600">指派</span>}
+                                                            {opt.action === 'expire' && <span className="text-gray-500">到期</span>}
+                                                            {opt.action === 'close_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">平倉(無對應)</span>}
+                                                            {opt.action === 'assign_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">指派(無對應)</span>}
+                                                            {opt.action === 'expire_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">到期(無對應)</span>}
+                                                            {opt.action === 'skip_exists' && <span className="text-muted-foreground">已存在</span>}
+                                                            {opt.action === 'skip_close' && <span className="text-muted-foreground">平倉(跳過)</span>}
+                                                        </td>
+                                                        <td className="p-1.5 font-mono">{opt.underlying}</td>
+                                                        <td className="p-1.5">
+                                                            <span className={opt.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
+                                                                {opt.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="text-right p-1.5 font-mono">{opt.strikePrice}</td>
+                                                        <td className="text-right p-1.5 font-mono">{opt.toDateStr}</td>
+                                                        <td className="text-right p-1.5 font-mono">{opt.quantity}</td>
+                                                        <td className="text-right p-1.5 font-mono">${opt.premium.toFixed(0)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+
                                     {ibStockPreview?.warnings?.length > 0 && (
                                         <div className="text-red-600 text-xs space-y-1">
                                             {ibStockPreview.warnings.map((w: string, i: number) => (
