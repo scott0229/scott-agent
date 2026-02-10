@@ -94,6 +94,8 @@ export default function StockTradingPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [tradeToEdit, setTradeToEdit] = useState<StockTrade | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
 
 
     const { selectedYear } = useYearFilter();
@@ -220,6 +222,9 @@ export default function StockTradingPage() {
     // Use backend's sorting order - no client-side re-sorting
     const sortedTrades = filteredTrades;
 
+    // Check if any filter is active
+    const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
+
     const canEdit = (trade: StockTrade) => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin' || currentUser.role === 'manager') return true;
@@ -234,6 +239,24 @@ export default function StockTradingPage() {
 
     const handleProgressComplete = () => {
         fetchTrades(); // Refresh trades after update completes
+    };
+
+    const handleBulkDelete = async () => {
+        if (filteredTrades.length === 0) return;
+        setBulkDeleting(true);
+        try {
+            for (const trade of filteredTrades) {
+                const res = await fetch(`/api/stocks/${trade.id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error(`刪除 ${trade.symbol} 失敗`);
+            }
+            toast({ title: '刪除成功', description: `已刪除 ${filteredTrades.length} 筆交易` });
+            setBulkDeleteDialogOpen(false);
+            fetchTrades();
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: '刪除失敗', description: error.message });
+        } finally {
+            setBulkDeleting(false);
+        }
     };
 
     return (
@@ -304,6 +327,17 @@ export default function StockTradingPage() {
                                 onChange={(e) => setSymbolFilter(e.target.value)}
                             />
                         </div>
+
+                        {isFiltered && filteredTrades.length > 0 && canEdit(filteredTrades[0]) && (
+                            <Button
+                                variant="outline"
+                                onClick={() => setBulkDeleteDialogOpen(true)}
+                                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                            >
+                                <Trash2 className="h-4 w-4 mr-1.5" />
+                                刪除篩選結果 ({filteredTrades.length})
+                            </Button>
+                        )}
 
                         <Button
                             variant="secondary"
@@ -478,6 +512,48 @@ export default function StockTradingPage() {
                     year={displayYear}
                     onComplete={handleProgressComplete}
                 />
+                {/* Bulk Delete Confirmation Dialog */}
+                <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={(open) => { if (!bulkDeleting) setBulkDeleteDialogOpen(open); }}>
+                    <AlertDialogContent className="max-w-lg">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>確認刪除 {filteredTrades.length} 筆交易？</AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                                <div className="space-y-3">
+                                    <p>以下交易將被永久刪除且無法復原：</p>
+                                    <div className="max-h-[300px] overflow-y-auto border rounded">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-secondary hover:bg-secondary">
+                                                    <TableHead className="text-center">持有者</TableHead>
+                                                    <TableHead className="text-center">標的</TableHead>
+                                                    <TableHead className="text-center">開倉日</TableHead>
+                                                    <TableHead className="text-center">狀態</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredTrades.map(t => (
+                                                    <TableRow key={t.id}>
+                                                        <TableCell className="text-center">{t.user_id}</TableCell>
+                                                        <TableCell className="text-center">{t.symbol}</TableCell>
+                                                        <TableCell className="text-center">{formatDate(t.open_date)}</TableCell>
+                                                        <TableCell className="text-center">{t.status === 'Open' ? 'Open' : 'Closed'}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={bulkDeleting}>取消</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleBulkDelete} disabled={bulkDeleting}>
+                                {bulkDeleting ? '刪除中...' : `刪除 ${filteredTrades.length} 筆`}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
                 <Toaster />
             </div>
         </TooltipProvider>

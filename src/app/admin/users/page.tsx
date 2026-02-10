@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +11,16 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
@@ -108,6 +114,19 @@ export default function AdminUsersPage() {
     const [ibImportFile, setIbImportFile] = useState<File | null>(null);
     const [ibImporting, setIbImporting] = useState(false);
     const [ibStockPreview, setIbStockPreview] = useState<any>(null);
+
+    // Batch IB Import State
+    const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+    const [batchImporting, setBatchImporting] = useState(false);
+    const [batchProgress, setBatchProgress] = useState(0);
+    const [batchMessage, setBatchMessage] = useState('');
+    const [batchFiles, setBatchFiles] = useState<Array<{ file: File; date: Date; dateStr: string; fileName: string; userAlias: string }>>([]);
+    const [batchResults, setBatchResults] = useState<Array<{ file: string; date: string; user: string; status: string }>>([]);
+    const [batchError, setBatchError] = useState<string | null>(null);
+    const [batchDateWarnings, setBatchDateWarnings] = useState<string[]>([]);
+    const singleFileInputRef = useRef<HTMLInputElement>(null);
+    const dirInputRef = useRef<HTMLInputElement>(null);
+    const jsonImportRef = useRef<HTMLInputElement>(null);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -210,11 +229,10 @@ export default function AdminUsersPage() {
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
         report += `----------------------------------------\n`;
-        report += `統計至前一日的績效\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
-        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
         report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
+        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
         report += `----------------------------------------\n`;
 
         // Stock positions
@@ -659,6 +677,182 @@ export default function AdminUsersPage() {
     // I will stick to updating functions first.
 
 
+    // Batch IB Import: Chinese month map for date extraction
+    const BATCH_MONTH_MAP: Record<string, number> = {
+        '一月': 1, '二月': 2, '三月': 3, '四月': 4,
+        '五月': 5, '六月': 6, '七月': 7, '八月': 8,
+        '九月': 9, '十月': 10, '十一月': 11, '十二月': 12
+    };
+
+    const extractDateFromHtml = (html: string): { date: Date; dateStr: string; userAlias: string } | null => {
+        const titleMatch = html.match(/<title>.*?活動賬單\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
+        if (!titleMatch) return null;
+        const month = BATCH_MONTH_MAP[titleMatch[1]];
+        if (!month) return null;
+        const day = parseInt(titleMatch[2]);
+        const year = parseInt(titleMatch[3]);
+        const aliasMatch = html.match(/賬戶化名<\/td>\s*<td>(.*?)<\/td>/);
+        const userAlias = aliasMatch ? aliasMatch[1].trim() : '未知';
+        return {
+            date: new Date(Date.UTC(year, month - 1, day)),
+            dateStr: `${String(year).slice(2)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+            userAlias,
+        };
+    };
+
+    const handleIbBatchImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const fileList = event.target.files;
+        if (!fileList || fileList.length === 0) return;
+
+        // Copy files BEFORE resetting input (FileList is a live reference)
+        const allFiles: File[] = Array.from(fileList);
+        event.target.value = ''; // Reset input after copying
+
+        // Filter .htm/.html files
+        const htmlFiles: File[] = [];
+        for (const f of allFiles) {
+            const lower = f.name.toLowerCase();
+            if (lower.endsWith('.htm') || lower.endsWith('.html')) {
+                htmlFiles.push(f);
+            }
+        }
+
+        if (htmlFiles.length === 0) {
+            toast({ variant: 'destructive', title: '未找到報表', description: '資料夾中沒有 .htm / .html 檔案' });
+            return;
+        }
+
+        // Read all files and extract dates
+        const parsed: Array<{ file: File; date: Date; dateStr: string; fileName: string; userAlias: string }> = [];
+        const failedFiles: string[] = [];
+        for (const f of htmlFiles) {
+            try {
+                const text = await f.text();
+                const info = extractDateFromHtml(text);
+                if (info) {
+                    parsed.push({ file: f, date: info.date, dateStr: info.dateStr, fileName: f.name, userAlias: info.userAlias });
+                } else {
+                    failedFiles.push(f.name);
+                }
+            } catch {
+                failedFiles.push(f.name);
+            }
+        }
+
+        if (parsed.length === 0) {
+            toast({ variant: 'destructive', title: '解析失敗', description: '所有檔案都無法解析日期' });
+            return;
+        }
+
+        // Sort by date (oldest first)
+        parsed.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        // Check date continuity (skip weekends)
+        const dateWarnings: string[] = [];
+        for (let i = 1; i < parsed.length; i++) {
+            const prev = parsed[i - 1].date;
+            const curr = parsed[i].date;
+            // Count business days between (exclusive of both endpoints)
+            let businessDays = 0;
+            const d = new Date(prev);
+            d.setDate(d.getDate() + 1);
+            while (d < curr) {
+                const dow = d.getDay();
+                if (dow !== 0 && dow !== 6) businessDays++;
+                d.setDate(d.getDate() + 1);
+            }
+            if (businessDays > 0) {
+                dateWarnings.push(`${parsed[i - 1].dateStr} → ${parsed[i].dateStr} 之間缺少 ${businessDays} 個交易日`);
+            }
+        }
+
+        setBatchFiles(parsed);
+        setBatchResults([]);
+        setBatchError(null);
+        setBatchDateWarnings(dateWarnings);
+        setBatchImporting(false);
+        setBatchProgress(0);
+        setBatchMessage(
+            failedFiles.length > 0
+                ? `${failedFiles.length} 個檔案無法解析，已跳過`
+                : ''
+        );
+        setBatchDialogOpen(true);
+    };
+
+    const confirmBatchImport = async () => {
+        if (batchFiles.length === 0) return;
+        setBatchImporting(true);
+        setBatchProgress(0);
+        setBatchResults([]);
+        setBatchError(null);
+
+        const results: Array<{ file: string; date: string; user: string; status: string }> = [];
+        const total = batchFiles.length;
+
+        for (let i = 0; i < total; i++) {
+            const item = batchFiles[i];
+            setBatchMessage(`正在處理 ${item.dateStr} (${i + 1}/${total})...`);
+            setBatchProgress(Math.round((i / total) * 100));
+
+            try {
+                // 1. Import stock trades first
+                try {
+                    const stockFormData = new FormData();
+                    stockFormData.append('file', item.file);
+                    stockFormData.append('confirm', 'true');
+                    await fetch('/api/stocks/import-ib', { method: 'POST', body: stockFormData });
+                } catch {
+                    // Stock import failure is non-fatal
+                }
+
+                // 2. Import net equity
+                const formData = new FormData();
+                formData.append('file', item.file);
+                formData.append('confirm', 'true');
+
+                const res = await fetch('/api/net-equity/import-ib', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || '匯入失敗');
+                }
+
+                let statusText = data.yearStartUpdated ? '年初更新' : (data.action === 'updated' ? '更新' : '已匯入');
+                if (data.positionsSync?.added) statusText += ` +${data.positionsSync.added}持倉`;
+                if (data.openOptionsSync?.added) statusText += ` +${data.openOptionsSync.added}期權`;
+
+                results.push({
+                    file: item.fileName,
+                    date: item.dateStr,
+                    user: data.userName || item.userAlias || '未知',
+                    status: `✓ ${statusText}`,
+                });
+                setBatchResults([...results]);
+
+            } catch (error: any) {
+                // Fail fast: stop immediately on error
+                results.push({
+                    file: item.fileName,
+                    date: item.dateStr,
+                    user: item.userAlias || '未知',
+                    status: `✗ ${error.message}`,
+                });
+                setBatchResults([...results]);
+                setBatchError(`${item.dateStr} (${item.fileName}) 匯入失敗：${error.message}`);
+                setBatchProgress(Math.round(((i + 1) / total) * 100));
+                setBatchImporting(false);
+                return; // Stop processing
+            }
+        }
+
+        // All done
+        setBatchProgress(100);
+        setBatchMessage(`完成！共匯入 ${results.length} 個報表`);
+        setBatchImporting(false);
+        fetchUsers(true);
+    };
+
     // IB Statement Import Handlers
     const handleIbImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -678,6 +872,16 @@ export default function AdminUsersPage() {
             const data = await res.json();
             if (!res.ok) {
                 throw new Error(data.error || '解析失敗');
+            }
+
+            // Date validation: file must be newer than latest record
+            if (data.latestRecordDate && data.parsed?.date && data.parsed.date <= data.latestRecordDate) {
+                toast({
+                    variant: "destructive",
+                    title: "日期錯誤",
+                    description: `此報表日期 (${data.parsed.dateStr}) 不晚於最新記錄 (${data.latestRecordDate})，請匯入更新的報表`,
+                });
+                return;
             }
 
             // Also parse stock trades
@@ -764,7 +968,7 @@ export default function AdminUsersPage() {
 
             toast({
                 title: "匯入成功",
-                description: `${data.userName} ${data.dateStr} ${data.yearStartUpdated ? '年初起始已更新' : `淨值記錄已${data.action === 'updated' ? '更新' : '新增'}`}${stockMsg}${posMsg}`,
+                description: `${data.userName} ${data.dateStr} ${data.yearStartUpdated ? '年初起始已更新' : `淨值記錄已${data.action === 'updated' ? '更新' : '匯入'}`}${stockMsg}${posMsg}`,
             });
 
             setIbImportDialogOpen(false);
@@ -857,42 +1061,70 @@ export default function AdminUsersPage() {
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
 
-                                <Button
-                                    onClick={handleExportClick}
-                                    variant="outline"
-                                    className="hover:bg-accent hover:text-accent-foreground"
-                                >
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    匯出
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="hover:bg-accent hover:text-accent-foreground relative"
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="hover:bg-accent hover:text-accent-foreground"
+                                        >
+                                            <HardDrive className="h-4 w-4 mr-2" />
+                                            備份
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={handleExportClick}>
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            匯出
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => jsonImportRef.current?.click()} disabled={importing}>
+                                            <Download className="h-4 w-4 mr-2" />
+                                            匯入
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <input
+                                    ref={jsonImportRef}
+                                    type="file"
+                                    accept=".json"
+                                    onChange={handleImportFile}
+                                    className="hidden"
                                     disabled={importing}
-                                >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    匯入
-                                    <input
-                                        type="file"
-                                        accept=".json"
-                                        onChange={handleImportFile}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                        disabled={importing}
-                                    />
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="hover:bg-accent hover:text-accent-foreground relative"
-                                >
-                                    <FileUp className="h-4 w-4 mr-2" />
-                                    匯入報表
-                                    <input
-                                        type="file"
-                                        accept=".htm,.html"
-                                        onChange={handleIbImportFile}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
-                                </Button>
+                                />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="hover:bg-accent hover:text-accent-foreground"
+                                        >
+                                            <FileUp className="h-4 w-4 mr-2" />
+                                            匯入報表
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => singleFileInputRef.current?.click()}>
+                                            <FileUp className="h-4 w-4 mr-2" />
+                                            檔案
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => dirInputRef.current?.click()}>
+                                            <FolderOpen className="h-4 w-4 mr-2" />
+                                            資料夾
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <input
+                                    ref={singleFileInputRef}
+                                    type="file"
+                                    accept=".htm,.html"
+                                    onChange={handleIbImportFile}
+                                    className="hidden"
+                                />
+                                <input
+                                    ref={dirInputRef}
+                                    type="file"
+                                    {...{ webkitdirectory: '', directory: '' } as any}
+                                    onChange={handleIbBatchImport}
+                                    className="hidden"
+                                />
                                 {selectedYear !== 'All' && (
                                     <Button
                                         onClick={() => setDeleteAllDialogOpen(true)}
@@ -1448,6 +1680,120 @@ export default function AdminUsersPage() {
                             <AlertDialogAction onClick={confirmIbImport} disabled={ibImporting}>
                                 {ibImporting ? '匯入中...' : '確認匯入'}
                             </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Batch IB Import Dialog */}
+                <AlertDialog open={batchDialogOpen} onOpenChange={(open) => {
+                    if (!open && !batchImporting) {
+                        setBatchDialogOpen(false);
+                        setBatchFiles([]);
+                        setBatchResults([]);
+                        setBatchError(null);
+                    }
+                }}>
+                    <AlertDialogContent className="max-w-lg">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                {batchImporting
+                                    ? '批量匯入中...'
+                                    : batchResults.length > 0
+                                        ? (batchError ? '匯入中斷' : '匯入完成')
+                                        : `批量匯入確認 (${batchFiles.length} 個檔案)`
+                                }
+                            </AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                                <div className="space-y-3" style={{ color: '#1e293b' }}>
+                                    {/* Pre-import summary */}
+                                    {batchResults.length === 0 && !batchImporting && batchFiles.length > 0 && (
+                                        <>
+                                            <p className="text-sm">
+                                                日期範圍：<span className="font-mono font-medium">{batchFiles[0]?.dateStr}</span> → <span className="font-mono font-medium">{batchFiles[batchFiles.length - 1]?.dateStr}</span>
+                                            </p>
+                                            <p className="text-sm">
+                                                用戶：{[...new Set(batchFiles.map(f => f.userAlias))].join('、')}
+                                            </p>
+                                            {batchMessage && (
+                                                <p className="text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                                                    ⚠ {batchMessage}
+                                                </p>
+                                            )}
+                                            {batchDateWarnings.length > 0 && (
+                                                <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded space-y-0.5">
+                                                    <p className="font-medium">⚠ 日期不連續：</p>
+                                                    {batchDateWarnings.map((w, i) => (
+                                                        <p key={i}>&nbsp;&nbsp;• {w}</p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* Progress */}
+                                    {(batchImporting || batchResults.length > 0) && (
+                                        <>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>{batchMessage}</span>
+                                                    <span>{batchProgress}%</span>
+                                                </div>
+                                                <div className="w-full bg-secondary rounded-full h-2">
+                                                    <div
+                                                        className={`h-2 rounded-full transition-all duration-300 ${batchError ? 'bg-red-500' : 'bg-primary'}`}
+                                                        style={{ width: `${batchProgress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Results table */}
+                                            {batchResults.length > 0 && (
+                                                <div className="max-h-[300px] overflow-y-auto">
+                                                    <table className="w-full text-xs border rounded">
+                                                        <thead>
+                                                            <tr className="bg-muted">
+                                                                <th className="text-left p-1.5">日期</th>
+                                                                <th className="text-left p-1.5">用戶</th>
+                                                                <th className="text-left p-1.5">結果</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {batchResults.map((r, i) => (
+                                                                <tr key={i} className={`border-t ${r.status.startsWith('✗') ? 'bg-red-50' : ''}`}>
+                                                                    <td className="p-1.5 font-mono">{r.date}</td>
+                                                                    <td className="p-1.5">{r.user}</td>
+                                                                    <td className="p-1.5">{r.status}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+
+                                            {batchError && (
+                                                <p className="text-xs text-red-600 bg-red-50 px-2 py-1.5 rounded">
+                                                    ❌ {batchError}
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            {!batchImporting && (
+                                <Button variant="outline" onClick={() => {
+                                    setBatchDialogOpen(false);
+                                    setBatchFiles([]);
+                                    setBatchResults([]);
+                                    setBatchError(null);
+                                }}>{batchResults.length > 0 ? '關閉' : '取消'}</Button>
+                            )}
+                            {batchResults.length === 0 && !batchImporting && (
+                                <Button onClick={confirmBatchImport}>
+                                    開始匯入
+                                </Button>
+                            )}
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

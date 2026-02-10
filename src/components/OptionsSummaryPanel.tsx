@@ -341,7 +341,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">融資需求率</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
                                     <StatBadge>{formatPercent(aggregates.marginRate)}</StatBadge>

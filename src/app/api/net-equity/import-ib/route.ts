@@ -547,6 +547,11 @@ export async function POST(request: NextRequest) {
                 });
             }
 
+            // Get latest record date for this user
+            const latestRecord = await db.prepare(
+                'SELECT MAX(date) as latest_date FROM DAILY_NET_EQUITY WHERE user_id = ?'
+            ).bind(userResult.id).first<{ latest_date: string | null }>();
+
             return NextResponse.json({
                 preview: true,
                 parsed: {
@@ -573,6 +578,7 @@ export async function POST(request: NextRequest) {
                     managementFee: existing.management_fee,
                     deposit: existing.deposit,
                 } : null,
+                latestRecordDate: latestRecord?.latest_date || null,
             });
         }
 

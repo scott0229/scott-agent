@@ -122,7 +122,14 @@ export async function GET(
             WHERE owner_id = ? AND year = ? AND status = 'Open'
             GROUP BY symbol
             HAVING quantity > 0
-            ORDER BY symbol
+            ORDER BY 
+                CASE symbol
+                    WHEN 'QQQ' THEN 1
+                    WHEN 'QLD' THEN 2
+                    WHEN 'TQQQ' THEN 3
+                    ELSE 4
+                END,
+                symbol
         `).bind(userId, currentYear).all();
 
         // 7. Get monthly premium stats - USE SAME QUERY AS /api/users for consistency
@@ -207,14 +214,25 @@ export async function GET(
             WHERE owner_id = ? AND year = ? AND operation = 'Open' AND type = 'PUT'
         `).bind(userId, currentYear).first();
 
-        const marginRate = accountNetWorth > 0 ? (marginResult?.open_put_covered_capital || 0) / accountNetWorth : 0;
+        // Include debt (negative cash balance) in margin rate calculation to match dashboard logic
+        const debt = Math.abs(Math.min(0, cashBalance));
+        const marginUsed = (marginResult?.open_put_covered_capital || 0) + debt;
+        const marginRate = accountNetWorth > 0 ? marginUsed / accountNetWorth : 0;
 
         // 9. Get open positions
         const { results: openOptions } = await db.prepare(`
-            SELECT quantity, to_date, type, underlying, strike_price, premium
+            SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, SUM(premium) as premium
             FROM OPTIONS
             WHERE owner_id = ? AND year = ? AND operation = 'Open'
-            ORDER BY to_date, underlying, type
+            GROUP BY to_date, underlying, type, strike_price
+            ORDER BY 
+                CASE underlying
+                    WHEN 'QQQ' THEN 1
+                    WHEN 'QLD' THEN 2
+                    WHEN 'TQQQ' THEN 3
+                    ELSE 4
+                END,
+                underlying, to_date, type
         `).bind(userId, currentYear).all();
 
         return NextResponse.json({
