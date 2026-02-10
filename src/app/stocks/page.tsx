@@ -399,8 +399,8 @@ export default function StockTradingPage() {
 
                                     return (
                                         <TableRow key={trade.id}>
-                                            <TableCell className="text-center text-muted-foreground font-mono">{sortedTrades.length - index}</TableCell>
-                                            <TableCell className="text-center">
+                                            <TableCell className="text-center text-muted-foreground font-mono py-1">{sortedTrades.length - index}</TableCell>
+                                            <TableCell className="text-center py-1">
                                                 <span
                                                     className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
                                                     onClick={() => setSelectedUserFilter(trade.user_id || '')}
@@ -409,11 +409,11 @@ export default function StockTradingPage() {
                                                     {trade.user_id || '-'}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-center">{formatDate(trade.open_date)}</TableCell>
-                                            <TableCell className={cn("text-center", !trade.close_date && "bg-pink-50")}>
+                                            <TableCell className="text-center py-1">{formatDate(trade.open_date)}</TableCell>
+                                            <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
                                                 {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                             </TableCell>
-                                            <TableCell className="text-center">
+                                            <TableCell className="text-center py-1">
                                                 <span
                                                     className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
                                                     onClick={() => setSymbolFilter(trade.symbol)}
@@ -422,21 +422,21 @@ export default function StockTradingPage() {
                                                     {trade.symbol}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-center">{trade.quantity.toLocaleString()}</TableCell>
-                                            <TableCell className="text-center">{formatMoney(trade.open_price)}</TableCell>
-                                            <TableCell className="text-center">
+                                            <TableCell className="text-center py-1">{trade.quantity.toLocaleString()}</TableCell>
+                                            <TableCell className="text-center py-1">{formatMoney(trade.open_price)}</TableCell>
+                                            <TableCell className="text-center py-1">
                                                 {trade.current_market_price ? formatMoney(trade.current_market_price) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center">
+                                            <TableCell className="text-center py-1">
                                                 {trade.close_price ? formatMoney(trade.close_price) : '-'}
                                             </TableCell>
-                                            <TableCell className={cn("text-center", pnl !== null && pnl < 0 && 'bg-pink-50')}>
+                                            <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center font-mono text-sm">
+                                            <TableCell className="text-center font-mono text-sm py-1">
                                                 {trade.code || '-'}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="py-1">
                                                 <div className="flex justify-end gap-1">
                                                     {canEdit(trade) && (
                                                         <>

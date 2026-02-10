@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
     const [exportProgress, setExportProgress] = useState(0);
 
     // Report Generation State
-    const [reportDialog, setReportDialog] = useState<{ open: boolean; userId: number; report: string } | null>(null);
+    const [reportDialog, setReportDialog] = useState<{ open: boolean; userId: number; userName: string; report: string } | null>(null);
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
     // Data holders
@@ -222,8 +222,7 @@ export default function AdminUsersPage() {
         const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
         const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
 
-        let report = `${data.user_id}\n`;
-        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
+        let report = `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
         report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
         report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
@@ -277,7 +276,7 @@ export default function AdminUsersPage() {
 
             if (data.success) {
                 const report = formatUserReport(data.reportData);
-                setReportDialog({ open: true, userId, report });
+                setReportDialog({ open: true, userId, userName: data.reportData.user_id, report });
             } else {
                 toast({
                     variant: "destructive",
@@ -1210,23 +1209,23 @@ export default function AdminUsersPage() {
                                             : 0;
                                         return (
                                             <TableRow key={user.id}>
-                                                <TableCell className="text-center text-muted-foreground font-mono">{index + 1}</TableCell>
-                                                <TableCell className="text-center">{getRoleBadge(user.role)}</TableCell>
-                                                <TableCell className="text-center">{user.user_id || '-'}</TableCell>
-                                                <TableCell className={`text-center ${user.role === 'customer' && user.management_fee === 0 ? 'bg-pink-50' : ''}`}>
+                                                <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
+                                                <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
+                                                <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-pink-50' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
                                                     ) : '-'}
                                                 </TableCell>
-                                                <TableCell className="text-center">
+                                                <TableCell className="text-center py-1">
                                                     {user.role === 'customer' && (user.management_fee ?? 0) > 0 ? formatMoney(estimatedFee) : '-'}
                                                 </TableCell>
 
-                                                <TableCell className="text-center">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
-                                                <TableCell className="text-center">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                                <TableCell className="text-center">{formatPhoneNumber(user.phone)}</TableCell>
-                                                <TableCell>{user.email}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
+                                                <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
+                                                <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>
+                                                <TableCell className="py-1">{user.email}</TableCell>
+                                                <TableCell className="text-right py-1">
                                                     {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
                                                         <div className="flex justify-end gap-1">
                                                             <Tooltip>
@@ -1287,11 +1286,11 @@ export default function AdminUsersPage() {
                                     }),
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
-                                        <TableCell className="text-center">總計</TableCell>
-                                        <TableCell colSpan={3} className="text-center"></TableCell>
-                                        <TableCell className="text-center">{formatMoney(totalEstimatedFee)}</TableCell>
-                                        <TableCell className="text-center">{formatMoney(totalCurrentEquity)}</TableCell>
-                                        <TableCell colSpan={4}></TableCell>
+                                        <TableCell className="text-center py-1">總計</TableCell>
+                                        <TableCell colSpan={3} className="text-center py-1"></TableCell>
+                                        <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
+                                        <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
+                                        <TableCell colSpan={4} className="py-1"></TableCell>
                                     </TableRow>
                                 ];
                             })()}
@@ -1303,7 +1302,7 @@ export default function AdminUsersPage() {
                     <DialogContent className="w-[400px] max-w-[90vw]">
                         <DialogHeader>
                             <div className="flex items-center gap-2">
-                                <DialogTitle>用戶報告</DialogTitle>
+                                <DialogTitle>{reportDialog?.userName} 用戶報告</DialogTitle>
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -1325,7 +1324,7 @@ export default function AdminUsersPage() {
                         <Textarea
                             value={reportDialog?.report || ''}
                             readOnly
-                            className="font-mono text-xs min-h-[450px] resize-none"
+                            className="font-mono text-sm min-h-[550px] resize-none"
                         />
                     </DialogContent>
                 </Dialog>
