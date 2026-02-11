@@ -253,7 +253,8 @@ export async function GET(
                 quarterlyTarget,
                 annualPremium,
                 annualTarget,
-                openOptions: openOptions || []
+                openOptions: openOptions || [],
+                lastUpdateDate: latestEquity?.date || null
             }
         });
 

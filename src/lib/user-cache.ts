@@ -12,7 +12,7 @@ export async function getCachedUserSelection(
     const userId = searchParams.get('userId');
 
     // Create cache key from query parameters
-    const cacheKey = `users-selection-${roles || 'all'}-${year || 'all'}-${userId || 'all'}-v2`;
+    const cacheKey = `users-selection-${roles || 'all'}-${year || 'all'}-${userId || 'all'}-v3`;
 
     // 5 minute cache for user data with stats
     return cacheResponse(cacheKey, fetcher, 5 * 60 * 1000);

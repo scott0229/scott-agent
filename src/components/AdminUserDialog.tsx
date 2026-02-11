@@ -25,7 +25,7 @@ interface AdminUserDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string } | null;
+    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string } | null;
 }
 
 
@@ -41,6 +41,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         managementFee: '4.0',
         ibAccount: '',
         phone: '',
+        startDate: '',
     });
 
     // Reset or populate form when opening
@@ -54,6 +55,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
+                startDate: userToEdit.start_date || '',
             });
         }
     });
@@ -71,9 +73,10 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 managementFee: userToEdit.management_fee?.toString() || '',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
+                startDate: userToEdit.start_date || '',
             });
         } else {
-            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '' });
+            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', startDate: '' });
         }
     }
 
@@ -106,7 +109,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '' });
+                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', startDate: '' });
             }
         } catch (error: any) {
             toast({
@@ -138,6 +141,19 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             className="col-span-2"
                             autoComplete="off"
                             required
+                        />
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="startDate" className="text-right">
+                            起始日期
+                        </Label>
+                        <Input
+                            id="startDate"
+                            type="date"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                            className="col-span-2"
+                            autoComplete="off"
                         />
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">

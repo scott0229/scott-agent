@@ -25,6 +25,7 @@ interface User {
     initial_cost?: number;
     open_put_covered_capital?: number;
     current_cash_balance?: number;
+    last_update_date?: number;
 }
 
 interface OptionsSummaryPanelProps {
@@ -293,8 +294,35 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                     </thead>
                     <tbody className="text-[13px]">
-                        {/* Open Position Count */}
+                        {/* Last Update Date */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">最後更新日</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {(() => {
+                                        const dates = users.map(u => u.last_update_date).filter(Boolean) as number[];
+                                        if (dates.length === 0) return '-';
+                                        const latest = Math.max(...dates);
+                                        const d = new Date(latest * 1000);
+                                        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                    })()}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {user.last_update_date ? (() => {
+                                            const d = new Date(user.last_update_date * 1000);
+                                            return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                        })() : '-'}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
+                        {/* Open Position Count */}
+                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
@@ -376,7 +404,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Quarterly Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
@@ -448,7 +476,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">

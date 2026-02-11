@@ -168,10 +168,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
     const formatDateYYMMDD = (timestamp: number) => {
         const date = new Date(timestamp * 1000);
-        const yy = date.getFullYear().toString().slice(-2);
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
-        return `${yy}-${mm}-${dd}`;
+        return `${mm}-${dd}`;
     };
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
@@ -258,9 +257,29 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         </tr>
                     </thead>
                     <tbody className="text-[13px]">
+                        {/* 0. Last Updated Date */}
+                        {visibleRows.lastUpdated && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="lastUpdated" visible={visibleRows.lastUpdated} />
+                                    最後更新日
+                                </td>
+                                {users.filter(isColumnVisible).map(user => {
+                                    const lastDate = user.equity_history && user.equity_history.length > 0
+                                        ? user.equity_history[user.equity_history.length - 1].date
+                                        : null;
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                            {lastDate ? formatDateYYMMDD(lastDate) : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
                         {/* 1. Current Net Equity */}
                         {visibleRows.currentNetEquity && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="currentNetEquity" visible={visibleRows.currentNetEquity} />
                                     當前淨值
@@ -345,7 +364,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 6. Return Rate */}
                         {visibleRows.returnRate && (
-                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="returnRate" visible={visibleRows.returnRate} />
                                     報酬率
@@ -420,7 +439,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 12. New High Count */}
                         {visibleRows.newHighCount && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="newHighCount" visible={visibleRows.newHighCount} />
                                     新高次數
@@ -450,7 +469,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 14. Cash Balance */}
                         {visibleRows.cashBalance && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
                                     帳戶現金
@@ -530,25 +549,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 18. Last Updated Date */}
-                        {visibleRows.lastUpdated && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
-                                    <RowToggleIcon rowKey="lastUpdated" visible={visibleRows.lastUpdated} />
-                                    最後更新日
-                                </td>
-                                {users.filter(isColumnVisible).map(user => {
-                                    const lastDate = user.equity_history && user.equity_history.length > 0
-                                        ? user.equity_history[user.equity_history.length - 1].date
-                                        : null;
-                                    return (
-                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                            {lastDate ? formatDateYYMMDD(lastDate) : '-'}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        )}
+
 
                     </tbody>
                 </table>

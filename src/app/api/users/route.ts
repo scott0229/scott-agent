@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
                 // Add year filter (only admin crosses years)
                 if (year && year !== 'All') {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = 'Open') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -63,7 +63,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id AND STRATEGIES.year = ?) as strategies_count,
                         (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = 'Open' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
-                        (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance
+                        (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance,
+                        (SELECT date FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as last_update_date
                         FROM USERS`;
 
                     // Broaden filter: Include users who belong to the year OR are admin OR have activity in that year
@@ -94,7 +95,8 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id) as strategies_count,
                         (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
-                        (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance
+                        (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance,
+                        (SELECT date FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as last_update_date
                         FROM USERS`;
                 }
 
@@ -291,7 +293,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -379,7 +381,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -389,6 +391,7 @@ export async function POST(req: NextRequest) {
             phone?: string;
             year?: number;
             initialCost?: number;
+            startDate?: string;
         };
 
         if (!email || !userId || !password || !role) {
@@ -422,8 +425,8 @@ export async function POST(req: NextRequest) {
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
         // userYear is already defined above
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost)
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null)
             .run();
 
         return NextResponse.json({ success: true });
@@ -542,7 +545,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, initialInterest } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, initialInterest, startDate } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -556,6 +559,7 @@ export async function PUT(req: NextRequest) {
             initialManagementFee?: number;
             initialDeposit?: number;
             initialInterest?: number;
+            startDate?: string;
         };
 
         if (!id) {
@@ -648,6 +652,11 @@ export async function PUT(req: NextRequest) {
         if (typeof initialInterest !== 'undefined') {
             updateQuery += ', initial_interest = ?';
             params.push(initialInterest);
+        }
+
+        if (typeof startDate !== 'undefined') {
+            updateQuery += ', start_date = ?';
+            params.push(startDate || null);
         }
 
         if (password && password.trim() !== '') {

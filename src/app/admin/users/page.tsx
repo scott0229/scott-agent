@@ -46,6 +46,7 @@ interface User {
     current_net_equity?: number;
     stock_trades_count?: number;
     strategies_count?: number;
+    start_date?: string;
 }
 
 import {
@@ -256,7 +257,14 @@ export default function AdminUsersPage() {
         const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
         const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
 
-        let report = `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
+        let report = '';
+        if (data.lastUpdateDate) {
+            const d = new Date(data.lastUpdateDate * 1000);
+            const dateStr = `${d.getFullYear().toString().slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            report += `最後更新日 : ${dateStr}\n`;
+            report += `----------------------------------------\n`;
+        }
+        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
         report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
         report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
@@ -1202,6 +1210,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
+                                <TableHead className="text-center">起始日期</TableHead>
                                 <TableHead className="text-center">管理費率</TableHead>
                                 <TableHead className="text-center">管理費預估</TableHead>
 
@@ -1218,7 +1227,7 @@ export default function AdminUsersPage() {
                                 if (filteredUsers.length === 0) {
                                     return (
                                         <TableRow className="hover:bg-transparent">
-                                            <TableCell colSpan={10} className="p-4">
+                                            <TableCell colSpan={11} className="p-4">
                                                 <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
                                                     尚無客戶資料
                                                 </div>
@@ -1237,7 +1246,16 @@ export default function AdminUsersPage() {
                                 const totalEstimatedFee = sortedUsers.reduce((sum, user) => {
                                     if (user.role === 'customer' && (user.management_fee ?? 0) > 0) {
                                         const currentEquity = user.current_net_equity || 0;
-                                        const fee = ((user.management_fee ?? 0) / 100) * currentEquity;
+                                        let ratio = 1;
+                                        if (user.start_date) {
+                                            const start = new Date(user.start_date);
+                                            const yearEnd = new Date(start.getFullYear(), 11, 31);
+                                            const yearStart = new Date(start.getFullYear(), 0, 1);
+                                            const totalDays = (yearEnd.getTime() - yearStart.getTime()) / 86400000 + 1;
+                                            const remainingDays = (yearEnd.getTime() - start.getTime()) / 86400000 + 1;
+                                            ratio = remainingDays / totalDays;
+                                        }
+                                        const fee = ((user.management_fee ?? 0) / 100) * currentEquity * ratio;
                                         return sum + fee;
                                     }
                                     return sum;
@@ -1253,21 +1271,36 @@ export default function AdminUsersPage() {
                                 return [
                                     ...sortedUsers.map((user, index) => {
                                         const currentEquity = user.current_net_equity || 0;
+                                        let feeRatio = 1;
+                                        if (user.start_date) {
+                                            const start = new Date(user.start_date);
+                                            const yearEnd = new Date(start.getFullYear(), 11, 31);
+                                            const yearStart = new Date(start.getFullYear(), 0, 1);
+                                            const totalDays = (yearEnd.getTime() - yearStart.getTime()) / 86400000 + 1;
+                                            const remainingDays = (yearEnd.getTime() - start.getTime()) / 86400000 + 1;
+                                            feeRatio = remainingDays / totalDays;
+                                        }
                                         const estimatedFee = user.role === 'customer' && (user.management_fee ?? 0) > 0
-                                            ? ((user.management_fee ?? 0) / 100) * currentEquity
+                                            ? ((user.management_fee ?? 0) / 100) * currentEquity * feeRatio
                                             : 0;
                                         return (
                                             <TableRow key={user.id}>
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
+                                                <TableCell className="text-center py-1">
+                                                    {user.start_date ? (() => {
+                                                        const d = new Date(user.start_date);
+                                                        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                    })() : '-'}
+                                                </TableCell>
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-pink-50' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
                                                     ) : '-'}
                                                 </TableCell>
                                                 <TableCell className="text-center py-1">
-                                                    {user.role === 'customer' && (user.management_fee ?? 0) > 0 ? formatMoney(estimatedFee) : '-'}
+                                                    {user.role === 'customer' ? formatMoney(estimatedFee) : '-'}
                                                 </TableCell>
 
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
@@ -1342,7 +1375,7 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={3} className="text-center py-1"></TableCell>
+                                        <TableCell colSpan={4} className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={4} className="py-1"></TableCell>

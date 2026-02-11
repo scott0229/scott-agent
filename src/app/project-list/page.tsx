@@ -266,7 +266,7 @@ export default function ProjectListPage() {
                   <Button
                     variant="outline"
                     onClick={() => setDeleteAllOpen(true)}
-                    className=""
+                    className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     刪除全部
