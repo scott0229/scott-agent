@@ -286,13 +286,13 @@ export default function OptionsPage() {
                                                             <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                 <td className="px-2 text-center h-7">{stat.month}月</td>
                                                                 <td className="px-2 text-center h-7">
-                                                                    {stat.total_profit.toLocaleString()}
+                                                                    {Math.round(stat.total_profit).toLocaleString()}
                                                                 </td>
                                                                 <td className="px-2 text-center h-7">
-                                                                    {stat.put_profit.toLocaleString()}
+                                                                    {Math.round(stat.put_profit).toLocaleString()}
                                                                 </td>
                                                                 <td className="px-2 text-center h-7">
-                                                                    {stat.call_profit.toLocaleString()}
+                                                                    {Math.round(stat.call_profit).toLocaleString()}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -313,13 +313,13 @@ export default function OptionsPage() {
                                                         <tr>
                                                             <td className="px-2 text-center h-7"></td>
                                                             <td className="px-2 text-center h-7">
-                                                                {(client.total_profit ?? 0).toLocaleString()}
+                                                                {Math.round(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
                                                             <td className="px-2 text-center h-7">
-                                                                {client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0).toLocaleString()}
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
                                                             </td>
                                                             <td className="px-2 text-center h-7">
-                                                                {client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0).toLocaleString()}
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     </tbody>

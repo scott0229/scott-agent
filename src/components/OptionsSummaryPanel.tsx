@@ -323,14 +323,14 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                         <div className="flex items-center justify-center gap-1">
                                             <Link
                                                 href={`/options/${user.user_id || user.id}?year=All&operation=${encodeURIComponent('Open')}`}
-                                                className="cursor-pointer text-red-600 hover:text-red-700 hover:underline decoration-2 underline-offset-4 text-xs font-medium transition-colors"
+                                                className="cursor-pointer text-red-600 hover:text-red-700 hover:underline decoration-2 underline-offset-4 font-medium transition-colors"
                                             >
                                                 {user.active_count || 0}
                                             </Link>
-                                            <span className="text-muted-foreground text-xs">/</span>
+                                            <span className="text-muted-foreground">/</span>
                                             <Link
                                                 href={`/options/${user.user_id || user.id}?year=${year === 'All' ? 'All' : year}`}
-                                                className="cursor-pointer hover:text-primary hover:underline decoration-2 underline-offset-4 text-xs text-foreground pl-0.5"
+                                                className="cursor-pointer hover:text-primary hover:underline decoration-2 underline-offset-4 text-foreground pl-0.5"
                                             >
                                                 {user.options_count || 0}
                                             </Link>
