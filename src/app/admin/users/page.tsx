@@ -20,7 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive, Check, Eraser } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
@@ -79,6 +79,7 @@ export default function AdminUsersPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
+    const [userToClear, setUserToClear] = useState<number | null>(null);
     const [importing, setImporting] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
@@ -189,6 +190,39 @@ export default function AdminUsersPage() {
 
     const handleDelete = async (id: number) => {
         setUserToDelete(id);
+    };
+
+    const handleClearRecords = (id: number) => {
+        setUserToClear(id);
+    };
+
+    const confirmClearRecords = async () => {
+        if (!userToClear) return;
+
+        try {
+            const res = await fetch(`/api/users/${userToClear}?mode=clear_records`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to clear records');
+            }
+
+            toast({
+                title: "已清除",
+                description: `${users.find(u => u.id === userToClear)?.user_id || '使用者'} 的交易記錄已清除`,
+            });
+            fetchUsers(true);
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "錯誤",
+                description: error.message,
+            });
+        } finally {
+            setUserToClear(null);
+        }
     };
 
     const confirmDelete = async () => {
@@ -796,11 +830,19 @@ export default function AdminUsersPage() {
 
             try {
                 // 1. Import stock trades first
+                let stockStats = '';
                 try {
                     const stockFormData = new FormData();
                     stockFormData.append('file', item.file);
                     stockFormData.append('confirm', 'true');
-                    await fetch('/api/stocks/import-ib', { method: 'POST', body: stockFormData });
+                    const sRes = await fetch('/api/stocks/import-ib', { method: 'POST', body: stockFormData });
+                    if (sRes.ok) {
+                        const sData = await sRes.json();
+                        const parts = [];
+                        if (sData.created) parts.push(`+${sData.created}股票交易`);
+                        if (sData.closed) parts.push(`-${sData.closed}股票平倉`);
+                        if (parts.length > 0) stockStats = ' ' + parts.join(' ');
+                    }
                 } catch {
                     // Stock import failure is non-fatal
                 }
@@ -818,8 +860,15 @@ export default function AdminUsersPage() {
                 }
 
                 let statusText = data.yearStartUpdated ? '年初更新' : (data.action === 'updated' ? '更新' : '已匯入');
+
+                // Append stock stats
+                statusText += stockStats;
+
+                // Append net equity / option stats
                 if (data.positionsSync?.added) statusText += ` +${data.positionsSync.added}持倉`;
-                if (data.openOptionsSync?.added) statusText += ` +${data.openOptionsSync.added}期權`;
+                if (data.openOptionsSync?.added) statusText += ` +${data.openOptionsSync.added}期權持倉`;
+                if (data.optionsSync?.added) statusText += ` +${data.optionsSync.added}期權交易`;
+                if (data.optionsSync?.closed) statusText += ` -${data.optionsSync.closed}期權平倉`;
 
                 results.push({
                     file: item.fileName,
@@ -1263,21 +1312,27 @@ export default function AdminUsersPage() {
                                                                 </Tooltip>
                                                             )}
 
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        onClick={() => handleDelete(user.id)}
                                                                         className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>刪除</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => handleClearRecords(user.id)}>
+                                                                        <Eraser className="h-4 w-4 mr-2" />
+                                                                        清除交易記錄
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-red-600 focus:text-red-600">
+                                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                                        刪除帳號
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
                                                         </div>
                                                     )}
                                                 </TableCell>
@@ -1353,6 +1408,25 @@ export default function AdminUsersPage() {
                             <AlertDialogCancel>取消</AlertDialogCancel>
                             <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
                                 刪除
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog open={!!userToClear} onOpenChange={(open) => !open && setUserToClear(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>
+                                確定要清除 {users.find(u => u.id === userToClear)?.user_id || users.find(u => u.id === userToClear)?.email || '此使用者'} 的交易記錄嗎？
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                此操作無法復原。這將刪除此使用者的所有交易記錄（期權、股票、淨值、利息、管理費、策略），但保留帳號。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmClearRecords}>
+                                確認清除
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -1761,7 +1835,16 @@ export default function AdminUsersPage() {
                                                                 <tr key={i} className={`border-t ${r.status.startsWith('✗') ? 'bg-red-50' : ''}`}>
                                                                     <td className="p-1.5 font-mono">{r.date}</td>
                                                                     <td className="p-1.5">{r.user}</td>
-                                                                    <td className="p-1.5">{r.status}</td>
+                                                                    <td className="p-1.5">
+                                                                        {r.status.startsWith('✓') ? (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Check className="text-green-700 h-4 w-4 stroke-[3] shrink-0" />
+                                                                                <span className="text-xs">{r.status.replace(/^✓\s*(年初更新|更新|已匯入)\s*/, '')}</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            r.status
+                                                                        )}
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>

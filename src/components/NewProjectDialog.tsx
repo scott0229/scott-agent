@@ -135,6 +135,7 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
                 placeholder="專案簡述"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                autoComplete="off"
               />
             </div>
 

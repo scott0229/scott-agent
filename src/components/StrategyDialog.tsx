@@ -34,24 +34,29 @@ interface StockTrade {
 interface Option {
     id: number;
     underlying: string;
+    type: string;
     operation: string;
     user_id: string;
     code: string;
+    final_profit?: number | null;
+    quantity: number;
+    open_date: number;
     to_date?: number | null;
-    quantity?: number;
-    strike_price?: number;
-    type?: string;
+    strike_price?: number | null;
+    settlement_date?: number | null;
 }
 
 interface Strategy {
-    id?: number;
+    id: number;
     name: string;
     user_id: string;
     owner_id: number;
     year: number;
     status?: string;
-    stocks?: StockTrade[];
-    options?: Option[];
+    stocks: StockTrade[];
+    options: Option[];
+    created_at: number;
+    updated_at: number;
 }
 
 interface StrategyDialogProps {
@@ -109,13 +114,14 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('/api/users');
+            const year = currentYear === 'All' ? new Date().getFullYear() : currentYear;
+            const res = await fetch(`/api/users?year=${year}`);
             if (res.ok) {
                 const data = await res.json();
-                // Filter out admin and deduplicate by user_id
-                let filteredUsers = data.users.filter((u: User) => u.user_id !== 'admin');
+                // Only show customer-role users
+                let filteredUsers = data.users.filter((u: any) => u.role === 'customer');
 
-                // Deduplicate by user_id if multiple users (e.g. across years) have same ID
+                // Deduplicate by user_id if multiple users have same ID
                 const uniqueUsers: User[] = [];
                 const seen = new Set<string>();
                 for (const u of filteredUsers) {
@@ -320,9 +326,9 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                         <p className="text-sm text-muted-foreground">該用戶沒有股票交易記錄</p>
                                     ) : (
                                         stockTrades.map(stock => {
-                                            // Format date as YY-MM-DD
+                                            // Format date as MM/DD
                                             const openDate = new Date(stock.open_date * 1000);
-                                            const formattedDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
+                                            const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
                                             // Get quantity from stock trade (assuming it has a quantity field)
                                             const quantity = (stock as any).quantity || 0;
@@ -338,7 +344,15 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                                         htmlFor={`stock-${stock.id}`}
                                                         className="text-xs cursor-pointer flex-1 whitespace-nowrap"
                                                     >
-                                                        {stock.symbol}_{quantity}股_{formattedDate}開倉
+                                                        {stock.symbol}_{quantity.toLocaleString()}股_{formattedDate}開倉{stock.status === 'Open' ? (
+                                                            (stock as any).source === 'assigned'
+                                                                ? <span className="text-green-700"> (Open+指派)</span>
+                                                                : <span className="text-green-700"> (Open)</span>
+                                                        ) : (
+                                                            (stock as any).close_source === 'assigned'
+                                                                ? <span className="text-green-700"> (指派)</span>
+                                                                : ''
+                                                        )}
                                                     </label>
                                                 </div>
                                             );
@@ -358,7 +372,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                             // Format expiration date as MM-DD
                                             const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
                                             const formattedExpiry = toDate
-                                                ? `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
+                                                ? `${String(toDate.getMonth() + 1).padStart(2, '0')}/${String(toDate.getDate()).padStart(2, '0')}`
                                                 : '';
 
                                             const quantity = Math.abs((option as any).quantity || 0);
@@ -375,7 +389,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                                         htmlFor={`option-${option.id}`}
                                                         className="text-xs cursor-pointer flex-1 whitespace-nowrap"
                                                     >
-                                                        {option.underlying}_{(option as any).type || 'CALL'}_{quantity}口_{formattedExpiry}到期_行權價{strikePrice}
+                                                        {option.underlying}_{strikePrice}_{((option as any).type || 'CALL') === 'CALL' ? 'C' : 'P'}_{formattedExpiry}_{quantity.toLocaleString()}口{option.operation === 'Open' ? <span className="text-green-700"> (Open)</span> : ''}
                                                     </label>
                                                 </div>
                                             );

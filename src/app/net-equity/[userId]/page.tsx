@@ -521,7 +521,7 @@ export default function NetEquityDetailPage() {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-center py-1">
+                                <TableCell className={`text-center py-1 ${record.interest !== null && record.interest !== undefined && record.interest < 0 ? 'bg-red-50' : ''}`}>
                                     {record.interest !== null && record.interest !== undefined && record.interest !== 0 ? (
                                         formatMoney(record.interest)
                                     ) : (
@@ -617,7 +617,7 @@ export default function NetEquityDetailPage() {
                                 </div>
                             </TableCell>
                             <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-red-50' : ''}`}>{formatMoney(initialCash)}</TableCell>
-                            <TableCell className="text-center font-mono font-normal">
+                            <TableCell className={`text-center font-mono font-normal ${initialInterest < 0 ? 'bg-red-50' : ''}`}>
                                 {formatMoney(initialInterest)}
                             </TableCell>
                             <TableCell className="text-center font-mono font-normal">

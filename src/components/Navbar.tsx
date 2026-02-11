@@ -109,6 +109,15 @@ export function Navbar() {
 
             <div className="flex gap-2 items-center">
 
+                <Link href="/strategies" prefetch={true}>
+                    <Button
+                        variant={pathname.startsWith('/strategies') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <Target className="h-4 w-4" />
+                        投資策略
+                    </Button>
+                </Link>
                 <Link href="/stocks" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/stocks') ? "default" : "ghost"}
@@ -139,15 +148,6 @@ export function Navbar() {
                     >
                         <TrendingUp className="h-4 w-4" />
                         期權交易
-                    </Button>
-                </Link>
-                <Link href="/strategies" prefetch={true}>
-                    <Button
-                        variant={pathname.startsWith('/strategies') ? "default" : "ghost"}
-                        className="gap-2"
-                    >
-                        <Target className="h-4 w-4" />
-                        投資策略
                     </Button>
                 </Link>
 

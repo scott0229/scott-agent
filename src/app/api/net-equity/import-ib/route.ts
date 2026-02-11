@@ -643,9 +643,16 @@ export async function POST(request: NextRequest) {
                         if (!exists) break;
                         code = generateCode();
                     }
+                    // Check if this stock position is the result of an assignment
+                    const relatedAssignment = parsed.optionTrades.find(t =>
+                        t.underlying === pos.symbol &&
+                        t.tradeAction === 'ASSIGN'
+                    );
+                    const source = relatedAssignment ? 'assigned' : null;
+
                     await db.prepare(`
-                        INSERT INTO STOCK_TRADES (owner_id, user_id, year, symbol, status, open_date, open_price, quantity, code, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, 'Open', ?, ?, ?, ?, unixepoch(), unixepoch())
+                        INSERT INTO STOCK_TRADES (owner_id, user_id, year, symbol, status, open_date, open_price, quantity, code, source, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, 'Open', ?, ?, ?, ?, ?, unixepoch(), unixepoch())
                     `).bind(
                         userResult.id,
                         parsed.userAlias,
@@ -654,7 +661,8 @@ export async function POST(request: NextRequest) {
                         parsed.date,
                         pos.costPrice,
                         pos.quantity,
-                        code
+                        code,
+                        source
                     ).run();
                     positionsSync.added++;
                 } else {

@@ -161,6 +161,7 @@ export function EditProjectDialog({ project, open, onOpenChange, onSuccess }: Ed
                 placeholder="專案簡述"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                autoComplete="off"
               />
             </div>
 

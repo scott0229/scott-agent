@@ -482,8 +482,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 </td>
                                 {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[0];
+                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
                                     return (
-                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
                                             {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );
@@ -500,8 +501,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 </td>
                                 {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[1];
+                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
                                     return (
-                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
                                             {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );
@@ -518,8 +520,9 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 </td>
                                 {users.filter(isColumnVisible).map(user => {
                                     const holding = user.top_holdings?.[2];
+                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
                                     return (
-                                        <td key={user.id} className="h-7 py-1 px-2 text-center text-xs">
+                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
                                             {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                         </td>
                                     );

@@ -66,6 +66,8 @@ interface StockTrade {
     close_price?: number | null;
     quantity: number;
     code?: string;
+    source?: string; // e.g. 'assigned'
+    close_source?: string; // e.g. 'assigned'
     current_market_price?: number | null; // Current closing price from market_prices table
 }
 
@@ -409,9 +411,13 @@ export default function StockTradingPage() {
                                                     {trade.user_id || '-'}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-center py-1">{formatDate(trade.open_date)}</TableCell>
+                                            <TableCell className="text-center py-1">
+                                                {formatDate(trade.open_date)}
+                                                {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(Assigned)</span>}
+                                            </TableCell>
                                             <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
                                                 {trade.close_date ? formatDate(trade.close_date) : 'Open'}
+                                                {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(Assigned)</span>}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span

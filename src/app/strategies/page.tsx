@@ -50,6 +50,8 @@ interface Option {
     quantity: number;
     open_date: number;
     to_date?: number | null;
+    strike_price?: number | null;
+    settlement_date?: number | null;
 }
 
 interface Strategy {
@@ -86,11 +88,12 @@ export default function StrategiesPage() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('/api/users');
+            const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const res = await fetch(`/api/users?year=${year}`);
             if (res.ok) {
                 const data = await res.json();
-                // Filter out admin and deduplicate by user_id
-                let filteredUsers = data.users.filter((u: any) => u.user_id !== 'admin');
+                // Only show customer-role users
+                let filteredUsers = data.users.filter((u: any) => u.role === 'customer');
 
                 // Deduplicate by user_id
                 const uniqueUsers: { id: number; user_id: string; email: string }[] = [];
@@ -361,26 +364,27 @@ export default function StrategiesPage() {
                                                     {strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
-                                                    <table className="w-full table-fixed text-xs">
+                                                    <table className="w-full table-auto text-xs">
                                                         <thead>
                                                             <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">狀態</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">標的</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">股數</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">平倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">盈虧</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">狀態</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">股數</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉價</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {strategy.stocks.sort((a, b) => b.open_date - a.open_date).map(stock => {
                                                                 const openDate = new Date(stock.open_date * 1000);
-                                                                const formattedDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
+                                                                const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
                                                                 let formattedCloseDate = '-';
                                                                 if (stock.close_date) {
                                                                     const closeDate = new Date(stock.close_date * 1000);
-                                                                    formattedCloseDate = `${String(closeDate.getFullYear()).slice(-2)}-${String(closeDate.getMonth() + 1).padStart(2, '0')}-${String(closeDate.getDate()).padStart(2, '0')}`;
+                                                                    formattedCloseDate = `${String(closeDate.getMonth() + 1).padStart(2, '0')}/${String(closeDate.getDate()).padStart(2, '0')}`;
                                                                 }
 
                                                                 let profit: number | null = null;
@@ -403,12 +407,13 @@ export default function StrategiesPage() {
 
                                                                 return (
                                                                     <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{stock.close_date ? '已關倉' : 'Open'}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-16">{stock.symbol}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-10">{stock.quantity}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedDate}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedCloseDate}</td>
-                                                                        <td className="py-1 px-2 text-center w-16">
+                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : 'Open'}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.symbol}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.quantity}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.open_price?.toFixed(2) || '-'}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedDate}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedCloseDate}</td>
+                                                                        <td className="py-1 px-2 text-center">
                                                                             {profit !== null ? (
                                                                                 <span className={`font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                                                                                     {Math.round(profit).toLocaleString('en-US')}
@@ -442,36 +447,48 @@ export default function StrategiesPage() {
                                                     {strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
-                                                    <table className="w-full table-fixed text-xs">
+                                                    <table className="w-full table-auto text-xs">
                                                         <thead>
                                                             <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-14">操作</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">標的</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-10">口數</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">開倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-20">到期日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground w-16">盈虧</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">操作</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">口數</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
+                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {strategy.options.sort((a, b) => b.open_date - a.open_date).map(option => {
                                                                 const openDate = new Date(option.open_date * 1000);
-                                                                const formattedOpenDate = `${String(openDate.getFullYear()).slice(-2)}-${String(openDate.getMonth() + 1).padStart(2, '0')}-${String(openDate.getDate()).padStart(2, '0')}`;
+                                                                const formattedOpenDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
-                                                                let formattedToDate = '-';
+                                                                // Format expiry date (MM-DD) for label
+                                                                let expiryLabel = '';
                                                                 if (option.to_date) {
                                                                     const toDate = new Date(option.to_date * 1000);
-                                                                    formattedToDate = `${String(toDate.getFullYear()).slice(-2)}-${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`;
+                                                                    expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`;
                                                                 }
+
+                                                                // Format settlement date (平倉日)
+                                                                let formattedSettlement = '-';
+                                                                if (option.settlement_date) {
+                                                                    const sDate = new Date(option.settlement_date * 1000);
+                                                                    formattedSettlement = `${String(sDate.getMonth() + 1).padStart(2, '0')}/${String(sDate.getDate()).padStart(2, '0')}`;
+                                                                }
+
+                                                                // Full option label: QQQ_615_C_02-10
+                                                                const typeShort = option.type === 'CALL' ? 'C' : 'P';
+                                                                const optionLabel = `${option.underlying}_${option.strike_price || ''}_${typeShort}${expiryLabel ? '_' + expiryLabel : ''}`;
 
                                                                 return (
                                                                     <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-14">{option.operation}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-16">{option.underlying}_{option.type}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-10">{option.quantity}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedOpenDate}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center w-20">{formattedToDate}</td>
-                                                                        <td className="py-1 px-2 text-center w-16">
+                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${option.operation === 'Open' ? 'bg-pink-50' : ''}`}>{option.operation}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{optionLabel}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{option.quantity}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedOpenDate}</td>
+                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedSettlement}</td>
+                                                                        <td className="py-1 px-2 text-center">
                                                                             {option.final_profit !== null && option.final_profit !== undefined ? (
                                                                                 <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                                                                                     {Math.round(option.final_profit).toLocaleString('en-US')}

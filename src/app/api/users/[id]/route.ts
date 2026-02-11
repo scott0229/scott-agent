@@ -62,6 +62,7 @@ export async function GET(
 }
 
 // DELETE: Delete user by ID
+// ?mode=clear_records — only delete trading/financial records, keep user account
 export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -83,34 +84,52 @@ export async function DELETE(
             return NextResponse.json({ error: '不能刪除自己' }, { status: 400 });
         }
 
+        const { searchParams } = new URL(req.url);
+        const mode = searchParams.get('mode'); // 'clear_records' or null
+
         const db = await getDb();
 
-        // 1. Delete user's trading records (OPTIONS)
-        await db.prepare('DELETE FROM OPTIONS WHERE owner_id = ?').bind(id).run();
+        // Delete trading/financial records — each wrapped to avoid one failure blocking all
+        const tradingDeletes = [
+            { sql: 'DELETE FROM OPTIONS WHERE owner_id = ?', table: 'OPTIONS' },
+            { sql: 'DELETE FROM STOCK_TRADES WHERE owner_id = ?', table: 'STOCK_TRADES' },
+            { sql: 'DELETE FROM DAILY_NET_EQUITY WHERE user_id = ?', table: 'DAILY_NET_EQUITY' },
+            { sql: 'DELETE FROM monthly_interest WHERE user_id = ?', table: 'monthly_interest' },
+            { sql: 'DELETE FROM monthly_fees WHERE user_id = ?', table: 'monthly_fees' },
+        ];
 
-        // 3. Delete user's monthly interest records
-        await db.prepare('DELETE FROM monthly_interest WHERE user_id = ?').bind(id).run();
+        for (const { sql, table } of tradingDeletes) {
+            try {
+                await db.prepare(sql).bind(id).run();
+            } catch (e) {
+                console.error(`Failed to delete from ${table}:`, e);
+            }
+        }
 
-        // 4. Delete user's daily net equity records
-        await db.prepare('DELETE FROM DAILY_NET_EQUITY WHERE user_id = ?').bind(id).run();
+        // Strategy tables (cascade-aware order)
+        try {
+            await db.prepare('DELETE FROM STRATEGY_OPTIONS WHERE strategy_id IN (SELECT id FROM STRATEGIES WHERE owner_id = ?)').bind(id).run();
+        } catch (e) { console.error('Failed to delete STRATEGY_OPTIONS:', e); }
+        try {
+            await db.prepare('DELETE FROM STRATEGY_STOCKS WHERE strategy_id IN (SELECT id FROM STRATEGIES WHERE owner_id = ?)').bind(id).run();
+        } catch (e) { console.error('Failed to delete STRATEGY_STOCKS:', e); }
+        try {
+            await db.prepare('DELETE FROM STRATEGIES WHERE owner_id = ?').bind(id).run();
+        } catch (e) { console.error('Failed to delete STRATEGIES:', e); }
 
-        // 5. Delete or update comments created/updated by this user
+        if (mode === 'clear_records') {
+            // Also reset account initial values
+            await db.prepare('UPDATE USERS SET initial_cost = 0, initial_cash = 0, initial_interest = 0, initial_management_fee = 0, initial_deposit = 0 WHERE id = ?').bind(id).run();
+            return NextResponse.json({ success: true, mode: 'clear_records' });
+        }
+
+        // Full delete — also remove the user account and related non-trading data
         await db.prepare('DELETE FROM COMMENTS WHERE created_by = ? OR updated_by = ?').bind(id, id).run();
-
-        // 7. Set created_by/updated_by to NULL for items created/updated by this user
         await db.prepare('UPDATE ITEMS SET created_by = NULL WHERE created_by = ?').bind(id).run();
         await db.prepare('UPDATE ITEMS SET updated_by = NULL WHERE updated_by = ?').bind(id).run();
-
-        // 8. Unassign items assigned to this user (set assignee_id to NULL)
         await db.prepare('UPDATE ITEMS SET assignee_id = NULL WHERE assignee_id = ?').bind(id).run();
-
-        // 9. Delete user's projects (CASCADE will delete items they created)
         await db.prepare('DELETE FROM PROJECTS WHERE user_id = ?').bind(id).run();
-
-        // 10. Delete user's project assignments
         await db.prepare('DELETE FROM PROJECT_USERS WHERE user_id = ?').bind(id).run();
-
-        // 11. Now delete the user
         await db.prepare('DELETE FROM USERS WHERE id = ?').bind(id).run();
 
         return NextResponse.json({ success: true });

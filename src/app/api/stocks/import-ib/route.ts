@@ -27,9 +27,10 @@ interface ParsedStockTrade {
     tradePrice: number;
     closePrice: number;
     realizedPnL: number;
-    tradeCode: string;      // "O", "C", "O;P", "C;P", etc.
+    tradeCode: string;      // "O", "C", "O;P", "C;P", "A;O", "A;C", etc.
     isOpen: boolean;        // code contains "O"
     isClose: boolean;       // code contains "C"
+    isAssignment: boolean;  // code contains "A" (option assignment)
 }
 
 interface TradeAction {
@@ -38,6 +39,7 @@ interface TradeAction {
     quantity: number;
     price: number;
     date: number;           // unix timestamp
+    isAssignment?: boolean; // option assignment
     // For close actions:
     existingTradeId?: number;
     existingCode?: string;
@@ -45,6 +47,7 @@ interface TradeAction {
     existingOpenPrice?: number;
     existingOpenDate?: number;
     remainingQuantity?: number; // for splits: how many remain open
+    existingSource?: string | null; // preserve original source for splits
 }
 
 function parseIBStockTrades(html: string): {
@@ -125,6 +128,7 @@ function parseIBStockTrades(html: string): {
             tradeCode,
             isOpen: tradeCode.includes('O'),
             isClose: tradeCode.includes('C'),
+            isAssignment: tradeCode.includes('A'),
         });
     }
 
@@ -206,13 +210,13 @@ export async function POST(request: NextRequest) {
 
         // Get existing open positions for this user
         const { results: existingPositions } = await db.prepare(
-            `SELECT id, symbol, quantity, open_date, open_price, code
+            `SELECT id, symbol, quantity, open_date, open_price, code, source
              FROM STOCK_TRADES 
              WHERE owner_id = ? AND status = 'Open' AND year = ?
              ORDER BY open_date ASC`
         ).bind(userResult.id, year).all<{
             id: number; symbol: string; quantity: number;
-            open_date: number; open_price: number; code: string;
+            open_date: number; open_price: number; code: string; source: string | null;
         }>();
 
         // Build action plan
@@ -234,6 +238,7 @@ export async function POST(request: NextRequest) {
                     quantity: Math.abs(trade.quantity),
                     price: trade.tradePrice,
                     date,
+                    isAssignment: trade.isAssignment,
                 });
             } else if (trade.isClose) {
                 // Close trade - FIFO match
@@ -263,6 +268,7 @@ export async function POST(request: NextRequest) {
                             quantity: pos.remainingQty,
                             price: trade.tradePrice,
                             date,
+                            isAssignment: trade.isAssignment,
                             existingTradeId: pos.id,
                             existingCode: pos.code,
                             existingQuantity: pos.quantity,
@@ -281,12 +287,14 @@ export async function POST(request: NextRequest) {
                             quantity: closeQty,
                             price: trade.tradePrice,
                             date,
+                            isAssignment: trade.isAssignment,
                             existingTradeId: pos.id,
                             existingCode: pos.code,
                             existingQuantity: pos.quantity,
                             existingOpenPrice: pos.open_price,
                             existingOpenDate: pos.open_date,
                             remainingQuantity: remainQty,
+                            existingSource: pos.source,
                         });
                         pos.remainingQty = remainQty;
                         remainingToClose = 0;
@@ -315,11 +323,12 @@ export async function POST(request: NextRequest) {
         for (const action of actions) {
             if (action.type === 'open') {
                 const code = await generateUniqueCode(db);
+                const source = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     INSERT INTO STOCK_TRADES (
                         symbol, status, open_date, open_price, quantity,
-                        user_id, owner_id, year, code, updated_at
-                    ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                        user_id, owner_id, year, code, source, updated_at
+                    ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
                 `).bind(
                     action.symbol,
                     action.date,
@@ -329,32 +338,35 @@ export async function POST(request: NextRequest) {
                     userResult.id,
                     year,
                     code,
+                    source,
                 ).run();
                 created++;
 
             } else if (action.type === 'close_full') {
+                const closeSource = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     UPDATE STOCK_TRADES SET
-                        status = 'Closed', close_date = ?, close_price = ?, updated_at = unixepoch()
+                        status = 'Closed', close_date = ?, close_price = ?, close_source = ?, updated_at = unixepoch()
                     WHERE id = ?
-                `).bind(action.date, action.price, action.existingTradeId).run();
+                `).bind(action.date, action.price, closeSource, action.existingTradeId).run();
                 closed++;
 
             } else if (action.type === 'close_split') {
                 // 1. Update original record: reduce quantity and close it
+                const splitCloseSource = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     UPDATE STOCK_TRADES SET
-                        quantity = ?, status = 'Closed', close_date = ?, close_price = ?, updated_at = unixepoch()
+                        quantity = ?, status = 'Closed', close_date = ?, close_price = ?, close_source = ?, updated_at = unixepoch()
                     WHERE id = ?
-                `).bind(action.quantity, action.date, action.price, action.existingTradeId).run();
+                `).bind(action.quantity, action.date, action.price, splitCloseSource, action.existingTradeId).run();
 
                 // 2. Create new record for remaining open quantity
                 const code = await generateUniqueCode(db);
                 await db.prepare(`
                     INSERT INTO STOCK_TRADES (
                         symbol, status, open_date, open_price, quantity,
-                        user_id, owner_id, year, code, updated_at
-                    ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                        user_id, owner_id, year, code, source, updated_at
+                    ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
                 `).bind(
                     action.symbol,
                     action.existingOpenDate, // Keep original open_date for the remaining open portion
@@ -364,6 +376,7 @@ export async function POST(request: NextRequest) {
                     userResult.id,
                     year,
                     code,
+                    action.existingSource || null, // Preserve original source
                 ).run();
                 split++;
             }
