@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -37,6 +37,7 @@ interface StockTrade {
     close_price?: number | null;
     close_date?: number | null;
     current_market_price?: number | null;
+    source?: string | null;
 }
 
 interface Option {
@@ -79,6 +80,41 @@ export default function StrategiesPage() {
     const [sortOrder, setSortOrder] = useState<'date-new' | 'date-old' | 'status-new' | 'status-old'>('status-new');
     const [users, setUsers] = useState<{ id: number; user_id: string; email: string }[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [symbolFilter, setSymbolFilter] = useState<string>('all');
+    const [stockSymbolFilters, setStockSymbolFilters] = useState<Record<number, string>>({});
+    const [optionSymbolFilters, setOptionSymbolFilters] = useState<Record<number, string>>({});
+    const [filtersSaved, setFiltersSaved] = useState(false);
+
+    // Load saved filters from localStorage on mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('strategy-filters');
+            if (saved) {
+                const filters = JSON.parse(saved);
+                if (filters.selectedUserId) setSelectedUserId(filters.selectedUserId);
+                if (filters.statusFilter) setStatusFilter(filters.statusFilter);
+                if (filters.symbolFilter) setSymbolFilter(filters.symbolFilter);
+                if (filters.sortOrder) setSortOrder(filters.sortOrder);
+                setFiltersSaved(true);
+            }
+        } catch (e) {
+            console.error('Failed to load saved filters:', e);
+        }
+    }, []);
+
+    const handleSaveFilters = () => {
+        if (filtersSaved) {
+            localStorage.removeItem('strategy-filters');
+            setFiltersSaved(false);
+            toast({ title: '已清除篩選記憶' });
+        } else {
+            const filters = { selectedUserId, statusFilter, symbolFilter, sortOrder };
+            localStorage.setItem('strategy-filters', JSON.stringify(filters));
+            setFiltersSaved(true);
+            toast({ title: '已記住篩選設定' });
+        }
+    };
 
     useEffect(() => {
         fetchUsers();
@@ -192,6 +228,22 @@ export default function StrategiesPage() {
                     2026 投資策略
                 </h1>
                 <div className="flex gap-2 items-center">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleSaveFilters}
+                        title={filtersSaved ? '清除篩選記憶' : '記住篩選設定'}
+                    >
+                        {filtersSaved ? <BookmarkCheck className="h-4 w-4 text-amber-600" /> : <Bookmark className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => { setSelectedUserId('all'); setStatusFilter('all'); setSymbolFilter('all'); setSortOrder('status-new'); }}
+                        title="重置篩選"
+                    >
+                        <FilterX className="h-4 w-4" />
+                    </Button>
                     <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                         <SelectTrigger className="w-[150px]">
                             <SelectValue />
@@ -203,6 +255,34 @@ export default function StrategiesPage() {
                                     {user.user_id}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[130px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部狀態</SelectItem>
+                            <SelectItem value="進行中">進行中</SelectItem>
+                            <SelectItem value="已結案">已結案</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={symbolFilter} onValueChange={setSymbolFilter}>
+                        <SelectTrigger className="w-[130px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部標的</SelectItem>
+                            {(() => {
+                                const allSymbols = new Set<string>();
+                                strategies.forEach(s => {
+                                    s.stocks.forEach(st => allSymbols.add(st.symbol));
+                                    s.options.forEach(o => allSymbols.add(o.underlying));
+                                });
+                                return [...allSymbols].sort().map(sym => (
+                                    <SelectItem key={sym} value={sym}>{sym}</SelectItem>
+                                ));
+                            })()}
                         </SelectContent>
                     </Select>
                     <Select value={sortOrder} onValueChange={(value: 'date-new' | 'date-old' | 'status-new' | 'status-old') => setSortOrder(value)}>
@@ -236,6 +316,8 @@ export default function StrategiesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {strategies
                         .filter(strategy => selectedUserId === 'all' || strategy.user_id === selectedUserId)
+                        .filter(strategy => statusFilter === 'all' || strategy.status === statusFilter)
+                        .filter(strategy => symbolFilter === 'all' || strategy.stocks.some(s => s.symbol === symbolFilter) || strategy.options.some(o => o.underlying === symbolFilter))
                         .map((strategy) => {
                             // Calculate total profit for sorting
                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -319,10 +401,7 @@ export default function StrategiesPage() {
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="flex items-center gap-2">
                                                     <span>
-                                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-sm">{strategy.user_id}</span> {strategy.name}, 當前收益 <span className={totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(totalProfit).toLocaleString()}</span>
-                                                        {strategy.status === '已結案' && (
-                                                            <span className="ml-2 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>
-                                                        )}
+                                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)} {strategy.name}, 當前收益 <span className={totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(totalProfit).toLocaleString()}</span>
                                                     </span>
                                                 </CardTitle>
                                                 <div className="flex gap-1">
@@ -360,8 +439,23 @@ export default function StrategiesPage() {
 
                                         return (
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded">
-                                                    {strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span>
+                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                    <span>{strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
+                                                    {(() => {
+                                                        const symbols = [...new Set(strategy.stocks.map(s => s.symbol))];
+                                                        if (symbols.length <= 1) return null;
+                                                        return (
+                                                            <select
+                                                                className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                value={stockSymbolFilters[strategy.id] || 'all'}
+                                                                onChange={e => setStockSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                <option value="all">全部標的</option>
+                                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-auto text-xs">
@@ -377,7 +471,10 @@ export default function StrategiesPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {strategy.stocks.sort((a, b) => b.open_date - a.open_date).map(stock => {
+                                                            {strategy.stocks.sort((a, b) => b.open_date - a.open_date).filter(stock => {
+                                                                const filter = stockSymbolFilters[strategy.id] || 'all';
+                                                                return filter === 'all' || stock.symbol === filter;
+                                                            }).map(stock => {
                                                                 const openDate = new Date(stock.open_date * 1000);
                                                                 const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
@@ -407,7 +504,7 @@ export default function StrategiesPage() {
 
                                                                 return (
                                                                     <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
-                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : 'Open'}</td>
+                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : (stock.source === 'assigned' ? 'Assigned' : 'Open')}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.symbol}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.open_price?.toFixed(2) || '-'}</td>
@@ -443,8 +540,23 @@ export default function StrategiesPage() {
 
                                         return (
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded">
-                                                    {strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span>
+                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                    <span>{strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
+                                                    {(() => {
+                                                        const symbols = [...new Set(strategy.options.map(o => o.underlying))];
+                                                        if (symbols.length <= 1) return null;
+                                                        return (
+                                                            <select
+                                                                className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                value={optionSymbolFilters[strategy.id] || 'all'}
+                                                                onChange={e => setOptionSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                <option value="all">全部標的</option>
+                                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                            </select>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-auto text-xs">
@@ -459,7 +571,10 @@ export default function StrategiesPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {strategy.options.sort((a, b) => b.open_date - a.open_date).map(option => {
+                                                            {strategy.options.sort((a, b) => b.open_date - a.open_date).filter(option => {
+                                                                const filter = optionSymbolFilters[strategy.id] || 'all';
+                                                                return filter === 'all' || option.underlying === filter;
+                                                            }).map(option => {
                                                                 const openDate = new Date(option.open_date * 1000);
                                                                 const formattedOpenDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 

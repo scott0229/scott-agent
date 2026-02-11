@@ -82,9 +82,13 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
         selectedStocks: [] as number[],
         selectedOptions: [] as number[],
     });
+    const [stockFilter, setStockFilter] = useState('all');
+    const [optionFilter, setOptionFilter] = useState('all');
 
     useEffect(() => {
         if (open) {
+            setStockFilter('all');
+            setOptionFilter('all');
             fetchUsers();
             if (strategy) {
                 // Edit mode
@@ -263,10 +267,10 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     <DialogTitle>{strategy ? '編輯策略' : '新增策略'}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4 px-1 overflow-y-auto max-h-[calc(90vh-180px)]">
+                <div className="space-y-4 py-4 px-1">
                     {/* Strategy Name */}
-                    <div className="space-y-2">
-                        <Label htmlFor="name">策略名稱</Label>
+                    <div className="flex items-center gap-3">
+                        <Label htmlFor="name" className="w-20 shrink-0">策略名稱</Label>
                         <Input
                             id="name"
                             value={formData.name}
@@ -276,8 +280,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     </div>
 
                     {/* User Selection */}
-                    <div className="space-y-2">
-                        <Label className="inline-block">用戶</Label>
+                    <div className="flex items-center gap-3">
+                        <Label className="w-20 shrink-0">用戶</Label>
                         <Select
                             value={formData.userId}
                             onValueChange={handleUserChange}
@@ -298,8 +302,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
                     {/* Status Selection - Only show in edit mode */}
                     {strategy && (
-                        <div className="space-y-2">
-                            <Label>狀態</Label>
+                        <div className="flex items-center gap-3">
+                            <Label className="w-20 shrink-0">狀態</Label>
                             <Select
                                 value={formData.status}
                                 onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -320,12 +324,28 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                         <div className="grid grid-cols-2 gap-4">
                             {/* Stock Trades Selection */}
                             <div className="space-y-2">
-                                <Label>股票交易</Label>
-                                <div className="border rounded-md p-3 h-64 overflow-y-auto space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Label>股票交易</Label>
+                                    {(() => {
+                                        const symbols = [...new Set(stockTrades.map(s => s.symbol))];
+                                        if (symbols.length <= 1) return null;
+                                        return (
+                                            <select
+                                                className="text-xs border rounded px-1.5 py-0.5"
+                                                value={stockFilter}
+                                                onChange={e => setStockFilter(e.target.value)}
+                                            >
+                                                <option value="all">全部</option>
+                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        );
+                                    })()}
+                                </div>
+                                <div className="border rounded-md p-3 h-96 overflow-y-auto space-y-2">
                                     {stockTrades.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">該用戶沒有股票交易記錄</p>
                                     ) : (
-                                        stockTrades.map(stock => {
+                                        stockTrades.filter(s => stockFilter === 'all' || s.symbol === stockFilter).map(stock => {
                                             // Format date as MM/DD
                                             const openDate = new Date(stock.open_date * 1000);
                                             const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
@@ -363,12 +383,28 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
 
                             {/* Options Selection */}
                             <div className="space-y-2">
-                                <Label>期權交易</Label>
-                                <div className="border rounded-md p-3 h-64 overflow-y-auto space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Label>期權交易</Label>
+                                    {(() => {
+                                        const symbols = [...new Set(options.map(o => o.underlying))];
+                                        if (symbols.length <= 1) return null;
+                                        return (
+                                            <select
+                                                className="text-xs border rounded px-1.5 py-0.5"
+                                                value={optionFilter}
+                                                onChange={e => setOptionFilter(e.target.value)}
+                                            >
+                                                <option value="all">全部</option>
+                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        );
+                                    })()}
+                                </div>
+                                <div className="border rounded-md p-3 h-96 overflow-y-auto space-y-2">
                                     {options.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">該用戶沒有期權交易記錄</p>
                                     ) : (
-                                        options.map(option => {
+                                        options.filter(o => optionFilter === 'all' || o.underlying === optionFilter).map(option => {
                                             // Format expiration date as MM-DD
                                             const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
                                             const formattedExpiry = toDate

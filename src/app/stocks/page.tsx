@@ -214,7 +214,9 @@ export default function StockTradingPage() {
         }
 
         // Status Filter
-        if (statusFilter !== "All") {
+        if (statusFilter === 'Assigned') {
+            if (trade.source !== 'assigned' && trade.close_source !== 'assigned') return false;
+        } else if (statusFilter !== "All") {
             if (trade.status !== statusFilter) return false;
         }
 
@@ -317,6 +319,7 @@ export default function StockTradingPage() {
                                     <SelectItem value="All">所有狀態</SelectItem>
                                     <SelectItem value="Open">Open</SelectItem>
                                     <SelectItem value="Closed">Closed</SelectItem>
+                                    <SelectItem value="Assigned">Assigned</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

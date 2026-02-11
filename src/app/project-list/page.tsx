@@ -23,7 +23,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Pencil, Trash2, Download, Upload } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Archive } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 import {
   AlertDialog,
@@ -68,6 +75,7 @@ export default function ProjectListPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
   const { toast } = useToast();
@@ -200,6 +208,23 @@ export default function ProjectListPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    try {
+      for (const project of projects) {
+        await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+      }
+      setProjects([]);
+      setDeleteAllOpen(false);
+      toast({ title: "已刪除全部專案" });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "刪除失敗",
+        description: error.message,
+      });
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="min-h-screen container mx-auto py-10">
@@ -213,28 +238,38 @@ export default function ProjectListPage() {
               {/* Only admin and manager can create projects */}
               {(user?.role === 'admin' || user?.role === 'manager') && (
                 <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="hover:bg-accent hover:text-accent-foreground">
+                        <Archive className="h-4 w-4 mr-2" />
+                        備份
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExport}>
+                        <Download className="h-4 w-4 mr-2" />
+                        匯出
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => document.getElementById('projects-file-input')?.click()} disabled={importing}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {importing ? '匯入中...' : '匯入'}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <input
+                    type="file"
+                    id="projects-file-input"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={handleImport}
+                  />
                   <Button
-                    onClick={handleExport}
                     variant="outline"
-                    className="hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setDeleteAllOpen(true)}
+                    className=""
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    匯出
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => document.getElementById('projects-file-input')?.click()}
-                    disabled={importing}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {importing ? '匯入中...' : '匯入'}
-                    <input
-                      type="file"
-                      id="projects-file-input"
-                      accept=".json"
-                      style={{ display: 'none' }}
-                      onChange={handleImport}
-                    />
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    刪除全部
                   </Button>
                   <Button
                     onClick={() => setDialogOpen(true)}
@@ -431,6 +466,23 @@ export default function ProjectListPage() {
                 <AlertDialogCancel>取消</AlertDialogCancel>
                 <AlertDialogAction onClick={confirmDelete}>
                   刪除
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>確定要刪除全部專案嗎？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  此操作將永久刪除所有 {projects.length} 個專案，無法復原。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAll} className="bg-red-600 hover:bg-red-700">
+                  刪除全部
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

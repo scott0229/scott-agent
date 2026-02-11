@@ -299,6 +299,9 @@ export async function POST(request: Request) {
                     }
                 }
 
+                // Clear all response caches (including net-equity-bulk) so charts reflect updated market data
+                clearCache();
+
                 // Generate summary message
                 const successCount = symbolResults.filter(r => r.status === 'success').length;
                 const failedCount = symbolResults.filter(r => r.status === 'failed').length;

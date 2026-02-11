@@ -135,15 +135,12 @@ export function EditProjectDialog({ project, open, onOpenChange, onSuccess }: Ed
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>編輯專案</DialogTitle>
-          <DialogDescription>
-            更新您的專案資訊。
-          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {/* Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">專案名稱 *</Label>
+              <Label htmlFor="name">專案名稱</Label>
               <Input
                 id="name"
                 placeholder="我的精彩專案"
@@ -153,34 +150,31 @@ export function EditProjectDialog({ project, open, onOpenChange, onSuccess }: Ed
               />
             </div>
 
-            {/* Description */}
-            <div className="grid gap-2">
-              <Label htmlFor="description">描述</Label>
-              <Input
-                id="description"
-                placeholder="專案簡述"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
 
             {/* User Assignment */}
             <div className="grid gap-2">
               <Label>權限設定</Label>
-              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2">
+              <div className="max-h-80 overflow-y-auto border rounded-md p-2">
                 {users.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-2">無可用使用者</p>
                 ) : (
-                  users.map(user => (
-                    <label key={user.id} className="flex items-center space-x-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                  users.filter(user => {
+                    const uid = user.user_id || user.email;
+                    const baseName = uid.split('.')[0];
+                    const hasNumberedVersion = users.some(u => {
+                      const otherId = u.user_id || u.email;
+                      return otherId !== uid && otherId.startsWith(baseName + '.') && /\d/.test(otherId.split('.')[1] || '');
+                    });
+                    return !(uid === baseName && hasNumberedVersion);
+                  }).map(user => (
+                    <label key={user.id} className="flex items-center space-x-2 cursor-pointer hover:bg-muted/50 py-0.5 px-1.5 rounded">
                       <input
                         type="checkbox"
                         checked={selectedUserIds.includes(user.id)}
                         onChange={() => handleUserToggle(user.id)}
                         className="h-4 w-4 rounded border-gray-300"
                       />
-                      <span className="text-sm">
+                      <span className="text-xs">
                         {user.user_id || user.email} ({user.role === 'customer' ? '客戶' : '交易員'})
                       </span>
                     </label>
