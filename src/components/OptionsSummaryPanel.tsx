@@ -130,10 +130,11 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const marginUsed = (user.open_put_covered_capital || 0) + debt;
         const marginRate = equity > 0 ? marginUsed / equity : 0;
 
-        // Turnover Rate
+        // Turnover Rate - use initialCost (without profit) as denominator
+        const initialCost = (user.initial_cost || 0) + (user.net_deposit || 0);
         const currentMonthStats = user.monthly_stats?.find((s) => parseInt(s.month.replace('月', '')) === currentMonthStr);
         const monthlyTurnover = currentMonthStats?.turnover || 0;
-        const turnoverRate = (equity * daysInCurrentMonth) > 0 ? monthlyTurnover / (equity * daysInCurrentMonth) : 0;
+        const turnoverRate = (initialCost * daysInCurrentMonth) > 0 ? monthlyTurnover / (initialCost * daysInCurrentMonth) : 0;
 
         // QX Premium
         const quarterStats = user.monthly_stats?.filter((stat) => {
@@ -146,7 +147,6 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const quarterCallPremium = quarterStats.reduce((s, stat) => s + stat.call_profit, 0);
 
         // QX Target - Use initial cost instead of current equity
-        const initialCost = (user.initial_cost || 0) + (user.net_deposit || 0);
         const annualTarget = Math.round(initialCost * 0.04);
         const quarterTarget = Math.round(annualTarget / 4);
 
@@ -182,7 +182,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const currentMonthStats = user.monthly_stats?.find((s) => parseInt(s.month.replace('月', '')) === currentMonthStr);
         return sum + (currentMonthStats?.turnover || 0);
     }, 0);
-    const aggregateTurnoverRate = (totalNetEquity * daysInCurrentMonth) > 0 ? totalMonthlyTurnover / (totalNetEquity * daysInCurrentMonth) : 0;
+    const totalInitialCost = users.reduce((sum, user) => sum + (user.initial_cost || 0) + (user.net_deposit || 0), 0);
+    const aggregateTurnoverRate = (totalInitialCost * daysInCurrentMonth) > 0 ? totalMonthlyTurnover / (totalInitialCost * daysInCurrentMonth) : 0;
 
     const totalQuarterPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterPremium, 0);
     const totalQuarterPutPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterPutPremium, 0);
@@ -387,7 +388,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Turnover Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">月資金流水率</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">周轉率</td>
                             {columnVisibility.allUsers && (
                                 <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
                                     {formatPercent(aggregates.turnoverRate)}

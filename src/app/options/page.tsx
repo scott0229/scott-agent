@@ -245,21 +245,22 @@ export default function OptionsPage() {
 
                                     <div className="border rounded-md overflow-hidden">
                                         {/* Header Table */}
-                                        <div className="bg-secondary/50 border-b">
+                                        <div className="bg-muted/40 border-b">
                                             <table className="w-full text-[13px] table-fixed">
                                                 <colgroup>
+                                                    <col className="w-[16%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
                                                 </colgroup>
                                                 <thead>
-                                                    <tr className="text-[13px] font-medium text-muted-foreground bg-secondary/50">
+                                                    <tr className="text-[13px] font-medium text-muted-foreground bg-muted/40">
                                                         <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">
-                                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm">
+                                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm inline-flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
                                                                 {displayName}
                                                             </span>
                                                         </th>
@@ -278,13 +279,13 @@ export default function OptionsPage() {
                                         <div className="relative bg-white">
                                             <table className="w-full text-[13px] table-fixed">
                                                 <colgroup>
+                                                    <col className="w-[16%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
                                                 </colgroup>
                                                 <tbody className="text-[13px]">
                                                     {Array.from({ length: 12 }, (_, i) => {
@@ -299,11 +300,11 @@ export default function OptionsPage() {
                                                             turnover: 0
                                                         };
                                                         const index = i;
-                                                        const equity = (client.initial_cost || 0) + (client.net_deposit || 0) + (client.total_profit || 0);
+                                                        const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
                                                         const monthNum = parseInt(stat.month);
                                                         const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
                                                         const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-                                                        const turnoverRate = (equity * daysInMonth) > 0 && stat.turnover ? stat.turnover / (equity * daysInMonth) : 0;
+                                                        const turnoverRate = (initialCost * daysInMonth) > 0 && stat.turnover ? stat.turnover / (initialCost * daysInMonth) : 0;
                                                         return (
                                                             <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                 <td className="px-1 text-center h-7">{stat.month}月</td>
@@ -333,16 +334,16 @@ export default function OptionsPage() {
                                         </div>
 
                                         {/* Footer Table */}
-                                        <div className="bg-secondary/50 border-t">
+                                        <div className="bg-muted/40 border-t">
                                             <table className="w-full text-[13px] table-fixed">
                                                 <colgroup>
+                                                    <col className="w-[16%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
                                                     <col className="w-[12%]" />
-                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[12%]" />
                                                 </colgroup>
                                                 <tbody>
                                                     <tr>
@@ -374,14 +375,15 @@ export default function OptionsPage() {
                                                         </td>
                                                         <td className="px-1 text-center h-7">
                                                             {(() => {
-                                                                const equity = (client.initial_cost || 0) + (client.net_deposit || 0) + (client.total_profit || 0);
-                                                                const totalTurnover = client.monthly_stats.reduce((sum, s) => sum + (s.turnover || 0), 0);
+                                                                const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
+                                                                const monthsWithTurnover = client.monthly_stats.filter(s => (s.turnover || 0) > 0);
+                                                                const totalTurnover = monthsWithTurnover.reduce((sum, s) => sum + (s.turnover || 0), 0);
                                                                 const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
-                                                                const totalDays = client.monthly_stats.reduce((sum, s) => {
+                                                                const totalDays = monthsWithTurnover.reduce((sum, s) => {
                                                                     const monthNum = parseInt(s.month);
                                                                     return sum + new Date(yearNum, monthNum, 0).getDate();
                                                                 }, 0);
-                                                                const rate = (equity * totalDays) > 0 ? totalTurnover / (equity * totalDays) : 0;
+                                                                const rate = (initialCost * totalDays) > 0 ? totalTurnover / (initialCost * totalDays) : 0;
                                                                 return rate > 0 ? `${(rate * 100).toFixed(0)}%` : '-';
                                                             })()}
                                                         </td>
