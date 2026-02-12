@@ -27,6 +27,12 @@ interface ImportUser {
     phone?: string | null;
     avatar_url?: string | null;
     initial_cost?: number | null;
+    initial_cash?: number | null;
+    initial_management_fee?: number | null;
+    initial_deposit?: number | null;
+    initial_interest?: number | null;
+    start_date?: string | null;
+    fee_exempt_months?: number | null;
     year?: number | null;
     deposits?: any[];
     net_equity_records?: any[];
@@ -34,6 +40,7 @@ interface ImportUser {
     monthly_interest?: any[];
     stock_trades?: any[];
     strategies?: any[];
+    monthly_fees?: any[];
 }
 
 // POST: Import users from JSON array
@@ -98,7 +105,7 @@ export async function POST(req: NextRequest) {
                     // Update existing user
                     await db.prepare(
                         `UPDATE USERS SET 
-                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, updated_at = unixepoch()
+                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, initial_interest = ?, start_date = ?, fee_exempt_months = ?, updated_at = unixepoch()
                          WHERE id = ?`
                     ).bind(
                         user.role,
@@ -107,14 +114,20 @@ export async function POST(req: NextRequest) {
                         user.phone || null,
                         user.avatar_url || null,
                         user.initial_cost || 0,
+                        user.initial_cash ?? 0,
+                        user.initial_management_fee ?? 0,
+                        user.initial_deposit ?? 0,
+                        user.initial_interest ?? 0,
+                        user.start_date || null,
+                        user.fee_exempt_months ?? 0,
                         existing.id
                     ).run();
                     updated++;
                 } else {
                     // Insert new user
                     const { meta } = await db.prepare(
-                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, year, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, year, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                     ).bind(
                         user.user_id || null,
                         user.email,
@@ -125,6 +138,12 @@ export async function POST(req: NextRequest) {
                         user.phone || null,
                         user.avatar_url || null,
                         user.initial_cost || 0,
+                        user.initial_cash ?? 0,
+                        user.initial_management_fee ?? 0,
+                        user.initial_deposit ?? 0,
+                        user.initial_interest ?? 0,
+                        user.start_date || null,
+                        user.fee_exempt_months ?? 0,
                         targetYear
                     ).run();
                     targetUserId = meta.last_row_id;
@@ -157,8 +176,8 @@ export async function POST(req: NextRequest) {
                         if (!existingRecord) {
                             try {
                                 await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     dateTimestamp,
@@ -166,6 +185,7 @@ export async function POST(req: NextRequest) {
                                     record.cash_balance ?? 0,
                                     record.deposit ?? 0,
                                     record.management_fee ?? 0,
+                                    record.interest ?? 0,
                                     recordYear
                                 ).run();
                             } catch (netErr) {
@@ -264,10 +284,11 @@ export async function POST(req: NextRequest) {
                                 const optionResult = await db.prepare(
                                     `INSERT INTO OPTIONS (
                                         owner_id, user_id, status, operation, open_date, to_date, settlement_date,
+                                        days_to_expire, days_held,
                                         quantity, underlying, type, strike_price, collateral, premium,
                                         final_profit, profit_percent, delta, iv, capital_efficiency, code, year,
                                         created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     user.user_id || null,  // Add user_id from the imported user data
@@ -276,6 +297,8 @@ export async function POST(req: NextRequest) {
                                     option.open_date,
                                     option.to_date || null,
                                     option.settlement_date || null,
+                                    option.days_to_expire ?? null,
+                                    option.days_held ?? null,
                                     option.quantity || 0,
                                     option.underlying,
                                     option.type,
@@ -343,8 +366,8 @@ export async function POST(req: NextRequest) {
                                 const stockResult = await db.prepare(
                                     `INSERT INTO STOCK_TRADES (
                                         owner_id, user_id, symbol, status, open_date, close_date, 
-                                        open_price, close_price, quantity, code, year, created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                        open_price, close_price, quantity, code, year, source, close_source, created_at, updated_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     user.user_id || null, // API uses string ID
@@ -356,7 +379,9 @@ export async function POST(req: NextRequest) {
                                     trade.close_price || null,
                                     trade.quantity,
                                     code,
-                                    tradeYear
+                                    tradeYear,
+                                    trade.source || null,
+                                    trade.close_source || null
                                 ).run();
 
                                 // Store mapping: old stock id -> new stock id
@@ -386,13 +411,14 @@ export async function POST(req: NextRequest) {
                             try {
                                 // Create strategy
                                 const strategyResult = await db.prepare(
-                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     strategy.name,
                                     strategy.user_id || user.user_id || null,
                                     targetUserId,
-                                    strategyYear
+                                    strategyYear,
+                                    strategy.status || '進行中'
                                 ).run();
 
                                 const newStrategyId = strategyResult.meta.last_row_id;
@@ -460,6 +486,28 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 }
+
+                // Import monthly_fees
+                if (user.monthly_fees && Array.isArray(user.monthly_fees) && targetUserId) {
+                    for (const fee of user.monthly_fees) {
+                        if (fee.year === undefined || fee.month === undefined || fee.amount === undefined) continue;
+
+                        const existingFee = await db.prepare(
+                            `SELECT user_id FROM monthly_fees WHERE user_id = ? AND year = ? AND month = ?`
+                        ).bind(targetUserId, fee.year, fee.month).first();
+
+                        if (!existingFee) {
+                            try {
+                                await db.prepare(
+                                    `INSERT INTO monthly_fees (user_id, year, month, amount, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ).bind(targetUserId, fee.year, fee.month, fee.amount).run();
+                            } catch (feeErr) {
+                                console.error(`Failed to import monthly fee for user ${user.email}:`, feeErr);
+                            }
+                        }
+                    }
+                }
             } catch (error: any) {
                 errors.push(`匯入失敗 (${user.user_id || user.email}): ${error.message}`);
                 skipped++;
@@ -483,11 +531,11 @@ export async function POST(req: NextRequest) {
 
                 // Prepare statement for reuse
                 const stmt = db.prepare(
-                    `INSERT OR IGNORE INTO market_prices (symbol, date, close_price) VALUES (?, ?, ?)`
+                    `INSERT OR IGNORE INTO market_prices (symbol, date, close_price, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
                 );
 
                 for (const price of chunk) {
-                    batch.push(stmt.bind(price.symbol, price.date, price.close_price));
+                    batch.push(stmt.bind(price.symbol, price.date, price.close_price, price.open ?? null, price.high ?? null, price.low ?? null, price.close ?? null, price.volume ?? null));
                 }
 
                 if (batch.length > 0) {

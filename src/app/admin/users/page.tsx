@@ -1682,8 +1682,8 @@ export default function AdminUsersPage() {
                                                                 <td className="text-right p-1.5 font-mono">{action.price.toFixed(2)}</td>
                                                                 <td className="p-1.5 text-right text-muted-foreground">
                                                                     {action.type === 'open' && '新增持倉'}
-                                                                    {action.type === 'close_full' && `(${action.existingCode}) ${action.existingQuantity}股全平`}
-                                                                    {action.type === 'close_split' && `(${action.existingCode}) ${action.existingQuantity}→${action.remainingQuantity}股`}
+                                                                    {action.type === 'close_full' && `${action.existingQuantity}股全平`}
+                                                                    {action.type === 'close_split' && `${action.existingQuantity}→${action.remainingQuantity}股`}
                                                                 </td>
                                                             </tr>
                                                         ))}

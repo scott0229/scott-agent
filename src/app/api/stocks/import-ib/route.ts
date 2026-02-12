@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         const trades: typeof rawTrades = [];
         for (const t of rawTrades) {
             if (t.isOpen && !t.isClose) {
-                const key = `${t.symbol}`;
+                const key = `${t.symbol}_${t.isAssignment}`;
                 const existing = mergedMap.get(key);
                 if (existing) {
                     // Weighted average price
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
                             isAssignment: trade.isAssignment,
                             existingTradeId: pos.id,
                             existingCode: pos.code,
-                            existingQuantity: pos.quantity,
+                            existingQuantity: pos.remainingQty,
                             existingOpenPrice: pos.open_price,
                             existingOpenDate: pos.open_date,
                         });
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
                             isAssignment: trade.isAssignment,
                             existingTradeId: pos.id,
                             existingCode: pos.code,
-                            existingQuantity: pos.quantity,
+                            existingQuantity: pos.remainingQty,
                             existingOpenPrice: pos.open_price,
                             existingOpenDate: pos.open_date,
                             remainingQuantity: remainQty,
@@ -320,6 +320,10 @@ export async function POST(request: NextRequest) {
         let closed = 0;
         let split = 0;
 
+        // Track split redirects: when a position is split, subsequent actions
+        // targeting the same original trade ID should operate on the newly created remainder record
+        const splitRedirectMap = new Map<number, number>();
+
         for (const action of actions) {
             if (action.type === 'open') {
                 const code = await generateUniqueCode(db);
@@ -343,30 +347,36 @@ export async function POST(request: NextRequest) {
                 created++;
 
             } else if (action.type === 'close_full') {
+                // Resolve actual target: if this trade was previously split, target the remainder record
+                const targetId = splitRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
                 const closeSource = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     UPDATE STOCK_TRADES SET
                         status = 'Closed', close_date = ?, close_price = ?, close_source = ?, updated_at = unixepoch()
                     WHERE id = ?
-                `).bind(action.date, action.price, closeSource, action.existingTradeId).run();
+                `).bind(action.date, action.price, closeSource, targetId).run();
                 closed++;
 
             } else if (action.type === 'close_split') {
-                // 1. Update original record: reduce quantity and close it
+                // Resolve actual target: if this trade was previously split, target the remainder record
+                const targetId = splitRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
+
+                // 1. Update target record: reduce quantity and close it
                 const splitCloseSource = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     UPDATE STOCK_TRADES SET
                         quantity = ?, status = 'Closed', close_date = ?, close_price = ?, close_source = ?, updated_at = unixepoch()
                     WHERE id = ?
-                `).bind(action.quantity, action.date, action.price, splitCloseSource, action.existingTradeId).run();
+                `).bind(action.quantity, action.date, action.price, splitCloseSource, targetId).run();
 
                 // 2. Create new record for remaining open quantity
                 const code = await generateUniqueCode(db);
-                await db.prepare(`
+                const insertResult = await db.prepare(`
                     INSERT INTO STOCK_TRADES (
                         symbol, status, open_date, open_price, quantity,
                         user_id, owner_id, year, code, source, updated_at
                     ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                    RETURNING id
                 `).bind(
                     action.symbol,
                     action.existingOpenDate, // Keep original open_date for the remaining open portion
@@ -377,7 +387,12 @@ export async function POST(request: NextRequest) {
                     year,
                     code,
                     action.existingSource || null, // Preserve original source
-                ).run();
+                ).first<{ id: number }>();
+
+                // Redirect future actions on the original trade to the new remainder record
+                if (insertResult) {
+                    splitRedirectMap.set(action.existingTradeId!, insertResult.id);
+                }
                 split++;
             }
         }

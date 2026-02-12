@@ -24,7 +24,7 @@ async function checkAdmin(req: NextRequest) {
 async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true, includeStrategies: boolean = true) {
     const db = await getDb();
 
-    let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, year
+    let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, initial_interest, start_date, fee_exempt_months
             FROM USERS 
             WHERE email != 'admin'`;
 
@@ -163,7 +163,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
         let stocksQuery = `
             SELECT 
-                id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year
+                id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year, source, close_source
             FROM STOCK_TRADES 
             WHERE owner_id = ?
         `;
@@ -184,7 +184,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         // Export strategies
         if (includeStrategies) {
             let strategiesQuery = `
-                SELECT id, name, user_id, year
+                SELECT id, name, user_id, year, status
                 FROM STRATEGIES
                 WHERE owner_id = ?
             `;
@@ -213,6 +213,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
                         name: strategy.name,
                         user_id: strategy.user_id,
                         year: strategy.year,
+                        status: strategy.status || '進行中',
                         stock_trade_ids: (stockLinks || []).map((link: any) => link.stock_trade_id),
                         option_ids: (optionLinks || []).map((link: any) => link.option_id)
                     };
@@ -223,6 +224,17 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         } else {
             (user as any).strategies = [];
         }
+
+        // Export monthly_fees
+        let feesQuery = `SELECT year, month, amount FROM monthly_fees WHERE user_id = ?`;
+        const feesParams: any[] = [user.id];
+        if (year && year !== 'All') {
+            feesQuery += ` AND year = ?`;
+            feesParams.push(parseInt(year));
+        }
+        feesQuery += ` ORDER BY year ASC, month ASC`;
+        const { results: fees } = await db.prepare(feesQuery).bind(...feesParams).all();
+        (user as any).monthly_fees = fees || [];
     }
 
     let minExportDate = Number.MAX_SAFE_INTEGER;
@@ -241,7 +253,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
     const shouldExportMarketData = includeMarketData;
 
     if (shouldExportMarketData) {
-        let marketPricesQuery = `SELECT symbol, date, close_price FROM market_prices`;
+        let marketPricesQuery = `SELECT symbol, date, close_price, open, high, low, close, volume FROM market_prices`;
         const marketPricesParams: any[] = [];
         if (minExportDate !== Number.MAX_SAFE_INTEGER && maxExportDate !== 0) {
             const bufferSeconds = 20 * 86400;
