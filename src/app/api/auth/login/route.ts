@@ -13,9 +13,18 @@ export async function POST(req: NextRequest) {
 
     const db = await getDb();
 
-    // Query user by email or user_id
-    const stmt = db.prepare('SELECT * FROM USERS WHERE email = ? OR user_id = ?');
-    const user = await stmt.bind(account, account).first();
+    // Prioritize user_id match first, then fall back to email
+    let user: any = await db.prepare('SELECT * FROM USERS WHERE user_id = ?').bind(account).first();
+
+    if (!user) {
+      // Try email match - but check for multiple accounts with same email
+      const emailMatches = await db.prepare('SELECT * FROM USERS WHERE email = ?').bind(account).all();
+      if (emailMatches.results.length === 1) {
+        user = emailMatches.results[0];
+      } else if (emailMatches.results.length > 1) {
+        return NextResponse.json({ error: '此 Email 有多個帳戶，請使用帳號 ID 登入' }, { status: 400 });
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });

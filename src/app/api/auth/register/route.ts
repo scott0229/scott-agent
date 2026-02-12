@@ -13,18 +13,13 @@ export async function POST(req: NextRequest) {
 
     const db = await getDb();
 
-    // Check if email or user_id already exists
-    const existing = await db.prepare('SELECT * FROM USERS WHERE email = ? OR user_id = ?')
-      .bind(email, userId)
+    // Check if user_id already exists (email can be shared across accounts)
+    const existing = await db.prepare('SELECT * FROM USERS WHERE user_id = ?')
+      .bind(userId)
       .first();
 
     if (existing) {
-      if (existing.email === email) {
-        return NextResponse.json({ error: '此電子郵件已被註冊' }, { status: 409 });
-      }
-      if (existing.user_id === userId) {
-        return NextResponse.json({ error: '此使用者 ID 已被使用' }, { status: 409 });
-      }
+      return NextResponse.json({ error: '此使用者 ID 已被使用' }, { status: 409 });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -38,10 +33,7 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to create user');
     }
 
-    // Get the newly created user (or usage lastID if predictable, but safe to fetch or just use info)
-    // For D1, result.meta.last_row_id might work but easier to just sign token with provided info for now
-    // or fetch from DB to be sure. Let's fetch to get the ID.
-    const newUser = await db.prepare('SELECT * FROM USERS WHERE email = ?').bind(email).first();
+    const newUser = await db.prepare('SELECT * FROM USERS WHERE user_id = ?').bind(userId).first();
 
     if (!newUser) {
       throw new Error('User created but not found');

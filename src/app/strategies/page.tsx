@@ -78,7 +78,7 @@ export default function StrategiesPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [strategyToDelete, setStrategyToDelete] = useState<Strategy | null>(null);
     const [sortOrder, setSortOrder] = useState<'date-new' | 'date-old' | 'status-new' | 'status-old'>('status-new');
-    const [users, setUsers] = useState<{ id: number; user_id: string; email: string }[]>([]);
+    const [users, setUsers] = useState<{ id: number; user_id: string; email: string; current_net_equity?: number }[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [symbolFilter, setSymbolFilter] = useState<string>('all');
@@ -132,7 +132,7 @@ export default function StrategiesPage() {
                 let filteredUsers = data.users.filter((u: any) => u.role === 'customer');
 
                 // Deduplicate by user_id
-                const uniqueUsers: { id: number; user_id: string; email: string }[] = [];
+                const uniqueUsers: { id: number; user_id: string; email: string; current_net_equity?: number }[] = [];
                 const seen = new Set<string>();
                 for (const u of filteredUsers) {
                     const key = u.user_id || u.email;
@@ -397,29 +397,71 @@ export default function StrategiesPage() {
 
                                         const totalProfit = stockProfit + optionProfit;
 
+                                        // Calculate total margin
+                                        const stockMargin = strategy.stocks
+                                            .filter(s => s.status === 'Open' || (s as any).source === 'assigned')
+                                            .reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0);
+                                        const optionMargin = strategy.options
+                                            .filter(o => o.operation === 'Open' && o.type === 'PUT')
+                                            .reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0);
+                                        const totalMargin = stockMargin + optionMargin;
+
+                                        // Get user's net equity for margin percentage
+                                        const userNetEquity = users.find(u => u.user_id === strategy.user_id)?.current_net_equity || 0;
+                                        const marginPct = userNetEquity > 0 ? ((totalMargin / userNetEquity) * 100).toFixed(2) : '0.00';
+
                                         return (
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <span>
-                                                        <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)} {strategy.name}, 當前收益 <span className={totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(totalProfit).toLocaleString()}</span>
-                                                    </span>
-                                                </CardTitle>
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleEditStrategy(strategy)}
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => handleDeleteClick(strategy)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                            <div>
+                                                <div className="flex items-center justify-between">
+                                                    <CardTitle className="flex items-center gap-2">
+                                                        <span>
+                                                            <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)} {strategy.name}
+                                                        </span>
+                                                    </CardTitle>
+                                                    <div className="flex gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleEditStrategy(strategy)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleDeleteClick(strategy)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
+                                                <div className="flex items-center gap-1 mt-1 text-sm">
+                                                    <span>當前收益 <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
+                                                    {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
+                                                </div>
+                                                {(() => {
+                                                    // Calculate adjusted cost basis: stock open_price reduced by option profits
+                                                    const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+                                                    const totalOpenQty = openStocks.reduce((sum, s) => sum + s.quantity, 0);
+                                                    if (totalOpenQty === 0) return null;
+
+                                                    const optProfit = strategy.options.reduce((sum, o) => {
+                                                        if (o.final_profit !== null && o.final_profit !== undefined) {
+                                                            return sum + o.final_profit;
+                                                        }
+                                                        return sum;
+                                                    }, 0);
+
+                                                    // Weighted average open price
+                                                    const weightedCost = openStocks.reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0) / totalOpenQty;
+                                                    const adjustedCost = weightedCost - (optProfit / totalOpenQty);
+
+                                                    return (
+                                                        <div className="text-sm mt-0.5">
+                                                            {openStocks[0].symbol} 成本 {weightedCost.toFixed(2)} → 調整後成本 <span className="font-semibold text-foreground">{adjustedCost.toFixed(2)}</span>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })()}
@@ -441,21 +483,24 @@ export default function StrategiesPage() {
                                             <div className="space-y-1">
                                                 <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
                                                     <span>{strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
-                                                    {(() => {
-                                                        const symbols = [...new Set(strategy.stocks.map(s => s.symbol))];
-                                                        if (symbols.length <= 1) return null;
-                                                        return (
-                                                            <select
-                                                                className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
-                                                                value={stockSymbolFilters[strategy.id] || 'all'}
-                                                                onChange={e => setStockSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
-                                                                onClick={e => e.stopPropagation()}
-                                                            >
-                                                                <option value="all">全部標的</option>
-                                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                                                            </select>
-                                                        );
-                                                    })()}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-muted-foreground">資金需求 {Math.round(strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned').reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0)).toLocaleString()}</span>
+                                                        {(() => {
+                                                            const symbols = [...new Set(strategy.stocks.map(s => s.symbol))];
+                                                            if (symbols.length <= 1) return null;
+                                                            return (
+                                                                <select
+                                                                    className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                    value={stockSymbolFilters[strategy.id] || 'all'}
+                                                                    onChange={e => setStockSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                    onClick={e => e.stopPropagation()}
+                                                                >
+                                                                    <option value="all">全部標的</option>
+                                                                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                </select>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-auto text-xs">
@@ -542,21 +587,24 @@ export default function StrategiesPage() {
                                             <div className="space-y-1">
                                                 <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
                                                     <span>{strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
-                                                    {(() => {
-                                                        const symbols = [...new Set(strategy.options.map(o => o.underlying))];
-                                                        if (symbols.length <= 1) return null;
-                                                        return (
-                                                            <select
-                                                                className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
-                                                                value={optionSymbolFilters[strategy.id] || 'all'}
-                                                                onChange={e => setOptionSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
-                                                                onClick={e => e.stopPropagation()}
-                                                            >
-                                                                <option value="all">全部標的</option>
-                                                                {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                                                            </select>
-                                                        );
-                                                    })()}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-muted-foreground">資金需求 {Math.round(strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0)).toLocaleString()}</span>
+                                                        {(() => {
+                                                            const symbols = [...new Set(strategy.options.map(o => o.underlying))];
+                                                            if (symbols.length <= 1) return null;
+                                                            return (
+                                                                <select
+                                                                    className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                    value={optionSymbolFilters[strategy.id] || 'all'}
+                                                                    onChange={e => setOptionSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                    onClick={e => e.stopPropagation()}
+                                                                >
+                                                                    <option value="all">全部標的</option>
+                                                                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                </select>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
                                                 <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
                                                     <table className="w-full table-auto text-xs">

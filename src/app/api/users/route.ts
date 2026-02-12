@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
                 // Add year filter (only admin crosses years)
                 if (year && year !== 'All') {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = 'Open') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
                     whereAdded = true;
                 } else {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, fee_exempt_months,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -293,7 +293,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -381,7 +381,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate, feeExemptMonths } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -392,6 +392,7 @@ export async function POST(req: NextRequest) {
             year?: number;
             initialCost?: number;
             startDate?: string;
+            feeExemptMonths?: number;
         };
 
         if (!email || !userId || !password || !role) {
@@ -425,8 +426,10 @@ export async function POST(req: NextRequest) {
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
         // userYear is already defined above
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null)
+        const exemptMonths = role === 'customer' ? (feeExemptMonths || 0) : 0;
+
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null, exemptMonths)
             .run();
 
         return NextResponse.json({ success: true });
@@ -545,7 +548,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, initialInterest, startDate } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, initialInterest, startDate, feeExemptMonths } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -560,6 +563,7 @@ export async function PUT(req: NextRequest) {
             initialDeposit?: number;
             initialInterest?: number;
             startDate?: string;
+            feeExemptMonths?: number;
         };
 
         if (!id) {
@@ -657,6 +661,11 @@ export async function PUT(req: NextRequest) {
         if (typeof startDate !== 'undefined') {
             updateQuery += ', start_date = ?';
             params.push(startDate || null);
+        }
+
+        if (typeof feeExemptMonths !== 'undefined') {
+            updateQuery += ', fee_exempt_months = ?';
+            params.push(feeExemptMonths || 0);
         }
 
         if (password && password.trim() !== '') {

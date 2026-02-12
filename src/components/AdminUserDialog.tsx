@@ -25,7 +25,7 @@ interface AdminUserDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string } | null;
+    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string; fee_exempt_months?: number } | null;
 }
 
 
@@ -39,6 +39,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         password: '',
         role: 'customer',
         managementFee: '4.0',
+        feeExemptMonths: '0',
         ibAccount: '',
         phone: '',
         startDate: '',
@@ -53,6 +54,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 password: '',
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
+                feeExemptMonths: userToEdit.fee_exempt_months?.toString() || '0',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
@@ -71,12 +73,13 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 password: '',
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
+                feeExemptMonths: userToEdit.fee_exempt_months?.toString() || '0',
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
             });
         } else {
-            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', startDate: '' });
+            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
         }
     }
 
@@ -109,7 +112,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', ibAccount: '', phone: '', startDate: '' });
+                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
             }
         } catch (error: any) {
             toast({
@@ -124,7 +127,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[380px]">
+            <DialogContent className="sm:max-w-[440px]">
                 <DialogHeader>
                     <DialogTitle>{userToEdit ? '編輯用戶' : '新增使用者'}</DialogTitle>
                 </DialogHeader>
@@ -244,6 +247,32 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                                         %
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 items-center gap-4">
+                                <Label htmlFor="feeExemptMonths" className="text-right">
+                                    管理費免除
+                                </Label>
+                                <div className="col-span-2 relative">
+                                    <Input
+                                        id="feeExemptMonths"
+                                        type="number"
+                                        min="0"
+                                        max="12"
+                                        step="1"
+                                        placeholder="0"
+                                        value={formData.feeExemptMonths}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (val < 0 || val > 12) return;
+                                            setFormData({ ...formData, feeExemptMonths: e.target.value });
+                                        }}
+                                        className="pr-10"
+                                        autoComplete="off"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                        個月
                                     </span>
                                 </div>
                             </div>

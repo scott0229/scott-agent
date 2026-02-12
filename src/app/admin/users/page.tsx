@@ -47,6 +47,7 @@ interface User {
     stock_trades_count?: number;
     strategies_count?: number;
     start_date?: string;
+    fee_exempt_months?: number;
 }
 
 import {
@@ -1212,6 +1213,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">起始日期</TableHead>
                                 <TableHead className="text-center">管理費率</TableHead>
+                                <TableHead className="text-center">費用免除</TableHead>
                                 <TableHead className="text-center">管理費預估</TableHead>
 
                                 <TableHead className="text-center">當前淨值</TableHead>
@@ -1255,7 +1257,9 @@ export default function AdminUsersPage() {
                                             const remainingDays = (yearEnd.getTime() - start.getTime()) / 86400000 + 1;
                                             ratio = remainingDays / totalDays;
                                         }
-                                        const fee = ((user.management_fee ?? 0) / 100) * currentEquity * ratio;
+                                        const exemptMonths = user.fee_exempt_months || 0;
+                                        const exemptRatio = Math.max(0, 1 - exemptMonths / 12);
+                                        const fee = ((user.management_fee ?? 0) / 100) * currentEquity * ratio * exemptRatio;
                                         return sum + fee;
                                     }
                                     return sum;
@@ -1281,14 +1285,18 @@ export default function AdminUsersPage() {
                                             feeRatio = remainingDays / totalDays;
                                         }
                                         const estimatedFee = user.role === 'customer' && (user.management_fee ?? 0) > 0
-                                            ? ((user.management_fee ?? 0) / 100) * currentEquity * feeRatio
+                                            ? (() => {
+                                                const exemptMonths = user.fee_exempt_months || 0;
+                                                const exemptRatio = Math.max(0, 1 - exemptMonths / 12);
+                                                return ((user.management_fee ?? 0) / 100) * currentEquity * feeRatio * exemptRatio;
+                                            })()
                                             : 0;
                                         return (
                                             <TableRow key={user.id}>
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
-                                                <TableCell className="text-center py-1">
+                                                <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);
                                                         return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1297,6 +1305,11 @@ export default function AdminUsersPage() {
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-pink-50' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
+                                                    ) : '-'}
+                                                </TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-pink-50' : ''}`}>
+                                                    {user.role === 'customer' ? (
+                                                        (user.fee_exempt_months ?? 0) > 0 ? `${user.fee_exempt_months}個月` : '-'
                                                     ) : '-'}
                                                 </TableCell>
                                                 <TableCell className="text-center py-1">
@@ -1375,7 +1388,7 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={4} className="text-center py-1"></TableCell>
+                                        <TableCell colSpan={5} className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={4} className="py-1"></TableCell>
