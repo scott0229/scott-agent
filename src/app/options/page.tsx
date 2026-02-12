@@ -30,6 +30,8 @@ interface UserStats {
     total_profit: number;
     put_profit: number;
     call_profit: number;
+    put_win_rate: number | null;
+    call_win_rate: number | null;
     turnover?: number;
 }
 
@@ -124,7 +126,7 @@ export default function OptionsPage() {
     // Tailwind breakpoints: md: 768px (2 cols), lg: 1024px (3 cols)
     const getNumColumns = () => {
         if (!width) return 1; // Default
-        if (width >= 1024) return 3;
+        if (width >= 1024) return 2;
         if (width >= 768) return 2;
         return 1;
     };
@@ -215,12 +217,12 @@ export default function OptionsPage() {
                 <OptionsSummaryPanel users={sortedClients} year={selectedYear} />
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {clientsWithPanel.map((item, index) => {
                     if (item.type === 'panel') {
                         // Full width panel that spans all columns
                         return (
-                            <div ref={analysisPanelRef} key="analysis-panel" className="col-span-1 md:col-span-2 lg:col-span-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div ref={analysisPanelRef} key="analysis-panel" className="col-span-1 md:col-span-2 animate-in fade-in slide-in-from-top-4 duration-300">
                                 <UserAnalysisPanel
                                     user={item.data}
                                     year={selectedYear.toString()}
@@ -235,132 +237,167 @@ export default function OptionsPage() {
                     const isExpanded = (client.user_id || client.email) === expandedUserId;
 
                     return (
-                        <Card
+                        <div
                             key={client.id}
-                            className={`hover:shadow-lg transition-all hover:border-primary/50 relative ${isExpanded ? 'border-primary ring-1 ring-primary' : ''}`}
                         >
-                            {/* Triangle indicator for selected card */}
-                            {isExpanded && (
-                                <div className="absolute -bottom-[10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-primary z-10"></div>
-                            )}
+                            {client.monthly_stats && client.monthly_stats.length > 0 ? (
+                                <div>
 
-                            <CardContent>
-                                {client.monthly_stats && client.monthly_stats.length > 0 ? (
-                                    <div>
+                                    <div className="border rounded-md overflow-hidden">
+                                        {/* Header Table */}
+                                        <div className="bg-secondary/50 border-b">
+                                            <table className="w-full text-[13px] table-fixed">
+                                                <colgroup>
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                </colgroup>
+                                                <thead>
+                                                    <tr className="text-[13px] font-medium text-muted-foreground bg-secondary/50">
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">
+                                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm">
+                                                                {displayName}
+                                                            </span>
+                                                        </th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">總損益</th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT</th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT勝率</th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
+                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">周轉率</th>
+                                                    </tr>
+                                                </thead>
+                                            </table>
+                                        </div>
 
-                                        <div className="border rounded-md overflow-hidden">
-                                            {/* Header Table */}
-                                            <div className="bg-muted border-b">
-                                                <table className="w-full text-[13px] table-fixed">
-                                                    <colgroup>
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                    </colgroup>
-                                                    <thead>
-                                                        <tr className="text-[13px] font-medium text-muted-foreground bg-[#e8e4dc]">
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">
-                                                                <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm">
-                                                                    {displayName}
-                                                                </span>
-                                                            </th>
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">總損益</th>
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">PUT</th>
-                                                            <th className="text-center h-7 px-2 py-1.5 font-medium text-foreground">CALL</th>
-                                                        </tr>
-                                                    </thead>
-                                                </table>
-                                            </div>
-
-                                            {/* Scrollable Body Table */}
-                                            <div className="max-h-[200px] overflow-y-auto relative bg-white [&::-webkit-scrollbar]:!w-[2px]">
-                                                <table className="w-full text-[13px] table-fixed">
-                                                    <colgroup>
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                    </colgroup>
-                                                    <tbody className="text-[13px]">
-                                                        {client.monthly_stats.map((stat, index) => (
+                                        {/* Scrollable Body Table */}
+                                        <div className="relative bg-white">
+                                            <table className="w-full text-[13px] table-fixed">
+                                                <colgroup>
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                </colgroup>
+                                                <tbody className="text-[13px]">
+                                                    {Array.from({ length: 12 }, (_, i) => {
+                                                        const monthStr = String(i + 1).padStart(2, '0');
+                                                        const stat = (client.monthly_stats || []).find(s => s.month === monthStr) || {
+                                                            month: monthStr,
+                                                            total_profit: 0,
+                                                            put_profit: 0,
+                                                            call_profit: 0,
+                                                            put_win_rate: null,
+                                                            call_win_rate: null,
+                                                            turnover: 0
+                                                        };
+                                                        const index = i;
+                                                        const equity = (client.initial_cost || 0) + (client.net_deposit || 0) + (client.total_profit || 0);
+                                                        const monthNum = parseInt(stat.month);
+                                                        const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
+                                                        const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+                                                        const turnoverRate = (equity * daysInMonth) > 0 && stat.turnover ? stat.turnover / (equity * daysInMonth) : 0;
+                                                        return (
                                                             <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                                <td className="px-2 text-center h-7">{stat.month}月</td>
-                                                                <td className="px-2 text-center h-7">
+                                                                <td className="px-1 text-center h-7">{stat.month}月</td>
+                                                                <td className="px-1 text-center h-7">
                                                                     {Math.round(stat.total_profit).toLocaleString()}
                                                                 </td>
-                                                                <td className="px-2 text-center h-7">
+                                                                <td className="px-1 text-center h-7">
                                                                     {Math.round(stat.put_profit).toLocaleString()}
                                                                 </td>
-                                                                <td className="px-2 text-center h-7">
+                                                                <td className="px-1 text-center h-7">
+                                                                    {stat.put_win_rate !== null ? `${stat.put_win_rate}%` : '-'}
+                                                                </td>
+                                                                <td className="px-1 text-center h-7">
                                                                     {Math.round(stat.call_profit).toLocaleString()}
                                                                 </td>
+                                                                <td className="px-1 text-center h-7">
+                                                                    {stat.call_win_rate !== null ? `${stat.call_win_rate}%` : '-'}
+                                                                </td>
+                                                                <td className="px-1 text-center h-7">
+                                                                    {turnoverRate > 0 ? `${(turnoverRate * 100).toFixed(0)}%` : '-'}
+                                                                </td>
                                                             </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
 
-                                            {/* Footer Table */}
-                                            <div className="bg-muted border-t">
-                                                <table className="w-full text-[13px] table-fixed">
-                                                    <colgroup>
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                        <col className="w-[25%]" />
-                                                    </colgroup>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td className="px-2 text-center h-7"></td>
-                                                            <td className="px-2 text-center h-7">
-                                                                {Math.round(client.total_profit ?? 0).toLocaleString()}
-                                                            </td>
-                                                            <td className="px-2 text-center h-7">
-                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
-                                                            </td>
-                                                            <td className="px-2 text-center h-7">
-                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                        {/* Footer Table */}
+                                        <div className="bg-secondary/50 border-t">
+                                            <table className="w-full text-[13px] table-fixed">
+                                                <colgroup>
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                    <col className="w-[12%]" />
+                                                    <col className="w-[15%]" />
+                                                </colgroup>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="px-1 text-center h-7"></td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {Math.round(client.total_profit ?? 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {(() => {
+                                                                const stats = client.monthly_stats.filter(s => s.put_win_rate !== null);
+                                                                if (stats.length === 0) return '-';
+                                                                const avg = Math.round(stats.reduce((sum, s) => sum + (s.put_win_rate || 0), 0) / stats.length);
+                                                                return `${avg}%`;
+                                                            })()}
+                                                        </td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {(() => {
+                                                                const stats = client.monthly_stats.filter(s => s.call_win_rate !== null);
+                                                                if (stats.length === 0) return '-';
+                                                                const avg = Math.round(stats.reduce((sum, s) => sum + (s.call_win_rate || 0), 0) / stats.length);
+                                                                return `${avg}%`;
+                                                            })()}
+                                                        </td>
+                                                        <td className="px-1 text-center h-7">
+                                                            {(() => {
+                                                                const equity = (client.initial_cost || 0) + (client.net_deposit || 0) + (client.total_profit || 0);
+                                                                const totalTurnover = client.monthly_stats.reduce((sum, s) => sum + (s.turnover || 0), 0);
+                                                                const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
+                                                                const totalDays = client.monthly_stats.reduce((sum, s) => {
+                                                                    const monthNum = parseInt(s.month);
+                                                                    return sum + new Date(yearNum, monthNum, 0).getDate();
+                                                                }, 0);
+                                                                const rate = (equity * totalDays) > 0 ? totalTurnover / (equity * totalDays) : 0;
+                                                                return rate > 0 ? `${(rate * 100).toFixed(0)}%` : '-';
+                                                            })()}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="text-sm text-muted-foreground mt-2">
-                                        查看{client.options_count || 0}筆交易記錄 &rarr;
-                                    </div>
-                                )}
-                                <div className="flex gap-2 mt-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => router.push(`/options/${client.user_id || client.id}`)}
-                                        className="flex-1 justify-center gap-2 px-3"
-                                        size="sm"
-                                    >
-                                        <span>交易記錄</span>
-                                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-medium border border-gray-200">
-                                            {client.options_count || 0}
-                                        </span>
-                                    </Button>
-                                    <Button
-                                        variant={isExpanded ? "default" : "outline"}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const id = client.user_id || client.email;
-                                            setExpandedUserId(expandedUserId === id ? null : id);
-                                        }}
-                                        className="flex-1"
-                                        size="sm"
-                                    >
-                                        <BarChart3 className="h-4 w-4 mr-1" />
-                                        數據分析
-                                    </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            ) : (
+                                <div className="text-sm text-muted-foreground mt-2">
+                                    查看{client.options_count || 0}筆交易記錄 &rarr;
+                                </div>
+                            )}
+
+                        </div>
                     );
                 })}
 
@@ -371,6 +408,6 @@ export default function OptionsPage() {
                 )}
             </div>
 
-        </div>
+        </div >
     );
 }

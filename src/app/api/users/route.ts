@@ -127,6 +127,8 @@ export async function GET(req: NextRequest) {
                         strftime('%m', datetime(open_date, 'unixepoch')) as month,
                         type,
                         SUM(COALESCE(final_profit, 0)) as profit,
+                        COUNT(*) as total_count,
+                        SUM(CASE WHEN COALESCE(final_profit, 0) > 0 THEN 1 ELSE 0 END) as win_count,
                         SUM(
                             (strike_price * ABS(quantity) * 100) * 
                             (
@@ -159,15 +161,19 @@ export async function GET(req: NextRequest) {
 
                         const userStats = userStatsMap.get(row.user_id);
                         if (!userStats[row.month]) {
-                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
+                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0 };
                         }
 
                         userStats[row.month].total += row.profit;
                         userStats[row.month].turnover += (row.turnover || 0);
                         if (row.type === 'PUT') {
                             userStats[row.month].put += row.profit;
+                            userStats[row.month].put_win += (row.win_count || 0);
+                            userStats[row.month].put_total += (row.total_count || 0);
                         } else if (row.type === 'CALL') {
                             userStats[row.month].call += row.profit;
+                            userStats[row.month].call_win += (row.win_count || 0);
+                            userStats[row.month].call_total += (row.total_count || 0);
                         }
                     });
 
@@ -182,12 +188,14 @@ export async function GET(req: NextRequest) {
                         const allMonths = [];
                         for (let i = 1; i <= 12; i++) {
                             const monthStr = i.toString().padStart(2, '0');
-                            const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0 };
+                            const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0 };
                             allMonths.push({
                                 month: monthStr,
                                 total_profit: monthData.total,
                                 put_profit: monthData.put,
                                 call_profit: monthData.call,
+                                put_win_rate: monthData.put_total > 0 ? Math.round((monthData.put_win / monthData.put_total) * 100) : null,
+                                call_win_rate: monthData.call_total > 0 ? Math.round((monthData.call_win / monthData.call_total) * 100) : null,
                                 interest: monthData.interest,
                                 turnover: monthData.turnover
                             });

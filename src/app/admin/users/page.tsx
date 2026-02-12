@@ -1400,7 +1400,7 @@ export default function AdminUsersPage() {
                 </div>
 
                 <Dialog open={reportDialog?.open || false} onOpenChange={(open) => !open && setReportDialog(null)}>
-                    <DialogContent className="w-[400px] max-w-[90vw]">
+                    <DialogContent className="w-[400px] max-w-[90vw] max-h-[95vh]">
                         <DialogHeader>
                             <div className="flex items-center gap-2">
                                 <DialogTitle>{reportDialog?.userName} 用戶報告</DialogTitle>
@@ -1425,7 +1425,7 @@ export default function AdminUsersPage() {
                         <Textarea
                             value={reportDialog?.report || ''}
                             readOnly
-                            className="font-mono text-sm min-h-[550px] resize-none"
+                            className="font-mono text-sm min-h-[600px] resize-none"
                         />
                     </DialogContent>
                 </Dialog>
