@@ -112,6 +112,19 @@ export async function GET(request: NextRequest) {
                     ORDER BY owner_id, total_quantity DESC
                 `).bind(year).all();
 
+                // Fetch open PUT covered capital for margin calculation
+                const putCapitalQuery = await db.prepare(`
+                    SELECT owner_id, COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) as open_put_covered_capital
+                    FROM OPTIONS
+                    WHERE year = ? AND operation = 'Open' AND type = 'PUT'
+                    GROUP BY owner_id
+                `).bind(year).all();
+
+                const putCapitalByUser = new Map<number, number>();
+                for (const row of (putCapitalQuery.results as any[])) {
+                    putCapitalByUser.set(row.owner_id, row.open_put_covered_capital);
+                }
+
                 // Group holdings by user_id
                 const holdingsByUser = new Map<number, Array<{ symbol: string, quantity: number }>>();
                 for (const holding of (stockHoldingsQuery.results as any[])) {
@@ -168,6 +181,7 @@ export async function GET(request: NextRequest) {
                         ...u,
                         ...processed.summary, // Merges stats, current_net_equity, equity_history
                         current_cash_balance: currentCashBalance,
+                        open_put_covered_capital: putCapitalByUser.get(u.id) || 0,
                         total_deposit,
                         top_holdings: topHoldings,
                         qqqStats,

@@ -19,6 +19,7 @@ interface UserSummary {
     initial_cost: number;
     current_net_equity: number;
     current_cash_balance?: number;
+    open_put_covered_capital?: number;
     total_deposit?: number;
     top_holdings?: Array<{
         symbol: string;
@@ -53,6 +54,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         transferRecord: true,
         initialCost: true,
         netProfit: true,
+        potentialMargin: true,
         cashBalance: true,
         holding1: true,
         holding2: true,
@@ -114,6 +116,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             transferRecord: true,
             initialCost: true,
             netProfit: true,
+            potentialMargin: true,
             cashBalance: true,
             holding1: true,
             holding2: true,
@@ -467,10 +470,31 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 14. Cash Balance */}
-                        {visibleRows.cashBalance && (
+                        {/* 13.5. Potential Margin */}
+                        {visibleRows.potentialMargin && (
                             <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="potentialMargin" visible={visibleRows.potentialMargin} />
+                                    潛在融資
+                                </td>
+                                {users.filter(isColumnVisible).map(user => {
+                                    const equity = user.current_net_equity || 0;
+                                    const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
+                                    const marginUsed = (user.open_put_covered_capital || 0) + debt;
+                                    const marginRate = equity > 0 ? marginUsed / equity : 0;
+                                    return (
+                                        <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                            <StatBadge value={marginRate} format={(v) => `${Math.round(v * 100)}%`} />
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
+                        {/* 14. Cash Balance */}
+                        {visibleRows.cashBalance && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
                                     帳戶現金
                                 </td>
