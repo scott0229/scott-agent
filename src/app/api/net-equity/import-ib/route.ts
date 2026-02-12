@@ -550,7 +550,18 @@ export async function POST(request: NextRequest) {
             // Get latest record date for this user
             const latestRecord = await db.prepare(
                 'SELECT MAX(date) as latest_date FROM DAILY_NET_EQUITY WHERE user_id = ?'
-            ).bind(userResult.id).first<{ latest_date: string | null }>();
+            ).bind(userResult.id).first<{ latest_date: number | null }>();
+
+            // Debug logging
+            console.log('[DEBUG] Import Preview:', {
+                userAlias: parsed.userAlias,
+                reportDate: parsed.date,
+                reportDateStr: parsed.dateStr,
+                latestRecordDate: latestRecord?.latest_date,
+                latestRecordDateStr: latestRecord?.latest_date
+                    ? new Date(latestRecord.latest_date * 1000).toISOString().split('T')[0]
+                    : 'N/A'
+            });
 
             return NextResponse.json({
                 preview: true,
