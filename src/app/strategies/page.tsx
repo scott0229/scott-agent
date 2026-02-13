@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX } from 'lucide-react';
+import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { StrategyDialog } from '@/components/StrategyDialog';
+import { AnnotationDialog } from '@/components/AnnotationDialog';
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import {
     AlertDialog,
@@ -68,6 +69,21 @@ interface Strategy {
     updated_at: number;
 }
 
+interface AnnotationItem {
+    id: number;
+    symbol: string;
+}
+
+interface Annotation {
+    id: number;
+    year: number;
+    description: string | null;
+    items: AnnotationItem[];
+    owners: { owner_id: number; user_id: string }[];
+    created_at: number;
+    updated_at: number;
+}
+
 export default function StrategiesPage() {
     const { toast } = useToast();
     const { selectedYear } = useYearFilter();
@@ -85,6 +101,11 @@ export default function StrategiesPage() {
     const [stockSymbolFilters, setStockSymbolFilters] = useState<Record<number, string>>({});
     const [optionSymbolFilters, setOptionSymbolFilters] = useState<Record<number, string>>({});
     const [filtersSaved, setFiltersSaved] = useState(false);
+    const [annotations, setAnnotations] = useState<Annotation[]>([]);
+    const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false);
+    const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
+    const [deleteAnnotationDialogOpen, setDeleteAnnotationDialogOpen] = useState(false);
+    const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
 
     // Load saved filters from localStorage on mount
     useEffect(() => {
@@ -119,6 +140,7 @@ export default function StrategiesPage() {
     useEffect(() => {
         fetchUsers();
         fetchStrategies();
+        fetchAnnotations();
     }, [selectedYear]);
 
 
@@ -172,6 +194,51 @@ export default function StrategiesPage() {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchAnnotations = async () => {
+        try {
+            const res = await fetch(`/api/annotations?year=${selectedYear}`);
+            if (res.ok) {
+                const data = await res.json();
+                setAnnotations(data.annotations || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch annotations:', error);
+        }
+    };
+
+    const handleAddAnnotation = () => {
+        setSelectedAnnotation(null);
+        setAnnotationDialogOpen(true);
+    };
+
+    const handleEditAnnotation = (annotation: Annotation) => {
+        setSelectedAnnotation(annotation);
+        setAnnotationDialogOpen(true);
+    };
+
+    const handleDeleteAnnotationClick = (annotation: Annotation) => {
+        setAnnotationToDelete(annotation);
+        setDeleteAnnotationDialogOpen(true);
+    };
+
+    const handleDeleteAnnotationConfirm = async () => {
+        if (!annotationToDelete) return;
+        try {
+            const res = await fetch(`/api/annotations?id=${annotationToDelete.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchAnnotations();
+            } else {
+                const data = await res.json();
+                toast({ title: '錯誤', description: data.error || '刪除失敗', variant: 'destructive' });
+            }
+        } catch (error) {
+            toast({ title: '錯誤', description: '網路錯誤', variant: 'destructive' });
+        } finally {
+            setDeleteAnnotationDialogOpen(false);
+            setAnnotationToDelete(null);
         }
     };
 
@@ -296,12 +363,59 @@ export default function StrategiesPage() {
                             <SelectItem value="status-old">未結案-舊到新</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Button onClick={handleAddAnnotation} variant="outline" className="gap-2">
+                        <StickyNote className="h-4 w-4" />
+                        新增註解
+                    </Button>
                     <Button onClick={handleAddStrategy} variant="secondary" className="gap-2 hover:bg-accent hover:text-accent-foreground">
                         <Plus className="h-4 w-4" />
                         新增
                     </Button>
                 </div>
             </div>
+
+            {/* Annotations Section */}
+            {annotations
+                .filter(a => selectedUserId === 'all' || a.owners.some(o => o.user_id === selectedUserId))
+                .length > 0 && (
+                    <div className="space-y-3">
+                        {annotations
+                            .filter(a => selectedUserId === 'all' || a.owners.some(o => o.user_id === selectedUserId))
+                            .map(annotation => (
+                                <div key={annotation.id} className="border-2 border-amber-400 bg-amber-50 rounded-lg px-4 py-3 flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-amber-700 font-medium text-sm">📌</span>
+                                            {annotation.owners.length >= users.length && users.length > 0 ? (
+                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm">全部用戶</span>
+                                            ) : (
+                                                annotation.owners.map((owner, idx) => (
+                                                    <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={() => setSelectedUserId(owner.user_id)}>{owner.user_id}</span>
+                                                ))
+                                            )}
+                                            {annotation.items.map((item, idx) => (
+                                                <span key={idx} className="text-sm">
+                                                    {idx > 0 && <span className="text-muted-foreground mx-1">|</span>}
+                                                    <span className="font-medium">{item.symbol}</span>
+                                                </span>
+                                            ))}
+                                            {annotation.description && (
+                                                <span className="text-sm text-gray-600">— {annotation.description}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditAnnotation(annotation)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteAnnotationClick(annotation)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
+                )}
 
             {/* Strategies Grid */}
             {loading ? (
@@ -630,7 +744,7 @@ export default function StrategiesPage() {
                                                                 let expiryLabel = '';
                                                                 if (option.to_date) {
                                                                     const toDate = new Date(option.to_date * 1000);
-                                                                    expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`;
+                                                                    expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}/${String(toDate.getDate()).padStart(2, '0')}`;
                                                                 }
 
                                                                 // Format settlement date (平倉日)
@@ -691,6 +805,15 @@ export default function StrategiesPage() {
                 currentYear={selectedYear}
             />
 
+            {/* Annotation Dialog */}
+            <AnnotationDialog
+                open={annotationDialogOpen}
+                onOpenChange={setAnnotationDialogOpen}
+                annotation={selectedAnnotation}
+                onSave={fetchAnnotations}
+                currentYear={selectedYear}
+            />
+
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
@@ -703,6 +826,24 @@ export default function StrategiesPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Annotation Confirmation Dialog */}
+            <AlertDialog open={deleteAnnotationDialogOpen} onOpenChange={setDeleteAnnotationDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            您確定要刪除此筆註解嗎？此操作無法復原。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAnnotationConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             刪除
                         </AlertDialogAction>
                     </AlertDialogFooter>

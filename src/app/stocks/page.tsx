@@ -193,10 +193,9 @@ export default function StockTradingPage() {
 
     const formatPnL = (val: number | null | undefined) => {
         if (val === null || val === undefined) return '-';
-        // Format with up to 2 decimal places, automatically removing trailing zeros
         return new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 0
         }).format(val);
     };
 
