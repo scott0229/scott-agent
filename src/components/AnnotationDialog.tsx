@@ -201,13 +201,36 @@ export function AnnotationDialog({ open, onOpenChange, annotation, onSave, curre
                                 <span className={formData.selectedUsers.length === 0 ? 'text-muted-foreground' : ''}>
                                     {formData.selectedUsers.length === 0
                                         ? '選擇用戶'
-                                        : formData.selectedUsers.map(u => u.userId).join(', ')
+                                        : users.length > 0 && formData.selectedUsers.length === users.length
+                                            ? '全部用戶'
+                                            : formData.selectedUsers.map(u => u.userId).join(', ')
                                     }
                                 </span>
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             </button>
                             {userDropdownOpen && (
                                 <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                                    {/* Select All */}
+                                    <div
+                                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer text-sm font-medium"
+                                        onClick={() => {
+                                            const allSelected = users.every(u => selectedUserIds.has(u.user_id));
+                                            if (allSelected) {
+                                                setFormData(prev => ({ ...prev, selectedUsers: [] }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    selectedUsers: users.map(u => ({ userId: u.user_id, ownerId: u.id })),
+                                                }));
+                                            }
+                                        }}
+                                    >
+                                        <div className={`w-4 h-4 border rounded flex items-center justify-center ${users.length > 0 && users.every(u => selectedUserIds.has(u.user_id)) ? 'bg-primary border-primary' : 'border-input'}`}>
+                                            {users.length > 0 && users.every(u => selectedUserIds.has(u.user_id)) && <Check className="h-3 w-3 text-primary-foreground" />}
+                                        </div>
+                                        全部用戶
+                                    </div>
+                                    <div className="border-t border-border" />
                                     {users.map(user => (
                                         <div
                                             key={user.id}
