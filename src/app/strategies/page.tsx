@@ -382,7 +382,7 @@ export default function StrategiesPage() {
                         {annotations
                             .filter(a => selectedUserId === 'all' || a.owners.some(o => o.user_id === selectedUserId))
                             .map(annotation => (
-                                <div key={annotation.id} className="border-2 border-amber-400 bg-amber-50 rounded-lg px-4 py-3 flex items-start justify-between gap-4">
+                                <div key={annotation.id} className="border-2 border-gray-300 bg-amber-50 rounded-lg px-4 py-3 flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-amber-700 font-medium text-sm">📌</span>
@@ -390,7 +390,7 @@ export default function StrategiesPage() {
                                                 <span className="bg-gray-200 px-2 py-0.5 rounded text-sm font-bold">全部用戶</span>
                                             ) : (
                                                 annotation.owners.map((owner, idx) => (
-                                                    <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={() => setSelectedUserId(owner.user_id)}>{owner.user_id}</span>
+                                                    <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-sm font-bold cursor-pointer hover:bg-gray-300 transition-colors" onClick={() => setSelectedUserId(owner.user_id)}>{owner.user_id}</span>
                                                 ))
                                             )}
                                             {annotation.items.map((item, idx) => (
