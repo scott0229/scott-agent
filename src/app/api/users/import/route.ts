@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { users, market_prices, sourceYear } = body;
+        const { users, market_prices, annotations: importAnnotations, sourceYear } = body;
 
         const { searchParams } = new URL(req.url);
         const targetYear = searchParams.get('targetYear');
@@ -560,12 +560,76 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Import annotations (top-level, not user-scoped)
+        let importedAnnotations = 0;
+        if (importAnnotations && Array.isArray(importAnnotations)) {
+            for (const ann of importAnnotations) {
+                try {
+                    const annYear = ann.year || (targetYear ? parseInt(targetYear as string) : new Date().getFullYear());
+                    const desc = ann.description || null;
+
+                    // Check for duplicate: same year + description + same items
+                    const itemSymbols = (ann.items || []).map((i: any) => i.symbol).sort().join(',');
+                    const { results: existingAnns } = await db.prepare(
+                        'SELECT id FROM ANNOTATIONS WHERE year = ? AND (description = ? OR (description IS NULL AND ? IS NULL))'
+                    ).bind(annYear, desc, desc).all();
+
+                    let isDuplicate = false;
+                    for (const existing of (existingAnns || [])) {
+                        const { results: existingItems } = await db.prepare(
+                            'SELECT symbol FROM ANNOTATION_ITEMS WHERE annotation_id = ? ORDER BY symbol'
+                        ).bind(existing.id).all();
+                        const existingSymbols = (existingItems || []).map((i: any) => i.symbol).sort().join(',');
+                        if (existingSymbols === itemSymbols) {
+                            isDuplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (isDuplicate) continue;
+
+                    // Insert annotation
+                    const firstOwner = ann.owners?.[0];
+                    const annResult = await db.prepare(
+                        `INSERT INTO ANNOTATIONS (user_id, owner_id, year, description, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
+                    ).bind(firstOwner?.user_id || null, null, annYear, desc).run();
+
+                    const newAnnId = annResult.meta.last_row_id as number;
+
+                    // Insert items
+                    if (ann.items && Array.isArray(ann.items)) {
+                        for (const item of ann.items) {
+                            if (!item.symbol) continue;
+                            await db.prepare(
+                                'INSERT INTO ANNOTATION_ITEMS (annotation_id, symbol) VALUES (?, ?)'
+                            ).bind(newAnnId, item.symbol).run();
+                        }
+                    }
+
+                    // Insert owners
+                    if (ann.owners && Array.isArray(ann.owners)) {
+                        for (const owner of ann.owners) {
+                            await db.prepare(
+                                'INSERT INTO ANNOTATION_OWNERS (annotation_id, owner_id, user_id) VALUES (?, ?, ?)'
+                            ).bind(newAnnId, owner.owner_id || null, owner.user_id || null).run();
+                        }
+                    }
+
+                    importedAnnotations++;
+                } catch (annErr) {
+                    console.error('Failed to import annotation:', annErr);
+                }
+            }
+        }
+
         return NextResponse.json({
             success: true,
             imported,
             updated,
             skipped,
             imported_market_prices: importedPrices,
+            imported_annotations: importedAnnotations,
             total: users.length,
             errors: errors.length > 0 ? errors : undefined
         });

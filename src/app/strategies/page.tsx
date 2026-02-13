@@ -387,7 +387,7 @@ export default function StrategiesPage() {
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-amber-700 font-medium text-sm">📌</span>
                                             {annotation.owners.length >= users.length && users.length > 0 ? (
-                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm">全部用戶</span>
+                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm font-bold">全部用戶</span>
                                             ) : (
                                                 annotation.owners.map((owner, idx) => (
                                                     <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={() => setSelectedUserId(owner.user_id)}>{owner.user_id}</span>
@@ -395,12 +395,12 @@ export default function StrategiesPage() {
                                             )}
                                             {annotation.items.map((item, idx) => (
                                                 <span key={idx} className="text-sm">
-                                                    {idx > 0 && <span className="text-muted-foreground mx-1">|</span>}
-                                                    <span className="font-medium">{item.symbol}</span>
+                                                    {idx > 0 && <span className="text-muted-foreground mr-1">|</span>}
+                                                    <span className="bg-yellow-100 px-1 rounded">{item.symbol}</span>
                                                 </span>
                                             ))}
                                             {annotation.description && (
-                                                <span className="text-sm text-gray-600">— {annotation.description}</span>
+                                                <span className="text-sm text-black">— {annotation.description}</span>
                                             )}
                                         </div>
                                     </div>

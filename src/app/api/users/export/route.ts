@@ -278,6 +278,41 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         }
     }
 
+    // Export annotations (not user-scoped, stored separately)
+    let annotationsExport: any[] = [];
+    try {
+        let annotationsQuery = 'SELECT * FROM ANNOTATIONS';
+        const annotationsParams: any[] = [];
+        if (year && year !== 'All') {
+            annotationsQuery += ' WHERE year = ?';
+            annotationsParams.push(parseInt(year));
+        }
+        annotationsQuery += ' ORDER BY id ASC';
+
+        const { results: annotationRows } = annotationsParams.length > 0
+            ? await db.prepare(annotationsQuery).bind(...annotationsParams).all()
+            : await db.prepare(annotationsQuery).all();
+
+        annotationsExport = await Promise.all(
+            (annotationRows || []).map(async (ann: any) => {
+                const { results: items } = await db.prepare(
+                    'SELECT symbol FROM ANNOTATION_ITEMS WHERE annotation_id = ? ORDER BY id'
+                ).bind(ann.id).all();
+                const { results: owners } = await db.prepare(
+                    'SELECT owner_id, user_id FROM ANNOTATION_OWNERS WHERE annotation_id = ? ORDER BY id'
+                ).bind(ann.id).all();
+                return {
+                    year: ann.year,
+                    description: ann.description,
+                    items: (items || []).map((i: any) => ({ symbol: i.symbol })),
+                    owners: (owners || []).map((o: any) => ({ owner_id: o.owner_id, user_id: o.user_id })),
+                };
+            })
+        );
+    } catch (annErr) {
+        console.error('Failed to export annotations:', annErr);
+    }
+
     // Remove id field from users before export (used internally for queries only)
     for (const user of users) {
         delete (user as any).id;
@@ -286,6 +321,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
     return {
         users,
         market_prices: marketPrices,
+        annotations: annotationsExport,
         exportDate: new Date().toISOString(),
         sourceYear: year || 'All',
         count: users.length
