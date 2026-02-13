@@ -52,6 +52,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 
 interface StockTrade {
     id: number;
@@ -101,6 +102,7 @@ export default function StockTradingPage() {
 
 
     const { selectedYear } = useYearFilter();
+    const { settings } = useAdminSettings();
 
     // Auth context (simplified)
     // Auth context (simplified)
@@ -377,7 +379,7 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="text-center">交易代碼</TableHead>
+                                {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -434,7 +436,7 @@ export default function StockTradingPage() {
                                             <TableCell className="text-center py-1">{trade.quantity.toLocaleString()}</TableCell>
                                             <TableCell className="text-center py-1">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center py-1">
-                                                {trade.current_market_price ? formatMoney(trade.current_market_price) : '-'}
+                                                {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 {trade.close_price ? formatMoney(trade.close_price) : '-'}
@@ -442,9 +444,11 @@ export default function StockTradingPage() {
                                             <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center font-mono text-sm py-1">
-                                                {trade.code || '-'}
-                                            </TableCell>
+                                            {settings.showTradeCode && (
+                                                <TableCell className="text-center font-mono text-sm py-1">
+                                                    {trade.code || '-'}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="py-1">
                                                 <div className="flex justify-end gap-1">
                                                     {canEdit(trade) && (

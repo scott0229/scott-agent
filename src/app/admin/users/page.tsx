@@ -22,6 +22,7 @@ import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive, Check, Eraser } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
 
@@ -134,6 +135,7 @@ export default function AdminUsersPage() {
     const { toast } = useToast();
     const router = useRouter();
     const { selectedYear } = useYearFilter();
+    const { settings } = useAdminSettings();
 
     const fetchCurrentUser = async () => {
         try {
@@ -1218,8 +1220,8 @@ export default function AdminUsersPage() {
 
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 <TableHead className="text-center">IB 帳號</TableHead>
-                                <TableHead className="text-center">手機號碼</TableHead>
-                                <TableHead>郵件地址</TableHead>
+                                {settings.showPhone && <TableHead className="text-center">手機號碼</TableHead>}
+                                {settings.showEmail && <TableHead>郵件地址</TableHead>}
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -1318,8 +1320,8 @@ export default function AdminUsersPage() {
 
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                                <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>
-                                                <TableCell className="py-1">{user.email}</TableCell>
+                                                {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
+                                                {settings.showEmail && <TableCell className="py-1">{user.email}</TableCell>}
                                                 <TableCell className="text-right py-1">
                                                     {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
                                                         <div className="flex justify-end gap-1">

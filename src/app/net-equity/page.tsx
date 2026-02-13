@@ -362,13 +362,13 @@ export default function NetEquityPage() {
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">淨利潤</td>
-                                                <td className="h-7 py-1 px-2 text-center">
+                                                <td className={cn("h-7 py-1 px-2 text-center", (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0) < 0 && "bg-pink-50")}>
                                                     {formatMoney((user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0))}
                                                 </td>
-                                                <td className="h-7 py-1 px-2 text-center">
+                                                <td className={cn("h-7 py-1 px-2 text-center", user.qqqStats && (user.qqqStats.currentEquity - user.qqqStats.startEquity - (user.total_deposit || 0)) < 0 && "bg-pink-50")}>
                                                     {user.qqqStats ? formatMoney(user.qqqStats.currentEquity - user.qqqStats.startEquity - (user.total_deposit || 0)) : '-'}
                                                 </td>
-                                                <td className="h-7 py-1 px-2 text-center">
+                                                <td className={cn("h-7 py-1 px-2 text-center", user.qldStats && (user.qldStats.currentEquity - user.qldStats.startEquity - (user.total_deposit || 0)) < 0 && "bg-pink-50")}>
                                                     {user.qldStats ? formatMoney(user.qldStats.currentEquity - user.qldStats.startEquity - (user.total_deposit || 0)) : '-'}
                                                 </td>
                                             </tr>
@@ -388,7 +388,7 @@ export default function NetEquityPage() {
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                                 <td className="h-7 py-1 px-2">帳戶現金</td>
-                                                <td className="h-7 py-1 px-2 text-center">
+                                                <td className={cn("h-7 py-1 px-2 text-center", (user.current_cash_balance || 0) < 0 && "bg-pink-50")}>
                                                     {user.current_cash_balance !== undefined ? formatMoney(user.current_cash_balance) : '0'}
                                                 </td>
                                                 <td className="h-7 py-1 px-2 text-center">

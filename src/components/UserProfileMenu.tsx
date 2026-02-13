@@ -8,6 +8,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuCheckboxItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
@@ -22,8 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, User as UserIcon, Upload, Loader2, Edit } from 'lucide-react';
+import { LogOut, User as UserIcon, Upload, Loader2, Edit, Eye } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useAdminSettings } from "@/contexts/AdminSettingsContext";
 
 interface User {
     id: number;
@@ -53,6 +55,7 @@ export function UserProfileMenu() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const { toast } = useToast();
+    const { settings, updateSetting } = useAdminSettings();
 
     const fetchUser = async () => {
         try {
@@ -388,6 +391,41 @@ export function UserProfileMenu() {
                                             })()}
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Display Settings - Admin Only */}
+                            {user.role === 'admin' && (
+                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                    <Label>顯示設定</Label>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="w-full justify-start gap-2 font-normal">
+                                                <Eye className="h-4 w-4" />
+                                                欄位顯示 ({[settings.showTradeCode, settings.showPhone, settings.showEmail].filter(Boolean).length}/3)
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start" className="w-48">
+                                            <DropdownMenuCheckboxItem
+                                                checked={settings.showTradeCode}
+                                                onCheckedChange={(v) => updateSetting('showTradeCode', v)}
+                                            >
+                                                交易代碼
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={settings.showPhone}
+                                                onCheckedChange={(v) => updateSetting('showPhone', v)}
+                                            >
+                                                手機號碼
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={settings.showEmail}
+                                                onCheckedChange={(v) => updateSetting('showEmail', v)}
+                                            >
+                                                郵件地址
+                                            </DropdownMenuCheckboxItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             )}
 

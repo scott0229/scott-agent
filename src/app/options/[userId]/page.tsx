@@ -40,6 +40,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 
 interface Option {
     id: number;
@@ -90,6 +91,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const { toast } = useToast();
     const router = useRouter();
+    const { settings } = useAdminSettings();
 
     // Sync filters with URL params
     useEffect(() => {
@@ -457,7 +459,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">已實現損益</TableHead>
 
 
-                            <TableHead className="text-center">交易代碼</TableHead>
+                            {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             <TableHead className="text-center"></TableHead>
                         </TableRow>
                     </TableHeader>
@@ -566,9 +568,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
 
 
-                                        <TableCell className="text-center font-mono text-sm">
-                                            {opt.code || '-'}
-                                        </TableCell>
+                                        {settings.showTradeCode && (
+                                            <TableCell className="text-center font-mono text-sm">
+                                                {opt.code || '-'}
+                                            </TableCell>
+                                        )}
                                         <TableCell>
                                             {/* Only non-customer roles can edit/delete */}
                                             {currentUserRole && currentUserRole !== 'customer' && (

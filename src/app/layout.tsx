@@ -5,6 +5,7 @@ import { GeometricBackground } from "@/components/GeometricBackground";
 import { Navbar } from "@/components/Navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { YearFilterProvider } from "@/contexts/YearFilterContext";
+import { AdminSettingsProvider } from "@/contexts/AdminSettingsContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,8 +26,10 @@ export default function RootLayout({
       >
         <GeometricBackground />
         <YearFilterProvider>
-          <Navbar />
-          {children}
+          <AdminSettingsProvider>
+            <Navbar />
+            {children}
+          </AdminSettingsProvider>
         </YearFilterProvider>
         <Toaster />
       </body>
