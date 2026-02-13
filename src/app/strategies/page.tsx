@@ -549,7 +549,7 @@ export default function StrategiesPage() {
 
                                                                 return (
                                                                     <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
-                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : (stock.source === 'assigned' ? 'Assigned' : <span className="font-bold">Open</span>)}</td>
+                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : (stock.source === 'assigned' ? <span className="font-bold">Assigned</span> : <span className="font-bold">Open</span>)}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.symbol}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{stock.open_price?.toFixed(2) || '-'}</td>
@@ -646,7 +646,7 @@ export default function StrategiesPage() {
 
                                                                 return (
                                                                     <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
-                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${option.operation === 'Open' ? 'bg-pink-50' : ''}`}>{option.operation === 'Open' ? <span className="font-bold">{option.operation}</span> : option.operation}</td>
+                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${option.operation === 'Open' ? 'bg-pink-50' : ''}`}>{option.operation === 'Closed' ? option.operation : <span className="font-bold">{option.operation}</span>}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{optionLabel}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{option.quantity}</td>
                                                                         <td className="py-1 px-2 text-gray-900 text-center">{formattedOpenDate}</td>
