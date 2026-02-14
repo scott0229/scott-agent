@@ -217,14 +217,14 @@ export async function GET(req: NextRequest) {
                         const dailyPremiumQuery = `
                             SELECT 
                                 owner_id,
-                                settlement_date as date,
+                                CAST(strftime('%s', date(datetime(COALESCE(settlement_date, open_date), 'unixepoch'))) AS INTEGER) as date,
                                 SUM(COALESCE(final_profit, 0)) as daily_profit
                             FROM OPTIONS
-                            WHERE year = ? AND settlement_date IS NOT NULL
-                            GROUP BY owner_id, settlement_date
-                            ORDER BY owner_id, settlement_date ASC
+                            WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
+                            GROUP BY owner_id, date
+                            ORDER BY owner_id, date ASC
                         `;
-                        const { results: dailyPremiumResults } = await db.prepare(dailyPremiumQuery).bind(parseInt(year)).all();
+                        const { results: dailyPremiumResults } = await db.prepare(dailyPremiumQuery).bind(year).all();
 
                         // Build map: userId -> [{date, daily_profit}]
                         const dailyPremiumMap = new Map<number, { date: number; daily_profit: number }[]>();

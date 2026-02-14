@@ -368,6 +368,31 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
+                        {/* Premium Rate */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金率</td>
+                            {columnVisibility.allUsers && (
+                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
+                                    {(() => {
+                                        const costBase = totalInitialCost || 1;
+                                        return <StatBadge>{((totalAnnualPremium / costBase) * 100).toFixed(2)}%</StatBadge>;
+                                    })()}
+                                </td>
+                            )}
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {(() => {
+                                            const costBase = ((user.initial_cost || 0) + (user.net_deposit || 0)) || 1;
+                                            const rate = ((user.total_profit || 0) / costBase) * 100;
+                                            return <StatBadge>{rate.toFixed(2)}%</StatBadge>;
+                                        })()}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
