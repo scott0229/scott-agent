@@ -272,6 +272,7 @@ export default function AdminUsersPage() {
         report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
+        report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
