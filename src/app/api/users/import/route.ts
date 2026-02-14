@@ -595,12 +595,21 @@ export async function POST(req: NextRequest) {
 
                     if (isDuplicate) continue;
 
-                    // Insert annotation
+                    // Insert annotation - remap owner_id from first owner
                     const firstOwner = ann.owners?.[0];
+                    let annOwnerId = null;
+                    if (firstOwner?.user_id) {
+                        const matchedUser = await db.prepare(
+                            'SELECT id FROM USERS WHERE user_id = ? LIMIT 1'
+                        ).bind(firstOwner.user_id).first();
+                        if (matchedUser) {
+                            annOwnerId = matchedUser.id;
+                        }
+                    }
                     const annResult = await db.prepare(
                         `INSERT INTO ANNOTATIONS (user_id, owner_id, year, description, created_at, updated_at)
                          VALUES (?, ?, ?, ?, unixepoch(), unixepoch())`
-                    ).bind(firstOwner?.user_id || null, null, annYear, desc).run();
+                    ).bind(firstOwner?.user_id || null, annOwnerId, annYear, desc).run();
 
                     const newAnnId = annResult.meta.last_row_id as number;
 
@@ -614,12 +623,26 @@ export async function POST(req: NextRequest) {
                         }
                     }
 
-                    // Insert owners
+                    // Insert owners - remap owner_id by looking up user_id in new DB
                     if (ann.owners && Array.isArray(ann.owners)) {
                         for (const owner of ann.owners) {
-                            await db.prepare(
-                                'INSERT INTO ANNOTATION_OWNERS (annotation_id, owner_id, user_id) VALUES (?, ?, ?)'
-                            ).bind(newAnnId, owner.owner_id || null, owner.user_id || null).run();
+                            let newOwnerId = owner.owner_id || null;
+                            // Remap owner_id: look up user by user_id string to get new DB id
+                            if (owner.user_id) {
+                                const matchedUser = await db.prepare(
+                                    'SELECT id FROM USERS WHERE user_id = ? LIMIT 1'
+                                ).bind(owner.user_id).first();
+                                if (matchedUser) {
+                                    newOwnerId = matchedUser.id;
+                                }
+                            }
+                            try {
+                                await db.prepare(
+                                    'INSERT INTO ANNOTATION_OWNERS (annotation_id, owner_id, user_id) VALUES (?, ?, ?)'
+                                ).bind(newAnnId, newOwnerId, owner.user_id || null).run();
+                            } catch (ownerErr) {
+                                console.error('Failed to import annotation owner:', ownerErr);
+                            }
                         }
                     }
 
