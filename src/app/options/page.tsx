@@ -23,6 +23,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { OptionsClientSkeleton } from '@/components/LoadingSkeletons';
 import { UserAnalysisPanel } from '@/components/UserAnalysisPanel';
 import { OptionsSummaryPanel } from '@/components/OptionsSummaryPanel';
+import { EquityPremiumChart } from '@/components/EquityPremiumChart';
 import { useWindowSize } from '@/hooks/use-window-size';
 
 interface UserStats {
@@ -50,6 +51,15 @@ interface User {
     open_put_covered_capital?: number;
     current_cash_balance?: number;
     last_update_date?: number;
+    daily_premium?: { date: number; cumulative_profit: number }[];
+    deposits?: { date: number; amount: number }[];
+}
+
+interface EquityHistoryItem {
+    date: number;
+    net_equity: number;
+    rate: number;
+    exposure_adjustment?: string;
 }
 
 export default function OptionsPage() {
@@ -62,6 +72,7 @@ export default function OptionsPage() {
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
     const [sortOrder, setSortOrder] = useState('margin-desc');
+    const [equityDataMap, setEquityDataMap] = useState<Map<number, EquityHistoryItem[]>>(new Map());
     const router = useRouter();
 
     // Use window size for responsive grid calculation
@@ -100,12 +111,31 @@ export default function OptionsPage() {
 
             // 2. If not customer (admin/trader), fetch clients filtered by year
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/users?mode=selection&roles=customer&year=${year}`, {
-                cache: 'no-store'
-            });
-            const data = await res.json();
+            const [usersRes, equityRes] = await Promise.all([
+                fetch(`/api/users?mode=selection&roles=customer&year=${year}`, { cache: 'no-store' }),
+                fetch(`/api/net-equity?year=${year}`, { cache: 'no-store' })
+            ]);
+            const data = await usersRes.json();
             if (data.users) {
                 setClients(data.users);
+            }
+
+            // Parse equity history per user
+            if (equityRes.ok) {
+                try {
+                    const eqData = await equityRes.json();
+                    if (eqData.success && eqData.data) {
+                        const map = new Map<number, EquityHistoryItem[]>();
+                        for (const user of eqData.data) {
+                            if (user.equity_history) {
+                                map.set(user.id, user.equity_history);
+                            }
+                        }
+                        setEquityDataMap(map);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse equity data:', e);
+                }
             }
         } catch (error) {
             console.error('Failed to init options page:', error);
@@ -125,9 +155,6 @@ export default function OptionsPage() {
     // Helper to determine number of columns based on window width
     // Tailwind breakpoints: md: 768px (2 cols), lg: 1024px (3 cols)
     const getNumColumns = () => {
-        if (!width) return 1; // Default
-        if (width >= 1024) return 2;
-        if (width >= 768) return 2;
         return 1;
     };
 
@@ -195,7 +222,7 @@ export default function OptionsPage() {
     }
 
     return (
-        <div className="container mx-auto py-10 max-w-[1200px]">
+        <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
                     {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 期權交易
@@ -217,7 +244,7 @@ export default function OptionsPage() {
                 <OptionsSummaryPanel users={sortedClients} year={selectedYear} />
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
                 {clientsWithPanel.map((item, index) => {
                     if (item.type === 'panel') {
                         // Full width panel that spans all columns
@@ -237,169 +264,183 @@ export default function OptionsPage() {
                     const isExpanded = (client.user_id || client.email) === expandedUserId;
 
                     return (
-                        <div
+                        <Card
                             key={client.id}
+                            className="hover:shadow-lg transition-all hover:border-primary/50 py-0"
                         >
-                            {client.monthly_stats && client.monthly_stats.length > 0 ? (
-                                <div>
+                            <CardContent className="p-4">
+                                {client.monthly_stats && client.monthly_stats.length > 0 ? (
+                                    <div className="grid grid-cols-1 lg:grid-cols-[45%_1fr] gap-4">
 
-                                    <div className="border rounded-md overflow-hidden">
-                                        {/* Header Table */}
-                                        <div className="bg-muted/40 border-b">
-                                            <table className="w-full text-[13px] table-fixed">
-                                                <colgroup>
-                                                    <col className="w-[16%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                </colgroup>
-                                                <thead>
-                                                    <tr className="text-[13px] font-medium text-muted-foreground bg-muted/40">
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">
-                                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm inline-flex items-center gap-1.5">
-                                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-                                                                {displayName}
-                                                            </span>
-                                                        </th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">總損益</th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT</th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT勝率</th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
-                                                        <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">周轉率</th>
-                                                    </tr>
-                                                </thead>
-                                            </table>
+                                        <div className="border rounded-md overflow-hidden">
+                                            {/* Header Table */}
+                                            <div className="bg-muted/40 border-b">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[16%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                    </colgroup>
+                                                    <thead>
+                                                        <tr className="text-[13px] font-medium text-muted-foreground bg-muted/40">
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">
+                                                                <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-sm inline-flex items-center gap-1.5">
+                                                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                                                                    {displayName}
+                                                                </span>
+                                                            </th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">總損益</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT勝率</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">周轉率</th>
+                                                        </tr>
+                                                    </thead>
+                                                </table>
+                                            </div>
+
+                                            {/* Scrollable Body Table */}
+                                            <div className="relative bg-white">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[16%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                    </colgroup>
+                                                    <tbody className="text-[13px]">
+                                                        {Array.from({ length: 12 }, (_, i) => {
+                                                            const monthStr = String(i + 1).padStart(2, '0');
+                                                            const stat = (client.monthly_stats || []).find(s => s.month === monthStr) || {
+                                                                month: monthStr,
+                                                                total_profit: 0,
+                                                                put_profit: 0,
+                                                                call_profit: 0,
+                                                                put_win_rate: null,
+                                                                call_win_rate: null,
+                                                                turnover: 0
+                                                            };
+                                                            const index = i;
+                                                            const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
+                                                            const monthNum = parseInt(stat.month);
+                                                            const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
+                                                            const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+                                                            const turnoverRate = (initialCost * daysInMonth) > 0 && stat.turnover ? stat.turnover / (initialCost * daysInMonth) : 0;
+                                                            return (
+                                                                <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
+                                                                    <td className="px-1 text-center h-7">{stat.month}月</td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {Math.round(stat.total_profit).toLocaleString()}
+                                                                    </td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {Math.round(stat.put_profit).toLocaleString()}
+                                                                    </td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {stat.put_win_rate !== null ? `${stat.put_win_rate}%` : '-'}
+                                                                    </td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {Math.round(stat.call_profit).toLocaleString()}
+                                                                    </td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {stat.call_win_rate !== null ? `${stat.call_win_rate}%` : '-'}
+                                                                    </td>
+                                                                    <td className="px-1 text-center h-7">
+                                                                        {turnoverRate > 0 ? `${(turnoverRate * 100).toFixed(0)}%` : '-'}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {/* Footer Table */}
+                                            <div className="bg-muted/40 border-t">
+                                                <table className="w-full text-[13px] table-fixed">
+                                                    <colgroup>
+                                                        <col className="w-[16%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
+                                                    </colgroup>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td className="px-1 text-center h-7"></td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {Math.round(client.total_profit ?? 0).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {(() => {
+                                                                    const stats = client.monthly_stats.filter(s => s.put_win_rate !== null);
+                                                                    if (stats.length === 0) return '-';
+                                                                    const avg = Math.round(stats.reduce((sum, s) => sum + (s.put_win_rate || 0), 0) / stats.length);
+                                                                    return `${avg}%`;
+                                                                })()}
+                                                            </td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {(() => {
+                                                                    const stats = client.monthly_stats.filter(s => s.call_win_rate !== null);
+                                                                    if (stats.length === 0) return '-';
+                                                                    const avg = Math.round(stats.reduce((sum, s) => sum + (s.call_win_rate || 0), 0) / stats.length);
+                                                                    return `${avg}%`;
+                                                                })()}
+                                                            </td>
+                                                            <td className="px-1 text-center h-7">
+                                                                {(() => {
+                                                                    const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
+                                                                    const monthsWithTurnover = client.monthly_stats.filter(s => (s.turnover || 0) > 0);
+                                                                    const totalTurnover = monthsWithTurnover.reduce((sum, s) => sum + (s.turnover || 0), 0);
+                                                                    const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
+                                                                    const totalDays = monthsWithTurnover.reduce((sum, s) => {
+                                                                        const monthNum = parseInt(s.month);
+                                                                        return sum + new Date(yearNum, monthNum, 0).getDate();
+                                                                    }, 0);
+                                                                    const rate = (initialCost * totalDays) > 0 ? totalTurnover / (initialCost * totalDays) : 0;
+                                                                    return rate > 0 ? `${(rate * 100).toFixed(0)}%` : '-';
+                                                                })()}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
 
-                                        {/* Scrollable Body Table */}
-                                        <div className="relative bg-white">
-                                            <table className="w-full text-[13px] table-fixed">
-                                                <colgroup>
-                                                    <col className="w-[16%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                </colgroup>
-                                                <tbody className="text-[13px]">
-                                                    {Array.from({ length: 12 }, (_, i) => {
-                                                        const monthStr = String(i + 1).padStart(2, '0');
-                                                        const stat = (client.monthly_stats || []).find(s => s.month === monthStr) || {
-                                                            month: monthStr,
-                                                            total_profit: 0,
-                                                            put_profit: 0,
-                                                            call_profit: 0,
-                                                            put_win_rate: null,
-                                                            call_win_rate: null,
-                                                            turnover: 0
-                                                        };
-                                                        const index = i;
-                                                        const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
-                                                        const monthNum = parseInt(stat.month);
-                                                        const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
-                                                        const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-                                                        const turnoverRate = (initialCost * daysInMonth) > 0 && stat.turnover ? stat.turnover / (initialCost * daysInMonth) : 0;
-                                                        return (
-                                                            <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
-                                                                <td className="px-1 text-center h-7">{stat.month}月</td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {Math.round(stat.total_profit).toLocaleString()}
-                                                                </td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {Math.round(stat.put_profit).toLocaleString()}
-                                                                </td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {stat.put_win_rate !== null ? `${stat.put_win_rate}%` : '-'}
-                                                                </td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {Math.round(stat.call_profit).toLocaleString()}
-                                                                </td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {stat.call_win_rate !== null ? `${stat.call_win_rate}%` : '-'}
-                                                                </td>
-                                                                <td className="px-1 text-center h-7">
-                                                                    {turnoverRate > 0 ? `${(turnoverRate * 100).toFixed(0)}%` : '-'}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        {/* Footer Table */}
-                                        <div className="bg-muted/40 border-t">
-                                            <table className="w-full text-[13px] table-fixed">
-                                                <colgroup>
-                                                    <col className="w-[16%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                    <col className="w-[12%]" />
-                                                </colgroup>
-                                                <tbody>
-                                                    <tr>
-                                                        <td className="px-1 text-center h-7"></td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {Math.round(client.total_profit ?? 0).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {(() => {
-                                                                const stats = client.monthly_stats.filter(s => s.put_win_rate !== null);
-                                                                if (stats.length === 0) return '-';
-                                                                const avg = Math.round(stats.reduce((sum, s) => sum + (s.put_win_rate || 0), 0) / stats.length);
-                                                                return `${avg}%`;
-                                                            })()}
-                                                        </td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
-                                                        </td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {(() => {
-                                                                const stats = client.monthly_stats.filter(s => s.call_win_rate !== null);
-                                                                if (stats.length === 0) return '-';
-                                                                const avg = Math.round(stats.reduce((sum, s) => sum + (s.call_win_rate || 0), 0) / stats.length);
-                                                                return `${avg}%`;
-                                                            })()}
-                                                        </td>
-                                                        <td className="px-1 text-center h-7">
-                                                            {(() => {
-                                                                const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
-                                                                const monthsWithTurnover = client.monthly_stats.filter(s => (s.turnover || 0) > 0);
-                                                                const totalTurnover = monthsWithTurnover.reduce((sum, s) => sum + (s.turnover || 0), 0);
-                                                                const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
-                                                                const totalDays = monthsWithTurnover.reduce((sum, s) => {
-                                                                    const monthNum = parseInt(s.month);
-                                                                    return sum + new Date(yearNum, monthNum, 0).getDate();
-                                                                }, 0);
-                                                                const rate = (initialCost * totalDays) > 0 ? totalTurnover / (initialCost * totalDays) : 0;
-                                                                return rate > 0 ? `${(rate * 100).toFixed(0)}%` : '-';
-                                                            })()}
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                        {/* Equity + Premium Chart */}
+                                        <div className="h-full min-h-[300px] flex items-center">
+                                            <EquityPremiumChart
+                                                equityHistory={equityDataMap.get(client.id) || []}
+                                                dailyPremium={client.daily_premium || []}
+                                                initialCost={client.initial_cost || 0}
+                                                netDeposit={client.net_deposit || 0}
+                                                deposits={client.deposits || []}
+                                                name={displayName}
+                                            />
                                         </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="text-sm text-muted-foreground mt-2">
-                                    查看{client.options_count || 0}筆交易記錄 &rarr;
-                                </div>
-                            )}
-
-                        </div>
+                                ) : (
+                                    <div className="text-sm text-muted-foreground mt-2">
+                                        此用戶尚無交易紀錄
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     );
                 })}
 

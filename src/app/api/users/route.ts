@@ -211,6 +211,77 @@ export async function GET(req: NextRequest) {
                     });
                 }
 
+                // Fetch daily premium data (grouped by settlement_date) for chart
+                if (year && year !== 'All') {
+                    try {
+                        const dailyPremiumQuery = `
+                            SELECT 
+                                owner_id,
+                                settlement_date as date,
+                                SUM(COALESCE(final_profit, 0)) as daily_profit
+                            FROM OPTIONS
+                            WHERE year = ? AND settlement_date IS NOT NULL
+                            GROUP BY owner_id, settlement_date
+                            ORDER BY owner_id, settlement_date ASC
+                        `;
+                        const { results: dailyPremiumResults } = await db.prepare(dailyPremiumQuery).bind(parseInt(year)).all();
+
+                        // Build map: userId -> [{date, daily_profit}]
+                        const dailyPremiumMap = new Map<number, { date: number; daily_profit: number }[]>();
+                        (dailyPremiumResults as any[]).forEach((row: any) => {
+                            if (!dailyPremiumMap.has(row.owner_id)) {
+                                dailyPremiumMap.set(row.owner_id, []);
+                            }
+                            dailyPremiumMap.get(row.owner_id)!.push({
+                                date: row.date,
+                                daily_profit: row.daily_profit
+                            });
+                        });
+
+                        // Attach daily_premium to each user (with cumulative sum)
+                        (users as any[]).forEach((user: any) => {
+                            const dailyData = dailyPremiumMap.get(user.id) || [];
+                            let cumulative = 0;
+                            user.daily_premium = dailyData.map(d => {
+                                cumulative += d.daily_profit;
+                                return { date: d.date, cumulative_profit: cumulative };
+                            });
+                        });
+                    } catch (e) {
+                        console.error('Failed to fetch daily premium:', e);
+                    }
+                }
+
+                // Fetch deposits for chart daily cost-base calculation
+                if (year && year !== 'All') {
+                    try {
+                        const depositsQuery = `
+                            SELECT user_id, deposit_date, amount
+                            FROM DEPOSITS
+                            WHERE year = ?
+                            ORDER BY user_id, deposit_date ASC
+                        `;
+                        const { results: depositResults } = await db.prepare(depositsQuery).bind(parseInt(year)).all();
+
+                        const depositsMap = new Map<number, { date: number; amount: number }[]>();
+                        (depositResults as any[]).forEach((row: any) => {
+                            if (!depositsMap.has(row.user_id)) {
+                                depositsMap.set(row.user_id, []);
+                            }
+                            depositsMap.get(row.user_id)!.push({
+                                date: row.deposit_date,
+                                amount: row.amount
+                            });
+                        });
+
+                        (users as any[]).forEach((user: any) => {
+                            user.deposits = depositsMap.get(user.id) || [];
+                        });
+                    } catch (e) {
+                        console.error('Failed to fetch deposits:', e);
+                        // Gracefully continue without deposits data
+                    }
+                }
                 // Calculate Market Data Count
                 let marketDataCount = 0;
                 if (year && year !== 'All') {
