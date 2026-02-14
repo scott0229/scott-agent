@@ -191,7 +191,7 @@ export function AnnotationDialog({ open, onOpenChange, annotation, onSave, curre
                 <div className="space-y-4 py-4 px-1">
                     {/* Multi-User Selection */}
                     <div className="flex items-start gap-3">
-                        <Label className="w-16 shrink-0 mt-2">用戶</Label>
+                        <Label className="shrink-0 mt-2">用戶</Label>
                         <div className="flex-1 relative" ref={dropdownRef}>
                             <button
                                 type="button"

@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
                         return b.quantity - a.quantity;
                     });
 
-                    const topHoldings = sortedHoldings.slice(0, 3);
+                    const topHoldings = sortedHoldings;
 
                     // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
                     const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);

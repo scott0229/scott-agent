@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote } from 'lucide-react';
+import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote, AlertTriangle } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -63,6 +63,7 @@ interface Strategy {
     owner_id: number;
     year: number;
     status?: string;
+    option_strategy?: string;
     stocks: StockTrade[];
     options: Option[];
     created_at: number;
@@ -453,9 +454,31 @@ export default function StrategiesPage() {
 
                             const totalProfit = stockProfit + optionProfit;
 
-                            return { ...strategy, totalProfit };
+                            // Check for CC/PP mismatch
+                            let hasMismatch = false;
+                            if (strategy.option_strategy) {
+                                const strats = strategy.option_strategy.split(',').map(s => s.trim());
+                                const openStks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+                                const totalShares = openStks.reduce((sum, s) => sum + s.quantity, 0);
+                                const expected = Math.floor(totalShares / 100);
+                                if (strats.includes('Covered Call') && expected > 0) {
+                                    const openCalls = strategy.options.filter(o => o.operation === 'Open' && o.type === 'CALL').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
+                                    if (openCalls < expected) hasMismatch = true;
+                                }
+                                if (strats.includes('Protective Put') && expected > 0) {
+                                    const openPuts = strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
+                                    if (openPuts < expected) hasMismatch = true;
+                                }
+                            }
+
+                            return { ...strategy, totalProfit, hasMismatch };
                         })
                         .sort((a, b) => {
+                            // Mismatch strategies always come first
+                            if (a.hasMismatch !== b.hasMismatch) {
+                                return a.hasMismatch ? -1 : 1;
+                            }
+
                             if (sortOrder === 'date-new') {
                                 // Sort by creation date (newest first)
                                 return b.created_at - a.created_at;
@@ -486,318 +509,359 @@ export default function StrategiesPage() {
                                 return a.created_at - b.created_at;
                             }
                         })
-                        .map((strategy) => (
-                            <Card key={strategy.id} className="hover:shadow-lg transition-shadow p-0 gap-2">
-                                <CardHeader className="px-4 pt-2 pb-0">
-                                    {(() => {
-                                        // Calculate total profit from stocks
-                                        const stockProfit = strategy.stocks.reduce((sum, stock) => {
-                                            if (stock.close_price && stock.open_price) {
-                                                return sum + (stock.close_price - stock.open_price) * stock.quantity;
-                                            } else if (!stock.close_price && stock.current_market_price) {
-                                                // Include unrealized P&L for open positions
-                                                return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
-                                            }
-                                            return sum;
-                                        }, 0);
+                        .map((strategy) => {
+                            return (
+                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 ${strategy.hasMismatch ? 'border-2 border-red-400' : ''}`}>
+                                    <CardHeader className="px-4 pt-2 pb-0">
+                                        {(() => {
+                                            // Calculate total profit from stocks
+                                            const stockProfit = strategy.stocks.reduce((sum, stock) => {
+                                                if (stock.close_price && stock.open_price) {
+                                                    return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                                } else if (!stock.close_price && stock.current_market_price) {
+                                                    // Include unrealized P&L for open positions
+                                                    return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
+                                                }
+                                                return sum;
+                                            }, 0);
 
-                                        // Calculate total profit from options
-                                        const optionProfit = strategy.options.reduce((sum, option) => {
-                                            if (option.final_profit !== null && option.final_profit !== undefined) {
-                                                return sum + option.final_profit;
-                                            }
-                                            return sum;
-                                        }, 0);
+                                            // Calculate total profit from options
+                                            const optionProfit = strategy.options.reduce((sum, option) => {
+                                                if (option.final_profit !== null && option.final_profit !== undefined) {
+                                                    return sum + option.final_profit;
+                                                }
+                                                return sum;
+                                            }, 0);
 
-                                        const totalProfit = stockProfit + optionProfit;
+                                            const totalProfit = stockProfit + optionProfit;
 
-                                        // Calculate total margin
-                                        const stockMargin = strategy.stocks
-                                            .filter(s => s.status === 'Open' || (s as any).source === 'assigned')
-                                            .reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0);
-                                        const optionMargin = strategy.options
-                                            .filter(o => o.operation === 'Open' && o.type === 'PUT')
-                                            .reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0);
-                                        const totalMargin = stockMargin + optionMargin;
+                                            // Calculate total margin
+                                            const stockMargin = strategy.stocks
+                                                .filter(s => s.status === 'Open' || (s as any).source === 'assigned')
+                                                .reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0);
+                                            const optionMargin = strategy.options
+                                                .filter(o => o.operation === 'Open' && o.type === 'PUT')
+                                                .reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0);
+                                            const totalMargin = stockMargin + optionMargin;
 
-                                        // Get user's net equity for margin percentage
-                                        const userNetEquity = users.find(u => u.user_id === strategy.user_id)?.current_net_equity || 0;
-                                        const marginPct = userNetEquity > 0 ? ((totalMargin / userNetEquity) * 100).toFixed(2) : '0.00';
+                                            // Get user's net equity for margin percentage
+                                            const userNetEquity = users.find(u => u.user_id === strategy.user_id)?.current_net_equity || 0;
+                                            const marginPct = userNetEquity > 0 ? ((totalMargin / userNetEquity) * 100).toFixed(2) : '0.00';
 
-                                        return (
-                                            <div>
-                                                <div className="flex items-center justify-between">
-                                                    <CardTitle className="flex items-center gap-2">
-                                                        <span>
-                                                            <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)} {strategy.name}
-                                                        </span>
-                                                    </CardTitle>
-                                                    <div className="flex gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEditStrategy(strategy)}
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleDeleteClick(strategy)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1 mt-1 text-sm">
-                                                    <span>當前收益 <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
-                                                    {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
-                                                </div>
-                                                {(() => {
-                                                    // Calculate adjusted cost basis: stock open_price reduced by option profits
-                                                    const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
-                                                    const totalOpenQty = openStocks.reduce((sum, s) => sum + s.quantity, 0);
-                                                    if (totalOpenQty === 0) return null;
-
-                                                    const optProfit = strategy.options.reduce((sum, o) => {
-                                                        if (o.final_profit !== null && o.final_profit !== undefined) {
-                                                            return sum + o.final_profit;
-                                                        }
-                                                        return sum;
-                                                    }, 0);
-
-                                                    // Weighted average open price
-                                                    const weightedCost = openStocks.reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0) / totalOpenQty;
-                                                    const adjustedCost = weightedCost - (optProfit / totalOpenQty);
-
-                                                    return (
-                                                        <div className="text-sm mt-0.5">
-                                                            {openStocks[0].symbol} 成本 {weightedCost.toFixed(2)} → 調整後成本 <span className="font-semibold text-foreground">{adjustedCost.toFixed(2)}</span>
+                                            return (
+                                                <div>
+                                                    <div className="flex items-center justify-between">
+                                                        <CardTitle className="flex items-center gap-2">
+                                                            <span>
+                                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{strategy.option_strategy && strategy.option_strategy.split(',').map(s => s.trim()).map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>))} {strategy.name}
+                                                            </span>
+                                                        </CardTitle>
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEditStrategy(strategy)}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleDeleteClick(strategy)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
-                                                    );
-                                                })()}
-                                            </div>
-                                        );
-                                    })()}
-                                </CardHeader>
-                                <CardContent className="px-4 space-y-3 pt-0 pb-3">
-                                    {/* Stock Trades Table */}
-                                    {strategy.stocks.length > 0 && (() => {
-                                        const stockProfit = strategy.stocks.reduce((sum, stock) => {
-                                            if (stock.close_price && stock.open_price) {
-                                                return sum + (stock.close_price - stock.open_price) * stock.quantity;
-                                            } else if (!stock.close_price && stock.current_market_price) {
-                                                // Include unrealized P&L for open positions
-                                                return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
-                                            }
-                                            return sum;
-                                        }, 0);
+                                                    </div>
+                                                    {/* CC/PP Mismatch Warning */}
+                                                    {strategy.option_strategy && (() => {
+                                                        const strategies = strategy.option_strategy!.split(',').map(s => s.trim());
+                                                        const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+                                                        const totalOpenShares = openStocks.reduce((sum, s) => sum + s.quantity, 0);
+                                                        const expectedContracts = Math.floor(totalOpenShares / 100);
+                                                        const stockSymbol = openStocks.length > 0 ? openStocks[0].symbol : '';
+                                                        const warnings: string[] = [];
 
-                                        return (
-                                            <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
-                                                    <span>{strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
-                                                    <div className="flex items-center gap-2">
-                                                        {(() => { const m = Math.round(strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned').reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
-                                                        {(() => {
-                                                            const symbols = [...new Set(strategy.stocks.map(s => s.symbol))];
-                                                            if (symbols.length <= 1) return null;
-                                                            return (
-                                                                <select
-                                                                    className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
-                                                                    value={stockSymbolFilters[strategy.id] || 'all'}
-                                                                    onChange={e => setStockSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                >
-                                                                    <option value="all">全部標的</option>
-                                                                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                                                                </select>
-                                                            );
-                                                        })()}
+                                                        if (strategies.includes('Covered Call') && expectedContracts > 0) {
+                                                            const openCalls = strategy.options
+                                                                .filter(o => o.operation === 'Open' && o.type === 'CALL')
+                                                                .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
+                                                            if (openCalls < expectedContracts) {
+                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，卻${openCalls === 0 ? '未持有' : `只持有 ${openCalls} 口`} ${expectedContracts} 口 SELL CALL！`);
+                                                            }
+                                                        }
+
+                                                        if (strategies.includes('Protective Put') && expectedContracts > 0) {
+                                                            const openPuts = strategy.options
+                                                                .filter(o => o.operation === 'Open' && o.type === 'PUT')
+                                                                .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
+                                                            if (openPuts < expectedContracts) {
+                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，卻${openPuts === 0 ? '未持有' : `只持有 ${openPuts} 口`} ${expectedContracts} 口 BUY PUT！`);
+                                                            }
+                                                        }
+
+                                                        if (warnings.length === 0) return null;
+                                                        return (
+                                                            <div className="mt-1 space-y-0.5">
+                                                                {warnings.map((w, i) => (
+                                                                    <div key={i} className="text-sm bg-amber-100 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
+                                                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    <div className="flex items-center gap-1 mt-1 text-sm">
+                                                        <span>當前收益 <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
+                                                        {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
+                                                    </div>
+                                                    {(() => {
+                                                        // Calculate adjusted cost basis: stock open_price reduced by option profits
+                                                        const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+                                                        const totalOpenQty = openStocks.reduce((sum, s) => sum + s.quantity, 0);
+                                                        if (totalOpenQty === 0) return null;
+
+                                                        const optProfit = strategy.options.reduce((sum, o) => {
+                                                            if (o.final_profit !== null && o.final_profit !== undefined) {
+                                                                return sum + o.final_profit;
+                                                            }
+                                                            return sum;
+                                                        }, 0);
+
+                                                        // Weighted average open price
+                                                        const weightedCost = openStocks.reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0) / totalOpenQty;
+                                                        const adjustedCost = weightedCost - (optProfit / totalOpenQty);
+
+                                                        return (
+                                                            <div className="text-sm mt-0.5">
+                                                                {openStocks[0].symbol} 成本 {weightedCost.toFixed(2)} → 調整後成本 <span className="font-semibold text-foreground">{adjustedCost.toFixed(2)}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            );
+                                        })()}
+                                    </CardHeader>
+                                    <CardContent className="px-4 space-y-3 pt-0 pb-3">
+                                        {/* Stock Trades Table */}
+                                        {strategy.stocks.length > 0 && (() => {
+                                            const stockProfit = strategy.stocks.reduce((sum, stock) => {
+                                                if (stock.close_price && stock.open_price) {
+                                                    return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                                } else if (!stock.close_price && stock.current_market_price) {
+                                                    // Include unrealized P&L for open positions
+                                                    return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
+                                                }
+                                                return sum;
+                                            }, 0);
+
+                                            return (
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                        <span>{strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
+                                                        <div className="flex items-center gap-2">
+                                                            {(() => { const m = Math.round(strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned').reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
+                                                            {(() => {
+                                                                const symbols = [...new Set(strategy.stocks.map(s => s.symbol))];
+                                                                if (symbols.length <= 1) return null;
+                                                                return (
+                                                                    <select
+                                                                        className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                        value={stockSymbolFilters[strategy.id] || 'all'}
+                                                                        onChange={e => setStockSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                    >
+                                                                        <option value="all">全部標的</option>
+                                                                        {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                    </select>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                    <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
+                                                        <table className="w-full table-auto text-xs">
+                                                            <thead>
+                                                                <tr className="border-b">
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">狀態</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">股數</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉價</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {strategy.stocks.sort((a, b) => b.open_date - a.open_date).filter(stock => {
+                                                                    const filter = stockSymbolFilters[strategy.id] || 'all';
+                                                                    return filter === 'all' || stock.symbol === filter;
+                                                                }).map(stock => {
+                                                                    const openDate = new Date(stock.open_date * 1000);
+                                                                    const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
+
+                                                                    let formattedCloseDate = '-';
+                                                                    if (stock.close_date) {
+                                                                        const closeDate = new Date(stock.close_date * 1000);
+                                                                        formattedCloseDate = `${String(closeDate.getMonth() + 1).padStart(2, '0')}/${String(closeDate.getDate()).padStart(2, '0')}`;
+                                                                    }
+
+                                                                    let profit: number | null = null;
+                                                                    console.log(`💹 Calculating P&L for ${stock.symbol}:`, {
+                                                                        close_price: stock.close_price,
+                                                                        current_market_price: stock.current_market_price,
+                                                                        open_price: stock.open_price,
+                                                                        quantity: stock.quantity
+                                                                    });
+                                                                    if (stock.close_price) {
+                                                                        // Realized P&L for closed positions
+                                                                        profit = Math.round((stock.close_price - stock.open_price) * stock.quantity * 100) / 100;
+                                                                    } else if (stock.current_market_price) {
+                                                                        // Unrealized P&L for open positions using current market price
+                                                                        profit = Math.round((stock.current_market_price - stock.open_price) * stock.quantity * 100) / 100;
+                                                                        console.log(`✅ Calculated unrealized P&L for ${stock.symbol}:`, profit);
+                                                                    } else {
+                                                                        console.warn(`⚠️ No market price found for ${stock.symbol}`);
+                                                                    }
+
+                                                                    return (
+                                                                        <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
+                                                                            <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : (stock.source === 'assigned' ? <span className="font-bold">Assigned</span> : <span className="font-bold">Open</span>)}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{stock.symbol}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{stock.quantity}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{stock.open_price?.toFixed(2) || '-'}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{formattedDate}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{formattedCloseDate}</td>
+                                                                            <td className="py-1 px-2 text-center">
+                                                                                {profit !== null ? (
+                                                                                    <span className={`font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                                                                        {Math.round(profit).toLocaleString('en-US')}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-muted-foreground">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
                                                 </div>
-                                                <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
-                                                    <table className="w-full table-auto text-xs">
-                                                        <thead>
-                                                            <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">狀態</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">股數</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉價</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {strategy.stocks.sort((a, b) => b.open_date - a.open_date).filter(stock => {
-                                                                const filter = stockSymbolFilters[strategy.id] || 'all';
-                                                                return filter === 'all' || stock.symbol === filter;
-                                                            }).map(stock => {
-                                                                const openDate = new Date(stock.open_date * 1000);
-                                                                const formattedDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
+                                            );
+                                        })()}
 
-                                                                let formattedCloseDate = '-';
-                                                                if (stock.close_date) {
-                                                                    const closeDate = new Date(stock.close_date * 1000);
-                                                                    formattedCloseDate = `${String(closeDate.getMonth() + 1).padStart(2, '0')}/${String(closeDate.getDate()).padStart(2, '0')}`;
-                                                                }
+                                        {/* Options Table */}
+                                        {strategy.options.length > 0 && (() => {
+                                            const optionProfit = strategy.options.reduce((sum, option) => {
+                                                if (option.final_profit !== null && option.final_profit !== undefined) {
+                                                    return sum + option.final_profit;
+                                                }
+                                                return sum;
+                                            }, 0);
 
-                                                                let profit: number | null = null;
-                                                                console.log(`💹 Calculating P&L for ${stock.symbol}:`, {
-                                                                    close_price: stock.close_price,
-                                                                    current_market_price: stock.current_market_price,
-                                                                    open_price: stock.open_price,
-                                                                    quantity: stock.quantity
-                                                                });
-                                                                if (stock.close_price) {
-                                                                    // Realized P&L for closed positions
-                                                                    profit = Math.round((stock.close_price - stock.open_price) * stock.quantity * 100) / 100;
-                                                                } else if (stock.current_market_price) {
-                                                                    // Unrealized P&L for open positions using current market price
-                                                                    profit = Math.round((stock.current_market_price - stock.open_price) * stock.quantity * 100) / 100;
-                                                                    console.log(`✅ Calculated unrealized P&L for ${stock.symbol}:`, profit);
-                                                                } else {
-                                                                    console.warn(`⚠️ No market price found for ${stock.symbol}`);
-                                                                }
-
+                                            return (
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                        <span>{strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
+                                                        <div className="flex items-center gap-2">
+                                                            {(() => { const m = Math.round(strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
+                                                            {(() => {
+                                                                const symbols = [...new Set(strategy.options.map(o => o.underlying))];
+                                                                if (symbols.length <= 1) return null;
                                                                 return (
-                                                                    <tr key={stock.id} className={`border-b last:border-0 ${!stock.close_date ? 'bg-gray-100' : ''}`}>
-                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${!stock.close_date ? 'bg-pink-50' : ''}`}>{stock.close_date ? 'Closed' : (stock.source === 'assigned' ? <span className="font-bold">Assigned</span> : <span className="font-bold">Open</span>)}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.symbol}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.quantity}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{stock.open_price?.toFixed(2) || '-'}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedDate}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedCloseDate}</td>
-                                                                        <td className="py-1 px-2 text-center">
-                                                                            {profit !== null ? (
-                                                                                <span className={`font-medium ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                                                                                    {Math.round(profit).toLocaleString('en-US')}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-muted-foreground">-</span>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
+                                                                    <select
+                                                                        className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
+                                                                        value={optionSymbolFilters[strategy.id] || 'all'}
+                                                                        onChange={e => setOptionSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                    >
+                                                                        <option value="all">全部標的</option>
+                                                                        {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                    </select>
                                                                 );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                    <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
+                                                        <table className="w-full table-auto text-xs">
+                                                            <thead>
+                                                                <tr className="border-b">
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">操作</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">口數</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {strategy.options.sort((a, b) => b.open_date - a.open_date).filter(option => {
+                                                                    const filter = optionSymbolFilters[strategy.id] || 'all';
+                                                                    return filter === 'all' || option.underlying === filter;
+                                                                }).map(option => {
+                                                                    const openDate = new Date(option.open_date * 1000);
+                                                                    const formattedOpenDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
-                                    {/* Options Table */}
-                                    {strategy.options.length > 0 && (() => {
-                                        const optionProfit = strategy.options.reduce((sum, option) => {
-                                            if (option.final_profit !== null && option.final_profit !== undefined) {
-                                                return sum + option.final_profit;
-                                            }
-                                            return sum;
-                                        }, 0);
+                                                                    // Format expiry date (MM-DD) for label
+                                                                    let expiryLabel = '';
+                                                                    if (option.to_date) {
+                                                                        const toDate = new Date(option.to_date * 1000);
+                                                                        expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}/${String(toDate.getDate()).padStart(2, '0')}`;
+                                                                    }
 
-                                        return (
-                                            <div className="space-y-1">
-                                                <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
-                                                    <span>{strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
-                                                    <div className="flex items-center gap-2">
-                                                        {(() => { const m = Math.round(strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
-                                                        {(() => {
-                                                            const symbols = [...new Set(strategy.options.map(o => o.underlying))];
-                                                            if (symbols.length <= 1) return null;
-                                                            return (
-                                                                <select
-                                                                    className="text-xs bg-white border rounded px-1.5 py-0.5 ml-2"
-                                                                    value={optionSymbolFilters[strategy.id] || 'all'}
-                                                                    onChange={e => setOptionSymbolFilters(prev => ({ ...prev, [strategy.id]: e.target.value }))}
-                                                                    onClick={e => e.stopPropagation()}
-                                                                >
-                                                                    <option value="all">全部標的</option>
-                                                                    {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-                                                                </select>
-                                                            );
-                                                        })()}
+                                                                    // Format settlement date (平倉日)
+                                                                    let formattedSettlement = '-';
+                                                                    if (option.settlement_date) {
+                                                                        const sDate = new Date(option.settlement_date * 1000);
+                                                                        formattedSettlement = `${String(sDate.getMonth() + 1).padStart(2, '0')}/${String(sDate.getDate()).padStart(2, '0')}`;
+                                                                    }
+
+                                                                    // Full option label: QQQ_615_C_02-10
+                                                                    const typeShort = option.type === 'CALL' ? 'C' : 'P';
+                                                                    const optionLabel = `${option.underlying}_${option.strike_price || ''}_${typeShort}${expiryLabel ? '_' + expiryLabel : ''}`;
+
+                                                                    return (
+                                                                        <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
+                                                                            <td className={`py-1 px-2 text-gray-900 text-center ${option.operation === 'Open' ? 'bg-pink-50' : ''}`}>{option.operation === 'Closed' ? option.operation : <span className="font-bold">{option.operation}</span>}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{optionLabel}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{option.quantity}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{formattedOpenDate}</td>
+                                                                            <td className="py-1 px-2 text-gray-900 text-center">{formattedSettlement}</td>
+                                                                            <td className="py-1 px-2 text-center">
+                                                                                {option.final_profit !== null && option.final_profit !== undefined ? (
+                                                                                    <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                                                                        {Math.round(option.final_profit).toLocaleString('en-US')}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-muted-foreground">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
                                                 </div>
-                                                <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
-                                                    <table className="w-full table-auto text-xs">
-                                                        <thead>
-                                                            <tr className="border-b">
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">操作</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">標的</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">口數</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
-                                                                <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {strategy.options.sort((a, b) => b.open_date - a.open_date).filter(option => {
-                                                                const filter = optionSymbolFilters[strategy.id] || 'all';
-                                                                return filter === 'all' || option.underlying === filter;
-                                                            }).map(option => {
-                                                                const openDate = new Date(option.open_date * 1000);
-                                                                const formattedOpenDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
+                                            );
+                                        })()}
 
-                                                                // Format expiry date (MM-DD) for label
-                                                                let expiryLabel = '';
-                                                                if (option.to_date) {
-                                                                    const toDate = new Date(option.to_date * 1000);
-                                                                    expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}/${String(toDate.getDate()).padStart(2, '0')}`;
-                                                                }
-
-                                                                // Format settlement date (平倉日)
-                                                                let formattedSettlement = '-';
-                                                                if (option.settlement_date) {
-                                                                    const sDate = new Date(option.settlement_date * 1000);
-                                                                    formattedSettlement = `${String(sDate.getMonth() + 1).padStart(2, '0')}/${String(sDate.getDate()).padStart(2, '0')}`;
-                                                                }
-
-                                                                // Full option label: QQQ_615_C_02-10
-                                                                const typeShort = option.type === 'CALL' ? 'C' : 'P';
-                                                                const optionLabel = `${option.underlying}_${option.strike_price || ''}_${typeShort}${expiryLabel ? '_' + expiryLabel : ''}`;
-
-                                                                return (
-                                                                    <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
-                                                                        <td className={`py-1 px-2 text-gray-900 text-center ${option.operation === 'Open' ? 'bg-pink-50' : ''}`}>{option.operation === 'Closed' ? option.operation : <span className="font-bold">{option.operation}</span>}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{optionLabel}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{option.quantity}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedOpenDate}</td>
-                                                                        <td className="py-1 px-2 text-gray-900 text-center">{formattedSettlement}</td>
-                                                                        <td className="py-1 px-2 text-center">
-                                                                            {option.final_profit !== null && option.final_profit !== undefined ? (
-                                                                                <span className={`font-medium ${option.final_profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                                                                                    {Math.round(option.final_profit).toLocaleString('en-US')}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-muted-foreground">-</span>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-
-                                    {/* Empty state */}
-                                    {strategy.stocks.length === 0 && strategy.options.length === 0 && (
-                                        <p className="text-sm text-muted-foreground text-center py-2">
-                                            尚未添加任何交易
-                                        </p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))}
+                                        {/* Empty state */}
+                                        {strategy.stocks.length === 0 && strategy.options.length === 0 && (
+                                            <p className="text-sm text-muted-foreground text-center py-2">
+                                                尚未添加任何交易
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                 </div>
-            )}
+            )
+            }
 
             {/* Strategy Dialog */}
-            <StrategyDialog
+            < StrategyDialog
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 strategy={selectedStrategy}
@@ -806,7 +870,7 @@ export default function StrategiesPage() {
             />
 
             {/* Annotation Dialog */}
-            <AnnotationDialog
+            < AnnotationDialog
                 open={annotationDialogOpen}
                 onOpenChange={setAnnotationDialogOpen}
                 annotation={selectedAnnotation}
@@ -815,7 +879,7 @@ export default function StrategiesPage() {
             />
 
             {/* Delete Confirmation Dialog */}
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            < AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>確認刪除</AlertDialogTitle>

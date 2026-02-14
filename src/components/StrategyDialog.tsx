@@ -53,6 +53,7 @@ interface Strategy {
     owner_id: number;
     year: number;
     status?: string;
+    option_strategy?: string;
     stocks: StockTrade[];
     options: Option[];
     created_at: number;
@@ -79,6 +80,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
         userId: '',
         ownerId: 0,
         status: '進行中',
+        optionStrategies: [] as string[],
         selectedStocks: [] as number[],
         selectedOptions: [] as number[],
     });
@@ -97,6 +99,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     userId: strategy.user_id,
                     ownerId: strategy.owner_id,
                     status: strategy.status || '進行中',
+                    optionStrategies: strategy.option_strategy ? strategy.option_strategy.split(',') : [],
                     selectedStocks: strategy.stocks?.map(s => s.id) || [],
                     selectedOptions: strategy.options?.map(o => o.id) || [],
                 });
@@ -109,6 +112,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     userId: '',
                     ownerId: 0,
                     status: '進行中',
+                    optionStrategies: [],
                     selectedStocks: [],
                     selectedOptions: [],
                 });
@@ -233,6 +237,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     ownerId: formData.ownerId,
                     year: parseInt(currentYear),
                     status: formData.status,
+                    optionStrategy: formData.optionStrategies.length > 0 ? formData.optionStrategies.join(',') : null,
                     stockTradeIds: formData.selectedStocks,
                     optionIds: formData.selectedOptions,
                 }),
@@ -318,6 +323,29 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                             </Select>
                         </div>
                     )}
+
+                    {/* Option Strategy Selection */}
+                    <div className="flex items-center gap-3">
+                        <Label className="w-20 shrink-0">期權策略</Label>
+                        <div className="flex items-center gap-4">
+                            {['Covered Call', 'Protective Put'].map(opt => (
+                                <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                    <Checkbox
+                                        checked={formData.optionStrategies.includes(opt)}
+                                        onCheckedChange={(checked) => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                optionStrategies: checked
+                                                    ? [...prev.optionStrategies, opt]
+                                                    : prev.optionStrategies.filter(s => s !== opt)
+                                            }));
+                                        }}
+                                    />
+                                    {opt}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
 
                     {/* Stock Trades and Options Selection - Side by Side */}
                     {formData.userId && (

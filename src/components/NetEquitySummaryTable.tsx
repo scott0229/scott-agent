@@ -56,9 +56,6 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         netProfit: true,
         potentialMargin: true,
         cashBalance: true,
-        holding1: true,
-        holding2: true,
-        holding3: true,
         returnRate: true,
         maxDrawdown: true,
         annualizedReturn: true,
@@ -118,9 +115,6 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             netProfit: true,
             potentialMargin: true,
             cashBalance: true,
-            holding1: true,
-            holding2: true,
-            holding3: true,
             returnRate: true,
             maxDrawdown: true,
             annualizedReturn: true,
@@ -130,6 +124,8 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             newHighFreq: true,
             lastUpdated: true,
         };
+        // Also reset holding rows
+        for (let i = 0; i < 10; i++) allVisible[`holding${i}`] = true;
         setVisibleRows(allVisible);
         const allColsVisible = users.reduce((acc, u) => { acc[u.user_id || u.id.toString()] = true; return acc; }, {} as Record<string, boolean>);
         setVisibleColumns(allColsVisible);
@@ -203,6 +199,15 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
             </button>
         );
     };
+
+    // Chinese numeral labels for holdings
+    const chineseNumerals = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
+    // Compute max holdings across all visible users
+    const visibleUsers = users.filter(isColumnVisible);
+    const maxHoldings = visibleUsers.reduce((max, user) => {
+        return Math.max(max, user.top_holdings?.length || 0);
+    }, 0);
 
     if (!users || users.length === 0) return null;
 
@@ -516,62 +521,30 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             </tr>
                         )}
 
-                        {/* 15. Holding 1 */}
-                        {visibleRows.holding1 && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
-                                    <RowToggleIcon rowKey="holding1" visible={visibleRows.holding1} />
-                                    持股一
-                                </td>
-                                {users.filter(isColumnVisible).map(user => {
-                                    const holding = user.top_holdings?.[0];
-                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
-                                    return (
-                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        )}
-
-                        {/* 16. Holding 2 */}
-                        {visibleRows.holding2 && (
-                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
-                                    <RowToggleIcon rowKey="holding2" visible={visibleRows.holding2} />
-                                    持股二
-                                </td>
-                                {users.filter(isColumnVisible).map(user => {
-                                    const holding = user.top_holdings?.[1];
-                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
-                                    return (
-                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        )}
-
-                        {/* 17. Holding 3 */}
-                        {visibleRows.holding3 && (
-                            <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
-                                    <RowToggleIcon rowKey="holding3" visible={visibleRows.holding3} />
-                                    持股三
-                                </td>
-                                {users.filter(isColumnVisible).map(user => {
-                                    const holding = user.top_holdings?.[2];
-                                    const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
-                                    return (
-                                        <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
-                                            {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        )}
+                        {/* Dynamic Holdings */}
+                        {Array.from({ length: maxHoldings }, (_, idx) => {
+                            const rowKey = `holding${idx}`;
+                            const isVisible = visibleRows[rowKey] !== false;
+                            if (!isVisible) return null;
+                            const bgClass = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                            return (
+                                <tr key={rowKey} className={`border-t hover:bg-secondary/20 ${bgClass}`}>
+                                    <td className={`h-7 py-1 px-2 font-medium sticky left-0 ${bgClass} z-10 border-r`}>
+                                        <RowToggleIcon rowKey={rowKey} visible={isVisible} />
+                                        持股{chineseNumerals[idx] || (idx + 1)}
+                                    </td>
+                                    {users.filter(isColumnVisible).map(user => {
+                                        const holding = user.top_holdings?.[idx];
+                                        const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
+                                        return (
+                                            <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-pink-50")}>
+                                                {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            );
+                        })}
 
 
 

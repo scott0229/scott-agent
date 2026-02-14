@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { name, userId, ownerId, year, status, stockTradeIds, optionIds } = body;
+        const { name, userId, ownerId, year, status, stockTradeIds, optionIds, optionStrategy } = body;
 
         if (!name) {
             return NextResponse.json({ error: '策略名稱為必填' }, { status: 400 });
@@ -143,9 +143,9 @@ export async function POST(req: NextRequest) {
 
         // Create strategy
         const result = await db.prepare(`
-            INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, updated_at)
-            VALUES (?, ?, ?, ?, ?, unixepoch())
-        `).bind(name, userId || null, ownerId || null, strategyYear, strategyStatus).run();
+            INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, option_strategy, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+        `).bind(name, userId || null, ownerId || null, strategyYear, strategyStatus, optionStrategy || null).run();
 
         const strategyId = result.meta.last_row_id;
 
