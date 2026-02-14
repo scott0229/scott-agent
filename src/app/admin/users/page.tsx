@@ -544,6 +544,16 @@ export default function AdminUsersPage() {
                 });
             }
 
+            // Check for Annotations
+            const totalAnnotations = Array.isArray(data.annotations) ? data.annotations.length : 0;
+            if (totalAnnotations > 0) {
+                importableUsers.push({
+                    id: 'annotations',
+                    display: `註解資料 (${totalAnnotations} 筆)`,
+                    checked: true
+                });
+            }
+
             setSelectionUsers(importableUsers);
             setImportProcessing(false);
             setImportProgress(0);
@@ -575,6 +585,7 @@ export default function AdminUsersPage() {
             const importOptions = selectedIds.includes('options_records');
             const importStocks = selectedIds.includes('stock_trades');
             const importStrategies = selectedIds.includes('strategies');
+            const importAnnotations = selectedIds.includes('annotations');
 
             const selectedUserEmails = selectedIds.filter(id =>
                 id !== 'market_data' &&
@@ -582,7 +593,8 @@ export default function AdminUsersPage() {
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
                 id !== 'fees_records' &&
-                id !== 'strategies'
+                id !== 'strategies' &&
+                id !== 'annotations'
             );
 
             const allUsers = pendingImportData.users || [];
@@ -594,17 +606,21 @@ export default function AdminUsersPage() {
             const sourceYear = pendingImportData.sourceYear;
             const targetYear = selectedYear === 'All' ? 'All' : selectedYear;
 
-            // Scenario 1: Only Market Data selected
-            if (importMarketData && selectedUsers.length === 0) {
+            // Scenario 1: Only non-user data selected (market data / annotations, no users)
+            if (selectedUsers.length === 0 && (importMarketData || importAnnotations)) {
                 setImportProgress(10);
+                const payload: any = {
+                    users: [],
+                    market_prices: importMarketData ? marketPrices : [],
+                    sourceYear: sourceYear
+                };
+                if (importAnnotations && pendingImportData.annotations) {
+                    payload.annotations = pendingImportData.annotations;
+                }
                 const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        users: [], // No users
-                        market_prices: marketPrices,
-                        sourceYear: sourceYear
-                    }),
+                    body: JSON.stringify(payload),
                 });
 
                 if (!res.ok) {
@@ -640,12 +656,15 @@ export default function AdminUsersPage() {
                     return clone;
                 });
 
-                // Only include market_prices in the VERY FIRST Request if selected
-                const chunkPayload = {
+                // Only include market_prices and annotations in the VERY FIRST Request if selected
+                const chunkPayload: any = {
                     users: processedChunk,
                     market_prices: (i === 0 && importMarketData) ? marketPrices : [],
                     sourceYear: sourceYear
                 };
+                if (i === 0 && importAnnotations && pendingImportData.annotations) {
+                    chunkPayload.annotations = pendingImportData.annotations;
+                }
 
                 const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
                     method: 'POST',
@@ -675,6 +694,9 @@ export default function AdminUsersPage() {
                     }
                     if (i === 0 && importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');
+                    }
+                    if (i === 0 && importAnnotations && !prev.includes('annotations')) {
+                        newIds.push('annotations');
                     }
                     return newIds;
                 });
