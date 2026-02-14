@@ -11,6 +11,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -92,7 +99,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
         cash_balance: '',
         management_fee: '',
         deposit: '',
-        interest: ''
+        interest: '',
+        exposure_adjustment: 'none'
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -107,7 +115,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 cash_balance: (recordToEdit.cash_balance !== null && recordToEdit.cash_balance !== undefined) ? formatNumber(recordToEdit.cash_balance.toString()) : '',
                 management_fee: (recordToEdit.management_fee !== null && recordToEdit.management_fee !== undefined) ? formatNumber(recordToEdit.management_fee.toString()) : '0',
                 deposit: (recordToEdit as any).deposit !== undefined && (recordToEdit as any).deposit !== null ? formatNumber((recordToEdit as any).deposit.toString()) : '0',
-                interest: (recordToEdit.interest !== null && recordToEdit.interest !== undefined) ? formatNumber(recordToEdit.interest.toString()) : '0'
+                interest: (recordToEdit.interest !== null && recordToEdit.interest !== undefined) ? formatNumber(recordToEdit.interest.toString()) : '0',
+                exposure_adjustment: (recordToEdit as any).exposure_adjustment || 'none'
             });
         }
     }, [recordToEdit]);
@@ -127,7 +136,8 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 cash_balance: formData.cash_balance ? parseNumber(formData.cash_balance) : null,
                 management_fee: formData.management_fee ? parseNumber(formData.management_fee) : 0,
                 deposit: formData.deposit ? parseNumber(formData.deposit) : 0,
-                interest: formData.interest ? parseNumber(formData.interest) : 0
+                interest: formData.interest ? parseNumber(formData.interest) : 0,
+                exposure_adjustment: formData.exposure_adjustment
             };
 
             const res = await fetch('/api/net-equity', {
@@ -315,6 +325,23 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                             }}
                             autoComplete="off"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="exposure_adjustment" className="text-right">曝險調整</Label>
+                        <Select
+                            value={formData.exposure_adjustment}
+                            onValueChange={(value) => setFormData({ ...formData, exposure_adjustment: value })}
+                        >
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">無</SelectItem>
+                                <SelectItem value="buy_qqq">買入QQQ</SelectItem>
+                                <SelectItem value="buy_qld">買入QLD</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex justify-end gap-3 mt-4">

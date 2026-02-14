@@ -146,7 +146,7 @@ export const calculateUserTwr = (
     qqqData: MarketData[],
     qldData: MarketData[]
 ) => {
-    let chartData: { date: number; net_equity: number; rate: number; qqq_rate?: number; qld_rate?: number }[] = [];
+    let chartData: { date: number; net_equity: number; rate: number; qqq_rate?: number; qld_rate?: number; exposure_adjustment?: string }[] = [];
 
     if (uEq.length === 0) {
         return {
@@ -255,7 +255,8 @@ export const calculateUserTwr = (
             net_equity: equity,
             rate: (navRatio - 1) * 100,
             qqq_rate: qqqRate,
-            qld_rate: qldRate
+            qld_rate: qldRate,
+            exposure_adjustment: (row as any).exposure_adjustment
         });
 
         if (navRatio > peakNavRatio) {

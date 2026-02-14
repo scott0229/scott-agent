@@ -319,7 +319,8 @@ export async function GET(request: NextRequest) {
                     qqq_rate: qqqRate,
                     qld_rate: qldRate,
                     management_fee: row.management_fee ?? 0,
-                    interest: row.interest ?? 0
+                    interest: row.interest ?? 0,
+                    exposure_adjustment: row.exposure_adjustment ?? 'none'
                 });
 
                 prevEquity = equity;
@@ -346,7 +347,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year } = body;
+        const { user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, exposure_adjustment } = body;
 
         if (!user_id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -361,11 +362,12 @@ export async function POST(request: NextRequest) {
         const depositVal = deposit || 0;
         const feeVal = management_fee || 0;
         const interestVal = interest || 0;
+        const exposureVal = exposure_adjustment || 'none';
 
         const db = await getDb();
         const result = await db.prepare(`
-        INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+        INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, exposure_adjustment, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         ON CONFLICT(user_id, date) DO UPDATE SET
         net_equity = excluded.net_equity,
         cash_balance = excluded.cash_balance,
@@ -373,8 +375,9 @@ export async function POST(request: NextRequest) {
         management_fee = excluded.management_fee,
         interest = excluded.interest,
         year = excluded.year,
+        exposure_adjustment = excluded.exposure_adjustment,
         updated_at = unixepoch()
-    `).bind(user_id, date, net_equity, cash_balance, depositVal, feeVal, interestVal, targetYear).run();
+    `).bind(user_id, date, net_equity, cash_balance, depositVal, feeVal, interestVal, targetYear, exposureVal).run();
 
         // Clear cache to ensure fresh data on next fetch
         clearCache();
@@ -394,7 +397,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { id, date, net_equity, cash_balance, deposit, management_fee, interest } = body;
+        const { id, date, net_equity, cash_balance, deposit, management_fee, interest, exposure_adjustment } = body;
 
         if (!id || !date || net_equity === undefined) {
             return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -403,14 +406,15 @@ export async function PUT(request: NextRequest) {
         const depositVal = deposit ?? 0;
         const feeVal = management_fee ?? 0;
         const interestVal = interest ?? 0;
+        const exposureVal = exposure_adjustment ?? 'none';
 
         const db = await getDb();
 
         const result = await db.prepare(`
         UPDATE DAILY_NET_EQUITY 
-        SET date = ?, net_equity = ?, cash_balance = ?, deposit = ?, management_fee = ?, interest = ?, updated_at = unixepoch()
+        SET date = ?, net_equity = ?, cash_balance = ?, deposit = ?, management_fee = ?, interest = ?, exposure_adjustment = ?, updated_at = unixepoch()
         WHERE id = ?
-    `).bind(date, net_equity, cash_balance, depositVal, feeVal, interestVal, id).run();
+    `).bind(date, net_equity, cash_balance, depositVal, feeVal, interestVal, exposureVal, id).run();
 
         if (result.meta.changes === 0) {
             return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });

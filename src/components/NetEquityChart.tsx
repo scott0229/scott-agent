@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Legend } from 'recharts';
 
 interface NetEquityChartProps {
-    data: { date: number; net_equity: number; rate?: number; qqq_rate?: number; qld_rate?: number }[];
+    data: { date: number; net_equity: number; rate?: number; qqq_rate?: number; qld_rate?: number; exposure_adjustment?: string }[];
     initialCost?: number;
     id?: string | number; // Add ID for unique gradient identifier
     name?: string;
@@ -36,7 +36,8 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
             ? (item as any).rate
             : ((item.net_equity - baseValue) / baseValue) * 100,
         qqq_rate: (item as any).qqq_rate,
-        qld_rate: (item as any).qld_rate
+        qld_rate: (item as any).qld_rate,
+        exposure_adjustment: (item as any).exposure_adjustment
     }));
 
     const formatPercent = (value: number) => {
@@ -181,6 +182,20 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                     />
                                 )
                             }
+
+                            {/* Exposure Adjustment vertical lines */}
+                            {chartData
+                                .filter(d => d.exposure_adjustment && d.exposure_adjustment !== 'none')
+                                .map((d, i) => (
+                                    <ReferenceLine
+                                        key={`exposure-${i}`}
+                                        x={d.dateStr}
+                                        stroke="#6b7280"
+                                        strokeDasharray="4 4"
+                                        strokeWidth={1.5}
+                                        opacity={0.7}
+                                    />
+                                ))}
                         </LineChart >
                     </ResponsiveContainer >
                 )}

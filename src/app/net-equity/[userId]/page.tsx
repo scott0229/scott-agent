@@ -59,6 +59,7 @@ interface PerformanceRecord {
     running_peak: number;
     drawdown: number;
     is_new_high: boolean;
+    exposure_adjustment?: string;
 }
 
 export default function NetEquityDetailPage() {
@@ -491,19 +492,20 @@ export default function NetEquityDetailPage() {
                             <TableHead className="text-center font-bold text-foreground">前高</TableHead>
                             <TableHead className="text-center font-bold text-foreground">回撤</TableHead>
                             <TableHead className="text-center font-bold text-foreground">新高記錄</TableHead>
+                            <TableHead className="text-center font-bold text-foreground">曝險調整</TableHead>
                             {isAdmin && <TableHead className="text-right"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredRecords.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
                                     尚無記錄
                                 </TableCell>
                             </TableRow>
                         )}
                         {filteredRecords.map((record) => (
-                            <TableRow key={record.id} className="hover:bg-muted/50 h-9">
+                            <TableRow key={record.id} className={`hover:bg-muted/50 h-9 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'border-t-2 border-t-orange-300' : ''}`}>
                                 <TableCell className="text-center font-mono py-1">
                                     {formatDate(record.date)}
                                 </TableCell>
@@ -560,6 +562,14 @@ export default function NetEquityDetailPage() {
                                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-500" />
                                         </div>
                                     )}
+                                </TableCell>
+                                <TableCell className={`text-center py-1 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'bg-red-50' : ''}`}>
+                                    {(() => {
+                                        const val = record.exposure_adjustment || 'none';
+                                        if (val === 'buy_qqq') return '買入QQQ';
+                                        if (val === 'buy_qld') return '買入QLD';
+                                        return <span className="text-muted-foreground">-</span>;
+                                    })()}
                                 </TableCell>
                                 {isAdmin && (
                                     <TableCell className="text-right py-1">
@@ -627,6 +637,7 @@ export default function NetEquityDetailPage() {
                                 {formatMoney(initialDeposit)}
                             </TableCell>
                             <TableCell colSpan={5} className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
                             {isAdmin && (
                                 <TableCell className="text-right py-1">
                                     <div className="flex justify-end gap-1">
@@ -696,6 +707,7 @@ export default function NetEquityDetailPage() {
                                 })()}
                             </TableCell>
                             <TableCell colSpan={6} className="text-center"></TableCell>
+                            <TableCell className="text-center"></TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>

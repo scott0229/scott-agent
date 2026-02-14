@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useToast } from "@/hooks/use-toast";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -99,6 +106,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
     const [managementFee, setManagementFee] = useState('');
     const [interest, setInterest] = useState('');
     const [deposit, setDeposit] = useState('');
+    const [exposureAdjustment, setExposureAdjustment] = useState('none');
     const [isLoading, setIsLoading] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const { toast } = useToast();
@@ -154,7 +162,8 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     deposit: deposit ? parseNumber(deposit) : 0,
                     management_fee: managementFee ? parseNumber(managementFee) : 0,
                     interest: interest ? parseNumber(interest) : 0,
-                    year: selectedYear !== 'All' ? selectedYear : undefined
+                    year: selectedYear !== 'All' ? selectedYear : undefined,
+                    exposure_adjustment: exposureAdjustment
                 }),
             });
 
@@ -172,6 +181,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             setManagementFee('');
             setInterest('');
             setDeposit('');
+            setExposureAdjustment('none');
             setDate(getNextBusinessDay(new Date())); // Reset to fallback date
         } catch (error: any) {
             toast({
@@ -350,6 +360,24 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                             }}
                             autoComplete="off"
                         />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="exposureAdjustment" className="text-right">
+                            曝險調整
+                        </Label>
+                        <Select
+                            value={exposureAdjustment}
+                            onValueChange={setExposureAdjustment}
+                        >
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">無</SelectItem>
+                                <SelectItem value="buy_qqq">買入QQQ</SelectItem>
+                                <SelectItem value="buy_qld">買入QLD</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
