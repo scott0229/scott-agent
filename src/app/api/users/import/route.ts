@@ -321,6 +321,9 @@ export async function POST(req: NextRequest) {
                             } catch (optErr) {
                                 console.error(`Failed to import option for user ${user.email}:`, optErr);
                             }
+                        } else if (option.id) {
+                            // Map old ID to existing ID for strategy linking
+                            optionIdMap.set(option.id, existingOption.id as number);
                         }
                     }
                 }
@@ -391,6 +394,9 @@ export async function POST(req: NextRequest) {
                             } catch (stockErr) {
                                 console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
                             }
+                        } else if (trade.id) {
+                            // Map old ID to existing ID for strategy linking
+                            stockIdMap.set(trade.id, existingTrade.id as number);
                         }
                     }
                 }
