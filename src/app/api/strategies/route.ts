@@ -41,7 +41,10 @@ export async function GET(req: NextRequest) {
 
         query += ' ORDER BY created_at DESC';
 
-        const { results } = await db.prepare(query).bind(...params).all();
+        const stmt = db.prepare(query);
+        const { results } = params.length > 0
+            ? await stmt.bind(...params).all()
+            : await stmt.all();
 
         // Fetch associated stocks and options for each strategy
         const strategiesWithDetails = await Promise.all(
