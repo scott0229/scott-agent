@@ -456,7 +456,7 @@ export default function StrategiesPage() {
 
                             // Check for CC/PP mismatch
                             let hasMismatch = false;
-                            if (strategy.option_strategy) {
+                            if (strategy.option_strategy && strategy.status !== '已結案') {
                                 const strats = strategy.option_strategy.split(',').map(s => s.trim());
                                 const openStks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
                                 const totalShares = openStks.reduce((sum, s) => sum + s.quantity, 0);
@@ -465,9 +465,9 @@ export default function StrategiesPage() {
                                     const openCalls = strategy.options.filter(o => o.operation === 'Open' && o.type === 'CALL').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
                                     if (openCalls < expected) hasMismatch = true;
                                 }
-                                if (strats.includes('Protective Put') && expected > 0) {
+                                if (strats.includes('Protective Put')) {
                                     const openPuts = strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                    if (openPuts < expected) hasMismatch = true;
+                                    if (totalShares === 0 && openPuts === 0) hasMismatch = true;
                                 }
                             }
 
@@ -574,7 +574,7 @@ export default function StrategiesPage() {
                                                         </div>
                                                     </div>
                                                     {/* CC/PP Mismatch Warning */}
-                                                    {strategy.option_strategy && (() => {
+                                                    {strategy.option_strategy && strategy.status !== '已結案' && (() => {
                                                         const strategies = strategy.option_strategy!.split(',').map(s => s.trim());
                                                         const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
                                                         const totalOpenShares = openStocks.reduce((sum, s) => sum + s.quantity, 0);
@@ -591,12 +591,12 @@ export default function StrategiesPage() {
                                                             }
                                                         }
 
-                                                        if (strategies.includes('Protective Put') && expectedContracts > 0) {
+                                                        if (strategies.includes('Protective Put')) {
                                                             const openPuts = strategy.options
                                                                 .filter(o => o.operation === 'Open' && o.type === 'PUT')
                                                                 .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                                            if (openPuts < expectedContracts) {
-                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，卻${openPuts === 0 ? '未持有' : `只持有 ${openPuts} 口`} ${expectedContracts} 口 BUY PUT！`);
+                                                            if (totalOpenShares === 0 && openPuts === 0) {
+                                                                warnings.push(`未持有正股，也未持有 SELL PUT！`);
                                                             }
                                                         }
 

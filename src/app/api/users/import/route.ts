@@ -411,14 +411,15 @@ export async function POST(req: NextRequest) {
                             try {
                                 // Create strategy
                                 const strategyResult = await db.prepare(
-                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, option_strategy, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     strategy.name,
                                     strategy.user_id || user.user_id || null,
                                     targetUserId,
                                     strategyYear,
-                                    strategy.status || '進行中'
+                                    strategy.status || '進行中',
+                                    strategy.option_strategy || null
                                 ).run();
 
                                 const newStrategyId = strategyResult.meta.last_row_id;

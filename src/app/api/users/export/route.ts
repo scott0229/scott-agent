@@ -184,7 +184,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         // Export strategies
         if (includeStrategies) {
             let strategiesQuery = `
-                SELECT id, name, user_id, year, status
+                SELECT id, name, user_id, year, status, option_strategy
                 FROM STRATEGIES
                 WHERE owner_id = ?
             `;
@@ -214,6 +214,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
                         user_id: strategy.user_id,
                         year: strategy.year,
                         status: strategy.status || '進行中',
+                        option_strategy: strategy.option_strategy || null,
                         stock_trade_ids: (stockLinks || []).map((link: any) => link.stock_trade_id),
                         option_ids: (optionLinks || []).map((link: any) => link.option_id)
                     };
