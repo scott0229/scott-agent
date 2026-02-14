@@ -112,29 +112,49 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                 tickLine={false}
                             />
                             <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'hsl(var(--popover))',
-                                    border: '1px solid hsl(var(--border))',
-                                    borderRadius: 'var(--radius)',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                    padding: '8px 12px'
+                                content={({ active, payload, label }) => {
+                                    if (!active || !payload || payload.length === 0) return null;
+                                    const dataPoint = payload[0]?.payload;
+                                    const exposureVal = dataPoint?.exposure_adjustment;
+                                    const exposureLabel = exposureVal === 'buy_qqq' ? '買入QQQ' : exposureVal === 'buy_qld' ? '買入QLD' : null;
+
+                                    // Sort items: rate first, then qqq, then qld
+                                    const sortedPayload = [...payload].sort((a, b) => {
+                                        const order: Record<string, number> = { rate: 0, qqq_rate: 1, qld_rate: 2 };
+                                        return (order[a.name as string] ?? 3) - (order[b.name as string] ?? 3);
+                                    });
+
+                                    return (
+                                        <div style={{
+                                            backgroundColor: 'hsl(var(--popover))',
+                                            padding: '8px 12px',
+                                            fontSize: '12px'
+                                        }}>
+                                            <div style={{ color: '#374151', marginBottom: '4px', fontWeight: 500, backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>
+                                                日期 : {label}
+                                            </div>
+                                            {exposureLabel && (
+                                                <div style={{ color: '#111827', marginBottom: '4px' }}>
+                                                    調倉：{exposureLabel}
+                                                </div>
+                                            )}
+                                            {sortedPayload.map((entry, index) => {
+                                                let name = entry.name;
+                                                let color = entry.color;
+                                                if (name === 'rate') { name = accountLabel; color = '#1d4ed8'; }
+                                                if (name === 'qqq_rate') { name = 'QQQ'; color = '#15803d'; }
+                                                if (name === 'qld_rate') { name = 'QLD'; color = '#c2410c'; }
+                                                return (
+                                                    <div key={index} style={{ color, padding: 0 }}>
+                                                        {name} : {Number(entry.value).toFixed(2)}%
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
                                 }}
-                                itemStyle={{ color: 'hsl(var(--foreground))', fontSize: '12px', fontWeight: 'normal', padding: 0 }}
-                                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '12px', marginBottom: '2px', fontWeight: 'normal' }}
-                                formatter={(value: any, name: any) => {
-                                    let label = name;
-                                    if (name === 'rate') label = accountLabel;
-                                    if (name === 'qqq_rate') label = 'QQQ';
-                                    if (name === 'qld_rate') label = 'QLD';
-                                    return [`${Number(value).toFixed(2)}%`, label];
-                                }}
-                                labelFormatter={(label) => `日期 : ${label}`}
-                                itemSorter={(item) => {
-                                    if (item.name === 'rate') return 0;
-                                    if (item.name === 'qqq_rate') return 1;
-                                    if (item.name === 'qld_rate') return 2;
-                                    return 3;
-                                }}
+                                position={{ x: 50, y: 5 }}
+                                wrapperStyle={{ pointerEvents: 'none', zIndex: 10 }}
                                 cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
 
