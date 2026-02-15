@@ -696,7 +696,7 @@ export default function StrategiesPage() {
                                                         );
                                                     })()}
                                                     <div className="flex items-center gap-1 mt-3 text-sm">
-                                                        <span>{strategy.status === '已結案' ? '最終收益' : '當前收益'} <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
+                                                        <span>{strategy.status === '已結案' ? '最終收益' : '當前收益'} <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span>{strategy.status === '已結案' && (() => { const allOpenDates = [...strategy.stocks.map(s => s.open_date), ...strategy.options.map(o => o.open_date)].filter(Boolean); const allCloseDates = [...strategy.stocks.map(s => s.close_date).filter(Boolean), ...strategy.options.map(o => o.to_date).filter(Boolean)] as number[]; if (allOpenDates.length > 0 && allCloseDates.length > 0) { const earliest = Math.min(...allOpenDates); const latest = Math.max(...allCloseDates); const days = Math.round((latest - earliest) / 86400); return `，歷時 ${days} 天`; } return null; })()}</span>
                                                         {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
                                                     </div>
                                                     {(() => {
