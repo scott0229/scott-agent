@@ -726,7 +726,7 @@ export default function StrategiesPage() {
                                             );
                                         })()}
                                     </CardHeader>
-                                    <CardContent className="px-4 space-y-3 pt-0 pb-3">
+                                    <CardContent className="px-4 space-y-5 pt-0 pb-3">
                                         {/* Stock Trades Table */}
                                         {strategy.stocks.length > 0 && (() => {
                                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
