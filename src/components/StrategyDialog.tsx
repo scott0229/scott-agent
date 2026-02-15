@@ -121,7 +121,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     status: '進行中',
                     optionStrategies: [],
                     stockStrategies: [],
-                    spreadTargetPct: '',
+                    spreadTargetPct: '10',
                     selectedStocks: [],
                     selectedOptions: [],
                 });
