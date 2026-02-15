@@ -741,7 +741,7 @@ export default function StrategiesPage() {
 
                                             return (
                                                 <div className="space-y-1">
-                                                    <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                    <div className="text-sm font-medium bg-red-50 px-3 py-1.5 rounded flex items-center justify-between">
                                                         <span>{strategy.stocks.length} 筆股票交易, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
                                                         <div className="flex items-center gap-2">
                                                             {(() => { const m = Math.round(strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned').reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
@@ -845,7 +845,7 @@ export default function StrategiesPage() {
 
                                             return (
                                                 <div className="space-y-1">
-                                                    <div className="text-sm font-medium bg-rose-100 px-3 py-1.5 rounded flex items-center justify-between">
+                                                    <div className="text-sm font-medium bg-red-50 px-3 py-1.5 rounded flex items-center justify-between">
                                                         <span>{strategy.options.length} 筆期權交易, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
                                                         <div className="flex items-center gap-2">
                                                             {(() => { const m = Math.round(strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
