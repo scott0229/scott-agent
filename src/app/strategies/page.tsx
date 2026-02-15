@@ -696,7 +696,7 @@ export default function StrategiesPage() {
                                                         );
                                                     })()}
                                                     <div className="flex items-center gap-1 mt-1 text-sm">
-                                                        <span>當前收益 <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
+                                                        <span>{strategy.status === '已結案' ? '最終收益' : '當前收益'} <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
                                                         {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
                                                     </div>
                                                     {(() => {
