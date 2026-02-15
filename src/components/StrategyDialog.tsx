@@ -54,6 +54,8 @@ interface Strategy {
     year: number;
     status?: string;
     option_strategy?: string;
+    stock_strategy?: string;
+    stock_strategy_params?: string;
     stocks: StockTrade[];
     options: Option[];
     created_at: number;
@@ -81,6 +83,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
         ownerId: 0,
         status: '進行中',
         optionStrategies: [] as string[],
+        stockStrategies: [] as string[],
+        spreadTargetPct: '',
         selectedStocks: [] as number[],
         selectedOptions: [] as number[],
     });
@@ -94,12 +98,15 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
             fetchUsers();
             if (strategy) {
                 // Edit mode
+                const stockParams = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {};
                 setFormData({
                     name: strategy.name,
                     userId: strategy.user_id,
                     ownerId: strategy.owner_id,
                     status: strategy.status || '進行中',
                     optionStrategies: strategy.option_strategy ? strategy.option_strategy.split(',') : [],
+                    stockStrategies: strategy.stock_strategy ? strategy.stock_strategy.split(',') : [],
+                    spreadTargetPct: stockParams.spread_target_pct?.toString() || '',
                     selectedStocks: strategy.stocks?.map(s => s.id) || [],
                     selectedOptions: strategy.options?.map(o => o.id) || [],
                 });
@@ -113,6 +120,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     ownerId: 0,
                     status: '進行中',
                     optionStrategies: [],
+                    stockStrategies: [],
+                    spreadTargetPct: '',
                     selectedStocks: [],
                     selectedOptions: [],
                 });
@@ -238,6 +247,10 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     year: parseInt(currentYear),
                     status: formData.status,
                     optionStrategy: formData.optionStrategies.length > 0 ? formData.optionStrategies.join(',') : null,
+                    stockStrategy: formData.stockStrategies.length > 0 ? formData.stockStrategies.join(',') : null,
+                    stockStrategyParams: formData.stockStrategies.includes('價差') && formData.spreadTargetPct
+                        ? JSON.stringify({ spread_target_pct: parseFloat(formData.spreadTargetPct) })
+                        : null,
                     stockTradeIds: formData.selectedStocks,
                     optionIds: formData.selectedOptions,
                 }),
@@ -344,6 +357,43 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                     {opt}
                                 </label>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Stock Strategy Selection */}
+                    <div className="flex items-center gap-3">
+                        <Label className="w-20 shrink-0">股票策略</Label>
+                        <div className="flex items-center gap-4">
+                            {['價差', '不持有'].map(opt => (
+                                <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                    <Checkbox
+                                        checked={formData.stockStrategies.includes(opt)}
+                                        onCheckedChange={(checked) => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                stockStrategies: checked
+                                                    ? [...prev.stockStrategies, opt]
+                                                    : prev.stockStrategies.filter(s => s !== opt)
+                                            }));
+                                        }}
+                                    />
+                                    {opt}
+                                </label>
+                            ))}
+                            {formData.stockStrategies.includes('價差') && (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-sm text-muted-foreground">目標</span>
+                                    <Input
+                                        type="number"
+                                        value={formData.spreadTargetPct}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, spreadTargetPct: e.target.value }))}
+                                        className="w-20 h-7 text-sm"
+                                        placeholder="5"
+                                        step="0.1"
+                                    />
+                                    <span className="text-sm text-muted-foreground">%</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

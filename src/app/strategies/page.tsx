@@ -64,6 +64,8 @@ interface Strategy {
     year: number;
     status?: string;
     option_strategy?: string;
+    stock_strategy?: string;
+    stock_strategy_params?: string;
     stocks: StockTrade[];
     options: Option[];
     created_at: number;
@@ -471,6 +473,29 @@ export default function StrategiesPage() {
                                 }
                             }
 
+                            // Check for stock strategy alerts
+                            if (strategy.stock_strategy && strategy.status !== '已結案') {
+                                const stockStrats = strategy.stock_strategy.split(',').map(s => s.trim());
+                                const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+
+                                if (stockStrats.includes('價差')) {
+                                    const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {};
+                                    const targetPct = params.spread_target_pct || 0;
+                                    if (targetPct > 0) {
+                                        for (const stock of openStocks) {
+                                            if (stock.current_market_price && stock.open_price) {
+                                                const gain = ((stock.current_market_price - stock.open_price) / stock.open_price) * 100;
+                                                if (gain >= targetPct) hasMismatch = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (stockStrats.includes('不持有') && openStocks.length > 0 && totalProfit > 0) {
+                                    hasMismatch = true;
+                                }
+                            }
+
                             return { ...strategy, totalProfit, hasMismatch };
                         })
                         .sort((a, b) => {
@@ -553,7 +578,7 @@ export default function StrategiesPage() {
                                                     <div className="flex items-center justify-between">
                                                         <CardTitle className="flex items-center gap-2">
                                                             <span>
-                                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{strategy.option_strategy && strategy.option_strategy.split(',').map(s => s.trim()).map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>))} {strategy.name}
+                                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{strategy.option_strategy && strategy.option_strategy.split(',').map(s => s.trim()).map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>))}{strategy.stock_strategy && strategy.stock_strategy.split(',').map(s => s.trim()).map((s, i) => (<span key={`ss-${i}`} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === '價差' ? 'bg-orange-100 text-orange-800' : 'bg-sky-100 text-sky-800'}`}>{s}</span>))} {strategy.name}
                                                             </span>
                                                         </CardTitle>
                                                         <div className="flex gap-1">
@@ -597,6 +622,52 @@ export default function StrategiesPage() {
                                                                 .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
                                                             if (totalOpenShares === 0 && openPuts === 0) {
                                                                 warnings.push(`未持有正股，也未持有 SELL PUT！`);
+                                                            }
+                                                        }
+
+                                                        if (warnings.length === 0) return null;
+                                                        return (
+                                                            <div className="mt-1 space-y-0.5">
+                                                                {warnings.map((w, i) => (
+                                                                    <div key={i} className="text-sm bg-amber-100 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
+                                                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    {/* Stock Strategy Alerts */}
+                                                    {strategy.stock_strategy && strategy.status !== '已結案' && (() => {
+                                                        const stockStrats = strategy.stock_strategy!.split(',').map(s => s.trim());
+                                                        const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
+                                                        const warnings: string[] = [];
+
+                                                        if (stockStrats.includes('價差')) {
+                                                            const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {};
+                                                            const targetPct = params.spread_target_pct || 0;
+                                                            if (targetPct > 0) {
+                                                                for (const stock of openStocks) {
+                                                                    if (stock.current_market_price && stock.open_price) {
+                                                                        const gain = ((stock.current_market_price - stock.open_price) / stock.open_price) * 100;
+                                                                        if (gain >= targetPct) {
+                                                                            warnings.push(`${stock.symbol} 已漲 ${gain.toFixed(1)}%，超過目標 ${targetPct}%！`);
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (stockStrats.includes('不持有') && openStocks.length > 0) {
+                                                            // Calculate total strategy profit
+                                                            const stkProfit = strategy.stocks.reduce((sum, stock) => {
+                                                                if (stock.close_price && stock.open_price) return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                                                if (!stock.close_price && stock.current_market_price) return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
+                                                                return sum;
+                                                            }, 0);
+                                                            const optProfit = strategy.options.reduce((sum, o) => sum + (o.final_profit || 0), 0);
+                                                            const total = stkProfit + optProfit;
+                                                            if (total > 0) {
+                                                                warnings.push(`策略盈利中 (+${Math.round(total).toLocaleString()})，但仍持有正股！`);
                                                             }
                                                         }
 
