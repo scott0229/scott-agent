@@ -200,6 +200,19 @@ export default function StrategiesPage() {
         }
     };
 
+    // Silent refresh: update data without loading flash, preserve scroll position
+    const refreshStrategiesSilently = async () => {
+        try {
+            const res = await fetch(`/api/strategies?year=${selectedYear}`);
+            if (res.ok) {
+                const data = await res.json();
+                setStrategies(data.strategies || []);
+            }
+        } catch (error) {
+            console.error('Failed to silently refresh strategies:', error);
+        }
+    };
+
     const fetchAnnotations = async () => {
         try {
             const res = await fetch(`/api/annotations?year=${selectedYear}`);
@@ -936,7 +949,7 @@ export default function StrategiesPage() {
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 strategy={selectedStrategy}
-                onSave={fetchStrategies}
+                onSave={refreshStrategiesSilently}
                 currentYear={selectedYear}
             />
 
