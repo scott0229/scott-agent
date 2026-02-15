@@ -491,7 +491,7 @@ export default function StrategiesPage() {
                                     }
                                 }
 
-                                if (stockStrats.includes('不持有') && openStocks.length > 0 && totalProfit > 0) {
+                                if (stockStrats.includes('不持股') && openStocks.length > 0 && totalProfit > 0) {
                                     hasMismatch = true;
                                 }
                             }
@@ -657,7 +657,7 @@ export default function StrategiesPage() {
                                                             }
                                                         }
 
-                                                        if (stockStrats.includes('不持有') && openStocks.length > 0) {
+                                                        if (stockStrats.includes('不持股') && openStocks.length > 0) {
                                                             // Calculate total strategy profit
                                                             const stkProfit = strategy.stocks.reduce((sum, stock) => {
                                                                 if (stock.close_price && stock.open_price) return sum + (stock.close_price - stock.open_price) * stock.quantity;

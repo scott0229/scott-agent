@@ -364,7 +364,7 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                     <div className="flex items-center gap-3">
                         <Label className="w-20 shrink-0">股票策略</Label>
                         <div className="flex items-center gap-4">
-                            {['價差', '不持有'].map(opt => (
+                            {['價差', '不持股'].map(opt => (
                                 <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
                                     <Checkbox
                                         checked={formData.stockStrategies.includes(opt)}
