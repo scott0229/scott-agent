@@ -642,7 +642,7 @@ export default function StrategiesPage() {
                                                         return (
                                                             <div className="mt-1 space-y-0.5">
                                                                 {warnings.map((w, i) => (
-                                                                    <div key={i} className="text-sm bg-amber-100 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
+                                                                    <div key={i} className="text-sm bg-amber-100 border border-amber-200 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
                                                                         <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
                                                                     </div>
                                                                 ))}
@@ -688,7 +688,7 @@ export default function StrategiesPage() {
                                                         return (
                                                             <div className="mt-1 space-y-0.5">
                                                                 {warnings.map((w, i) => (
-                                                                    <div key={i} className="text-sm bg-amber-100 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
+                                                                    <div key={i} className="text-sm bg-amber-100 border border-amber-200 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
                                                                         <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
                                                                     </div>
                                                                 ))}
