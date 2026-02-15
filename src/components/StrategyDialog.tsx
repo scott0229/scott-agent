@@ -373,7 +373,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                                 ...prev,
                                                 stockStrategies: checked
                                                     ? [...prev.stockStrategies, opt]
-                                                    : prev.stockStrategies.filter(s => s !== opt)
+                                                    : prev.stockStrategies.filter(s => s !== opt),
+                                                ...(opt === '價差' && checked && !prev.spreadTargetPct ? { spreadTargetPct: '10' } : {})
                                             }));
                                         }}
                                     />
@@ -387,8 +388,8 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                         type="number"
                                         value={formData.spreadTargetPct}
                                         onChange={(e) => setFormData(prev => ({ ...prev, spreadTargetPct: e.target.value }))}
-                                        className="w-20 h-7 text-sm"
-                                        placeholder="5"
+                                        className="w-20 h-7 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        placeholder="10"
                                         step="0.1"
                                     />
                                     <span className="text-sm text-muted-foreground">%</span>
