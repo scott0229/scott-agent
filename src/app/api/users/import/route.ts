@@ -176,8 +176,8 @@ export async function POST(req: NextRequest) {
                         if (!existingRecord) {
                             try {
                                 await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, exposure_adjustment, year, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
                                     dateTimestamp,
@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
                                     record.deposit ?? 0,
                                     record.management_fee ?? 0,
                                     record.interest ?? 0,
+                                    record.exposure_adjustment || 'none',
                                     recordYear
                                 ).run();
                             } catch (netErr) {
@@ -417,15 +418,17 @@ export async function POST(req: NextRequest) {
                             try {
                                 // Create strategy
                                 const strategyResult = await db.prepare(
-                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, option_strategy, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, option_strategy, stock_strategy, stock_strategy_params, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     strategy.name,
                                     strategy.user_id || user.user_id || null,
                                     targetUserId,
                                     strategyYear,
                                     strategy.status || '進行中',
-                                    strategy.option_strategy || null
+                                    strategy.option_strategy || null,
+                                    strategy.stock_strategy || null,
+                                    strategy.stock_strategy_params || null
                                 ).run();
 
                                 const newStrategyId = strategyResult.meta.last_row_id;

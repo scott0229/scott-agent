@@ -90,7 +90,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(interest, 0) as interest, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(interest, 0) as interest, exposure_adjustment, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;
@@ -184,7 +184,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         // Export strategies
         if (includeStrategies) {
             let strategiesQuery = `
-                SELECT id, name, user_id, year, status, option_strategy
+                SELECT id, name, user_id, year, status, option_strategy, stock_strategy, stock_strategy_params
                 FROM STRATEGIES
                 WHERE owner_id = ?
             `;
@@ -215,6 +215,8 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
                         year: strategy.year,
                         status: strategy.status || '進行中',
                         option_strategy: strategy.option_strategy || null,
+                        stock_strategy: strategy.stock_strategy || null,
+                        stock_strategy_params: strategy.stock_strategy_params || null,
                         stock_trade_ids: (stockLinks || []).map((link: any) => link.stock_trade_id),
                         option_ids: (optionLinks || []).map((link: any) => link.option_id)
                     };
