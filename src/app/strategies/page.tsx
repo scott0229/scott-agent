@@ -695,7 +695,7 @@ export default function StrategiesPage() {
                                                             </div>
                                                         );
                                                     })()}
-                                                    <div className="flex items-center gap-1 mt-1 text-sm">
+                                                    <div className="flex items-center gap-1 mt-3 text-sm">
                                                         <span>{strategy.status === '已結案' ? '最終收益' : '當前收益'} <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span></span>
                                                         {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
                                                     </div>
@@ -726,7 +726,7 @@ export default function StrategiesPage() {
                                             );
                                         })()}
                                     </CardHeader>
-                                    <CardContent className="px-4 space-y-5 pt-0 pb-3">
+                                    <CardContent className="px-4 space-y-3 pt-0 pb-3">
                                         {/* Stock Trades Table */}
                                         {strategy.stocks.length > 0 && (() => {
                                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
