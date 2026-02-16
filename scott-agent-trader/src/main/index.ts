@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { connect, disconnect, getConnectionState, onConnectionStatusChange } from './ib/connection'
-import { requestManagedAccounts, requestAccountSummary, requestPositions } from './ib/accounts'
+import { requestManagedAccounts, requestAccountSummary, requestPositions, requestAccountAliasesForIds } from './ib/accounts'
 import {
   placeBatchOrders,
   placeOptionBatchOrders,
@@ -11,6 +11,7 @@ import {
   setupOrderStatusListener
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks } from './ib/options'
+import { getStockQuote, getQuotes } from './ib/quotes'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -81,6 +82,10 @@ function setupIpcHandlers(): void {
     return requestPositions()
   })
 
+  ipcMain.handle('ib:getAccountAliases', async (_event, accountIds: string[]) => {
+    return requestAccountAliasesForIds(accountIds)
+  })
+
   // Orders
   ipcMain.handle(
     'ib:placeBatchOrders',
@@ -88,6 +93,15 @@ function setupIpcHandlers(): void {
       return placeBatchOrders(request, accountQuantities)
     }
   )
+
+  // Quotes
+  ipcMain.handle('ib:getStockQuote', async (_event, symbol: string) => {
+    return getStockQuote(symbol)
+  })
+
+  ipcMain.handle('ib:getQuotes', async (_event, symbols: string[]) => {
+    return getQuotes(symbols)
+  })
 
   // Options
   ipcMain.handle('ib:getOptionChain', async (_event, symbol: string) => {

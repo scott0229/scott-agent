@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
+import CustomSelect from './CustomSelect'
 
 interface AccountData {
     accountId: string
+    alias: string
     netLiquidation: number
     availableFunds: number
+    grossPositionValue: number
 }
 
 interface OrderResult {
@@ -23,38 +26,69 @@ interface BatchOrderFormProps {
 export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.Element {
     const [symbol, setSymbol] = useState('')
     const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
-    const [orderType, setOrderType] = useState<'MKT' | 'LMT'>('MKT')
     const [limitPrice, setLimitPrice] = useState('')
-    const [totalQuantity, setTotalQuantity] = useState('')
-    const [allocMethod, setAllocMethod] = useState<'equal' | 'netLiq' | 'custom'>('equal')
+    const [quantities, setQuantities] = useState<Record<string, string>>({})
+    const [selectedUser, setSelectedUser] = useState('ALL')
+    const [stockQuote, setStockQuote] = useState<{ bid: number; ask: number; last: number } | null>(
+        null
+    )
+    const [loadingQuote, setLoadingQuote] = useState(false)
 
     const [accounts, setAccounts] = useState<AccountData[]>([])
-    const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set())
-    const [customQuantities, setCustomQuantities] = useState<Record<string, string>>({})
     const [orderResults, setOrderResults] = useState<OrderResult[]>([])
     const [submitting, setSubmitting] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [checkedAccounts, setCheckedAccounts] = useState<Set<string>>(new Set())
 
     // Fetch accounts when connected
     useEffect(() => {
         if (connected) {
             window.ibApi.getAccountSummary().then((data) => {
                 setAccounts(data)
-                // Select all accounts by default
-                setSelectedAccounts(new Set(data.map((a) => a.accountId)))
+                // Fetch aliases in background
+                const accountIds = data.map((a: AccountData) => a.accountId)
+                if (accountIds.length > 0) {
+                    window.ibApi.getAccountAliases(accountIds).then((aliasMap) => {
+                        setAccounts((prev) =>
+                            prev.map((a) => ({ ...a, alias: aliasMap[a.accountId] || a.alias }))
+                        )
+                    }).catch(() => { /* ignore */ })
+                }
             })
         } else {
             setAccounts([])
-            setSelectedAccounts(new Set())
         }
     }, [connected])
+
+    // Fetch stock quote when symbol changes (debounced)
+    useEffect(() => {
+        const trimmed = symbol.trim().toUpperCase()
+        if (!trimmed || !connected) {
+            setStockQuote(null)
+            return
+        }
+        const timer = setTimeout(async () => {
+            setLoadingQuote(true)
+            try {
+                const quote = await window.ibApi.getStockQuote(trimmed)
+                setStockQuote(quote)
+            } catch {
+                setStockQuote(null)
+            } finally {
+                setLoadingQuote(false)
+            }
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [symbol, connected])
 
     // Listen for order status updates
     useEffect(() => {
         window.ibApi.onOrderStatus((update: OrderResult) => {
             setOrderResults((prev) =>
                 prev.map((r) =>
-                    r.orderId === update.orderId ? { ...r, ...update, account: r.account, symbol: r.symbol } : r
+                    r.orderId === update.orderId
+                        ? { ...r, ...update, account: r.account, symbol: r.symbol }
+                        : r
                 )
             )
         })
@@ -64,70 +98,21 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
         }
     }, [])
 
-    const toggleAccount = useCallback(
-        (accountId: string) => {
-            setSelectedAccounts((prev) => {
-                const next = new Set(prev)
-                if (next.has(accountId)) {
-                    next.delete(accountId)
-                } else {
-                    next.add(accountId)
-                }
-                return next
-            })
-        },
-        []
-    )
+    // Build allocations based on selected user
+    const sortedAccounts = [...accounts].sort((a, b) => b.netLiquidation - a.netLiquidation)
+    const targetAccounts =
+        selectedUser === 'ALL' ? sortedAccounts : sortedAccounts.filter((a) => a.accountId === selectedUser)
+    const allocations: Record<string, number> = {}
+    for (const acct of targetAccounts) {
+        if (!checkedAccounts.has(acct.accountId)) continue
+        const q = parseInt(quantities[acct.accountId] || '0', 10) || 0
+        if (q > 0) allocations[acct.accountId] = q
+    }
+    const totalAllocated = Object.values(allocations).reduce((sum, q) => sum + q, 0)
 
-    const toggleAll = useCallback(() => {
-        if (selectedAccounts.size === accounts.length) {
-            setSelectedAccounts(new Set())
-        } else {
-            setSelectedAccounts(new Set(accounts.map((a) => a.accountId)))
-        }
-    }, [accounts, selectedAccounts])
-
-    // Calculate allocation for each account
-    const calculateAllocations = useCallback((): Record<string, number> => {
-        const total = parseInt(totalQuantity, 10) || 0
-        const selected = accounts.filter((a) => selectedAccounts.has(a.accountId))
-
-        if (selected.length === 0 || total === 0) return {}
-
-        const allocations: Record<string, number> = {}
-
-        if (allocMethod === 'equal') {
-            const perAccount = Math.floor(total / selected.length)
-            let remainder = total - perAccount * selected.length
-            for (const acct of selected) {
-                allocations[acct.accountId] = perAccount + (remainder > 0 ? 1 : 0)
-                if (remainder > 0) remainder--
-            }
-        } else if (allocMethod === 'netLiq') {
-            const totalNLV = selected.reduce((sum, a) => sum + a.netLiquidation, 0)
-            if (totalNLV === 0) return {}
-            let allocated = 0
-            for (let i = 0; i < selected.length; i++) {
-                const acct = selected[i]
-                if (i === selected.length - 1) {
-                    // Last account gets remainder to avoid rounding issues
-                    allocations[acct.accountId] = total - allocated
-                } else {
-                    const qty = Math.floor((acct.netLiquidation / totalNLV) * total)
-                    allocations[acct.accountId] = qty
-                    allocated += qty
-                }
-            }
-        } else if (allocMethod === 'custom') {
-            for (const acct of selected) {
-                allocations[acct.accountId] = parseInt(customQuantities[acct.accountId] || '0', 10) || 0
-            }
-        }
-
-        return allocations
-    }, [accounts, selectedAccounts, totalQuantity, allocMethod, customQuantities])
-
-    const allocations = calculateAllocations()
+    const handleQuantityChange = (accountId: string, value: string) => {
+        setQuantities((prev) => ({ ...prev, [accountId]: value }))
+    }
 
     const handleSubmit = useCallback(async () => {
         if (!symbol.trim() || Object.keys(allocations).length === 0) return
@@ -138,26 +123,23 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
             const request = {
                 symbol: symbol.toUpperCase(),
                 action,
-                orderType,
-                limitPrice: orderType === 'LMT' ? parseFloat(limitPrice) : undefined,
-                totalQuantity: parseInt(totalQuantity, 10)
+                orderType: 'LMT' as const,
+                limitPrice: parseFloat(limitPrice),
+                totalQuantity: totalAllocated
             }
 
             const results = await window.ibApi.placeBatchOrders(request, allocations)
             setOrderResults(results)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Batch order failed:', err)
         } finally {
             setSubmitting(false)
         }
-    }, [symbol, action, orderType, limitPrice, totalQuantity, allocations])
-
-    const totalAllocated = Object.values(allocations).reduce((sum, q) => sum + q, 0)
+    }, [symbol, action, limitPrice, allocations, totalAllocated])
 
     if (!connected) {
         return (
             <div className="panel">
-                <h2 className="panel-title">📋 批次下單</h2>
                 <div className="empty-state">請先連線到 TWS / IB Gateway</div>
             </div>
         )
@@ -165,159 +147,160 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
 
     return (
         <div className="panel">
-            <h2 className="panel-title">📋 批次下單</h2>
-
             {/* Order Form */}
-            <div className="order-form">
+            <div className="order-form" style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}>
                 <div className="form-row">
+                    <div className="form-group">
+                        <label>帳戶</label>
+                        <CustomSelect
+                            value={selectedUser}
+                            onChange={setSelectedUser}
+                            options={[
+                                { value: 'ALL', label: '全部帳戶' },
+                                ...sortedAccounts.map((acct) => ({
+                                    value: acct.accountId,
+                                    label: acct.accountId + (acct.alias ? ` - ${acct.alias}` : '')
+                                }))
+                            ]}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>方向</label>
+                        <CustomSelect
+                            value={action}
+                            onChange={(v) => setAction(v as 'BUY' | 'SELL')}
+                            options={[
+                                { value: 'BUY', label: '買入' },
+                                { value: 'SELL', label: '賣出' }
+                            ]}
+                        />
+                    </div>
                     <div className="form-group">
                         <label>股票代碼</label>
                         <input
                             type="text"
                             value={symbol}
-                            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                            placeholder="例如 TQQQ"
+                            onChange={(e) => setSymbol(e.target.value)}
+                            style={{ textTransform: 'uppercase' }}
                             className="input-field"
                         />
                     </div>
-                    <div className="form-group">
-                        <label>方向</label>
-                        <select
-                            value={action}
-                            onChange={(e) => setAction(e.target.value as 'BUY' | 'SELL')}
-                            className="input-field"
-                        >
-                            <option value="BUY">買入</option>
-                            <option value="SELL">賣出</option>
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>訂單類型</label>
-                        <select
-                            value={orderType}
-                            onChange={(e) => setOrderType(e.target.value as 'MKT' | 'LMT')}
-                            className="input-field"
-                        >
-                            <option value="MKT">市價單</option>
-                            <option value="LMT">限價單</option>
-                        </select>
-                    </div>
-                    {orderType === 'LMT' && (
-                        <div className="form-group">
-                            <label>限價</label>
-                            <input
-                                type="number"
-                                value={limitPrice}
-                                onChange={(e) => setLimitPrice(e.target.value)}
-                                placeholder="0.00"
-                                step="0.01"
-                                className="input-field"
-                            />
-                        </div>
-                    )}
-                </div>
 
-                <div className="form-row">
                     <div className="form-group">
-                        <label>總數量</label>
+                        <label>限價</label>
                         <input
                             type="number"
-                            value={totalQuantity}
-                            onChange={(e) => setTotalQuantity(e.target.value)}
-                            placeholder="0"
-                            min="0"
+                            value={limitPrice}
+                            onChange={(e) => setLimitPrice(e.target.value)}
+                            step="0.01"
                             className="input-field"
-                            disabled={allocMethod === 'custom'}
                         />
                     </div>
-                    <div className="form-group">
-                        <label>分配方式</label>
-                        <select
-                            value={allocMethod}
-                            onChange={(e) => setAllocMethod(e.target.value as 'equal' | 'netLiq' | 'custom')}
-                            className="input-field"
-                        >
-                            <option value="equal">等量分配</option>
-                            <option value="netLiq">按淨值比例</option>
-                            <option value="custom">自訂數量</option>
-                        </select>
-                    </div>
+                    {/* Bid / Ask display */}
+                    {loadingQuote ? (
+                        <div className="quote-display">
+                            <span className="quote-loading">載入報價中...</span>
+                        </div>
+                    ) : stockQuote ? (
+                        <div className="quote-display">
+                            <span className="quote-label">BID</span>
+                            <span className="quote-bid">{stockQuote.bid.toFixed(2)}</span>
+                            <span className="quote-separator">|</span>
+                            <span className="quote-label">ASK</span>
+                            <span className="quote-ask">{stockQuote.ask.toFixed(2)}</span>
+                            <span className="quote-separator">|</span>
+                            <span className="quote-label">LAST</span>
+                            <span className="quote-last">{stockQuote.last.toFixed(2)}</span>
+                        </div>
+                    ) : null}
                 </div>
             </div>
 
-            {/* Account Selection & Allocation Preview */}
-            <div className="allocation-section">
-                <div className="allocation-header">
-                    <h3>帳戶分配</h3>
-                    <button onClick={toggleAll} className="btn btn-small">
-                        {selectedAccounts.size === accounts.length ? '取消全選' : '全選'}
-                    </button>
-                </div>
-
-                <table className="allocation-table">
-                    <thead>
-                        <tr>
-                            <th>選取</th>
-                            <th>帳戶</th>
-                            <th>淨值</th>
-                            <th>分配數量</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {accounts.map((acct) => (
-                            <tr
-                                key={acct.accountId}
-                                className={selectedAccounts.has(acct.accountId) ? 'selected' : 'unselected'}
-                            >
-                                <td>
+            {/* Account Allocation Table */}
+            {targetAccounts.length > 0 && (
+                <div className="allocation-section" style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}>
+                    <table className="allocation-table">
+                        <thead>
+                            <tr>
+                                <th style={{ width: '4%' }}>
                                     <input
                                         type="checkbox"
-                                        checked={selectedAccounts.has(acct.accountId)}
-                                        onChange={() => toggleAccount(acct.accountId)}
-                                    />
-                                </td>
-                                <td className="acct-id">{acct.accountId}</td>
-                                <td>
-                                    {new Intl.NumberFormat('en-US', {
-                                        style: 'currency',
-                                        currency: 'USD'
-                                    }).format(acct.netLiquidation)}
-                                </td>
-                                <td>
-                                    {allocMethod === 'custom' && selectedAccounts.has(acct.accountId) ? (
-                                        <input
-                                            type="number"
-                                            value={customQuantities[acct.accountId] || ''}
-                                            onChange={(e) =>
-                                                setCustomQuantities((prev) => ({
-                                                    ...prev,
-                                                    [acct.accountId]: e.target.value
-                                                }))
+                                        checked={targetAccounts.length > 0 && checkedAccounts.size === targetAccounts.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setCheckedAccounts(new Set(targetAccounts.map(a => a.accountId)))
+                                            } else {
+                                                setCheckedAccounts(new Set())
                                             }
-                                            className="input-field input-small"
-                                            min="0"
-                                        />
-                                    ) : (
-                                        <span className="alloc-qty">
-                                            {selectedAccounts.has(acct.accountId)
-                                                ? allocations[acct.accountId] || 0
-                                                : '-'}
-                                        </span>
-                                    )}
-                                </td>
+                                        }}
+                                    />
+                                </th>
+                                <th style={{ width: '25%' }}>帳號</th>
+                                <th style={{ width: '11%' }}>淨值</th>
+                                <th style={{ width: '9%' }}>槓桿率</th>
+                                <th style={{ width: '8%' }}>方向</th>
+                                <th style={{ width: '12%' }}>標的</th>
+                                <th style={{ width: '12%' }}>價格</th>
+                                <th style={{ width: '19%' }}>數量</th>
                             </tr>
-                        ))}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colSpan={3} className="total-label">
-                                合計
-                            </td>
-                            <td className="total-value">{totalAllocated}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {targetAccounts.map((acct) => {
+                                const isChecked = checkedAccounts.has(acct.accountId)
+                                return (
+                                    <tr key={acct.accountId}>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                    setCheckedAccounts((prev) => {
+                                                        const next = new Set(prev)
+                                                        if (e.target.checked) {
+                                                            next.add(acct.accountId)
+                                                        } else {
+                                                            next.delete(acct.accountId)
+                                                        }
+                                                        return next
+                                                    })
+                                                }}
+                                            />
+                                        </td>
+                                        <td>{acct.accountId}{acct.alias ? ` - ${acct.alias}` : ''}</td>
+                                        <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                                        <td>{acct.netLiquidation > 0 && acct.grossPositionValue > 0 ? (acct.grossPositionValue / acct.netLiquidation).toFixed(2) : '無槓桿'}</td>
+                                        {isChecked ? (
+                                            <>
+                                                <td>{action === 'BUY' ? '買入' : '賣出'}</td>
+                                                <td>{symbol.toUpperCase() || '-'}</td>
+                                                <td>{limitPrice ? `$${limitPrice}` : '-'}</td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        value={quantities[acct.accountId] || ''}
+                                                        onChange={(e) => handleQuantityChange(acct.accountId, e.target.value)}
+                                                        min="0"
+                                                        className="input-field input-small"
+                                                    />
+                                                </td>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                                <td></td>
+                                            </>
+                                        )}
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Submit */}
             <div className="order-actions">
@@ -325,26 +308,51 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                     <button
                         onClick={() => setShowConfirm(true)}
                         className="btn btn-primary"
-                        disabled={
-                            !symbol.trim() ||
-                            totalAllocated === 0 ||
-                            submitting
-                        }
+                        disabled={!symbol.trim() || totalAllocated === 0 || submitting || checkedAccounts.size !== Object.keys(allocations).length}
                     >
                         預覽下單
                     </button>
                 ) : (
                     <div className="confirm-section">
                         <div className="confirm-summary">
-                            確定要 <strong>{action === 'BUY' ? '買入' : '賣出'}</strong>{' '}
-                            <strong>{symbol.toUpperCase()}</strong>{' '}
-                            共 <strong>{totalAllocated}</strong> 股，
-                            分配到 <strong>{selectedAccounts.size}</strong> 個帳戶？
-                            {orderType === 'LMT' && ` 限價: $${limitPrice}`}
+                            確定要下單？
                         </div>
+                        <table className="allocation-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '45%' }}>帳號</th>
+                                    <th style={{ width: '8%' }}>方向</th>
+                                    <th style={{ width: '12%' }}>標的</th>
+                                    <th style={{ width: '12%' }}>限價</th>
+                                    <th style={{ width: '8%' }}>數量</th>
+                                    <th style={{ width: '15%' }}>交易後槓桿</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(allocations).map(([accountId, qty]) => {
+                                    const acct = targetAccounts.find((a) => a.accountId === accountId)
+                                    const price = parseFloat(limitPrice) || 0
+                                    const orderValue = qty * price
+                                    const currentGPV = acct?.grossPositionValue ?? 0
+                                    const netLiq = acct?.netLiquidation ?? 0
+                                    const newGPV = action === 'BUY' ? currentGPV + orderValue : Math.max(0, currentGPV - orderValue)
+                                    const postLeverage = netLiq > 0 && newGPV > 0 ? (newGPV / netLiq).toFixed(2) : '無槓桿'
+                                    return (
+                                        <tr key={accountId}>
+                                            <td>{accountId}{acct?.alias ? ` - ${acct.alias}` : ''}</td>
+                                            <td>{action === 'BUY' ? '買入' : '賣出'}</td>
+                                            <td>{symbol.toUpperCase()}</td>
+                                            <td>${limitPrice}</td>
+                                            <td>{qty}</td>
+                                            <td>{postLeverage}</td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
                         <div className="confirm-buttons">
                             <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
-                                {submitting ? '下單中...' : '✅ 確認下單'}
+                                {submitting ? '下單中...' : '確認下單'}
                             </button>
                             <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
                                 取消

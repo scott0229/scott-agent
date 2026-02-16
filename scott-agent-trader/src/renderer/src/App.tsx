@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import BatchOrderForm from './components/BatchOrderForm'
@@ -7,8 +7,8 @@ import './assets/app.css'
 
 function App(): JSX.Element {
   const [connected, setConnected] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'order'>('overview')
-  const [orderSubTab, setOrderSubTab] = useState<'stock' | 'option'>('stock')
+  const [activeTab, setActiveTab] = useState<'overview' | 'stock' | 'option'>('overview')
+  const refreshRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -21,53 +21,42 @@ function App(): JSX.Element {
     })
   }, [])
 
+  const handleRefresh = useCallback(() => {
+    refreshRef.current?.()
+  }, [])
+
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">
-          <span className="app-icon">📈</span>
-          <h1>Scott Agent Trader</h1>
+        <nav className="tab-nav-inline">
+          <button
+            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            帳戶總覽
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'stock' ? 'active' : ''}`}
+            onClick={() => setActiveTab('stock')}
+          >
+            股票下單
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'option' ? 'active' : ''}`}
+            onClick={() => setActiveTab('option')}
+          >
+            期權下單
+          </button>
+        </nav>
+        <div className="header-actions">
+          <ConnectionStatus onRefresh={handleRefresh} />
         </div>
-        <ConnectionStatus />
       </header>
 
-      <nav className="tab-nav">
-        <button
-          className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          📊 帳戶總覽
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'order' ? 'active' : ''}`}
-          onClick={() => setActiveTab('order')}
-        >
-          📋 批次下單
-        </button>
-      </nav>
-
       <main className="app-main">
-        {activeTab === 'overview' && <AccountOverview connected={connected} />}
-        {activeTab === 'order' && (
-          <div className="order-tab-content">
-            <div className="sub-tab-nav">
-              <button
-                className={`sub-tab-btn ${orderSubTab === 'stock' ? 'active' : ''}`}
-                onClick={() => setOrderSubTab('stock')}
-              >
-                📈 股票下單
-              </button>
-              <button
-                className={`sub-tab-btn ${orderSubTab === 'option' ? 'active' : ''}`}
-                onClick={() => setOrderSubTab('option')}
-              >
-                📑 期權下單
-              </button>
-            </div>
-            {orderSubTab === 'stock' && <BatchOrderForm connected={connected} />}
-            {orderSubTab === 'option' && <OptionOrderForm connected={connected} />}
-          </div>
-        )}
+        {activeTab === 'overview' && <AccountOverview connected={connected} refreshRef={refreshRef} />}
+        {activeTab === 'stock' && <BatchOrderForm connected={connected} />}
+        {activeTab === 'option' && <OptionOrderForm connected={connected} />}
       </main>
     </div>
   )

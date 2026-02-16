@@ -16,6 +16,8 @@ const ibApi = {
   getManagedAccounts: (): Promise<string[]> => ipcRenderer.invoke('ib:getManagedAccounts'),
   getAccountSummary: (): Promise<any[]> => ipcRenderer.invoke('ib:getAccountSummary'),
   getPositions: (): Promise<any[]> => ipcRenderer.invoke('ib:getPositions'),
+  getAccountAliases: (accountIds: string[]): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('ib:getAccountAliases', accountIds),
 
   // Orders
   placeBatchOrders: (request: any, accountQuantities: Record<string, number>): Promise<any[]> =>
@@ -23,6 +25,12 @@ const ibApi = {
   onOrderStatus: (callback: (update: any) => void): void => {
     ipcRenderer.on('ib:orderStatus', (_event, update) => callback(update))
   },
+
+  // Quotes
+  getStockQuote: (symbol: string): Promise<{ bid: number; ask: number; last: number }> =>
+    ipcRenderer.invoke('ib:getStockQuote', symbol),
+  getQuotes: (symbols: string[]): Promise<Record<string, number>> =>
+    ipcRenderer.invoke('ib:getQuotes', symbols),
 
   // Options
   getOptionChain: (symbol: string): Promise<any[]> =>

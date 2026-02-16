@@ -38,9 +38,11 @@ interface IBApi {
   getAccountSummary: () => Promise<
     Array<{
       accountId: string
+      alias: string
       netLiquidation: number
       availableFunds: number
       totalCashValue: number
+      grossPositionValue: number
       currency: string
     }>
   >
@@ -53,6 +55,8 @@ interface IBApi {
       avgCost: number
     }>
   >
+  getAccountAliases: (accountIds: string[]) => Promise<Record<string, string>>
+  getQuotes: (symbols: string[]) => Promise<Record<string, number>>
   placeBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>

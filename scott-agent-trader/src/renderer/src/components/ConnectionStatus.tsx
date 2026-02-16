@@ -7,7 +7,11 @@ interface ConnectionState {
     errorMessage?: string
 }
 
-export default function ConnectionStatus(): JSX.Element {
+interface ConnectionStatusProps {
+    onRefresh?: () => void
+}
+
+export default function ConnectionStatus({ onRefresh }: ConnectionStatusProps): JSX.Element {
     const [state, setState] = useState<ConnectionState>({
         status: 'disconnected',
         host: '127.0.0.1',
@@ -62,11 +66,7 @@ export default function ConnectionStatus(): JSX.Element {
                     style={{ backgroundColor: statusColors[state.status] }}
                 />
                 <span className="status-text">{statusLabels[state.status]}</span>
-                {state.status === 'connected' && (
-                    <span className="connection-info">
-                        {state.host}:{state.port}
-                    </span>
-                )}
+
                 {state.status === 'error' && state.errorMessage && (
                     <span className="error-message">{state.errorMessage}</span>
                 )}
@@ -75,13 +75,6 @@ export default function ConnectionStatus(): JSX.Element {
             <div className="connection-controls">
                 {state.status !== 'connected' && state.status !== 'connecting' && (
                     <>
-                        <input
-                            type="text"
-                            value={host}
-                            onChange={(e) => setHost(e.target.value)}
-                            placeholder="Host"
-                            className="input-field input-host"
-                        />
                         <input
                             type="text"
                             value={port}
@@ -95,9 +88,16 @@ export default function ConnectionStatus(): JSX.Element {
                     </>
                 )}
                 {state.status === 'connected' && (
-                    <button onClick={handleDisconnect} className="btn btn-disconnect">
-                        斷線
-                    </button>
+                    <>
+                        <button onClick={handleDisconnect} className="btn btn-disconnect">
+                            斷線
+                        </button>
+                        {onRefresh && (
+                            <button onClick={onRefresh} className="btn">
+                                重整
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
         </div>

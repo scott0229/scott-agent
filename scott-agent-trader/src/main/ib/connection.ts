@@ -1,4 +1,5 @@
 import { IBApi, EventName, ErrorCode } from '@stoqey/ib'
+import { clearAliasCache } from './accounts'
 
 export interface ConnectionConfig {
     host: string
@@ -112,11 +113,15 @@ export function connect(config: ConnectionConfig): void {
 }
 
 export function disconnect(): void {
+    console.log('[IB] Disconnect requested')
+    clearAliasCache()
     if (ibApi) {
         try {
+            ibApi.removeAllListeners()
             ibApi.disconnect()
-        } catch {
-            // ignore
+            console.log('[IB] Disconnect called successfully')
+        } catch (err) {
+            console.error('[IB] Error during disconnect:', err)
         }
         ibApi = null
     }
