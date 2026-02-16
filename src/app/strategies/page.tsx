@@ -591,7 +591,7 @@ export default function StrategiesPage() {
                                                     <div className="flex items-center justify-between">
                                                         <CardTitle className="flex items-center gap-2">
                                                             <span>
-                                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{(() => { const opts = strategy.option_strategy ? strategy.option_strategy.split(',').map(s => s.trim()) : []; const hasCC = opts.includes('Covered Call'); const hasPP = opts.includes('Protective Put'); if (hasCC && hasPP) { return <span className="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">Strangle</span>; } return opts.map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>)); })()}{strategy.stock_strategy && strategy.stock_strategy.split(',').map(s => s.trim()).map((s, i) => { const label = s === '價差' ? (() => { try { const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {}; return `價差${params.spread_target_pct || 10}%`; } catch { return '價差'; } })() : s; return (<span key={`ss-${i}`} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === '價差' ? 'bg-orange-100 text-orange-800' : 'bg-sky-100 text-sky-800'}`}>{label}</span>); })} {strategy.name}
+                                                                <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{(() => { const opts = strategy.option_strategy ? strategy.option_strategy.split(',').map(s => s.trim()) : []; const hasCC = opts.includes('Covered Call'); const hasPP = opts.includes('Protective Put'); if (hasCC && hasPP) { return <span className="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">雙腿</span>; } return opts.map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>)); })()}{strategy.stock_strategy && strategy.stock_strategy.split(',').map(s => s.trim()).map((s, i) => { const label = s === '價差' ? (() => { try { const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {}; return `價差${params.spread_target_pct || 10}%`; } catch { return '價差'; } })() : s; return (<span key={`ss-${i}`} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === '價差' ? 'bg-orange-100 text-orange-800' : 'bg-sky-100 text-sky-800'}`}>{label}</span>); })} {strategy.name}
                                                             </span>
                                                         </CardTitle>
                                                         <div className="flex gap-1">
@@ -625,7 +625,7 @@ export default function StrategiesPage() {
                                                                 .filter(o => o.operation === 'Open' && o.type === 'CALL')
                                                                 .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
                                                             if (openCalls < expectedContracts) {
-                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，卻${openCalls === 0 ? '未持有' : `只持有 ${openCalls} 口`} ${expectedContracts} 口 SELL CALL！`);
+                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，建議持續 SELL CALL`);
                                                             }
                                                         }
 
@@ -634,7 +634,7 @@ export default function StrategiesPage() {
                                                                 .filter(o => o.operation === 'Open' && o.type === 'PUT')
                                                                 .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
                                                             if (totalOpenShares === 0 && openPuts === 0) {
-                                                                warnings.push(`未持有正股，也未持有 SELL PUT！`);
+                                                                warnings.push(`未持有正股，建議持續 SELL PUT`);
                                                             }
                                                         }
 
