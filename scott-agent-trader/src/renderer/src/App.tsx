@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import BatchOrderForm from './components/BatchOrderForm'
 import OptionOrderForm from './components/OptionOrderForm'
+import { useAccountStore } from './hooks/useAccountStore'
 import './assets/app.css'
 
 function App(): JSX.Element {
   const [connected, setConnected] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'stock' | 'option'>('overview')
-  const refreshRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -21,9 +21,7 @@ function App(): JSX.Element {
     })
   }, [])
 
-  const handleRefresh = useCallback(() => {
-    refreshRef.current?.()
-  }, [])
+  const { accounts, positions, quotes, loading, refresh } = useAccountStore(connected)
 
   return (
     <div className="app">
@@ -49,14 +47,22 @@ function App(): JSX.Element {
           </button>
         </nav>
         <div className="header-actions">
-          <ConnectionStatus onRefresh={handleRefresh} />
+          <ConnectionStatus onRefresh={refresh} />
         </div>
       </header>
 
       <main className="app-main">
-        {activeTab === 'overview' && <AccountOverview connected={connected} refreshRef={refreshRef} />}
-        {activeTab === 'stock' && <BatchOrderForm connected={connected} />}
-        {activeTab === 'option' && <OptionOrderForm connected={connected} />}
+        {activeTab === 'overview' && (
+          <AccountOverview
+            connected={connected}
+            accounts={accounts}
+            positions={positions}
+            quotes={quotes}
+            loading={loading}
+          />
+        )}
+        {activeTab === 'stock' && <BatchOrderForm connected={connected} accounts={accounts} positions={positions} />}
+        {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={accounts} />}
       </main>
     </div>
   )

@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import OptionChainTable from './OptionChainTable'
 import CustomSelect from './CustomSelect'
+import type { AccountData } from '../hooks/useAccountStore'
 
-interface AccountData {
-  accountId: string
-  netLiquidation: number
-  availableFunds: number
-}
+
 
 interface OrderResult {
   orderId: number
@@ -44,9 +41,10 @@ interface OptionGreek {
 
 interface OptionOrderFormProps {
   connected: boolean
+  accounts: AccountData[]
 }
 
-export default function OptionOrderForm({ connected }: OptionOrderFormProps): JSX.Element {
+export default function OptionOrderForm({ connected, accounts }: OptionOrderFormProps): JSX.Element {
   // Search state
   const [symbol, setSymbol] = useState('')
   const [chainParams, setChainParams] = useState<OptionChainParams[]>([])
@@ -67,21 +65,9 @@ export default function OptionOrderForm({ connected }: OptionOrderFormProps): JS
   const [quantity, setQuantity] = useState('')
   const [selectedUser, setSelectedUser] = useState('ALL')
 
-  const [accounts, setAccounts] = useState<AccountData[]>([])
   const [orderResults, setOrderResults] = useState<OrderResult[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-
-  // Fetch accounts when connected
-  useEffect(() => {
-    if (connected) {
-      window.ibApi.getAccountSummary().then((data) => {
-        setAccounts(data)
-      })
-    } else {
-      setAccounts([])
-    }
-  }, [connected])
 
   // Listen for order status updates
   useEffect(() => {

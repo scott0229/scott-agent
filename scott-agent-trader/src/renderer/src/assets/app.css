@@ -43,7 +43,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
+    padding: 18px 24px;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     -webkit-app-region: drag;
@@ -242,7 +242,7 @@ body {
 
 .account-metrics {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin-bottom: 12px;
 }
@@ -254,7 +254,7 @@ body {
 }
 
 .metric-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -561,13 +561,13 @@ input[type="number"]::-webkit-outer-spin-button {
     font-weight: 500;
     color: var(--text-muted);
     padding: 8px 10px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #b0b0b0;
     background: var(--bg-card);
 }
 
 .allocation-table td {
     padding: 8px 10px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #b0b0b0;
 }
 
 .allocation-table tr.selected {
@@ -580,7 +580,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .allocation-table tfoot td {
     font-weight: 600;
-    border-top: 2px solid var(--border-color);
+    border-top: 2px solid #b0b0b0;
     border-bottom: none;
 }
 
@@ -988,7 +988,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .results-table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid var(--border-color);
+    border: 1px solid #999;
     table-layout: fixed;
 }
 
@@ -1013,6 +1013,16 @@ input[type="number"]::-webkit-outer-spin-button {
     background: var(--bg-primary);
     color: var(--text-muted);
     font-weight: 600;
+}
+
+.allocation-table thead tr:first-child th,
+.results-table thead tr:first-child th {
+    border-top: 1px solid #999;
+}
+
+.allocation-table tbody tr:last-child td,
+.results-table tbody tr:last-child td {
+    border-bottom: 1px solid #999;
 }
 
 /* === Scrollbar === */

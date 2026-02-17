@@ -7,11 +7,10 @@ interface ConnectionState {
     errorMessage?: string
 }
 
-interface ConnectionStatusProps {
-    onRefresh?: () => void
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface ConnectionStatusProps { }
 
-export default function ConnectionStatus({ onRefresh }: ConnectionStatusProps): JSX.Element {
+export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Element {
     const [state, setState] = useState<ConnectionState>({
         status: 'disconnected',
         host: '127.0.0.1',
@@ -88,16 +87,9 @@ export default function ConnectionStatus({ onRefresh }: ConnectionStatusProps): 
                     </>
                 )}
                 {state.status === 'connected' && (
-                    <>
-                        <button onClick={handleDisconnect} className="btn btn-disconnect">
-                            斷線
-                        </button>
-                        {onRefresh && (
-                            <button onClick={onRefresh} className="btn">
-                                重整
-                            </button>
-                        )}
-                    </>
+                    <button onClick={handleDisconnect} className="btn btn-disconnect">
+                        斷線
+                    </button>
                 )}
             </div>
         </div>

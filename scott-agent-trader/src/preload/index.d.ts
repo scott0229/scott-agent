@@ -56,6 +56,7 @@ interface IBApi {
     }>
   >
   getAccountAliases: (accountIds: string[]) => Promise<Record<string, string>>
+  getCachedAliases: () => Promise<Record<string, string>>
   getQuotes: (symbols: string[]) => Promise<Record<string, number>>
   placeBatchOrders: (
     request: any,

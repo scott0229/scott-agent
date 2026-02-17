@@ -12,6 +12,7 @@ import {
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks } from './ib/options'
 import { getStockQuote, getQuotes } from './ib/quotes'
+import { getCachedAliases, setCachedAliases } from './aliasCache'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -83,7 +84,13 @@ function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('ib:getAccountAliases', async (_event, accountIds: string[]) => {
-    return requestAccountAliasesForIds(accountIds)
+    const aliases = await requestAccountAliasesForIds(accountIds)
+    setCachedAliases(aliases)
+    return aliases
+  })
+
+  ipcMain.handle('ib:getCachedAliases', async () => {
+    return getCachedAliases()
   })
 
   // Orders

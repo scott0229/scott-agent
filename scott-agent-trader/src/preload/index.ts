@@ -18,6 +18,8 @@ const ibApi = {
   getPositions: (): Promise<any[]> => ipcRenderer.invoke('ib:getPositions'),
   getAccountAliases: (accountIds: string[]): Promise<Record<string, string>> =>
     ipcRenderer.invoke('ib:getAccountAliases', accountIds),
+  getCachedAliases: (): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('ib:getCachedAliases'),
 
   // Orders
   placeBatchOrders: (request: any, accountQuantities: Record<string, number>): Promise<any[]> =>

@@ -1,13 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import CustomSelect from './CustomSelect'
+import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
-interface AccountData {
-    accountId: string
-    alias: string
-    netLiquidation: number
-    availableFunds: number
-    grossPositionValue: number
-}
+
 
 interface OrderResult {
     orderId: number
@@ -21,9 +16,11 @@ interface OrderResult {
 
 interface BatchOrderFormProps {
     connected: boolean
+    accounts: AccountData[]
+    positions: PositionData[]
 }
 
-export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.Element {
+export default function BatchOrderForm({ connected, accounts, positions }: BatchOrderFormProps): JSX.Element {
     const [symbol, setSymbol] = useState('')
     const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
     const [limitPrice, setLimitPrice] = useState('')
@@ -34,31 +31,10 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
     )
     const [loadingQuote, setLoadingQuote] = useState(false)
 
-    const [accounts, setAccounts] = useState<AccountData[]>([])
     const [orderResults, setOrderResults] = useState<OrderResult[]>([])
     const [submitting, setSubmitting] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [checkedAccounts, setCheckedAccounts] = useState<Set<string>>(new Set())
-
-    // Fetch accounts when connected
-    useEffect(() => {
-        if (connected) {
-            window.ibApi.getAccountSummary().then((data) => {
-                setAccounts(data)
-                // Fetch aliases in background
-                const accountIds = data.map((a: AccountData) => a.accountId)
-                if (accountIds.length > 0) {
-                    window.ibApi.getAccountAliases(accountIds).then((aliasMap) => {
-                        setAccounts((prev) =>
-                            prev.map((a) => ({ ...a, alias: aliasMap[a.accountId] || a.alias }))
-                        )
-                    }).catch(() => { /* ignore */ })
-                }
-            })
-        } else {
-            setAccounts([])
-        }
-    }, [connected])
 
     // Fetch stock quote when symbol changes (debounced)
     useEffect(() => {
@@ -111,6 +87,15 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
     const totalAllocated = Object.values(allocations).reduce((sum, q) => sum + q, 0)
 
     const handleQuantityChange = (accountId: string, value: string) => {
+        if (action === 'SELL' && symbol.trim()) {
+            const holding = positions
+                .filter(p => p.account === accountId && p.symbol.toUpperCase() === symbol.trim().toUpperCase() && p.secType === 'STK' && p.quantity > 0)
+                .reduce((sum, p) => sum + p.quantity, 0)
+            const num = parseInt(value, 10)
+            if (!isNaN(num) && num > holding) {
+                value = holding.toString()
+            }
+        }
         setQuantities((prev) => ({ ...prev, [accountId]: value }))
     }
 
@@ -210,7 +195,7 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                             <span className="quote-ask">{stockQuote.ask.toFixed(2)}</span>
                             <span className="quote-separator">|</span>
                             <span className="quote-label">LAST</span>
-                            <span className="quote-last">{stockQuote.last.toFixed(2)}</span>
+                            <span className="quote-last" style={{ color: '#1a3a6b' }}>{stockQuote.last.toFixed(2)}</span>
                         </div>
                     ) : null}
                 </div>
@@ -237,7 +222,11 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                 </th>
                                 <th style={{ width: '25%' }}>帳號</th>
                                 <th style={{ width: '11%' }}>淨值</th>
-                                <th style={{ width: '9%' }}>槓桿率</th>
+                                <th style={{ width: '9%' }}>融資率</th>
+                                <th style={{ width: '9%' }}>潛在融資</th>
+                                <th style={{ width: '9%' }}>新潛在融資</th>
+                                {action === 'SELL' && <th style={{ width: '8%' }}>庫存</th>}
+                                {action === 'SELL' && <th style={{ width: '8%' }}>成本</th>}
                                 <th style={{ width: '8%' }}>方向</th>
                                 <th style={{ width: '12%' }}>標的</th>
                                 <th style={{ width: '12%' }}>價格</th>
@@ -247,6 +236,12 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                         <tbody>
                             {targetAccounts.map((acct) => {
                                 const isChecked = checkedAccounts.has(acct.accountId)
+                                const stkPositions = action === 'SELL' ? positions
+                                    .filter(p => p.account === acct.accountId && p.symbol.toUpperCase() === symbol.trim().toUpperCase() && p.secType === 'STK' && p.quantity > 0) : []
+                                const stockHolding = stkPositions.reduce((sum, p) => sum + p.quantity, 0)
+                                const stockAvgCost = stockHolding > 0
+                                    ? stkPositions.reduce((sum, p) => sum + p.avgCost * p.quantity, 0) / stockHolding
+                                    : 0
                                 return (
                                     <tr key={acct.accountId}>
                                         <td>
@@ -268,10 +263,32 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                         </td>
                                         <td>{acct.accountId}{acct.alias ? ` - ${acct.alias}` : ''}</td>
                                         <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
-                                        <td>{acct.netLiquidation > 0 && acct.grossPositionValue > 0 ? (acct.grossPositionValue / acct.netLiquidation).toFixed(2) : '無槓桿'}</td>
+                                        <td>{acct.netLiquidation > 0 && acct.grossPositionValue > 0 ? (acct.grossPositionValue / acct.netLiquidation).toFixed(2) : '無融資'}</td>
+                                        <td>{(() => {
+                                            if (acct.netLiquidation <= 0) return '無融資'
+                                            const putCost = positions
+                                                .filter(p => p.account === acct.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                                                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
+                                            const potential = (acct.grossPositionValue + putCost) / acct.netLiquidation
+                                            return potential > 0 ? potential.toFixed(2) : '無融資'
+                                        })()}</td>
+                                        <td>{(() => {
+                                            if (acct.netLiquidation <= 0) return '無融資'
+                                            const putCost2 = positions
+                                                .filter(p => p.account === acct.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                                                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
+                                            const qty = parseInt(quantities[acct.accountId] || '0', 10) || 0
+                                            const price = parseFloat(limitPrice) || 0
+                                            const orderVal = qty * price
+                                            const newGPV = action === 'BUY' ? acct.grossPositionValue + orderVal : Math.max(0, acct.grossPositionValue - orderVal)
+                                            const newPotential = (newGPV + putCost2) / acct.netLiquidation
+                                            return newPotential > 0 ? newPotential.toFixed(2) : '無融資'
+                                        })()}</td>
+                                        {action === 'SELL' && <td>{stockHolding}</td>}
+                                        {action === 'SELL' && <td>{stockAvgCost > 0 ? stockAvgCost.toFixed(2) : '-'}</td>}
                                         {isChecked ? (
                                             <>
-                                                <td>{action === 'BUY' ? '買入' : '賣出'}</td>
+                                                <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                                 <td>{symbol.toUpperCase() || '-'}</td>
                                                 <td>{limitPrice ? `$${limitPrice}` : '-'}</td>
                                                 <td>
@@ -280,6 +297,7 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                                         value={quantities[acct.accountId] || ''}
                                                         onChange={(e) => handleQuantityChange(acct.accountId, e.target.value)}
                                                         min="0"
+                                                        max={action === 'SELL' ? stockHolding.toString() : undefined}
                                                         className="input-field input-small"
                                                     />
                                                 </td>
@@ -292,6 +310,8 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
+                                                {action === 'SELL' && <td></td>}
+                                                {action === 'SELL' && <td></td>}
                                             </>
                                         )}
                                     </tr>
@@ -325,7 +345,8 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                     <th style={{ width: '12%' }}>標的</th>
                                     <th style={{ width: '12%' }}>限價</th>
                                     <th style={{ width: '8%' }}>數量</th>
-                                    <th style={{ width: '15%' }}>交易後槓桿</th>
+                                    <th style={{ width: '15%' }}>新潛在融資</th>
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -336,15 +357,17 @@ export default function BatchOrderForm({ connected }: BatchOrderFormProps): JSX.
                                     const currentGPV = acct?.grossPositionValue ?? 0
                                     const netLiq = acct?.netLiquidation ?? 0
                                     const newGPV = action === 'BUY' ? currentGPV + orderValue : Math.max(0, currentGPV - orderValue)
-                                    const postLeverage = netLiq > 0 && newGPV > 0 ? (newGPV / netLiq).toFixed(2) : '無槓桿'
+                                    const postLeverage = netLiq > 0 && newGPV > 0 ? (newGPV / netLiq).toFixed(2) : '無融資'
+
                                     return (
                                         <tr key={accountId}>
                                             <td>{accountId}{acct?.alias ? ` - ${acct.alias}` : ''}</td>
-                                            <td>{action === 'BUY' ? '買入' : '賣出'}</td>
+                                            <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                             <td>{symbol.toUpperCase()}</td>
                                             <td>${limitPrice}</td>
-                                            <td>{qty}</td>
+                                            <td style={{ color: '#1a3a6b' }}>{qty}</td>
                                             <td>{postLeverage}</td>
+
                                         </tr>
                                     )
                                 })}

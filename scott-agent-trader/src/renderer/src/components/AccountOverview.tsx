@@ -1,97 +1,14 @@
-import { useState, useEffect, useCallback, type MutableRefObject } from 'react'
-
-interface AccountData {
-    accountId: string
-    alias: string
-    netLiquidation: number
-    availableFunds: number
-    totalCashValue: number
-    grossPositionValue: number
-    currency: string
-}
-
-interface PositionData {
-    account: string
-    symbol: string
-    secType: string
-    quantity: number
-    avgCost: number
-    expiry?: string
-    strike?: number
-    right?: string
-}
+import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface AccountOverviewProps {
     connected: boolean
-    refreshRef?: MutableRefObject<(() => void) | null>
+    accounts: AccountData[]
+    positions: PositionData[]
+    quotes: Record<string, number>
+    loading: boolean
 }
 
-export default function AccountOverview({ connected, refreshRef }: AccountOverviewProps): JSX.Element {
-    const [accounts, setAccounts] = useState<AccountData[]>([])
-    const [positions, setPositions] = useState<PositionData[]>([])
-    const [quotes, setQuotes] = useState<Record<string, number>>({})
-    const [loading, setLoading] = useState(false)
-
-    const fetchData = useCallback(async () => {
-        if (!connected) return
-
-        setLoading(true)
-        try {
-            const [accountData, positionData] = await Promise.all([
-                window.ibApi.getAccountSummary(),
-                window.ibApi.getPositions()
-            ])
-            setAccounts(accountData)
-            setPositions(positionData)
-            setLoading(false)
-
-            // Fetch aliases in background (non-blocking)
-            const accountIds = accountData.map((a: AccountData) => a.accountId)
-            if (accountIds.length > 0) {
-                window.ibApi.getAccountAliases(accountIds).then((aliasMap) => {
-                    setAccounts((prev) =>
-                        prev.map((a) => ({ ...a, alias: aliasMap[a.accountId] || a.alias }))
-                    )
-                }).catch(() => { /* ignore alias errors */ })
-            }
-
-            // Fetch last prices in background (non-blocking)
-            const stockSymbols = [...new Set(
-                positionData.filter((p: PositionData) => p.secType !== 'OPT').map((p: PositionData) => p.symbol)
-            )]
-            if (stockSymbols.length > 0) {
-                window.ibApi.getQuotes(stockSymbols).then((quoteData) => {
-                    setQuotes(quoteData)
-                }).catch(() => { /* ignore quote errors */ })
-            }
-        } catch (err: unknown) {
-            console.error('Failed to fetch account data:', err)
-            setLoading(false)
-        }
-    }, [connected])
-
-    useEffect(() => {
-        if (connected) {
-            fetchData()
-            const interval = setInterval(fetchData, 5000)
-            return () => clearInterval(interval)
-        } else {
-            setAccounts([])
-            setPositions([])
-        }
-    }, [connected, fetchData])
-
-    // Register fetchData on refreshRef so parent can trigger refresh
-    useEffect(() => {
-        if (refreshRef) {
-            refreshRef.current = fetchData
-        }
-        return () => {
-            if (refreshRef) {
-                refreshRef.current = null
-            }
-        }
-    }, [refreshRef, fetchData])
+export default function AccountOverview({ connected, accounts, positions, quotes, loading }: AccountOverviewProps): JSX.Element {
 
     const getPositionsForAccount = (accountId: string): PositionData[] => {
         return positions
@@ -100,6 +17,10 @@ export default function AccountOverview({ connected, refreshRef }: AccountOvervi
                 const aIsStock = a.secType !== 'OPT' ? 0 : 1
                 const bIsStock = b.secType !== 'OPT' ? 0 : 1
                 if (aIsStock !== bIsStock) return aIsStock - bIsStock
+                // Options: sort by expiry date (nearest first)
+                if (a.secType === 'OPT' && b.secType === 'OPT') {
+                    return (a.expiry || '').localeCompare(b.expiry || '')
+                }
                 return (b.avgCost * Math.abs(b.quantity)) - (a.avgCost * Math.abs(a.quantity))
             })
     }
@@ -160,14 +81,26 @@ export default function AccountOverview({ connected, refreshRef }: AccountOvervi
 
                                 <div className="metric">
                                     <span className="metric-label">現金</span>
-                                    <span className="metric-value">
+                                    <span className="metric-value" style={account.totalCashValue < 0 ? { color: '#b91c1c' } : undefined}>
                                         {formatCurrency(account.totalCashValue, account.currency)}
                                     </span>
                                 </div>
                                 <div className="metric">
-                                    <span className="metric-label">槓桿率</span>
+                                    <span className="metric-label">融資率</span>
                                     <span className="metric-value">
                                         {account.netLiquidation > 0 ? (account.grossPositionValue / account.netLiquidation).toFixed(2) : '-'}
+                                    </span>
+                                </div>
+                                <div className="metric">
+                                    <span className="metric-label">潛在融資</span>
+                                    <span className="metric-value">
+                                        {(() => {
+                                            if (account.netLiquidation <= 0) return '-'
+                                            const putAssignmentCost = positions
+                                                .filter(p => p.account === account.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                                                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
+                                            return ((account.grossPositionValue + putAssignmentCost) / account.netLiquidation).toFixed(2)
+                                        })()}
                                     </span>
                                 </div>
                             </div>
