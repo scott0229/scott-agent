@@ -7,6 +7,10 @@ import { requestManagedAccounts, requestAccountSummary, requestPositions, reques
 import {
   placeBatchOrders,
   placeOptionBatchOrders,
+  modifyOrder,
+  cancelOrder,
+  requestExecutions,
+  requestOpenOrders,
   setupNextOrderIdListener,
   setupOrderStatusListener
 } from './ib/orders'
@@ -50,7 +54,7 @@ function createWindow(): void {
 function setupIpcHandlers(): void {
   // Connection
   ipcMain.handle('ib:connect', async (_event, host: string, port: number) => {
-    connect({ host, port, clientId: 1 })
+    connect({ host, port, clientId: 0 })
     // Wait a bit for connection to establish
     return new Promise((resolve) => setTimeout(resolve, 1000))
   })
@@ -128,6 +132,22 @@ function setupIpcHandlers(): void {
       return placeOptionBatchOrders(request, accountQuantities)
     }
   )
+
+  ipcMain.handle('ib:getOpenOrders', async () => {
+    return requestOpenOrders()
+  })
+
+  ipcMain.handle('ib:getExecutions', async () => {
+    return requestExecutions()
+  })
+
+  ipcMain.handle('ib:modifyOrder', async (_event, req) => {
+    return modifyOrder(req)
+  })
+
+  ipcMain.handle('ib:cancelOrder', async (_event, orderId: number) => {
+    return cancelOrder(orderId)
+  })
 }
 
 // === App Lifecycle ===

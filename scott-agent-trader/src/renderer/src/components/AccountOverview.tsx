@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import type { AccountData, PositionData } from '../hooks/useAccountStore'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import type { AccountData, PositionData, OpenOrderData, ExecutionDataItem } from '../hooks/useAccountStore'
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 
@@ -8,16 +8,71 @@ interface AccountOverviewProps {
     accounts: AccountData[]
     positions: PositionData[]
     quotes: Record<string, number>
+    openOrders: OpenOrderData[]
+    executions: ExecutionDataItem[]
     loading: boolean
+    refresh?: () => void
 }
 
-export default function AccountOverview({ connected, accounts, positions, quotes, loading }: AccountOverviewProps): JSX.Element {
+export default function AccountOverview({ connected, accounts, positions, quotes, openOrders, executions, loading, refresh }: AccountOverviewProps): JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
     const [filterSecType, setFilterSecType] = useState('')
     const [selectMode, setSelectMode] = useState(false)
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
     const [showRollDialog, setShowRollDialog] = useState(false)
+    // Inline editing state: tracks which cell is being edited
+    const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
+    const [editValue, setEditValue] = useState('')
+    const editInputRef = useRef<HTMLInputElement | null>(null)
+
+    // Auto-focus input when entering edit mode
+    useEffect(() => {
+        if (editingCell && editInputRef.current) {
+            editInputRef.current.focus()
+            editInputRef.current.select()
+        }
+    }, [editingCell])
+
+    const startEdit = useCallback((order: OpenOrderData, field: 'quantity' | 'price') => {
+        const current = field === 'quantity' ? String(order.quantity) : (order.limitPrice ?? 0).toFixed(2)
+        setEditingCell({ orderId: order.orderId, field })
+        setEditValue(current)
+    }, [])
+
+    const cancelEdit = useCallback(() => {
+        setEditingCell(null)
+        setEditValue('')
+    }, [])
+
+    const submitEdit = useCallback((order: OpenOrderData, field: 'quantity' | 'price', value: string) => {
+        const val = parseFloat(value)
+        if (isNaN(val) || val <= 0) { cancelEdit(); return }
+        const newQty = field === 'quantity' ? val : order.quantity
+        const newPrice = field === 'price' ? val : (order.limitPrice ?? 0)
+        console.log('[EDIT] submitting modify order:', { orderId: order.orderId, newQty, newPrice })
+        window.ibApi.modifyOrder({
+            orderId: order.orderId,
+            account: order.account,
+            symbol: order.symbol,
+            secType: order.secType,
+            action: order.action,
+            orderType: order.orderType,
+            quantity: newQty,
+            limitPrice: newPrice,
+            expiry: order.expiry,
+            strike: order.strike,
+            right: order.right
+        }).then(() => {
+            console.log('[EDIT] modifyOrder succeeded')
+            setTimeout(() => refresh?.(), 500)
+        }).catch((err: unknown) => {
+            console.error('[EDIT] modifyOrder failed:', err)
+            alert('修改委託失敗: ' + String(err))
+        })
+        cancelEdit()
+    }, [cancelEdit, refresh])
+
 
     const posKey = (pos: PositionData): string =>
         `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
@@ -200,11 +255,11 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                         {displayAccounts.map((account) => (
                             <div key={account.accountId} className="account-card">
                                 <div className="account-header">
-                                    <span className="account-id">{account.accountId}{account.alias ? ` - ${account.alias}` : ''}</span>
+                                    <span className="account-id">{account.alias || account.accountId}</span>
 
                                 </div>
 
-                                <div className="account-metrics">
+                                {!selectMode && <div className="account-metrics">
                                     <div className="metric">
                                         <span className="metric-label">淨值</span>
                                         <span className="metric-value">
@@ -236,7 +291,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             })()}
                                         </span>
                                     </div>
-                                </div>
+                                </div>}
 
                                 {/* Stock Positions */}
                                 {getPositionsForAccount(account.accountId).filter(p => p.secType !== 'OPT').length > 0 && (
@@ -313,6 +368,135 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                         </table>
                                     </div>
                                 )}
+
+                                {/* Open Orders */}
+                                {!selectMode && openOrders.filter(o => o.account === account.accountId).length > 0 && (
+                                    <div className="positions-section">
+
+                                        <table className="positions-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '35%' }}>委託</th>
+                                                    <th style={{ width: '13%' }}>方向</th>
+                                                    <th style={{ width: '13%' }}>數量</th>
+                                                    <th style={{ width: '20%' }}>價格</th>
+                                                    <th style={{ width: '19%' }}>狀態</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {openOrders.filter(o => o.account === account.accountId).map((order) => {
+                                                    const desc = order.secType === 'OPT'
+                                                        ? `${order.symbol} ${order.expiry ? order.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${order.strike || ''} ${order.right === 'C' || order.right === 'CALL' ? 'C' : 'P'}`
+                                                        : order.symbol
+                                                    return (
+                                                        <tr key={order.orderId}>
+                                                            <td className="pos-symbol">{desc}</td>
+                                                            <td style={{ color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 600 }}>
+                                                                {order.action === 'BUY' ? '買' : '賣'}
+                                                            </td>
+                                                            <td
+                                                                style={{ cursor: 'pointer' }}
+                                                                onDoubleClick={() => startEdit(order, 'quantity')}
+                                                            >
+                                                                {editingCell?.orderId === order.orderId && editingCell.field === 'quantity' ? (
+                                                                    <input
+                                                                        ref={editInputRef}
+                                                                        type="number"
+                                                                        step="1"
+                                                                        value={editValue}
+                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') submitEdit(order, 'quantity', editValue)
+                                                                            if (e.key === 'Escape') cancelEdit()
+                                                                        }}
+                                                                        onBlur={() => cancelEdit()}
+                                                                        style={{ width: '60px', padding: '2px 4px', fontSize: '13px', background: 'transparent', border: '1px solid #94a3b8', borderRadius: '3px', color: 'inherit', outline: 'none', textAlign: 'center' }}
+                                                                    />
+                                                                ) : order.quantity}
+                                                            </td>
+                                                            <td
+                                                                style={{ cursor: order.orderType === 'LMT' ? 'pointer' : 'default' }}
+                                                                onDoubleClick={() => { if (order.orderType === 'LMT') startEdit(order, 'price') }}
+                                                            >
+                                                                {editingCell?.orderId === order.orderId && editingCell.field === 'price' ? (
+                                                                    <input
+                                                                        ref={editInputRef}
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={editValue}
+                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') submitEdit(order, 'price', editValue)
+                                                                            if (e.key === 'Escape') cancelEdit()
+                                                                        }}
+                                                                        onBlur={() => cancelEdit()}
+                                                                        style={{ width: '80px', padding: '2px 4px', fontSize: '13px', background: 'transparent', border: '1px solid #94a3b8', borderRadius: '3px', color: 'inherit', outline: 'none', textAlign: 'center' }}
+                                                                    />
+                                                                ) : order.orderType === 'LMT' ? `$${(order.limitPrice ?? 0).toFixed(2)}` : '市價'}
+                                                            </td>
+                                                            <td style={{ whiteSpace: 'nowrap' }}>
+                                                                {order.status}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (!confirm(`確定要取消 ${order.symbol} 的委託嗎？`)) return
+                                                                        window.ibApi.cancelOrder(order.orderId).then(() => {
+                                                                            console.log('[CANCEL] cancelOrder succeeded')
+                                                                            setTimeout(() => refresh?.(), 500)
+                                                                        }).catch((err: unknown) => {
+                                                                            console.error('[CANCEL] cancelOrder failed:', err)
+                                                                            alert('取消委託失敗: ' + String(err))
+                                                                        })
+                                                                    }}
+                                                                    className="cancel-order-btn"
+                                                                    title="取消委託"
+                                                                >✕</button>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {/* Today's Filled Orders */}
+                                {!selectMode && executions.filter(e => e.account === account.accountId).length > 0 && (
+                                    <div className="positions-section">
+
+                                        <table className="positions-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '35%' }}>今日成交</th>
+                                                    <th style={{ width: '13%' }}>方向</th>
+                                                    <th style={{ width: '13%' }}>數量</th>
+                                                    <th style={{ width: '20%' }}>成交價</th>
+                                                    <th style={{ width: '19%' }}>時間</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {executions.filter(e => e.account === account.accountId).map((exec) => {
+                                                    const desc = exec.secType === 'OPT'
+                                                        ? `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
+                                                        : exec.symbol
+                                                    const isAssignment = exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
+                                                    // Format "20260218 18:14:12 Asia/Taipei" → "0218 18:14"
+                                                    const fmtTime = exec.time.replace(/^\d{4}(\d{2})(\d{2})\s+(\d{2}:\d{2}).*$/, '$1/$2 $3')
+                                                    return (
+                                                        <tr key={exec.execId}>
+                                                            <td className="pos-symbol">{desc}{isAssignment && <span style={{ color: '#1a6baa', fontWeight: 600, marginLeft: 6, fontSize: '0.92em' }}>(到期)</span>}</td>
+                                                            <td style={{ color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a', fontWeight: 600 }}>
+                                                                {exec.side === 'BOT' ? '買' : '賣'}
+                                                            </td>
+                                                            <td>{exec.quantity}</td>
+                                                            <td>${exec.avgPrice.toFixed(2)}</td>
+                                                            <td>{fmtTime}</td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -324,6 +508,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
                 accounts={accounts}
             />
+
         </>
     )
 }

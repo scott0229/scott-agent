@@ -21,10 +21,43 @@ export interface PositionData {
   right?: string
 }
 
+export interface OpenOrderData {
+  orderId: number
+  account: string
+  symbol: string
+  secType: string
+  action: string
+  quantity: number
+  orderType: string
+  limitPrice: number
+  status: string
+  expiry?: string
+  strike?: number
+  right?: string
+}
+
+export interface ExecutionDataItem {
+  execId: string
+  orderId: number
+  account: string
+  symbol: string
+  secType: string
+  side: string
+  quantity: number
+  price: number
+  avgPrice: number
+  time: string
+  expiry?: string
+  strike?: number
+  right?: string
+}
+
 interface AccountStore {
   accounts: AccountData[]
   positions: PositionData[]
   quotes: Record<string, number>
+  openOrders: OpenOrderData[]
+  executions: ExecutionDataItem[]
   loading: boolean
   refresh: () => void
 }
@@ -35,6 +68,8 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
+  const [openOrders, setOpenOrders] = useState<OpenOrderData[]>([])
+  const [executions, setExecutions] = useState<ExecutionDataItem[]>([])
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const aliasRef = useRef<Record<string, string>>({})
@@ -44,6 +79,8 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     setAccounts([])
     setPositions([])
     setQuotes({})
+    setOpenOrders([])
+    setExecutions([])
     aliasRef.current = {}
     window.ibApi.getCachedAliases(port).then((cached) => {
       if (Object.keys(cached).length > 0) {
@@ -57,9 +94,11 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
 
     setLoading(true)
     try {
-      const [accountData, positionData] = await Promise.all([
+      const [accountData, positionData, orderData, execData] = await Promise.all([
         window.ibApi.getAccountSummary(),
-        window.ibApi.getPositions()
+        window.ibApi.getPositions(),
+        window.ibApi.getOpenOrders().catch(() => [] as OpenOrderData[]),
+        window.ibApi.getExecutions().catch(() => [] as ExecutionDataItem[])
       ])
 
       // Apply known aliases immediately (from cache or previous fetch)
@@ -70,6 +109,8 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
       }))
       setAccounts(withAliases)
       setPositions(positionData)
+      setOpenOrders(orderData)
+      setExecutions(execData)
       setLoading(false)
 
       // Always fetch fresh aliases in background
@@ -117,6 +158,8 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
       setAccounts([])
       setPositions([])
       setQuotes({})
+      setOpenOrders([])
+      setExecutions([])
     }
 
     return () => {
@@ -127,5 +170,5 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     }
   }, [connected, fetchData])
 
-  return { accounts, positions, quotes, loading, refresh: fetchData }
+  return { accounts, positions, quotes, openOrders, executions, loading, refresh: fetchData }
 }

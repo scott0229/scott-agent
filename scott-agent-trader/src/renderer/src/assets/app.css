@@ -1961,3 +1961,21 @@ input[type="number"]::-webkit-outer-spin-button {
 .selectable-row td {
     user-select: none;
 }
+
+.cancel-order-btn {
+    margin-left: 6px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    vertical-align: middle;
+}
+
+.cancel-order-btn:hover {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+}

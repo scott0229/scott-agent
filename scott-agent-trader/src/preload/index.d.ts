@@ -24,6 +24,37 @@ interface OptionGreek {
   openInterest: number
 }
 
+interface OpenOrder {
+  orderId: number
+  account: string
+  symbol: string
+  secType: string
+  action: string
+  quantity: number
+  orderType: string
+  limitPrice: number
+  status: string
+  expiry?: string
+  strike?: number
+  right?: string
+}
+
+interface ExecutionData {
+  execId: string
+  orderId: number
+  account: string
+  symbol: string
+  secType: string
+  side: string
+  quantity: number
+  price: number
+  avgPrice: number
+  time: string
+  expiry?: string
+  strike?: number
+  right?: string
+}
+
 interface IBApi {
   connect: (host: string, port: number) => Promise<void>
   disconnect: () => Promise<void>
@@ -97,6 +128,22 @@ interface IBApi {
       symbol: string
     }>
   >
+  getOpenOrders: () => Promise<OpenOrder[]>
+  getExecutions: () => Promise<ExecutionData[]>
+  modifyOrder: (req: {
+    orderId: number
+    account: string
+    symbol: string
+    secType: string
+    action: string
+    orderType: string
+    quantity: number
+    limitPrice: number
+    expiry?: string
+    strike?: number
+    right?: string
+  }) => Promise<void>
+  cancelOrder: (orderId: number) => Promise<void>
 
   removeAllListeners: () => void
 }

@@ -50,7 +50,7 @@ function App(): JSX.Element {
     setHiddenAccounts(loadHiddenAccounts(connectedPort))
   }, [connectedPort])
 
-  const { accounts, positions, quotes, loading, refresh } = useAccountStore(connected, connectedPort)
+  const { accounts, positions, quotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort)
 
   const toggleHiddenAccount = useCallback((accountId: string) => {
     setHiddenAccounts((prev) => {
@@ -70,6 +70,16 @@ function App(): JSX.Element {
   const visiblePositions = useMemo(
     () => positions.filter((p) => !hiddenAccounts.has(p.account)),
     [positions, hiddenAccounts]
+  )
+
+  const visibleOpenOrders = useMemo(
+    () => openOrders.filter((o) => !hiddenAccounts.has(o.account)),
+    [openOrders, hiddenAccounts]
+  )
+
+  const visibleExecutions = useMemo(
+    () => executions.filter((e) => !hiddenAccounts.has(e.account)),
+    [executions, hiddenAccounts]
   )
 
   return (
@@ -113,7 +123,10 @@ function App(): JSX.Element {
             accounts={visibleAccounts}
             positions={visiblePositions}
             quotes={quotes}
+            openOrders={visibleOpenOrders}
+            executions={visibleExecutions}
             loading={loading}
+            refresh={refresh}
           />
         )}
         {activeTab === 'stock' && (

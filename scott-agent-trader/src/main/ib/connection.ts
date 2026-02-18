@@ -76,6 +76,8 @@ export function connect(config: ConnectionConfig): void {
             port: config.port
         }
         notifyListeners()
+        // Bind orders placed by other API clients so we get proper orderIds
+        ibApi!.reqAutoOpenOrders(true)
     })
 
     ibApi.on(EventName.disconnected, () => {
