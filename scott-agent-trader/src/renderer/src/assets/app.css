@@ -266,6 +266,16 @@ body {
     border-color: #15803d;
 }
 
+
+/* === Panel === */
+.panel {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
+}
+
 /* === Accounts Grid === */
 .accounts-grid {
     display: grid;
@@ -278,7 +288,8 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
     padding: 16px;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
 }
 
 .account-card:hover {
@@ -324,6 +335,7 @@ body {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 600;
 }
 
 .metric-value {
