@@ -17,8 +17,8 @@ interface AccountOverviewProps {
 export default function AccountOverview({ connected, accounts, positions, quotes, openOrders, executions, loading, refresh }: AccountOverviewProps): JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
-    const [filterSecType, setFilterSecType] = useState('')
-    const [selectMode, setSelectMode] = useState(false)
+
+    const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
     const [showRollDialog, setShowRollDialog] = useState(false)
     // Inline editing state: tracks which cell is being edited
@@ -86,11 +86,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         })
     }
 
-    const toggleSelectMode = (): void => {
-        if (selectMode) {
+    const toggleSelectMode = (mode: 'STK' | 'OPT'): void => {
+        if (selectMode === mode) {
             setSelectedPositions(new Set())
+            setSelectMode(false)
+        } else {
+            setSelectedPositions(new Set())
+            setSelectMode(mode)
         }
-        setSelectMode(!selectMode)
     }
 
     const canRollOptions = useMemo(() => {
@@ -117,17 +120,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         return positions
             .filter((p) => p.account === accountId)
             .filter((p) => !filterSymbol || p.symbol === filterSymbol)
-            .filter((p) => !filterSecType || (() => {
-                if (filterSecType === 'STK') return p.secType !== 'OPT'
-                if (p.secType !== 'OPT') return false
-                const right = p.right === 'C' || p.right === 'CALL' ? 'CALL' : 'PUT'
-                const side = p.quantity < 0 ? 'SELL' : 'BUY'
-                if (filterSecType === 'SELL_CALL') return side === 'SELL' && right === 'CALL'
-                if (filterSecType === 'BUY_CALL') return side === 'BUY' && right === 'CALL'
-                if (filterSecType === 'SELL_PUT') return side === 'SELL' && right === 'PUT'
-                if (filterSecType === 'BUY_PUT') return side === 'BUY' && right === 'PUT'
-                return true
-            })())
+
             .sort((a, b) => {
                 const aIsStock = a.secType !== 'OPT' ? 0 : 1
                 const bIsStock = b.secType !== 'OPT' ? 0 : 1
@@ -184,18 +177,10 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const displayAccounts = sortedAccounts.filter((a) => {
         let acctPositions = positions.filter((p) => p.account === a.accountId)
         if (filterSymbol) acctPositions = acctPositions.filter((p) => p.symbol === filterSymbol)
-        if (filterSecType) acctPositions = acctPositions.filter((p) => {
-            if (filterSecType === 'STK') return p.secType !== 'OPT'
-            if (p.secType !== 'OPT') return false
-            const right = p.right === 'C' || p.right === 'CALL' ? 'CALL' : 'PUT'
-            const side = p.quantity < 0 ? 'SELL' : 'BUY'
-            if (filterSecType === 'SELL_CALL') return side === 'SELL' && right === 'CALL'
-            if (filterSecType === 'BUY_CALL') return side === 'BUY' && right === 'CALL'
-            if (filterSecType === 'SELL_PUT') return side === 'SELL' && right === 'PUT'
-            if (filterSecType === 'BUY_PUT') return side === 'BUY' && right === 'PUT'
-            return true
-        })
-        return !filterSymbol && !filterSecType ? true : acctPositions.length > 0
+        if (selectMode === 'STK') acctPositions = acctPositions.filter((p) => p.secType !== 'OPT')
+        if (selectMode === 'OPT') acctPositions = acctPositions.filter((p) => p.secType === 'OPT')
+        if (filterSymbol || selectMode) return acctPositions.length > 0
+        return true
     })
 
     return (
@@ -204,37 +189,31 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 <div className="sort-bar">
                     <div className="select-actions">
                         <button
-                            className={`select-toggle-btn${selectMode ? ' active' : ''}`}
-                            onClick={toggleSelectMode}
+                            className={`select-toggle-btn${selectMode === 'STK' ? ' active' : ''}`}
+                            onClick={() => toggleSelectMode('STK')}
                         >
-                            選取{selectMode && selectedPositions.size > 0 ? ` (${selectedPositions.size})` : ''}
+                            選取股票{selectMode === 'STK' && selectedPositions.size > 0 ? ` (${selectedPositions.size})` : ''}
+                        </button>
+                        <button
+                            className={`select-toggle-btn${selectMode === 'OPT' ? ' active' : ''}`}
+                            onClick={() => toggleSelectMode('OPT')}
+                        >
+                            選取期權{selectMode === 'OPT' && selectedPositions.size > 0 ? ` (${selectedPositions.size})` : ''}
                         </button>
                         {selectMode && canRollOptions && (
                             <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
                                 批次展期
                             </button>
                         )}
+                        <CustomSelect
+                            value={filterSymbol}
+                            onChange={setFilterSymbol}
+                            options={[
+                                { value: '', label: '全部標的' },
+                                ...uniqueSymbols.map((s) => ({ value: s, label: s }))
+                            ]}
+                        />
                     </div>
-                    <CustomSelect
-                        value={filterSymbol}
-                        onChange={setFilterSymbol}
-                        options={[
-                            { value: '', label: '全部標的' },
-                            ...uniqueSymbols.map((s) => ({ value: s, label: s }))
-                        ]}
-                    />
-                    <CustomSelect
-                        value={filterSecType}
-                        onChange={setFilterSecType}
-                        options={[
-                            { value: '', label: '全部類型' },
-                            { value: 'STK', label: '股票' },
-                            { value: 'SELL_CALL', label: '賣 CALL' },
-                            { value: 'BUY_CALL', label: '買 CALL' },
-                            { value: 'SELL_PUT', label: '賣 PUT' },
-                            { value: 'BUY_PUT', label: '買 PUT' }
-                        ]}
-                    />
                     <CustomSelect
                         value={sortBy}
                         onChange={setSortBy}
@@ -294,13 +273,13 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 </div>}
 
                                 {/* Stock Positions */}
-                                {getPositionsForAccount(account.accountId).filter(p => p.secType !== 'OPT').length > 0 && (
+                                {selectMode !== 'OPT' && getPositionsForAccount(account.accountId).filter(p => p.secType !== 'OPT').length > 0 && (
                                     <div className="positions-section">
 
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    {selectMode && <th style={{ width: '30px' }}></th>}
+                                                    {selectMode === 'STK' && <th style={{ width: '30px' }}></th>}
                                                     <th>股票</th>
                                                     <th>數量</th>
                                                     <th>均價</th>
@@ -310,8 +289,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             </thead>
                                             <tbody>
                                                 {getPositionsForAccount(account.accountId).filter(p => p.secType !== 'OPT').map((pos, idx) => (
-                                                    <tr key={idx} className={selectMode ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode ? () => togglePosition(posKey(pos)) : undefined} style={selectMode ? { cursor: 'pointer' } : undefined}>
-                                                        {selectMode && (
+                                                    <tr key={idx} className={selectMode === 'STK' ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode === 'STK' ? () => togglePosition(posKey(pos)) : undefined} style={selectMode === 'STK' ? { cursor: 'pointer' } : undefined}>
+                                                        {selectMode === 'STK' && (
                                                             <td style={{ textAlign: 'center' }}>
                                                                 <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} />
                                                             </td>
@@ -333,13 +312,13 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 )}
 
                                 {/* Option Positions */}
-                                {getPositionsForAccount(account.accountId).filter(p => p.secType === 'OPT').length > 0 && (
+                                {selectMode !== 'STK' && getPositionsForAccount(account.accountId).filter(p => p.secType === 'OPT').length > 0 && (
                                     <div className="positions-section">
 
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    {selectMode && <th style={{ width: '30px' }}></th>}
+                                                    {selectMode === 'OPT' && <th style={{ width: '30px' }}></th>}
                                                     <th style={{ width: '35%' }}>期權</th>
                                                     <th style={{ width: '13%' }}>數量</th>
                                                     <th style={{ width: '17%' }}>均價</th>
@@ -349,8 +328,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             </thead>
                                             <tbody>
                                                 {getPositionsForAccount(account.accountId).filter(p => p.secType === 'OPT').map((pos, idx) => (
-                                                    <tr key={idx} className={selectMode ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode ? () => togglePosition(posKey(pos)) : undefined} style={selectMode ? { cursor: 'pointer' } : undefined}>
-                                                        {selectMode && (
+                                                    <tr key={idx} className={selectMode === 'OPT' ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode === 'OPT' ? () => togglePosition(posKey(pos)) : undefined} style={selectMode === 'OPT' ? { cursor: 'pointer' } : undefined}>
+                                                        {selectMode === 'OPT' && (
                                                             <td style={{ textAlign: 'center' }}>
                                                                 <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} />
                                                             </td>
