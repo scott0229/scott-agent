@@ -59,7 +59,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
 
     // Listen for order status updates
     useEffect(() => {
-        window.ibApi.onOrderStatus((update: OrderResult) => {
+        const unsubscribe = window.ibApi.onOrderStatus((update: OrderResult) => {
             setOrderResults((prev) =>
                 prev.map((r) =>
                     r.orderId === update.orderId
@@ -70,7 +70,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
         })
 
         return () => {
-            window.ibApi.removeAllListeners()
+            unsubscribe()
         }
     }, [])
 
@@ -222,6 +222,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                 </th>
                                 <th style={{ width: '25%' }}>帳號</th>
                                 <th style={{ width: '11%' }}>淨值</th>
+                                <th style={{ width: '11%' }}>現金</th>
                                 <th style={{ width: '9%' }}>融資率</th>
                                 <th style={{ width: '9%' }}>潛在融資</th>
                                 <th style={{ width: '9%' }}>新潛在融資</th>
@@ -263,6 +264,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                         </td>
                                         <td>{acct.accountId}{acct.alias ? ` - ${acct.alias}` : ''}</td>
                                         <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                                        <td style={acct.totalCashValue < 0 ? { color: '#8b1a1a' } : undefined}>{acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                                         <td>{acct.netLiquidation > 0 && acct.grossPositionValue > 0 ? (acct.grossPositionValue / acct.netLiquidation).toFixed(2) : '無融資'}</td>
                                         <td>{(() => {
                                             if (acct.netLiquidation <= 0) return '無融資'
@@ -365,7 +367,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                             <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                             <td>{symbol.toUpperCase()}</td>
                                             <td>${limitPrice}</td>
-                                            <td style={{ color: '#1a3a6b' }}>{qty}</td>
+                                            <td style={{ color: '#1a3a6b' }}>{qty.toLocaleString()}</td>
                                             <td>{postLeverage}</td>
 
                                         </tr>

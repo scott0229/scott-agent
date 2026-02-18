@@ -140,7 +140,7 @@ export default function RollOptionDialog({
     const getAlias = useCallback(
         (accountId: string): string => {
             const acct = accts.find((a) => a.accountId === accountId)
-            return acct?.alias ? `${accountId} - ${acct.alias}` : accountId
+            return acct?.alias || accountId
         },
         [accts]
     )
@@ -173,17 +173,20 @@ export default function RollOptionDialog({
         }
     }, [availableExpirations])
 
-    // Auto-select nearby strikes (±5 around stock price) when available
+    // Auto-select nearby strikes (±5 around stock price or current position strike) when available
     useEffect(() => {
-        if (availableStrikes.length > 0 && selectedStrikes.length === 0 && stockPrice !== null) {
-            const centerIdx = availableStrikes.findIndex((s) => s >= stockPrice)
+        if (availableStrikes.length > 0 && selectedStrikes.length === 0) {
+            // Use stock price if available, otherwise fall back to current position's strike
+            const centerPrice = stockPrice ?? (currentCombos.length > 0 ? Math.max(...currentCombos.map(c => c.strike)) : null)
+            if (centerPrice === null) return
+            const centerIdx = availableStrikes.findIndex((s) => s >= centerPrice)
             const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
             const nearbyRange = 5
             const startIdx = Math.max(0, idx - nearbyRange)
             const endIdx = Math.min(availableStrikes.length, idx + nearbyRange + 1)
             setSelectedStrikes(availableStrikes.slice(startIdx, endIdx).slice(0, 10))
         }
-    }, [availableStrikes, stockPrice])
+    }, [availableStrikes, stockPrice, currentCombos])
 
     // Scroll strike dropdown to first checked item on open
     useEffect(() => {
@@ -437,11 +440,10 @@ export default function RollOptionDialog({
         <div className="roll-dialog-overlay" onClick={onClose}>
             <div className="roll-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="roll-dialog-header">
-                    <h3>批次展期</h3>
+                    <h3>{symbol} 批次展期</h3>
                     {targetStrike !== null && targetRight !== null && (
                         <span className="roll-dialog-selected-badge">
                             → {formatExpiry(targetExpiry)} ${targetStrike} {targetRight === 'C' ? 'CALL' : 'PUT'}
-                            {targetMid !== null && ` · $${targetMid.toFixed(2)}`}
                         </span>
                     )}
                     <button className="roll-dialog-close" onClick={onClose}>

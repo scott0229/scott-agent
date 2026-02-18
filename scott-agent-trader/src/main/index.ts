@@ -83,14 +83,14 @@ function setupIpcHandlers(): void {
     return requestPositions()
   })
 
-  ipcMain.handle('ib:getAccountAliases', async (_event, accountIds: string[]) => {
+  ipcMain.handle('ib:getAccountAliases', async (_event, accountIds: string[], port: number) => {
     const aliases = await requestAccountAliasesForIds(accountIds)
-    setCachedAliases(aliases)
+    setCachedAliases(aliases, port)
     return aliases
   })
 
-  ipcMain.handle('ib:getCachedAliases', async () => {
-    return getCachedAliases()
+  ipcMain.handle('ib:getCachedAliases', async (_event, port: number) => {
+    return getCachedAliases(port)
   })
 
   // Orders

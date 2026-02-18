@@ -8,24 +8,32 @@ const ibApi = {
     ipcRenderer.invoke('ib:connect', host, port),
   disconnect: (): Promise<void> => ipcRenderer.invoke('ib:disconnect'),
   getConnectionState: (): Promise<any> => ipcRenderer.invoke('ib:getConnectionState'),
-  onConnectionStatus: (callback: (state: any) => void): void => {
-    ipcRenderer.on('ib:connectionStatus', (_event, state) => callback(state))
+  onConnectionStatus: (callback: (state: any) => void): (() => void) => {
+    const handler = (_event: any, state: any): void => callback(state)
+    ipcRenderer.on('ib:connectionStatus', handler)
+    return () => {
+      ipcRenderer.removeListener('ib:connectionStatus', handler)
+    }
   },
 
   // Accounts
   getManagedAccounts: (): Promise<string[]> => ipcRenderer.invoke('ib:getManagedAccounts'),
   getAccountSummary: (): Promise<any[]> => ipcRenderer.invoke('ib:getAccountSummary'),
   getPositions: (): Promise<any[]> => ipcRenderer.invoke('ib:getPositions'),
-  getAccountAliases: (accountIds: string[]): Promise<Record<string, string>> =>
-    ipcRenderer.invoke('ib:getAccountAliases', accountIds),
-  getCachedAliases: (): Promise<Record<string, string>> =>
-    ipcRenderer.invoke('ib:getCachedAliases'),
+  getAccountAliases: (accountIds: string[], port: number): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('ib:getAccountAliases', accountIds, port),
+  getCachedAliases: (port: number): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('ib:getCachedAliases', port),
 
   // Orders
   placeBatchOrders: (request: any, accountQuantities: Record<string, number>): Promise<any[]> =>
     ipcRenderer.invoke('ib:placeBatchOrders', request, accountQuantities),
-  onOrderStatus: (callback: (update: any) => void): void => {
-    ipcRenderer.on('ib:orderStatus', (_event, update) => callback(update))
+  onOrderStatus: (callback: (update: any) => void): (() => void) => {
+    const handler = (_event: any, update: any): void => callback(update)
+    ipcRenderer.on('ib:orderStatus', handler)
+    return () => {
+      ipcRenderer.removeListener('ib:orderStatus', handler)
+    }
   },
 
   // Quotes

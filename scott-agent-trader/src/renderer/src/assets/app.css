@@ -52,6 +52,25 @@ body {
     -webkit-app-region: drag;
 }
 
+.settings-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
+    -webkit-app-region: no-drag;
+    margin-right: 8px;
+    line-height: 0;
+    display: flex;
+    align-items: center;
+}
+
+.settings-btn:hover {
+    color: var(--accent-blue);
+}
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -331,7 +350,7 @@ body {
 }
 
 .metric-label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -339,14 +358,16 @@ body {
 }
 
 .metric-value {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
 }
 
 /* === Positions === */
 .positions-section {
-    padding-top: 10px;
-    margin-top: 4px;
+    padding: 10px;
+    margin-top: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
 }
 
 .positions-title {
@@ -1483,6 +1504,9 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .roll-positions-table td {
     padding: 4px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .spread-positive {
@@ -1813,4 +1837,127 @@ input[type="number"]::-webkit-outer-spin-button {
     100% {
         background-position: -200% 0;
     }
+}
+
+/* === Settings Panel === */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.settings-panel {
+    width: 360px;
+    max-width: 90vw;
+    height: 100vh;
+    background: var(--bg-secondary);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.settings-close-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border-radius: var(--radius);
+    transition: color 0.15s;
+}
+
+.settings-close-btn:hover {
+    color: var(--accent-red);
+}
+
+.settings-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.settings-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settings-account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.settings-account-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.settings-account-row:hover {
+    background: var(--bg-hover);
+}
+
+.settings-account-name {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.settings-account-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+}
+
+/* === Selectable Row (for select mode in AccountOverview) === */
+.selectable-row:hover {
+    background: #fff9c4;
+}
+
+.selectable-row.selected {
+    background: #fff9c4;
+}
+
+.selectable-row td {
+    user-select: none;
 }

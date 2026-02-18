@@ -2,16 +2,16 @@ import { app } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 
-function getCacheFilePath(): string {
-  return join(app.getPath('userData'), 'alias-cache.json')
+function getCacheFilePath(port: number): string {
+  return join(app.getPath('userData'), `alias-cache-${port}.json`)
 }
 
-export function getCachedAliases(): Record<string, string> {
+export function getCachedAliases(port: number): Record<string, string> {
   try {
-    const filePath = getCacheFilePath()
+    const filePath = getCacheFilePath(port)
     if (existsSync(filePath)) {
       const data = JSON.parse(readFileSync(filePath, 'utf-8'))
-      console.log('[AliasCache] Loaded cached aliases:', Object.keys(data).length, 'accounts')
+      console.log(`[AliasCache] Loaded cached aliases for port ${port}:`, Object.keys(data).length, 'accounts')
       return data
     }
   } catch (err) {
@@ -20,14 +20,14 @@ export function getCachedAliases(): Record<string, string> {
   return {}
 }
 
-export function setCachedAliases(aliases: Record<string, string>): void {
+export function setCachedAliases(aliases: Record<string, string>, port: number): void {
   try {
-    const filePath = getCacheFilePath()
+    const filePath = getCacheFilePath(port)
     // Merge with existing cache (don't lose aliases for accounts not in current batch)
-    const existing = getCachedAliases()
+    const existing = getCachedAliases(port)
     const merged = { ...existing, ...aliases }
     writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8')
-    console.log('[AliasCache] Saved aliases:', Object.keys(merged).length, 'accounts')
+    console.log(`[AliasCache] Saved aliases for port ${port}:`, Object.keys(merged).length, 'accounts')
   } catch (err) {
     console.error('[AliasCache] Error writing cache:', err)
   }

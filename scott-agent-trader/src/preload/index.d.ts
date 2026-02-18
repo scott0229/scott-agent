@@ -33,7 +33,7 @@ interface IBApi {
     port: number
     errorMessage?: string
   }>
-  onConnectionStatus: (callback: (state: any) => void) => void
+  onConnectionStatus: (callback: (state: any) => void) => () => void
   getManagedAccounts: () => Promise<string[]>
   getAccountSummary: () => Promise<
     Array<{
@@ -55,8 +55,9 @@ interface IBApi {
       avgCost: number
     }>
   >
-  getAccountAliases: (accountIds: string[]) => Promise<Record<string, string>>
-  getCachedAliases: () => Promise<Record<string, string>>
+  getAccountAliases: (accountIds: string[], port: number) => Promise<Record<string, string>>
+  getCachedAliases: (port: number) => Promise<Record<string, string>>
+  getStockQuote: (symbol: string) => Promise<{ bid: number; ask: number; last: number }>
   getQuotes: (symbols: string[]) => Promise<Record<string, number>>
   placeBatchOrders: (
     request: any,
@@ -72,7 +73,7 @@ interface IBApi {
       symbol: string
     }>
   >
-  onOrderStatus: (callback: (update: any) => void) => void
+  onOrderStatus: (callback: (update: any) => void) => () => void
 
   // Options
   getOptionChain: (symbol: string) => Promise<OptionChainParams[]>

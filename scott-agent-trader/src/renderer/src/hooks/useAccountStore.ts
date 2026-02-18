@@ -31,7 +31,7 @@ interface AccountStore {
 
 const POLL_INTERVAL = 5000
 
-export function useAccountStore(connected: boolean): AccountStore {
+export function useAccountStore(connected: boolean, port: number): AccountStore {
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
@@ -39,14 +39,18 @@ export function useAccountStore(connected: boolean): AccountStore {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const aliasRef = useRef<Record<string, string>>({})
 
-  // Load cached aliases on mount (instant, before any IB connection)
+  // Clear old data and reload aliases when port changes
   useEffect(() => {
-    window.ibApi.getCachedAliases().then((cached) => {
+    setAccounts([])
+    setPositions([])
+    setQuotes({})
+    aliasRef.current = {}
+    window.ibApi.getCachedAliases(port).then((cached) => {
       if (Object.keys(cached).length > 0) {
         aliasRef.current = cached
       }
     }).catch(() => { /* ignore */ })
-  }, [])
+  }, [port])
 
   const fetchData = useCallback(async () => {
     if (!connected) return
@@ -72,7 +76,7 @@ export function useAccountStore(connected: boolean): AccountStore {
       // (server-side in-memory cache prevents redundant IB API calls)
       if (accountIds.length > 0) {
         window.ibApi
-          .getAccountAliases(accountIds)
+          .getAccountAliases(accountIds, port)
           .then((aliasMap) => {
             aliasRef.current = { ...aliasRef.current, ...aliasMap }
             setAccounts((prev) =>
@@ -102,7 +106,7 @@ export function useAccountStore(connected: boolean): AccountStore {
       console.error('Failed to fetch account data:', err)
       setLoading(false)
     }
-  }, [connected])
+  }, [connected, port])
 
   // Start/stop polling based on connection
   useEffect(() => {

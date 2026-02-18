@@ -21,7 +21,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Ele
 
     useEffect(() => {
         // Listen for connection status updates from main process
-        window.ibApi.onConnectionStatus((newState: ConnectionState) => {
+        const unsubscribe = window.ibApi.onConnectionStatus((newState: ConnectionState) => {
             setState(newState)
         })
 
@@ -29,7 +29,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Ele
         window.ibApi.getConnectionState().then(setState)
 
         return () => {
-            window.ibApi.removeAllListeners()
+            unsubscribe()
         }
     }, [])
 
@@ -64,7 +64,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Ele
                     className="status-dot"
                     style={{ backgroundColor: statusColors[state.status] }}
                 />
-                <span className="status-text">{statusLabels[state.status]}</span>
+                <span className="status-text">{state.status === 'connected' ? `${state.port} 已連線` : statusLabels[state.status]}</span>
 
                 {state.status === 'error' && state.errorMessage && (
                     <span className="error-message">{state.errorMessage}</span>

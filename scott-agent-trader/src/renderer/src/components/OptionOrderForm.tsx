@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import OptionChainTable from './OptionChainTable'
 import CustomSelect from './CustomSelect'
 import type { AccountData } from '../hooks/useAccountStore'
@@ -71,7 +71,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
 
   // Listen for order status updates
   useEffect(() => {
-    window.ibApi.onOrderStatus((update: OrderResult) => {
+    const unsubscribe = window.ibApi.onOrderStatus((update: OrderResult) => {
       setOrderResults((prev) =>
         prev.map((r) =>
           r.orderId === update.orderId
@@ -82,14 +82,22 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
     })
 
     return () => {
-      window.ibApi.removeAllListeners()
+      unsubscribe()
     }
   }, [])
 
-  // Get available expirations from SMART exchange params
-  const currentParams = chainParams.find((p) => p.exchange === 'SMART') || chainParams[0]
-  const availableExpirations = currentParams?.expirations || []
-  const availableStrikes = currentParams?.strikes || []
+  // Merge all expirations and strikes across all exchanges
+  const availableExpirations = useMemo(() => {
+    const set = new Set<string>()
+    chainParams.forEach((p) => p.expirations.forEach((e) => set.add(e)))
+    return Array.from(set).sort()
+  }, [chainParams])
+
+  const availableStrikes = useMemo(() => {
+    const set = new Set<number>()
+    chainParams.forEach((p) => p.strikes.forEach((s) => set.add(s)))
+    return Array.from(set).sort((a, b) => a - b)
+  }, [chainParams])
 
   // Search for option chain
   const handleSearch = useCallback(async () => {
@@ -245,7 +253,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
               className="btn btn-connect"
               disabled={loadingChain || !symbol.trim()}
             >
-              {loadingChain ? '查詢中...' : '🔍 查詢期權鏈'}
+              {loadingChain ? '查詢中...' : '查詢期權鏈'}
             </button>
           </div>
 
@@ -260,10 +268,21 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                   onChange={handleExpiryChange}
                   options={[
                     { value: '', label: '選擇到期日' },
-                    ...availableExpirations.map((exp) => ({
-                      value: exp,
-                      label: exp
-                    }))
+                    ...availableExpirations.map((exp) => {
+                      const y = parseInt(exp.substring(0, 4))
+                      const m = parseInt(exp.substring(4, 6)) - 1
+                      const d = parseInt(exp.substring(6, 8))
+                      const expiryDate = new Date(y, m, d)
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      const diffDays = Math.round((expiryDate.getTime() - today.getTime()) / 86400000)
+                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                      const formatted = `${months[m]} ${d} '${String(y).slice(2)}`
+                      return {
+                        value: exp,
+                        label: `${formatted} (${diffDays}天)`
+                      }
+                    })
                   ]}
                 />
               </div>
