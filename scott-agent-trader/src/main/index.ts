@@ -7,6 +7,7 @@ import { requestManagedAccounts, requestAccountSummary, requestPositions, reques
 import {
   placeBatchOrders,
   placeOptionBatchOrders,
+  placeRollOrder,
   modifyOrder,
   cancelOrder,
   requestExecutions,
@@ -130,6 +131,13 @@ function setupIpcHandlers(): void {
     'ib:placeOptionBatchOrders',
     async (_event, request, accountQuantities: Record<string, number>) => {
       return placeOptionBatchOrders(request, accountQuantities)
+    }
+  )
+
+  ipcMain.handle(
+    'ib:placeRollOrder',
+    async (_event, request, accountQuantities: Record<string, number>) => {
+      return placeRollOrder(request, accountQuantities)
     }
   )
 

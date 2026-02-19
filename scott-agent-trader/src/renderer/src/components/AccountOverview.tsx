@@ -391,7 +391,9 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                 {openOrders.filter(o => o.account === account.accountId).map((order) => {
                                                     const desc = order.secType === 'OPT'
                                                         ? `${order.symbol} ${order.expiry ? order.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${order.strike || ''} ${order.right === 'C' || order.right === 'CALL' ? 'C' : 'P'}`
-                                                        : order.symbol
+                                                        : order.secType === 'BAG' && order.comboDescription
+                                                            ? `${order.symbol} ${order.comboDescription}`
+                                                            : order.symbol
                                                     return (
                                                         <tr key={order.orderId}>
                                                             <td className="pos-symbol">{desc}</td>
@@ -481,9 +483,26 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             </thead>
                                             <tbody>
                                                 {executions.filter(e => e.account === account.accountId).map((exec) => {
-                                                    const desc = exec.secType === 'OPT'
-                                                        ? `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
-                                                        : exec.symbol
+                                                    const acctExecs = executions.filter(e => e.account === account.accountId)
+                                                    let desc: string
+                                                    if (exec.secType === 'OPT') {
+                                                        desc = `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
+                                                    } else if (exec.secType === 'BAG') {
+                                                        // Build description from sibling OPT legs with the same orderId
+                                                        const legs = acctExecs.filter(e => e.orderId === exec.orderId && e.secType === 'OPT')
+                                                        if (legs.length > 0) {
+                                                            const legDescs = legs.map(l => {
+                                                                const exp = l.expiry ? l.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''
+                                                                const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
+                                                                return `${exp} ${l.strike}${r}`
+                                                            })
+                                                            desc = `${exec.symbol} ${legDescs.join(' → ')}`
+                                                        } else {
+                                                            desc = `${exec.symbol} COMBO`
+                                                        }
+                                                    } else {
+                                                        desc = exec.symbol
+                                                    }
                                                     const isAssignment = exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
                                                     // Format "20260218 18:14:12 Asia/Taipei" → "18:14"
                                                     const fmtTime = exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')

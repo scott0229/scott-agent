@@ -1510,21 +1510,29 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .roll-positions-table th:nth-child(2),
 .roll-positions-table td:nth-child(2) {
-    width: 22%;
+    width: 18%;
 }
 
 .roll-positions-table th:nth-child(3),
 .roll-positions-table td:nth-child(3) {
-    width: 30%;
+    width: 50px;
+    text-align: center !important;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .roll-positions-table th:nth-child(4),
 .roll-positions-table td:nth-child(4) {
-    width: 30%;
+    width: 28%;
 }
 
 .roll-positions-table th:nth-child(5),
 .roll-positions-table td:nth-child(5) {
+    width: 28%;
+}
+
+.roll-positions-table th:nth-child(6),
+.roll-positions-table td:nth-child(6) {
     width: 12%;
     text-align: center;
 }
@@ -1668,7 +1676,7 @@ input[type="number"]::-webkit-outer-spin-button {
     border: 1px solid #d0d0d0;
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    max-height: 180px;
+    max-height: 320px;
     overflow-y: auto;
     z-index: 9999;
 }

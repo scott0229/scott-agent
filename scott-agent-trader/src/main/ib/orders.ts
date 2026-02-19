@@ -1,4 +1,4 @@
-import { Contract, Order, OrderAction, OrderType, SecType, EventName, OptionType, Execution, ExecutionFilter, TimeInForce } from '@stoqey/ib'
+import { Contract, Order, OrderAction, OrderType, SecType, EventName, OptionType, Execution, ExecutionFilter, TimeInForce, ComboLeg } from '@stoqey/ib'
 import { getIBApi } from './connection'
 
 export interface BatchOrderRequest {
@@ -176,6 +176,176 @@ export async function placeOptionBatchOrders(
   return results
 }
 
+// ── Combo (BAG) roll order helpers ──────────────────────────────
+
+export interface RollOrderRequest {
+  symbol: string
+  // Close leg
+  closeExpiry: string
+  closeStrike: number
+  closeRight: 'C' | 'P'
+  // Open leg
+  openExpiry: string
+  openStrike: number
+  openRight: 'C' | 'P'
+  // Order params
+  action: 'BUY' | 'SELL'   // action on the CLOSE leg (BUY to close short, SELL to close long)
+  limitPrice: number        // net combo limit price
+  outsideRth?: boolean
+}
+
+// Map orderId → readable combo description for display
+const comboDescriptionMap = new Map<number, string>()
+
+let rollReqIdCounter = 500000
+function getNextRollReqId(): number {
+  return rollReqIdCounter++
+}
+
+/**
+ * Resolve the conId for a specific option contract.
+ */
+async function resolveOptionConId(
+  symbol: string,
+  expiry: string,
+  strike: number,
+  right: 'C' | 'P'
+): Promise<number> {
+  const api = getIBApi()
+  if (!api) throw new Error('Not connected to IB')
+
+  return new Promise((resolve, reject) => {
+    const reqId = getNextRollReqId()
+    const timeout = setTimeout(() => {
+      reject(new Error(`Timeout resolving conId for ${symbol} ${expiry} ${strike}${right}`))
+    }, 10000)
+
+    const contract: Contract = {
+      symbol,
+      secType: SecType.OPT,
+      exchange: 'SMART',
+      currency: 'USD',
+      lastTradeDateOrContractMonth: expiry,
+      strike,
+      right: right === 'C' ? OptionType.Call : OptionType.Put,
+      multiplier: 100
+    }
+
+    const onDetails = (id: number, details: any): void => {
+      if (id !== reqId) return
+      clearTimeout(timeout)
+      api.removeListener(EventName.contractDetails, onDetails)
+      api.removeListener(EventName.error, onErr)
+      const conId = details.contract?.conId
+      if (!conId) {
+        reject(new Error(`No conId in contract details for ${symbol} ${expiry} ${strike}${right}`))
+      } else {
+        console.log(`[IB] Resolved conId=${conId} for ${symbol} ${expiry} ${strike}${right}`)
+        resolve(conId)
+      }
+    }
+
+    const onErr = (err: Error, _code: number, id: number): void => {
+      if (id !== reqId) return
+      clearTimeout(timeout)
+      api.removeListener(EventName.contractDetails, onDetails)
+      api.removeListener(EventName.error, onErr)
+      reject(new Error(`Failed to resolve conId for ${symbol} ${expiry} ${strike}${right}: ${err.message}`))
+    }
+
+    api.on(EventName.contractDetails, onDetails)
+    api.on(EventName.error, onErr)
+    api.reqContractDetails(reqId, contract)
+  })
+}
+
+/**
+ * Place a combo (BAG) roll order: close one option leg + open another as a single order.
+ * One order is placed per account.
+ */
+export async function placeRollOrder(
+  request: RollOrderRequest,
+  accountQuantities: Record<string, number>
+): Promise<OrderStatusUpdate[]> {
+  const api = getIBApi()
+  if (!api) throw new Error('Not connected to IB')
+
+  // 1. Resolve conIds for both legs in parallel
+  console.log(`[IB] Resolving conIds for roll: close=${request.symbol} ${request.closeExpiry} ${request.closeStrike}${request.closeRight}, open=${request.openExpiry} ${request.openStrike}${request.openRight}`)
+  const [closeConId, openConId] = await Promise.all([
+    resolveOptionConId(request.symbol, request.closeExpiry, request.closeStrike, request.closeRight),
+    resolveOptionConId(request.symbol, request.openExpiry, request.openStrike, request.openRight)
+  ])
+
+  // 2. Build combo (BAG) contract
+  const closeAction = request.action === 'BUY' ? OrderAction.BUY : OrderAction.SELL
+  const openAction = request.action === 'BUY' ? OrderAction.SELL : OrderAction.BUY
+
+  const comboLegs: ComboLeg[] = [
+    {
+      conId: closeConId,
+      ratio: 1,
+      action: closeAction,
+      exchange: 'SMART'
+    },
+    {
+      conId: openConId,
+      ratio: 1,
+      action: openAction,
+      exchange: 'SMART'
+    }
+  ]
+
+  const comboContract: Contract = {
+    symbol: request.symbol,
+    secType: SecType.BAG,
+    exchange: 'SMART',
+    currency: 'USD',
+    comboLegs
+  }
+
+  // 3. Place one order per account
+  const results: OrderStatusUpdate[] = []
+
+  for (const [accountId, quantity] of Object.entries(accountQuantities)) {
+    if (quantity <= 0) continue
+
+    const orderId = getNextOrderId()
+
+    // Build readable combo description for UI display
+    const fmtExp = (e: string): string => e.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3')
+    const comboDesc = `${fmtExp(request.closeExpiry)} ${request.closeStrike}${request.closeRight} → ${fmtExp(request.openExpiry)} ${request.openStrike}${request.openRight}`
+    comboDescriptionMap.set(orderId, comboDesc)
+
+    const order: Order = {
+      action: OrderAction.BUY,
+      orderType: OrderType.LMT,
+      totalQuantity: quantity,
+      lmtPrice: request.limitPrice,
+      account: accountId,
+      outsideRth: request.outsideRth ?? false,
+      transmit: true
+    }
+
+    results.push({
+      orderId,
+      account: accountId,
+      status: 'PendingSubmit',
+      filled: 0,
+      remaining: quantity,
+      avgFillPrice: 0,
+      symbol: `${request.symbol} ROLL ${request.closeExpiry}→${request.openExpiry}`
+    })
+
+    api.placeOrder(orderId, comboContract, order)
+    console.log(
+      `[IB] Placed combo roll order #${orderId} for ${accountId}: ${quantity}x ${request.symbol} close ${request.closeExpiry}/${request.closeStrike}${request.closeRight} → open ${request.openExpiry}/${request.openStrike}${request.openRight} @ ${request.limitPrice}`
+    )
+  }
+
+  return results
+}
+
 // Listen for order status updates
 export function setupOrderStatusListener(callback: (update: OrderStatusUpdate) => void): void {
   const api = getIBApi()
@@ -280,6 +450,7 @@ export interface OpenOrder {
   expiry?: string
   strike?: number
   right?: string
+  comboDescription?: string
 }
 
 // Fetch all open orders across all FA sub-accounts
@@ -287,13 +458,16 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
-  return new Promise((resolve) => {
-    const orders: OpenOrder[] = []
+  // Phase 1: Collect all open orders
+  const orders: OpenOrder[] = []
+  // Track combo legs for BAG orders that need resolution
+  const bagOrderLegs = new Map<number, ComboLeg[]>()
 
+  await new Promise<void>((resolve) => {
     const timeout = setTimeout(() => {
       cleanup()
       console.log(`[IB] Open orders timeout, returning ${orders.length} orders`)
-      resolve(orders)
+      resolve()
     }, 10000)
 
     const onOpenOrder = (
@@ -305,6 +479,14 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       const status = orderState?.status || 'Unknown'
       // Skip fully filled or cancelled orders
       if (status === 'Filled' || status === 'Cancelled' || status === 'Inactive') return
+
+      // For BAG orders, save combo legs for later resolution
+      if (contract.secType === 'BAG' && !comboDescriptionMap.has(orderId)) {
+        const legs = (contract as any).comboLegs as ComboLeg[] | undefined
+        if (legs && legs.length > 0) {
+          bagOrderLegs.set(orderId, legs)
+        }
+      }
 
       orders.push({
         orderId,
@@ -318,7 +500,10 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         status,
         expiry: contract.lastTradeDateOrContractMonth || undefined,
         strike: contract.strike || undefined,
-        right: contract.right || undefined
+        right: contract.right || undefined,
+        comboDescription: contract.secType === 'BAG'
+          ? (comboDescriptionMap.get(orderId) || undefined)
+          : undefined
       })
       console.log(`[IB] Open order received: orderId=${orderId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`)
     }
@@ -327,7 +512,7 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       clearTimeout(timeout)
       cleanup()
       console.log(`[IB] Open orders received: ${orders.length}`)
-      resolve(orders)
+      resolve()
     }
 
     function cleanup(): void {
@@ -340,6 +525,85 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     api.reqOpenOrders()
     console.log('[IB] Requesting all open orders')
   })
+
+  // Phase 2: Resolve combo leg conIds for BAG orders without cached descriptions
+  if (bagOrderLegs.size > 0) {
+    // Collect all unique conIds that need resolution
+    const allConIds = new Set<number>()
+    for (const legs of bagOrderLegs.values()) {
+      for (const leg of legs) {
+        if (leg.conId) allConIds.add(leg.conId)
+      }
+    }
+
+    // Resolve each conId to contract details
+    const conIdDetails = new Map<number, { expiry: string; strike: number; right: string }>()
+    console.log(`[IB] Resolving ${allConIds.size} conIds for BAG order legs...`)
+
+    for (const conId of allConIds) {
+      try {
+        const reqId = getNextRollReqId()
+        const details = await new Promise<{ expiry: string; strike: number; right: string } | null>((res) => {
+          const t = setTimeout(() => {
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            res(null)
+          }, 5000)
+
+          const onDetails = (id: number, d: any): void => {
+            if (id !== reqId) return
+            clearTimeout(t)
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            const c = d?.contract || d?.summary
+            if (c) {
+              res({
+                expiry: c.lastTradeDateOrContractMonth || '',
+                strike: c.strike || 0,
+                right: c.right || ''
+              })
+            } else {
+              res(null)
+            }
+          }
+
+          const onErr = (_err: Error, _code: number, id: number): void => {
+            if (id !== reqId) return
+            clearTimeout(t)
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            res(null)
+          }
+
+          api.on(EventName.contractDetails, onDetails)
+          api.on(EventName.error, onErr)
+          api.reqContractDetails(reqId, { conId })
+        })
+        if (details) conIdDetails.set(conId, details)
+      } catch {
+        // ignore resolution errors
+      }
+    }
+
+    // Build descriptions for each BAG order
+    const fmtExp = (e: string): string => e.substring(0, 8).replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3')
+    for (const [orderId, legs] of bagOrderLegs.entries()) {
+      const legDescs = legs.map((leg) => {
+        const d = leg.conId ? conIdDetails.get(leg.conId) : undefined
+        if (!d) return '?'
+        const r = d.right === 'C' || d.right === 'CALL' ? 'C' : 'P'
+        return `${fmtExp(d.expiry)} ${d.strike}${r}`
+      })
+      const desc = legDescs.join(' → ')
+      comboDescriptionMap.set(orderId, desc)
+
+      // Update the order object
+      const order = orders.find(o => o.orderId === orderId)
+      if (order) order.comboDescription = desc
+    }
+  }
+
+  return orders
 }
 
 // Execution (filled) data
@@ -357,6 +621,7 @@ export interface ExecutionData {
   expiry?: string
   strike?: number
   right?: string
+  comboDescription?: string
 }
 
 // Fetch today's executions across all FA sub-accounts
@@ -396,7 +661,10 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
         time: execution.time || '',
         expiry: contract.lastTradeDateOrContractMonth || undefined,
         strike: contract.strike || undefined,
-        right: contract.right || undefined
+        right: contract.right || undefined,
+        comboDescription: (contract.secType === 'BAG' && (contract as any).comboLegsDescription)
+          ? (contract as any).comboLegsDescription
+          : undefined
       })
     }
 

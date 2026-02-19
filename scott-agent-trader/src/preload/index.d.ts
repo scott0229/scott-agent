@@ -128,6 +128,20 @@ interface IBApi {
       symbol: string
     }>
   >
+  placeRollOrder: (
+    request: any,
+    accountQuantities: Record<string, number>
+  ) => Promise<
+    Array<{
+      orderId: number
+      account: string
+      status: string
+      filled: number
+      remaining: number
+      avgFillPrice: number
+      symbol: string
+    }>
+  >
   getOpenOrders: () => Promise<OpenOrder[]>
   getExecutions: () => Promise<ExecutionData[]>
   modifyOrder: (req: {

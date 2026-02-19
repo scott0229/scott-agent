@@ -65,7 +65,7 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
         console.log(`[IB] Quote timeout for ${symbol}: last=${quote.last} bid=${quote.bid}`)
         resolve(quote)
       }
-    }, 5000)
+    }, 3000)
 
     const onTickPrice = (id: number, tickType: number, value: number): void => {
       if (id !== reqId || resolved) return

@@ -94,14 +94,14 @@ export default function RollOptionDialog({
     const [selectedStrikes, setSelectedStrikes] = useState<number[]>([])
     const [strikeDropdownOpen, setStrikeDropdownOpen] = useState(false)
     const fetchedExpiriesRef = useRef<Set<string>>(new Set())
+    const fetchedStrikesRef = useRef<Set<number>>(new Set())
     const strikeDropdownRef = useRef<HTMLDivElement>(null)
     const [chainHidden, setChainHidden] = useState(false)
     const [limitPrice, setLimitPrice] = useState('')
     const [limitDropdownOpen, setLimitDropdownOpen] = useState(false)
     const limitInputRef = useRef<HTMLInputElement>(null)
     const limitDropdownRef = useRef<HTMLDivElement>(null)
-
-
+    const [submitting, setSubmitting] = useState(false)
 
 
 
@@ -256,6 +256,7 @@ export default function RollOptionDialog({
         setSelectedStrikes([])
         setStockPrice(null)
         fetchedExpiriesRef.current = new Set()
+        fetchedStrikesRef.current = new Set()
 
         // Fetch stock price for strike centering
         window.ibApi.getStockQuote(symbol).then((q) => {
@@ -289,22 +290,46 @@ export default function RollOptionDialog({
         })
     }, [fetchKey, greeksFetched])
 
-    // Fetch target greeks incrementally per selected expiry
+    // Fetch target greeks incrementally per selected expiry AND new strikes
     useEffect(() => {
         if (displayStrikes.length === 0 || !symbol) return
         const newExpiries = displayExpirations.filter((e) => !fetchedExpiriesRef.current.has(e))
-        if (newExpiries.length === 0) return
+        const newStrikes = displayStrikes.filter((s) => !fetchedStrikesRef.current.has(s))
 
-        newExpiries.forEach((e) => fetchedExpiriesRef.current.add(e))
+        // Determine what to fetch:
+        // 1. New expiries → fetch all displayStrikes for them
+        // 2. New strikes (but no new expiries) → fetch only new strikes for all existing expiries
+        const fetchPairs: { exp: string; strikes: number[] }[] = []
+
+        if (newExpiries.length > 0) {
+            newExpiries.forEach((exp) => {
+                fetchPairs.push({ exp, strikes: displayStrikes })
+                fetchedExpiriesRef.current.add(exp)
+            })
+        }
+        if (newStrikes.length > 0) {
+            // For already-fetched expiries, fetch only the new strikes
+            const existingExpiries = displayExpirations.filter((e) => !newExpiries.includes(e))
+            existingExpiries.forEach((exp) => {
+                fetchPairs.push({ exp, strikes: newStrikes })
+            })
+            newStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
+        }
+        // Also track current strikes
+        displayStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
+
+        if (fetchPairs.length === 0) return
+
         setLoadingGreeks(true)
         let completed = 0
+        const totalFetches = fetchPairs.length
         const fetchedGreeks: OptionGreek[] = []
-        newExpiries.forEach((exp) => {
-            window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
+        fetchPairs.forEach(({ exp, strikes }) => {
+            window.ibApi.getOptionGreeks(symbol, exp, strikes).then((greeks) => {
                 fetchedGreeks.push(...greeks)
                 setAllTargetGreeks((prev) => [...prev, ...greeks])
                 completed++
-                if (completed >= newExpiries.length) {
+                if (completed >= totalFetches) {
                     setLoadingGreeks(false)
                     // Check for missing delta (delta===0 but has bid/ask data) and retry after 3s
                     const missingDeltaExpiries = new Set<string>()
@@ -332,11 +357,66 @@ export default function RollOptionDialog({
                 }
             }).catch((err: unknown) => {
                 completed++
-                if (completed >= newExpiries.length) setLoadingGreeks(false)
+                if (completed >= totalFetches) setLoadingGreeks(false)
                 setErrorMsg(`取得報價失敗: ${err instanceof Error ? err.message : String(err)}`)
             })
         })
     }, [displayExpirations, displayStrikes, symbol])
+
+    // Auto-refresh greeks — non-overlapping to avoid IB API exhaustion
+    const refreshingRef = useRef(false)
+    useEffect(() => {
+        if (!symbol || displayStrikes.length === 0) return
+        const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
+        if (currentExpiries.length === 0 && displayExpirations.length === 0) return
+
+        let cancelled = false
+
+        async function refreshGreeks(): Promise<void> {
+            if (refreshingRef.current || cancelled) return
+            refreshingRef.current = true
+            try {
+                const promises: Promise<void>[] = []
+                // Refresh current position greeks
+                currentExpiries.forEach((exp) => {
+                    const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
+                    promises.push(
+                        window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
+                            if (cancelled) return
+                            setCurrentGreeks((prev) => {
+                                const filtered = prev.filter((g) => g.expiry !== exp)
+                                return [...filtered, ...greeks]
+                            })
+                        })
+                    )
+                })
+                // Refresh target greeks
+                displayExpirations.forEach((exp) => {
+                    promises.push(
+                        window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
+                            if (cancelled) return
+                            setAllTargetGreeks((prev) => {
+                                const filtered = prev.filter((g) => g.expiry !== exp)
+                                return [...filtered, ...greeks]
+                            })
+                        })
+                    )
+                })
+                await Promise.all(promises)
+            } catch {
+                // ignore refresh errors
+            } finally {
+                refreshingRef.current = false
+            }
+        }
+
+        const interval = setInterval(refreshGreeks, 3000)
+
+        return () => {
+            cancelled = true
+            clearInterval(interval)
+        }
+    }, [symbol, currentCombos, displayExpirations, displayStrikes])
 
     // Group target greeks by expiry
     const greeksByExpiry = useMemo(() => {
@@ -378,15 +458,14 @@ export default function RollOptionDialog({
         const curGreek = findCurrentGreek(pos0)
         if (!curGreek) return null
         // Roll = close current (buy back if short) + open target (sell if short)
-        // For short positions: buy current at ask, sell target at bid
-        // spread = target - current (positive = net credit)
+        // TWS convention: negative = net credit (receive money), positive = net debit (pay money)
         const isShort = pos0.quantity < 0
         const spreadBid = isShort
-            ? targetGreek.bid - curGreek.ask  // worst: sell target at bid, buy current at ask
-            : curGreek.bid - targetGreek.ask  // long: sell current at bid, buy target at ask
+            ? curGreek.ask - targetGreek.bid  // worst: buy current at ask, sell target at bid
+            : targetGreek.ask - curGreek.bid  // long: buy target at ask, sell current at bid
         const spreadAsk = isShort
-            ? targetGreek.ask - curGreek.bid  // best: sell target at ask, buy current at bid
-            : curGreek.ask - targetGreek.bid
+            ? curGreek.bid - targetGreek.ask  // best: buy current at bid, sell target at ask
+            : targetGreek.bid - curGreek.ask
         const spreadMid = (spreadBid + spreadAsk) / 2
         return { bid: spreadBid, ask: spreadAsk, mid: spreadMid }
     }, [targetGreek, positions, findCurrentGreek])
@@ -408,9 +487,9 @@ export default function RollOptionDialog({
         const options: string[] = []
         const lo = Math.min(spreadPrices.bid, spreadPrices.ask)
         const hi = Math.max(spreadPrices.bid, spreadPrices.ask)
-        // Extend range by 0.10 on each side to buffer for price fluctuations
-        const extLo = lo - 0.10
-        const extHi = hi + 0.10
+        // Extend range by 0.30 on each side to show more price options
+        const extLo = lo - 0.30
+        const extHi = hi + 0.30
         const steps = Math.min(Math.round((extHi - extLo) / 0.01) + 1, 200)
         for (let i = 0; i < steps; i++) {
             const price = extHi - i * 0.01
@@ -773,8 +852,10 @@ export default function RollOptionDialog({
                                         {positions.map((pos, idx) => {
                                             const curGreek = findCurrentGreek(pos)
                                             const curMid = midPrice(curGreek)
-                                            const spread =
-                                                curMid !== null && targetMid !== null ? targetMid - curMid : null
+                                            const liveSpread =
+                                                curMid !== null && targetMid !== null ? curMid - targetMid : null
+                                            // Show user's limit price if set, otherwise show live spread
+                                            const displayVal = limitPrice ? parseFloat(limitPrice) : liveSpread
                                             const rightLabel = pos.right === 'C' ? 'CALL' : pos.right === 'P' ? 'PUT' : ''
                                             const closePrefix = pos.quantity < 0 ? '+' : '-'
                                             const openPrefix = pos.quantity < 0 ? '-' : '+'
@@ -788,19 +869,20 @@ export default function RollOptionDialog({
                                                 <tr key={idx}>
                                                     <td style={{ color: '#999', textAlign: 'center', width: '1px', whiteSpace: 'nowrap' }}>{`${idx + 1}.`}</td>
                                                     <td style={{ fontWeight: 'bold' }}>{getAlias(pos.account)}</td>
+                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{Math.abs(pos.quantity)}口</td>
                                                     <td>{currentDesc}</td>
                                                     <td>{targetDesc}</td>
                                                     <td
                                                         className={
-                                                            spread !== null
-                                                                ? spread >= 0
+                                                            displayVal !== null && !isNaN(displayVal as number)
+                                                                ? (displayVal as number) <= 0
                                                                     ? 'spread-positive'
                                                                     : 'spread-negative'
                                                                 : ''
                                                         }
                                                     >
-                                                        {spread !== null
-                                                            ? `${spread >= 0 ? '+' : ''}${spread.toFixed(2)}`
+                                                        {displayVal !== null && !isNaN(displayVal as number)
+                                                            ? `${(displayVal as number) >= 0 ? '+' : ''}${(displayVal as number).toFixed(2)}`
                                                             : '-'}
                                                     </td>
                                                 </tr>
@@ -819,9 +901,41 @@ export default function RollOptionDialog({
                     </button>
                     <button
                         className="roll-dialog-confirm"
-                        disabled={!targetExpiry || targetStrike === null || targetRight === null || !limitPrice}
+                        disabled={!targetExpiry || targetStrike === null || targetRight === null || !limitPrice || submitting}
+                        onClick={async () => {
+                            if (!targetExpiry || targetStrike === null || targetRight === null || !limitPrice) return
+                            setSubmitting(true)
+                            try {
+                                for (const pos of positions) {
+                                    const qty = Math.abs(pos.quantity)
+                                    const isShort = pos.quantity < 0
+                                    // BUY to close short, SELL to close long
+                                    const closeAction = isShort ? 'BUY' : 'SELL'
+                                    await window.ibApi.placeRollOrder(
+                                        {
+                                            symbol,
+                                            closeExpiry: pos.expiry || '',
+                                            closeStrike: pos.strike || 0,
+                                            closeRight: (pos.right === 'C' || pos.right === 'CALL') ? 'C' : 'P',
+                                            openExpiry: targetExpiry,
+                                            openStrike: targetStrike,
+                                            openRight: targetRight,
+                                            action: closeAction,
+                                            limitPrice: parseFloat(limitPrice),
+                                            outsideRth: true
+                                        },
+                                        { [pos.account]: qty }
+                                    )
+                                }
+                                onClose()
+                            } catch (err: unknown) {
+                                alert('展期下單失敗: ' + String(err))
+                            } finally {
+                                setSubmitting(false)
+                            }
+                        }}
                     >
-                        確認展期
+                        {submitting ? '下單中...' : '確認展期'}
                     </button>
                 </div>
             </div>

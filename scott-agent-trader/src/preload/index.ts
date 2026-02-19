@@ -55,6 +55,10 @@ const ibApi = {
     request: any,
     accountQuantities: Record<string, number>
   ): Promise<any[]> => ipcRenderer.invoke('ib:placeOptionBatchOrders', request, accountQuantities),
+  placeRollOrder: (
+    request: any,
+    accountQuantities: Record<string, number>
+  ): Promise<any[]> => ipcRenderer.invoke('ib:placeRollOrder', request, accountQuantities),
   getOpenOrders: (): Promise<any[]> => ipcRenderer.invoke('ib:getOpenOrders'),
   getExecutions: (): Promise<any[]> => ipcRenderer.invoke('ib:getExecutions'),
   modifyOrder: (req: any): Promise<void> => ipcRenderer.invoke('ib:modifyOrder', req),

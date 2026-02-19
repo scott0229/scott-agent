@@ -244,7 +244,7 @@ function requestAccountSummaryRaw(
     api.on(EventName.accountSummary, dataHandler)
     api.on(EventName.accountSummaryEnd, endHandler)
 
-    // Timeout after 15 seconds
+    // Timeout after 1 second
     setTimeout(() => {
       api.removeListener(EventName.accountSummary, dataHandler)
       api.removeListener(EventName.accountSummaryEnd, endHandler)
@@ -254,7 +254,7 @@ function requestAccountSummaryRaw(
       } else {
         reject(new Error('Timeout requesting account summary'))
       }
-    }, 15000)
+    }, 1000)
 
     api.reqAccountSummary(reqId, group, tags)
   })
@@ -301,12 +301,12 @@ export function requestPositions(): Promise<PositionData[]> {
         api.on(EventName.position, posHandler)
         api.on(EventName.positionEnd, endHandler)
 
-        // Timeout after 15 seconds
+        // Timeout after 1 second
         setTimeout(() => {
             api.removeListener(EventName.position, posHandler)
             api.removeListener(EventName.positionEnd, endHandler)
             resolve(positions) // Return what we have
-        }, 15000)
+        }, 1000)
 
         api.reqPositions()
     })

@@ -34,6 +34,7 @@ export interface OpenOrderData {
   expiry?: string
   strike?: number
   right?: string
+  comboDescription?: string
 }
 
 export interface ExecutionDataItem {
@@ -50,6 +51,7 @@ export interface ExecutionDataItem {
   expiry?: string
   strike?: number
   right?: string
+  comboDescription?: string
 }
 
 interface AccountStore {
@@ -62,7 +64,7 @@ interface AccountStore {
   refresh: () => void
 }
 
-const POLL_INTERVAL = 5000
+const POLL_INTERVAL = 1000
 
 export function useAccountStore(connected: boolean, port: number): AccountStore {
   const [accounts, setAccounts] = useState<AccountData[]>([])
