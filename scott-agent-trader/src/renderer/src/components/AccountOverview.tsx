@@ -135,12 +135,11 @@ export default function AccountOverview({ connected, accounts, positions, quotes
             })
     }
 
-    const formatCurrency = (value: number, currency: string = 'USD'): string => {
+    const formatCurrency = (value: number, _currency: string = 'USD'): string => {
         return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency,
+            style: 'decimal',
             minimumFractionDigits: 0,
-            maximumFractionDigits: 0
+            maximumFractionDigits: 2
         }).format(value)
     }
 
@@ -322,10 +321,10 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
                                                         </td>
-                                                        <td>${pos.avgCost.toFixed(2)}</td>
-                                                        <td>{quotes[pos.symbol] ? `$${quotes[pos.symbol].toFixed(2)}` : '-'}</td>
+                                                        <td>{pos.avgCost.toFixed(2)}</td>
+                                                        <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
                                                         <td style={{ color: quotes[pos.symbol] ? ((quotes[pos.symbol] - pos.avgCost) * pos.quantity >= 0 ? '#1a6b3a' : '#8b1a1a') : undefined }}>
-                                                            {quotes[pos.symbol] ? `$${((quotes[pos.symbol] - pos.avgCost) * pos.quantity).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '-'}
+                                                            {quotes[pos.symbol] ? ((quotes[pos.symbol] - pos.avgCost) * pos.quantity).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -361,7 +360,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
                                                         </td>
-                                                        <td>${(pos.avgCost / 100).toFixed(2)}</td>
+                                                        <td>{(pos.avgCost / 100).toFixed(2)}</td>
                                                         <td>-</td>
                                                         <td>-</td>
                                                     </tr>
