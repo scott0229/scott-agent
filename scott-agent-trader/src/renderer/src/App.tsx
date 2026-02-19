@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
-import BatchOrderForm from './components/BatchOrderForm'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
 import { useAccountStore } from './hooks/useAccountStore'
@@ -24,7 +23,7 @@ function loadHiddenAccounts(port: number): Set<string> {
 function App(): JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
-  const [activeTab, setActiveTab] = useState<'overview' | 'stock' | 'option'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
 
@@ -99,12 +98,6 @@ function App(): JSX.Element {
             帳戶總覽
           </button>
           <button
-            className={`tab-btn ${activeTab === 'stock' ? 'active' : ''}`}
-            onClick={() => setActiveTab('stock')}
-          >
-            股票下單
-          </button>
-          <button
             className={`tab-btn ${activeTab === 'option' ? 'active' : ''}`}
             onClick={() => setActiveTab('option')}
           >
@@ -128,9 +121,6 @@ function App(): JSX.Element {
             loading={loading}
             refresh={refresh}
           />
-        )}
-        {activeTab === 'stock' && (
-          <BatchOrderForm connected={connected} accounts={visibleAccounts} positions={visiblePositions} />
         )}
         {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}
       </main>

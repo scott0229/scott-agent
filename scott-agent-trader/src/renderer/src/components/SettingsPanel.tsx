@@ -34,8 +34,7 @@ export default function SettingsPanel({
                             return (
                                 <label key={acct.accountId} className="settings-account-row">
                                     <span className="settings-account-name">
-                                        {acct.accountId}
-                                        {acct.alias ? ` - ${acct.alias}` : ''}
+                                        {acct.alias || acct.accountId}
                                     </span>
                                     <input
                                         type="checkbox"

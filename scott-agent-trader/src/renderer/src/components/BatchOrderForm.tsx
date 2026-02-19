@@ -131,7 +131,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
     }
 
     return (
-        <div className="panel">
+        <div>
             {/* Order Form */}
             <div className="order-form" style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}>
                 <div className="form-row">
@@ -144,7 +144,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                 { value: 'ALL', label: '全部帳戶' },
                                 ...sortedAccounts.map((acct) => ({
                                     value: acct.accountId,
-                                    label: acct.accountId + (acct.alias ? ` - ${acct.alias}` : '')
+                                    label: acct.alias || acct.accountId
                                 }))
                             ]}
                         />
@@ -220,18 +220,18 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                         }}
                                     />
                                 </th>
-                                <th style={{ width: '25%' }}>帳號</th>
-                                <th style={{ width: '11%' }}>淨值</th>
-                                <th style={{ width: '11%' }}>現金</th>
-                                <th style={{ width: '9%' }}>融資率</th>
-                                <th style={{ width: '9%' }}>潛在融資</th>
-                                <th style={{ width: '9%' }}>新潛在融資</th>
+                                <th style={{ width: '15%' }}>帳號</th>
+                                <th style={{ width: '9%' }}>淨值</th>
+                                <th style={{ width: '9%' }}>現金</th>
+
+                                <th style={{ width: '7%' }}>潛在融資</th>
+                                <th style={{ width: '7%' }}>新融資</th>
                                 {action === 'SELL' && <th style={{ width: '8%' }}>庫存</th>}
                                 {action === 'SELL' && <th style={{ width: '8%' }}>成本</th>}
                                 <th style={{ width: '8%' }}>方向</th>
-                                <th style={{ width: '12%' }}>標的</th>
-                                <th style={{ width: '12%' }}>價格</th>
-                                <th style={{ width: '19%' }}>數量</th>
+                                <th style={{ width: '8%' }}>標的</th>
+                                <th style={{ width: '7%' }}>價格</th>
+                                <th style={{ width: '10%' }}>數量</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -262,10 +262,10 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                                 }}
                                             />
                                         </td>
-                                        <td>{acct.accountId}{acct.alias ? ` - ${acct.alias}` : ''}</td>
+                                        <td style={{ fontWeight: 'bold' }}>{acct.alias || acct.accountId}</td>
                                         <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                                         <td style={acct.totalCashValue < 0 ? { color: '#8b1a1a' } : undefined}>{acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
-                                        <td>{acct.netLiquidation > 0 && acct.grossPositionValue > 0 ? (acct.grossPositionValue / acct.netLiquidation).toFixed(2) : '無融資'}</td>
+
                                         <td>{(() => {
                                             if (acct.netLiquidation <= 0) return '無融資'
                                             const putCost = positions
@@ -310,10 +310,6 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
-                                                <td></td>
-                                                <td></td>
-                                                {action === 'SELL' && <td></td>}
-                                                {action === 'SELL' && <td></td>}
                                             </>
                                         )}
                                     </tr>
@@ -342,7 +338,8 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         <table className="allocation-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '45%' }}>帳號</th>
+                                    <th style={{ width: '1%', whiteSpace: 'nowrap' }}></th>
+                                    <th style={{ width: '20%' }}>帳號</th>
                                     <th style={{ width: '8%' }}>方向</th>
                                     <th style={{ width: '12%' }}>標的</th>
                                     <th style={{ width: '12%' }}>限價</th>
@@ -352,7 +349,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(allocations).map(([accountId, qty]) => {
+                                {Object.entries(allocations).map(([accountId, qty], index) => {
                                     const acct = targetAccounts.find((a) => a.accountId === accountId)
                                     const price = parseFloat(limitPrice) || 0
                                     const orderValue = qty * price
@@ -363,7 +360,8 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
 
                                     return (
                                         <tr key={accountId}>
-                                            <td>{accountId}{acct?.alias ? ` - ${acct.alias}` : ''}</td>
+                                            <td>{index + 1}.</td>
+                                            <td style={{ fontWeight: 'bold' }}>{acct?.alias || accountId}</td>
                                             <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                             <td>{symbol.toUpperCase()}</td>
                                             <td>${limitPrice}</td>

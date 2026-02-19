@@ -357,7 +357,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                     { value: 'ALL', label: '全部用戶' },
                     ...sortedAccounts.map((acct) => ({
                       value: acct.accountId,
-                      label: acct.accountId
+                      label: acct.alias || acct.accountId
                     }))
                   ]}
                 />

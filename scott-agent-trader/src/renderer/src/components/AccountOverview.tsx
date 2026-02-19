@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { AccountData, PositionData, OpenOrderData, ExecutionDataItem } from '../hooks/useAccountStore'
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
+import BatchOrderForm from './BatchOrderForm'
 
 interface AccountOverviewProps {
     connected: boolean
@@ -21,6 +22,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
     const [showRollDialog, setShowRollDialog] = useState(false)
+    const [showBatchOrder, setShowBatchOrder] = useState(false)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
     const [editValue, setEditValue] = useState('')
@@ -226,6 +228,9 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 展期
                             </button>
                         )}
+                        <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
+                            股票下單
+                        </button>
                     </div>
                     <CustomSelect
                         value={sortBy}
@@ -500,6 +505,19 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
                 accounts={accounts}
             />
+            {showBatchOrder && (
+                <div className="stock-order-dialog-overlay" onClick={() => setShowBatchOrder(false)}>
+                    <div className="stock-order-dialog" onClick={(e) => e.stopPropagation()}>
+                        <div className="stock-order-dialog-header">
+                            <h2>股票下單</h2>
+                            <button className="settings-close-btn" onClick={() => setShowBatchOrder(false)}>✕</button>
+                        </div>
+                        <div className="stock-order-dialog-body">
+                            <BatchOrderForm connected={connected} accounts={accounts} positions={positions} />
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </>
     )
