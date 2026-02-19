@@ -1,4 +1,4 @@
-import { Contract, Order, OrderAction, OrderType, SecType, EventName, OptionType, Execution, ExecutionFilter } from '@stoqey/ib'
+import { Contract, Order, OrderAction, OrderType, SecType, EventName, OptionType, Execution, ExecutionFilter, TimeInForce } from '@stoqey/ib'
 import { getIBApi } from './connection'
 
 export interface BatchOrderRequest {
@@ -8,7 +8,11 @@ export interface BatchOrderRequest {
   limitPrice?: number
   totalQuantity: number
   allocation: AllocationConfig
+  outsideRth?: boolean
+  preMarket?: boolean
+  tif?: 'DAY' | 'GTC'
 }
+
 
 export interface OptionBatchOrderRequest {
   symbol: string
@@ -20,6 +24,7 @@ export interface OptionBatchOrderRequest {
   strike: number
   right: 'C' | 'P'
   exchange?: string
+  outsideRth?: boolean
 }
 
 export interface AllocationConfig {
@@ -83,6 +88,8 @@ export async function placeBatchOrders(
       orderType: request.orderType === 'MKT' ? OrderType.MKT : OrderType.LMT,
       totalQuantity: quantity,
       account: accountId,
+      outsideRth: (request.outsideRth || request.preMarket) ?? false,
+      tif: request.tif === 'GTC' ? TimeInForce.GTC : TimeInForce.DAY,
       transmit: true
     }
 
@@ -102,7 +109,7 @@ export async function placeBatchOrders(
 
     api.placeOrder(orderId, contract, order)
     console.log(
-      `[IB] Placed order #${orderId} for ${accountId}: ${request.action} ${quantity} ${request.symbol}`
+      `[IB] Placed order #${orderId} for ${accountId}: ${request.action} ${quantity} ${request.symbol} | outsideRth=${order.outsideRth} tif=${order.tif}`
     )
   }
 
@@ -142,6 +149,7 @@ export async function placeOptionBatchOrders(
       orderType: request.orderType === 'MKT' ? OrderType.MKT : OrderType.LMT,
       totalQuantity: quantity,
       account: accountId,
+      outsideRth: request.outsideRth ?? false,
       transmit: true
     }
 

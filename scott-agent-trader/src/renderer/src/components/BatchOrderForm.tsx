@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import CustomSelect from './CustomSelect'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
@@ -35,6 +35,21 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
     const [submitting, setSubmitting] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [checkedAccounts, setCheckedAccounts] = useState<Set<string>>(new Set())
+    const [tif, setTif] = useState<'DAY' | 'GTC'>('DAY')
+    const [outsideRth, setOutsideRth] = useState(false)
+    const [tifDropdownOpen, setTifDropdownOpen] = useState(false)
+    const tifDropdownRef = useRef<HTMLDivElement>(null)
+
+    // Close TIF dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent): void => {
+            if (tifDropdownRef.current && !tifDropdownRef.current.contains(e.target as Node)) {
+                setTifDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Fetch stock quote when symbol changes (debounced)
     useEffect(() => {
@@ -110,7 +125,9 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                 action,
                 orderType: 'LMT' as const,
                 limitPrice: parseFloat(limitPrice),
-                totalQuantity: totalAllocated
+                totalQuantity: totalAllocated,
+                outsideRth,
+                tif
             }
 
             const results = await window.ibApi.placeBatchOrders(request, allocations)
@@ -120,7 +137,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
         } finally {
             setSubmitting(false)
         }
-    }, [symbol, action, limitPrice, allocations, totalAllocated])
+    }, [symbol, action, limitPrice, allocations, totalAllocated, outsideRth, tif])
 
     if (!connected) {
         return (
@@ -136,7 +153,6 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
             <div className="order-form" style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}>
                 <div className="form-row">
                     <div className="form-group">
-                        <label>帳戶</label>
                         <CustomSelect
                             value={selectedUser}
                             onChange={setSelectedUser}
@@ -150,7 +166,6 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         />
                     </div>
                     <div className="form-group">
-                        <label>方向</label>
                         <CustomSelect
                             value={action}
                             onChange={(v) => setAction(v as 'BUY' | 'SELL')}
@@ -161,25 +176,57 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         />
                     </div>
                     <div className="form-group">
-                        <label>股票代碼</label>
                         <input
                             type="text"
                             value={symbol}
                             onChange={(e) => setSymbol(e.target.value)}
+                            placeholder="股票代碼"
                             style={{ textTransform: 'uppercase' }}
                             className="input-field"
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>限價</label>
                         <input
                             type="number"
                             value={limitPrice}
                             onChange={(e) => setLimitPrice(e.target.value)}
+                            placeholder="限價"
                             step="0.01"
                             className="input-field"
                         />
+                    </div>
+                    <div className="tif-dropdown" ref={tifDropdownRef}>
+                        <button
+                            type="button"
+                            className={`tif-dropdown-trigger${outsideRth ? ' has-extras' : ''}`}
+                            onClick={() => setTifDropdownOpen(!tifDropdownOpen)}
+                        >
+                            {outsideRth ? <span className="tif-indicator" /> : null}
+                            {tif}
+                            <span className="tif-dropdown-arrow">▾</span>
+                        </button>
+                        {tifDropdownOpen && (
+                            <div className="tif-dropdown-menu">
+                                <div
+                                    className={`tif-dropdown-item${tif === 'DAY' ? ' active' : ''}`}
+                                    onClick={() => { setTif('DAY'); }}
+                                >
+                                    DAY
+                                </div>
+                                <div
+                                    className={`tif-dropdown-item${tif === 'GTC' ? ' active' : ''}`}
+                                    onClick={() => { setTif('GTC'); }}
+                                >
+                                    GTC
+                                </div>
+                                <div className="tif-dropdown-separator" />
+                                <label className="tif-dropdown-checkbox">
+                                    <input type="checkbox" checked={outsideRth} onChange={(e) => setOutsideRth(e.target.checked)} />
+                                    非常規時間
+                                </label>
+                            </div>
+                        )}
                     </div>
                     {/* Bid / Ask display */}
                     {loadingQuote ? (
@@ -188,13 +235,11 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         </div>
                     ) : stockQuote ? (
                         <div className="quote-display">
-                            <span className="quote-label">BID</span>
                             <span className="quote-bid">{stockQuote.bid.toFixed(2)}</span>
                             <span className="quote-separator">|</span>
-                            <span className="quote-label">ASK</span>
                             <span className="quote-ask">{stockQuote.ask.toFixed(2)}</span>
                             <span className="quote-separator">|</span>
-                            <span className="quote-label">LAST</span>
+                            <span className="quote-label">Last</span>
                             <span className="quote-last" style={{ color: '#1a3a6b' }}>{stockQuote.last.toFixed(2)}</span>
                         </div>
                     ) : null}
@@ -321,7 +366,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
             )}
 
             {/* Submit */}
-            <div className="order-actions">
+            <div className="order-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {!showConfirm ? (
                     <button
                         onClick={() => setShowConfirm(true)}
@@ -383,6 +428,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         </div>
                     </div>
                 )}
+
             </div>
 
             {/* Order Results */}

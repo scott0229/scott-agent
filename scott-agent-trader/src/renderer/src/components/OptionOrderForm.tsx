@@ -68,6 +68,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
   const [orderResults, setOrderResults] = useState<OrderResult[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [outsideRth, setOutsideRth] = useState(false)
 
   // Listen for order status updates
   useEffect(() => {
@@ -207,7 +208,8 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
         expiry: selectedExpiry,
         strike: selectedStrike,
         right: selectedRight,
-        exchange: 'SMART'
+        exchange: 'SMART',
+        outsideRth
       }
 
       const results = await window.ibApi.placeOptionBatchOrders(request, allocations)
@@ -217,7 +219,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
     } finally {
       setSubmitting(false)
     }
-  }, [symbol, action, limitPrice, selectedExpiry, selectedStrike, selectedRight, allocations, totalAllocated])
+  }, [symbol, action, limitPrice, selectedExpiry, selectedStrike, selectedRight, allocations, totalAllocated, outsideRth])
 
   const contractDesc =
     selectedStrike !== null && selectedRight !== null && selectedExpiry
@@ -383,6 +385,10 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
               )
             })()}
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}>
+            <input type="checkbox" checked={outsideRth} onChange={(e) => setOutsideRth(e.target.checked)} />
+            允許盤前盤後
+          </label>
 
           {/* Submit */}
           <div className="order-actions">

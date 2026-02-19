@@ -23,6 +23,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
     const [showRollDialog, setShowRollDialog] = useState(false)
     const [showBatchOrder, setShowBatchOrder] = useState(false)
+    const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
     const [editValue, setEditValue] = useState('')
@@ -115,7 +116,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const uniqueSymbols = useMemo(() => {
         const set = new Set<string>()
         positions.forEach((p) => set.add(p.symbol))
-        return Array.from(set).sort()
+        const symbolPriority: Record<string, number> = { 'QQQ': 1, 'QLD': 2, 'TQQQ': 3 }
+        return Array.from(set).sort((a, b) => (symbolPriority[a] ?? 99) - (symbolPriority[b] ?? 99) || a.localeCompare(b))
     }, [positions])
 
     const getPositionsForAccount = (accountId: string): PositionData[] => {
@@ -144,7 +146,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         return new Intl.NumberFormat('en-US', {
             style: 'decimal',
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 0
         }).format(value)
     }
 
@@ -259,7 +261,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 ) : (
                     <div className="accounts-grid">
                         {displayAccounts.map((account) => (
-                            <div key={account.accountId} className="account-card">
+                            <div key={account.accountId} className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`} onClick={() => setSelectedAccount(prev => prev === account.accountId ? null : account.accountId)}>
                                 <div className="account-header">
                                     <span className="account-id">{account.alias || account.accountId}</span>
 
@@ -357,7 +359,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             {selectMode === 'OPT' && <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
                                                             {formatPositionSymbol(pos)}
                                                         </td>
-                                                        <td>{pos.expiry ? Math.max(0, Math.ceil((new Date(pos.expiry.substring(0, 4) + '-' + pos.expiry.substring(4, 6) + '-' + pos.expiry.substring(6, 8) + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))) : '-'}</td>
+                                                        {(() => { const days = pos.expiry ? Math.max(0, Math.ceil((new Date(pos.expiry.substring(0, 4) + '-' + pos.expiry.substring(4, 6) + '-' + pos.expiry.substring(6, 8) + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))) : null; return <td style={days === 0 ? { backgroundColor: '#fff0f0' } : days === 1 ? { backgroundColor: '#e8f4fd' } : undefined}>{days ?? '-'}</td> })()}
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
                                                         </td>

@@ -65,3 +65,121 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* TIF Dropdown */
+.tif-dropdown {
+  position: relative;
+  min-width: 80px;
+}
+
+.tif-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  gap: 8px;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.tif-dropdown-trigger:hover {
+  border-color: var(--accent-blue);
+}
+
+.tif-dropdown-trigger.has-extras {
+  border-color: #e67e22;
+  background: #fef9f3;
+}
+
+.tif-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e67e22;
+  flex-shrink: 0;
+  animation: tif-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tif-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.tif-dropdown-arrow {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.tif-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: max-content;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  padding: 4px 0;
+}
+
+.tif-dropdown-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.tif-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+.tif-dropdown-item.active {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.tif-dropdown-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.tif-dropdown-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.tif-dropdown-checkbox:hover {
+  background: var(--bg-hover);
+}
+
+.tif-dropdown-checkbox input[type='checkbox'] {
+  accent-color: var(--accent-blue);
+}

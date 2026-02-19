@@ -320,11 +320,13 @@ body {
     padding: 16px;
     transition: border-color 0.2s, box-shadow 0.2s;
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
+    cursor: pointer;
 }
 
-.account-card:hover {
+.account-card-selected {
     border-color: var(--accent-blue);
 }
+
 
 .account-header {
     display: flex;
@@ -426,7 +428,7 @@ body {
 }
 
 .pos-short {
-    color: var(--accent-red);
+    color: #8b1a1a;
 }
 
 /* === Form Elements === */
@@ -448,7 +450,7 @@ body {
 }
 
 .input-field::placeholder {
-    color: var(--text-muted);
+    color: #999;
 }
 
 .input-small {
@@ -740,6 +742,7 @@ input[type="number"]::-webkit-outer-spin-button {
     border: none;
     border-radius: var(--radius);
     padding: 0;
+    width: 100%;
 }
 
 .confirm-summary {
@@ -769,7 +772,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .confirm-section .allocation-table {
-    width: 55%;
+    width: 100%;
     table-layout: fixed;
 }
 
