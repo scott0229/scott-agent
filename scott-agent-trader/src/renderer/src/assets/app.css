@@ -1483,12 +1483,13 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .roll-positions-table th:nth-child(1),
 .roll-positions-table td:nth-child(1) {
-    width: 28%;
+    width: 30px;
+    overflow: visible;
 }
 
 .roll-positions-table th:nth-child(2),
 .roll-positions-table td:nth-child(2) {
-    width: 30%;
+    width: 22%;
 }
 
 .roll-positions-table th:nth-child(3),
@@ -1498,6 +1499,11 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .roll-positions-table th:nth-child(4),
 .roll-positions-table td:nth-child(4) {
+    width: 30%;
+}
+
+.roll-positions-table th:nth-child(5),
+.roll-positions-table td:nth-child(5) {
     width: 12%;
     text-align: center;
 }

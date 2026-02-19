@@ -73,6 +73,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const aliasRef = useRef<Record<string, string>>({})
+  const fetchingRef = useRef(false)
 
   // Clear old data and reload aliases when port changes
   useEffect(() => {
@@ -91,6 +92,9 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
 
   const fetchData = useCallback(async () => {
     if (!connected) return
+    // Skip if a previous fetch is still in progress
+    if (fetchingRef.current) return
+    fetchingRef.current = true
 
     setLoading(true)
     try {
@@ -146,6 +150,8 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     } catch (err: unknown) {
       console.error('Failed to fetch account data:', err)
       setLoading(false)
+    } finally {
+      fetchingRef.current = false
     }
   }, [connected, port])
 

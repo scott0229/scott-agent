@@ -786,7 +786,8 @@ export default function RollOptionDialog({
 
                                             return (
                                                 <tr key={idx}>
-                                                    <td>{getAlias(pos.account)}</td>
+                                                    <td style={{ color: '#999', textAlign: 'center', width: '1px', whiteSpace: 'nowrap' }}>{`${idx + 1}.`}</td>
+                                                    <td style={{ fontWeight: 'bold' }}>{getAlias(pos.account)}</td>
                                                     <td>{currentDesc}</td>
                                                     <td>{targetDesc}</td>
                                                     <td

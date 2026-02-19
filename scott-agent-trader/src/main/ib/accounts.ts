@@ -115,6 +115,10 @@ function requestSingleAccountAlias(accountId: string): Promise<string> {
 // Alias cache — survives across calls, cleared on disconnect
 const aliasCache = new Map<string, string>()
 
+// Auto-incrementing reqId to avoid conflicts between concurrent summary requests
+let nextSummaryReqId = 9001
+let activeSummaryReqId: number | null = null
+
 export function clearAliasCache(): void {
   aliasCache.clear()
 }
@@ -178,10 +182,20 @@ function buildAccountMap(summaryItems: AccountSummaryItem[]): Map<string, Accoun
 
 // Request account summary for all accounts (no longer blocks on alias fetch)
 export async function requestAccountSummary(
-  reqId: number = 9001,
   group: string = 'All'
 ): Promise<AccountData[]> {
-  return requestAccountSummaryRaw(reqId, group)
+  // Cancel any in-flight summary request
+  if (activeSummaryReqId !== null) {
+    const api = getIBApi()
+    if (api) api.cancelAccountSummary(activeSummaryReqId)
+  }
+  const reqId = nextSummaryReqId++
+  activeSummaryReqId = reqId
+  try {
+    return await requestAccountSummaryRaw(reqId, group)
+  } finally {
+    if (activeSummaryReqId === reqId) activeSummaryReqId = null
+  }
 }
 
 // Fetch aliases for a list of account IDs (called separately by the renderer)

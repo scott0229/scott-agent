@@ -200,19 +200,32 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                         >
                             選取期權{selectMode === 'OPT' && selectedPositions.size > 0 ? ` (${selectedPositions.size})` : ''}
                         </button>
-                        {selectMode && canRollOptions && (
-                            <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
-                                批次展期
-                            </button>
-                        )}
                         <CustomSelect
                             value={filterSymbol}
-                            onChange={setFilterSymbol}
+                            onChange={(v) => { setFilterSymbol(v); setSelectedPositions(new Set()) }}
                             options={[
                                 { value: '', label: '全部標的' },
                                 ...uniqueSymbols.map((s) => ({ value: s, label: s }))
                             ]}
                         />
+                        {selectMode && (
+                            <button className="select-toggle-btn" onClick={() => {
+                                const allKeys = new Set<string>()
+                                displayAccounts.forEach((acct) => {
+                                    getPositionsForAccount(acct.accountId)
+                                        .filter((p) => selectMode === 'OPT' ? p.secType === 'OPT' : p.secType !== 'OPT')
+                                        .forEach((p) => allKeys.add(posKey(p)))
+                                })
+                                setSelectedPositions((prev) => prev.size === allKeys.size ? new Set() : allKeys)
+                            }}>
+                                全選
+                            </button>
+                        )}
+                        {selectMode && canRollOptions && (
+                            <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
+                                展期
+                            </button>
+                        )}
                     </div>
                     <CustomSelect
                         value={sortBy}
