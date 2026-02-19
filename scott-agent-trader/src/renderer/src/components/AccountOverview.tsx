@@ -148,12 +148,11 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         if (pos.secType === 'OPT' && pos.expiry && pos.strike && pos.right) {
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             // expiry format from IB: "20260217"
-            const year = pos.expiry.substring(2, 4)
             const month = months[parseInt(pos.expiry.substring(4, 6)) - 1]
             const day = pos.expiry.substring(6, 8)
             const strike = Number.isInteger(pos.strike) ? pos.strike.toString() : pos.strike.toFixed(1)
-            const right = pos.right === 'C' || pos.right === 'CALL' ? 'CALL' : 'PUT'
-            return `${pos.symbol} ${month}${day}'${year} ${strike} ${right}`
+            const right = pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
+            return `${pos.symbol} ${month}${day} ${strike}${right}`
         }
         return pos.symbol
     }
@@ -168,8 +167,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const sortedAccounts = [...accounts].sort((a, b) => {
         if (sortBy === 'netLiquidation') return b.netLiquidation - a.netLiquidation
         if (sortBy === 'margin') {
-            const aRatio = a.netLiquidation > 0 ? a.grossPositionValue / a.netLiquidation : 0
-            const bRatio = b.netLiquidation > 0 ? b.grossPositionValue / b.netLiquidation : 0
+            const aPutCost = positions
+                .filter(p => p.account === a.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
+            const bPutCost = positions
+                .filter(p => p.account === b.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
+            const aRatio = a.netLiquidation > 0 ? (a.grossPositionValue + aPutCost) / a.netLiquidation : 0
+            const bRatio = b.netLiquidation > 0 ? (b.grossPositionValue + bPutCost) / b.netLiquidation : 0
             return bRatio - aRatio
         }
         return b.totalCashValue - a.totalCashValue
@@ -237,7 +242,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                         onChange={setSortBy}
                         options={[
                             { value: 'netLiquidation', label: '淨值-從高到低' },
-                            { value: 'margin', label: '融資-從高到低' },
+                            { value: 'margin', label: '潛在融資-從高到低' },
                             { value: 'cash', label: '現金-從多到少' }
                         ]}
                     />
