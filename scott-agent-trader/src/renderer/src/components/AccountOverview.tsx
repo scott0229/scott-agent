@@ -380,7 +380,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '35%' }}>委託</th>
+                                                    <th style={{ width: '35%', textAlign: 'left' }}>委託</th>
                                                     <th style={{ width: '13%' }}>方向</th>
                                                     <th style={{ width: '13%' }}>數量</th>
                                                     <th style={{ width: '20%' }}>價格</th>
@@ -436,16 +436,18 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                                         onBlur={() => cancelEdit()}
                                                                         style={{ width: '80px', padding: '2px 4px', fontSize: '13px', background: 'transparent', border: '1px solid #94a3b8', borderRadius: '3px', color: 'inherit', outline: 'none', textAlign: 'center' }}
                                                                     />
-                                                                ) : order.orderType === 'LMT' ? `$${(order.limitPrice ?? 0).toFixed(2)}` : '市價'}
+                                                                ) : order.orderType === 'LMT' ? (order.limitPrice ?? 0).toFixed(2) : '市價'}
                                                             </td>
-                                                            <td style={{ whiteSpace: 'nowrap' }}>
-                                                                {order.status}
+                                                            <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
+                                                                {({ Submitted: '已送出', PendingSubmit: '待送出', PreSubmitted: '預送出', Filled: '已成交', Cancelled: '已取消', Inactive: '未啟用' } as Record<string, string>)[order.status] || order.status}
                                                                 <button
                                                                     onClick={() => {
                                                                         if (!confirm(`確定要取消 ${order.symbol} 的委託嗎？`)) return
                                                                         window.ibApi.cancelOrder(order.orderId).then(() => {
                                                                             console.log('[CANCEL] cancelOrder succeeded')
-                                                                            setTimeout(() => refresh?.(), 500)
+                                                                            setTimeout(() => refresh?.(), 300)
+                                                                            setTimeout(() => refresh?.(), 1000)
+                                                                            setTimeout(() => refresh?.(), 2000)
                                                                         }).catch((err: unknown) => {
                                                                             console.error('[CANCEL] cancelOrder failed:', err)
                                                                             alert('取消委託失敗: ' + String(err))
@@ -470,7 +472,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '35%' }}>今日成交</th>
+                                                    <th style={{ width: '35%', textAlign: 'left' }}>今日成交</th>
                                                     <th style={{ width: '13%' }}>方向</th>
                                                     <th style={{ width: '13%' }}>數量</th>
                                                     <th style={{ width: '20%' }}>成交價</th>
@@ -483,8 +485,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                         ? `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
                                                         : exec.symbol
                                                     const isAssignment = exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
-                                                    // Format "20260218 18:14:12 Asia/Taipei" → "0218 18:14"
-                                                    const fmtTime = exec.time.replace(/^\d{4}(\d{2})(\d{2})\s+(\d{2}:\d{2}).*$/, '$1/$2 $3')
+                                                    // Format "20260218 18:14:12 Asia/Taipei" → "18:14"
+                                                    const fmtTime = exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
                                                     return (
                                                         <tr key={exec.execId}>
                                                             <td className="pos-symbol">{desc}{isAssignment && <span style={{ color: '#1a6baa', fontWeight: 600, marginLeft: 6, fontSize: '0.92em' }}>(到期)</span>}</td>
@@ -492,8 +494,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                                 {exec.side === 'BOT' ? '買' : '賣'}
                                                             </td>
                                                             <td>{exec.quantity}</td>
-                                                            <td>${exec.avgPrice.toFixed(2)}</td>
-                                                            <td>{fmtTime}</td>
+                                                            <td>{exec.avgPrice.toFixed(2)}</td>
+                                                            <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
                                                         </tr>
                                                     )
                                                 })}

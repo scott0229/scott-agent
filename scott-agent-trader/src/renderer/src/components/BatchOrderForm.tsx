@@ -337,7 +337,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                             <>
                                                 <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                                 <td>{symbol.toUpperCase() || '-'}</td>
-                                                <td>{limitPrice ? `$${limitPrice}` : '-'}</td>
+                                                <td>{limitPrice || '-'}</td>
                                                 <td>
                                                     <input
                                                         type="number"
@@ -409,7 +409,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                             <td style={{ fontWeight: 'bold' }}>{acct?.alias || accountId}</td>
                                             <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                             <td>{symbol.toUpperCase()}</td>
-                                            <td>${limitPrice}</td>
+                                            <td>{limitPrice}</td>
                                             <td style={{ color: '#1a3a6b' }}>{qty.toLocaleString()}</td>
                                             <td>{postLeverage}</td>
 

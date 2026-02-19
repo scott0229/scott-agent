@@ -407,7 +407,7 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                   <strong>{contractDesc}</strong> 共{' '}
                   <strong>{qty}</strong> 口 x{' '}
                   <strong>{targetAccounts.length}</strong> 個帳戶，
-                  限價: <strong>${limitPrice}</strong>？
+                  限價: <strong>{limitPrice}</strong>？
                 </div>
                 <div className="confirm-buttons">
                   <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
