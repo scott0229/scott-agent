@@ -302,7 +302,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             <thead>
                                                 <tr>
                                                     {selectMode === 'STK' && <th style={{ width: '30px' }}></th>}
-                                                    <th>股票</th>
+                                                    <th style={{ textAlign: 'left' }}>股票</th>
                                                     <th>數量</th>
                                                     <th>均價</th>
                                                     <th>最後價</th>
@@ -341,11 +341,12 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             <thead>
                                                 <tr>
                                                     {selectMode === 'OPT' && <th style={{ width: '30px' }}></th>}
-                                                    <th style={{ width: '35%' }}>期權</th>
-                                                    <th style={{ width: '13%' }}>數量</th>
-                                                    <th style={{ width: '17%' }}>均價</th>
-                                                    <th style={{ width: '17%' }}>最後價</th>
-                                                    <th style={{ width: '18%' }}>盈虧</th>
+                                                    <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
+                                                    <th style={{ width: '8%' }}>天數</th>
+                                                    <th style={{ width: '8%' }}>數量</th>
+                                                    <th style={{ width: '11%' }}>均價</th>
+                                                    <th style={{ width: '11%' }}>最後價</th>
+                                                    <th style={{ width: '11%' }}>盈虧</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -357,6 +358,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             </td>
                                                         )}
                                                         <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                                                        <td>{pos.expiry ? Math.max(0, Math.ceil((new Date(pos.expiry.substring(0, 4) + '-' + pos.expiry.substring(4, 6) + '-' + pos.expiry.substring(6, 8) + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))) : '-'}</td>
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
                                                         </td>
