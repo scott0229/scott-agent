@@ -58,6 +58,7 @@ interface AccountStore {
   accounts: AccountData[]
   positions: PositionData[]
   quotes: Record<string, number>
+  optionQuotes: Record<string, number>
   openOrders: OpenOrderData[]
   executions: ExecutionDataItem[]
   loading: boolean
@@ -70,6 +71,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
+  const [optionQuotes, setOptionQuotes] = useState<Record<string, number>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrderData[]>([])
   const [executions, setExecutions] = useState<ExecutionDataItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -82,6 +84,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     setAccounts([])
     setPositions([])
     setQuotes({})
+    setOptionQuotes({})
     setOpenOrders([])
     setExecutions([])
     aliasRef.current = {}
@@ -149,6 +152,27 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
           })
           .catch(() => { /* ignore quote errors */ })
       }
+
+      // Fetch option quotes in background (non-blocking)
+      const optionPositions = positionData.filter((p: PositionData) => p.secType === 'OPT' && p.expiry && p.strike && p.right)
+      // De-duplicate by contract key
+      const seen = new Set<string>()
+      const optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }> = []
+      for (const p of optionPositions) {
+        const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          optionContracts.push({ symbol: p.symbol, expiry: p.expiry!, strike: p.strike!, right: p.right! })
+        }
+      }
+      if (optionContracts.length > 0) {
+        window.ibApi
+          .getOptionQuotes(optionContracts)
+          .then((optQuoteData) => {
+            setOptionQuotes((prev) => ({ ...prev, ...optQuoteData }))
+          })
+          .catch(() => { /* ignore option quote errors */ })
+      }
     } catch (err: unknown) {
       console.error('Failed to fetch account data:', err)
       setLoading(false)
@@ -166,6 +190,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
       setAccounts([])
       setPositions([])
       setQuotes({})
+      setOptionQuotes({})
       setOpenOrders([])
       setExecutions([])
     }
@@ -178,5 +203,5 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     }
   }, [connected, fetchData])
 
-  return { accounts, positions, quotes, openOrders, executions, loading, refresh: fetchData }
+  return { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh: fetchData }
 }

@@ -41,6 +41,8 @@ const ibApi = {
     ipcRenderer.invoke('ib:getStockQuote', symbol),
   getQuotes: (symbols: string[]): Promise<Record<string, number>> =>
     ipcRenderer.invoke('ib:getQuotes', symbols),
+  getOptionQuotes: (contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>): Promise<Record<string, number>> =>
+    ipcRenderer.invoke('ib:getOptionQuotes', contracts),
 
   // Options
   getOptionChain: (symbol: string): Promise<any[]> =>

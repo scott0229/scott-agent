@@ -49,7 +49,7 @@ function App(): JSX.Element {
     setHiddenAccounts(loadHiddenAccounts(connectedPort))
   }, [connectedPort])
 
-  const { accounts, positions, quotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort)
+  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort)
 
   const toggleHiddenAccount = useCallback((accountId: string) => {
     setHiddenAccounts((prev) => {
@@ -116,6 +116,7 @@ function App(): JSX.Element {
             accounts={visibleAccounts}
             positions={visiblePositions}
             quotes={quotes}
+            optionQuotes={optionQuotes}
             openOrders={visibleOpenOrders}
             executions={visibleExecutions}
             loading={loading}

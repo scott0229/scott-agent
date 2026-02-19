@@ -9,13 +9,14 @@ interface AccountOverviewProps {
     accounts: AccountData[]
     positions: PositionData[]
     quotes: Record<string, number>
+    optionQuotes: Record<string, number>
     openOrders: OpenOrderData[]
     executions: ExecutionDataItem[]
     loading: boolean
     refresh?: () => void
 }
 
-export default function AccountOverview({ connected, accounts, positions, quotes, openOrders, executions, loading, refresh }: AccountOverviewProps): JSX.Element {
+export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh }: AccountOverviewProps): JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
 
@@ -364,8 +365,26 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             {pos.quantity.toLocaleString()}
                                                         </td>
                                                         <td>{(pos.avgCost / 100).toFixed(2)}</td>
-                                                        <td>-</td>
-                                                        <td>-</td>
+                                                        {(() => {
+                                                            const key = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
+                                                            const lastPrice = optionQuotes[key]
+                                                            if (lastPrice != null && lastPrice > 0) {
+                                                                const avgUnit = pos.avgCost / 100
+                                                                const pnl = (lastPrice - avgUnit) * pos.quantity * 100
+                                                                return (
+                                                                    <>
+                                                                        <td>{lastPrice.toFixed(2)}</td>
+                                                                        <td className={pnl >= 0 ? 'pos-long' : 'pos-short'}>{pnl >= 0 ? '+' : ''}{Math.round(pnl).toLocaleString()}</td>
+                                                                    </>
+                                                                )
+                                                            }
+                                                            return (
+                                                                <>
+                                                                    <td>-</td>
+                                                                    <td>-</td>
+                                                                </>
+                                                            )
+                                                        })()}
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -482,7 +501,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {executions.filter(e => e.account === account.accountId).map((exec) => {
+                                                {executions.filter(e => e.account === account.accountId).sort((a, b) => b.time.localeCompare(a.time)).map((exec) => {
                                                     const acctExecs = executions.filter(e => e.account === account.accountId)
                                                     let desc: string
                                                     if (exec.secType === 'OPT') {

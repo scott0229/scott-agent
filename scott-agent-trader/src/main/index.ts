@@ -16,7 +16,7 @@ import {
   setupOrderStatusListener
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks } from './ib/options'
-import { getStockQuote, getQuotes } from './ib/quotes'
+import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 
 let mainWindow: BrowserWindow | null = null
@@ -113,6 +113,10 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('ib:getQuotes', async (_event, symbols: string[]) => {
     return getQuotes(symbols)
+  })
+
+  ipcMain.handle('ib:getOptionQuotes', async (_event, contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>) => {
+    return getOptionQuotes(contracts)
   })
 
   // Options

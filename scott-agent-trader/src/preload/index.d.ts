@@ -84,12 +84,18 @@ interface IBApi {
       secType: string
       quantity: number
       avgCost: number
+      expiry?: string
+      strike?: number
+      right?: string
     }>
   >
   getAccountAliases: (accountIds: string[], port: number) => Promise<Record<string, string>>
   getCachedAliases: (port: number) => Promise<Record<string, string>>
   getStockQuote: (symbol: string) => Promise<{ bid: number; ask: number; last: number }>
   getQuotes: (symbols: string[]) => Promise<Record<string, number>>
+  getOptionQuotes: (
+    contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+  ) => Promise<Record<string, number>>
   placeBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>
