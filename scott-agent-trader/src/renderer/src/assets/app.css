@@ -267,6 +267,17 @@ body {
 .positions-table td input[type="checkbox"] {
     vertical-align: middle;
     margin: 0;
+    width: 12px;
+    height: 12px;
+}
+
+.positions-table td.checkbox-cell,
+.positions-table th.checkbox-cell {
+    width: 1px;
+    max-width: 20px;
+    padding: 0 2px;
+    white-space: nowrap;
+    box-sizing: border-box;
 }
 
 .roll-option-btn {
@@ -391,6 +402,7 @@ body {
 
 .positions-table th {
     text-align: center;
+    white-space: nowrap;
     color: var(--text-muted);
     font-size: 12px;
     font-weight: 500;
@@ -406,6 +418,7 @@ body {
 .positions-table td.pos-symbol {
     font-weight: 600;
     text-align: left;
+    white-space: nowrap;
 }
 
 .pos-long {

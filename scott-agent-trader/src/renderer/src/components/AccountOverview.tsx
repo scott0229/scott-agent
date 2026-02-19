@@ -124,9 +124,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
             .filter((p) => !filterSymbol || p.symbol === filterSymbol)
 
             .sort((a, b) => {
+                const symbolPriority: Record<string, number> = { 'QQQ': 1, 'QLD': 2, 'TQQQ': 3 }
                 const aIsStock = a.secType !== 'OPT' ? 0 : 1
                 const bIsStock = b.secType !== 'OPT' ? 0 : 1
                 if (aIsStock !== bIsStock) return aIsStock - bIsStock
+                // Sort by symbol priority
+                const aPri = symbolPriority[a.symbol] || 99
+                const bPri = symbolPriority[b.symbol] || 99
+                if (aPri !== bPri) return aPri - bPri
                 // Options: sort by expiry date (nearest first)
                 if (a.secType === 'OPT' && b.secType === 'OPT') {
                     return (a.expiry || '').localeCompare(b.expiry || '')
@@ -301,7 +306,6 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    {selectMode === 'STK' && <th style={{ width: '30px' }}></th>}
                                                     <th style={{ textAlign: 'left' }}>股票</th>
                                                     <th>數量</th>
                                                     <th>均價</th>
@@ -312,12 +316,10 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             <tbody>
                                                 {getPositionsForAccount(account.accountId).filter(p => p.secType !== 'OPT').map((pos, idx) => (
                                                     <tr key={idx} className={selectMode === 'STK' ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode === 'STK' ? () => togglePosition(posKey(pos)) : undefined} style={selectMode === 'STK' ? { cursor: 'pointer' } : undefined}>
-                                                        {selectMode === 'STK' && (
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} />
-                                                            </td>
-                                                        )}
-                                                        <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                                                        <td className="pos-symbol">
+                                                            {selectMode === 'STK' && <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
+                                                            {formatPositionSymbol(pos)}
+                                                        </td>
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
                                                         </td>
@@ -340,7 +342,6 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                         <table className="positions-table">
                                             <thead>
                                                 <tr>
-                                                    {selectMode === 'OPT' && <th style={{ width: '30px' }}></th>}
                                                     <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
                                                     <th style={{ width: '8%' }}>天數</th>
                                                     <th style={{ width: '8%' }}>數量</th>
@@ -352,12 +353,10 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             <tbody>
                                                 {getPositionsForAccount(account.accountId).filter(p => p.secType === 'OPT').map((pos, idx) => (
                                                     <tr key={idx} className={selectMode === 'OPT' ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}` : ''} onClick={selectMode === 'OPT' ? () => togglePosition(posKey(pos)) : undefined} style={selectMode === 'OPT' ? { cursor: 'pointer' } : undefined}>
-                                                        {selectMode === 'OPT' && (
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} />
-                                                            </td>
-                                                        )}
-                                                        <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                                                        <td className="pos-symbol">
+                                                            {selectMode === 'OPT' && <input type="checkbox" checked={selectedPositions.has(posKey(pos))} onChange={() => togglePosition(posKey(pos))} onClick={(e) => e.stopPropagation()} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
+                                                            {formatPositionSymbol(pos)}
+                                                        </td>
                                                         <td>{pos.expiry ? Math.max(0, Math.ceil((new Date(pos.expiry.substring(0, 4) + '-' + pos.expiry.substring(4, 6) + '-' + pos.expiry.substring(6, 8) + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))) : '-'}</td>
                                                         <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
                                                             {pos.quantity.toLocaleString()}
