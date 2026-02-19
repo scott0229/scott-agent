@@ -116,8 +116,21 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
         ...a,
         alias: aliasRef.current[a.accountId] || a.alias
       }))
-      setAccounts(withAliases)
-      setPositions(positionData)
+      // Merge accounts so partial responses don't remove existing cards
+      setAccounts((prev) => {
+        const merged = new Map(prev.map((a) => [a.accountId, a]))
+        for (const a of withAliases) merged.set(a.accountId, a)
+        return Array.from(merged.values())
+      })
+      // Merge positions: keep previous entries for accounts not in this response
+      if (positionData.length > 0) {
+        setPositions((prev) => {
+          const incomingAccounts = new Set(positionData.map((p: PositionData) => p.account))
+          // Keep positions from accounts NOT in this response (they may have timed out)
+          const kept = prev.filter((p) => !incomingAccounts.has(p.account))
+          return [...kept, ...positionData]
+        })
+      }
       setOpenOrders(orderData)
       setExecutions(execData)
       setLoading(false)
