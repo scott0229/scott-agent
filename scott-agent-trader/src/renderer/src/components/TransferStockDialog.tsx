@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import CustomSelect from './CustomSelect'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface TransferStockDialogProps {
@@ -48,6 +47,13 @@ export default function TransferStockDialog({
     const [confirmedTargetSymbol, setConfirmedTargetSymbol] = useState('')
     const [sellQuote, setSellQuote] = useState<{ bid: number; ask: number; last: number } | null>(null)
     const [buyQuote, setBuyQuote] = useState<{ bid: number; ask: number; last: number } | null>(null)
+    const [sellQtyOverrides, setSellQtyOverrides] = useState<Record<string, number>>({})
+    const [sellOutsideRth, setSellOutsideRth] = useState(false)
+    const [buyOutsideRth, setBuyOutsideRth] = useState(false)
+    const [sellTifOpen, setSellTifOpen] = useState(false)
+    const [buyTifOpen, setBuyTifOpen] = useState(false)
+    const sellTifRef = useRef<HTMLDivElement>(null)
+    const buyTifRef = useRef<HTMLDivElement>(null)
 
     const sourceSymbol = selectedPositions.length > 0 ? selectedPositions[0].symbol : ''
     const sourceLastPrice = quotes[sourceSymbol] || 0
@@ -69,6 +75,20 @@ export default function TransferStockDialog({
         }
         return map
     }, [selectedPositions])
+
+    // Close TIF dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent): void => {
+            if (sellTifRef.current && !sellTifRef.current.contains(e.target as Node)) {
+                setSellTifOpen(false)
+            }
+            if (buyTifRef.current && !buyTifRef.current.contains(e.target as Node)) {
+                setBuyTifOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Fetch source quote on mount + auto-refresh every 5s
     useEffect(() => {
@@ -139,7 +159,7 @@ export default function TransferStockDialog({
 
         for (const [accountId, posInfo] of accountPositions) {
             const acct = accounts.find((a) => a.accountId === accountId)
-            const sellQty = posInfo.qty
+            const sellQty = sellQtyOverrides[accountId] !== undefined ? sellQtyOverrides[accountId] : posInfo.qty
             const sellValue = sellQty * (parseFloat(sellPrice) || sourceLastPrice || posInfo.avgCost)
             const buyQty = buyPriceNum > 0 ? Math.floor(sellValue / buyPriceNum) : 0
 
@@ -156,7 +176,7 @@ export default function TransferStockDialog({
             const acctB = accounts.find((x) => x.accountId === b.accountId)
             return (acctB?.netLiquidation || 0) - (acctA?.netLiquidation || 0)
         })
-    }, [accountPositions, accounts, sellPrice, buyPrice, sourceLastPrice])
+    }, [accountPositions, accounts, sellPrice, buyPrice, sourceLastPrice, sellQtyOverrides])
 
     const totalSellQty = previews.reduce((s, p) => s + p.sellQty, 0)
     const totalBuyQty = previews.reduce((s, p) => s + p.buyQty, 0)
@@ -226,6 +246,9 @@ export default function TransferStockDialog({
         setOrderResults([])
         setStep('preview')
         setConfirmedPreviews([])
+        setSellQtyOverrides({})
+        setSellOutsideRth(false)
+        setBuyOutsideRth(false)
         setConfirmedSourceSymbol('')
         setConfirmedTargetSymbol('')
         setSubmitting(false)
@@ -269,14 +292,39 @@ export default function TransferStockDialog({
                                 />
                             </div>
                             <div className="form-group" style={{ flex: '0 0 auto' }}>
-                                <CustomSelect
-                                    value={sellTif}
-                                    onChange={(v) => setSellTif(v as 'DAY' | 'GTC')}
-                                    options={[
-                                        { value: 'DAY', label: 'DAY' },
-                                        { value: 'GTC', label: 'GTC' }
-                                    ]}
-                                />
+                                <div className="tif-dropdown" ref={sellTifRef}>
+                                    <button
+                                        type="button"
+                                        className={`tif-dropdown-trigger${sellOutsideRth ? ' has-extras' : ''}`}
+                                        onClick={() => setSellTifOpen(!sellTifOpen)}
+                                        disabled={step !== 'preview'}
+                                    >
+                                        {sellOutsideRth ? <span className="tif-indicator" /> : null}
+                                        {sellTif}
+                                        <span className="tif-dropdown-arrow">▾</span>
+                                    </button>
+                                    {sellTifOpen && (
+                                        <div className="tif-dropdown-menu">
+                                            <div
+                                                className={`tif-dropdown-item${sellTif === 'DAY' ? ' active' : ''}`}
+                                                onClick={() => { setSellTif('DAY'); }}
+                                            >
+                                                DAY
+                                            </div>
+                                            <div
+                                                className={`tif-dropdown-item${sellTif === 'GTC' ? ' active' : ''}`}
+                                                onClick={() => { setSellTif('GTC'); }}
+                                            >
+                                                GTC
+                                            </div>
+                                            <div className="tif-dropdown-separator" />
+                                            <label className="tif-dropdown-checkbox">
+                                                <input type="checkbox" checked={sellOutsideRth} onChange={(e) => setSellOutsideRth(e.target.checked)} />
+                                                非常規時間
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             {sellQuote && (
                                 <div className="quote-display" style={{ flex: '0 0 auto' }}>
@@ -319,14 +367,39 @@ export default function TransferStockDialog({
                                 />
                             </div>
                             <div className="form-group" style={{ flex: '0 0 auto' }}>
-                                <CustomSelect
-                                    value={buyTif}
-                                    onChange={(v) => setBuyTif(v as 'DAY' | 'GTC')}
-                                    options={[
-                                        { value: 'DAY', label: 'DAY' },
-                                        { value: 'GTC', label: 'GTC' }
-                                    ]}
-                                />
+                                <div className="tif-dropdown" ref={buyTifRef}>
+                                    <button
+                                        type="button"
+                                        className={`tif-dropdown-trigger${buyOutsideRth ? ' has-extras' : ''}`}
+                                        onClick={() => setBuyTifOpen(!buyTifOpen)}
+                                        disabled={step !== 'preview'}
+                                    >
+                                        {buyOutsideRth ? <span className="tif-indicator" /> : null}
+                                        {buyTif}
+                                        <span className="tif-dropdown-arrow">▾</span>
+                                    </button>
+                                    {buyTifOpen && (
+                                        <div className="tif-dropdown-menu">
+                                            <div
+                                                className={`tif-dropdown-item${buyTif === 'DAY' ? ' active' : ''}`}
+                                                onClick={() => { setBuyTif('DAY'); }}
+                                            >
+                                                DAY
+                                            </div>
+                                            <div
+                                                className={`tif-dropdown-item${buyTif === 'GTC' ? ' active' : ''}`}
+                                                onClick={() => { setBuyTif('GTC'); }}
+                                            >
+                                                GTC
+                                            </div>
+                                            <div className="tif-dropdown-separator" />
+                                            <label className="tif-dropdown-checkbox">
+                                                <input type="checkbox" checked={buyOutsideRth} onChange={(e) => setBuyOutsideRth(e.target.checked)} />
+                                                非常規時間
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             {targetSymbol.trim() && buyQuote && (
                                 <div className="quote-display" style={{ flex: '0 0 auto' }}>
@@ -374,7 +447,18 @@ export default function TransferStockDialog({
                                                     <td style={{ color: '#8b1a1a', fontWeight: 'bold' }}>賣出</td>
                                                     <td>{displaySourceSymbol}</td>
                                                     <td>{sellPrice || '-'}</td>
-                                                    <td>{p.sellQty.toLocaleString()}</td>
+                                                    <td>{step === 'preview' ? (
+                                                        <input
+                                                            type="number"
+                                                            value={p.sellQty}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value) || 0
+                                                                setSellQtyOverrides(prev => ({ ...prev, [p.accountId]: val }))
+                                                            }}
+                                                            className="input-field"
+                                                            style={{ width: '80px', textAlign: 'center' }}
+                                                        />
+                                                    ) : p.sellQty.toLocaleString()}</td>
                                                     {step === 'done' && (
                                                         <td style={{ fontSize: '11px' }}>{sellResult ? sellResult.status : '-'}</td>
                                                     )}
