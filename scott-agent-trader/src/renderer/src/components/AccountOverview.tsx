@@ -520,7 +520,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
 
                                 {/* Today's Filled Orders */}
                                 {!selectMode && executions.filter(e => e.account === account.accountId).length > 0 && (
-                                    <div className="positions-section">
+                                    <div className="positions-section" style={{ background: '#f5f5f5', borderRadius: '6px', padding: '8px' }}>
 
                                         <table className="positions-table">
                                             <thead>
