@@ -29,6 +29,19 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
     const [editValue, setEditValue] = useState('')
     const editInputRef = useRef<HTMLInputElement | null>(null)
+    // Context menu state for order cancellation
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; order: OpenOrderData } | null>(null)
+
+    // Close context menu on any click or right-click elsewhere
+    useEffect(() => {
+        if (!contextMenu) return undefined
+        const handler = (): void => setContextMenu(null)
+        // Use rAF to avoid closing on the same event that opened the menu
+        const id = requestAnimationFrame(() => {
+            window.addEventListener('mousedown', handler)
+        })
+        return () => { cancelAnimationFrame(id); window.removeEventListener('mousedown', handler) }
+    }, [contextMenu])
 
     // Auto-focus input when entering edit mode
     useEffect(() => {
@@ -394,7 +407,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
 
                                 {/* Open Orders */}
                                 {!selectMode && openOrders.filter(o => o.account === account.accountId).length > 0 && (
-                                    <div className="positions-section">
+                                    <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
 
                                         <table className="positions-table">
                                             <thead>
@@ -414,7 +427,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             ? `${order.symbol} ${order.comboDescription}`
                                                             : order.symbol
                                                     return (
-                                                        <tr key={order.orderId}>
+                                                        <tr key={order.orderId} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, order }) }}>
                                                             <td className="pos-symbol">{desc}</td>
                                                             <td style={{ color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 600 }}>
                                                                 {order.action === 'BUY' ? '買' : '賣'}
@@ -461,22 +474,6 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             </td>
                                                             <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
                                                                 {({ Submitted: '已送出', PendingSubmit: '待送出', PreSubmitted: '預送出', Filled: '已成交', Cancelled: '已取消', Inactive: '未啟用' } as Record<string, string>)[order.status] || order.status}
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (!confirm(`確定要取消 ${order.symbol} 的委託嗎？`)) return
-                                                                        window.ibApi.cancelOrder(order.orderId).then(() => {
-                                                                            console.log('[CANCEL] cancelOrder succeeded')
-                                                                            setTimeout(() => refresh?.(), 300)
-                                                                            setTimeout(() => refresh?.(), 1000)
-                                                                            setTimeout(() => refresh?.(), 2000)
-                                                                        }).catch((err: unknown) => {
-                                                                            console.error('[CANCEL] cancelOrder failed:', err)
-                                                                            alert('取消委託失敗: ' + String(err))
-                                                                        })
-                                                                    }}
-                                                                    className="cancel-order-btn"
-                                                                    title="取消委託"
-                                                                >✕</button>
                                                             </td>
                                                         </tr>
                                                     )
@@ -563,6 +560,25 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                             <BatchOrderForm connected={connected} accounts={accounts} positions={positions} />
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Context menu for order cancellation */}
+            {contextMenu && (
+                <div className="order-context-menu" style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }} onMouseDown={(e) => e.stopPropagation()}>
+                    <div className="order-context-menu-item" onClick={() => {
+                        const order = contextMenu.order
+                        setContextMenu(null)
+                        window.ibApi.cancelOrder(order.orderId).then(() => {
+                            console.log('[CANCEL] cancelOrder succeeded')
+                            setTimeout(() => refresh?.(), 300)
+                            setTimeout(() => refresh?.(), 1000)
+                            setTimeout(() => refresh?.(), 2000)
+                        }).catch((err: unknown) => {
+                            console.error('[CANCEL] cancelOrder failed:', err)
+                            alert('取消委託失敗: ' + String(err))
+                        })
+                    }}>取消委託</div>
                 </div>
             )}
 

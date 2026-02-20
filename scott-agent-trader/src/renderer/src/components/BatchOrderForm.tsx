@@ -118,7 +118,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
         if (!symbol.trim() || Object.keys(allocations).length === 0) return
 
         setSubmitting(true)
-        setShowConfirm(false)
+
         try {
             const request = {
                 symbol: symbol.toUpperCase(),
@@ -378,19 +378,20 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                 ) : (
                     <div className="confirm-section">
                         <div className="confirm-summary">
-                            確定要下單？
+                            {orderResults.length > 0 ? '下單結果' : '確定要下單？'}
                         </div>
                         <table className="allocation-table">
                             <thead>
                                 <tr>
                                     <th style={{ width: '1%', whiteSpace: 'nowrap' }}></th>
-                                    <th style={{ width: '20%' }}>帳號</th>
+                                    <th style={{ width: '15%' }}>帳戶</th>
                                     <th style={{ width: '8%' }}>方向</th>
-                                    <th style={{ width: '12%' }}>標的</th>
-                                    <th style={{ width: '12%' }}>限價</th>
+                                    <th style={{ width: '10%' }}>標的</th>
+                                    <th style={{ width: '10%' }}>限價</th>
                                     <th style={{ width: '8%' }}>數量</th>
-                                    <th style={{ width: '15%' }}>新潛在融資</th>
-
+                                    <th style={{ width: '12%' }}>新潛在融資</th>
+                                    <th style={{ width: '20%' }}>狀態</th>
+                                    {orderResults.length > 0 && <th style={{ width: '8%' }}>操作</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -402,6 +403,8 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                     const netLiq = acct?.netLiquidation ?? 0
                                     const newGPV = action === 'BUY' ? currentGPV + orderValue : Math.max(0, currentGPV - orderValue)
                                     const postLeverage = netLiq > 0 && newGPV > 0 ? (newGPV / netLiq).toFixed(2) : '無融資'
+                                    const result = orderResults.find((r) => r.account === accountId)
+                                    const canCancel = result && !['Filled', 'Cancelled', 'Inactive'].includes(result.status)
 
                                     return (
                                         <tr key={accountId}>
@@ -412,55 +415,51 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                             <td>{limitPrice}</td>
                                             <td style={{ color: '#1a3a6b' }}>{qty.toLocaleString()}</td>
                                             <td>{postLeverage}</td>
-
+                                            <td>
+                                                {result ? (
+                                                    <span className={`status-${result.status.toLowerCase()}`}>
+                                                        {result.status}{result.filled > 0 ? ` (${result.filled}/${result.filled + result.remaining})` : ''}
+                                                    </span>
+                                                ) : (orderResults.length > 0 ? '-' : '')}
+                                            </td>
+                                            {orderResults.length > 0 && (
+                                                <td>
+                                                    {canCancel && (
+                                                        <button
+                                                            className="btn btn-secondary"
+                                                            style={{ padding: '2px 8px', fontSize: '12px' }}
+                                                            onClick={() => window.ibApi.cancelOrder(result.orderId)}
+                                                        >
+                                                            取消
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     )
                                 })}
                             </tbody>
                         </table>
                         <div className="confirm-buttons">
-                            <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
-                                {submitting ? '下單中...' : '確認下單'}
-                            </button>
-                            <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
-                                取消
-                            </button>
+                            {orderResults.length === 0 && (
+                                <>
+                                    <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
+                                        {submitting ? '下單中...' : '確認下單'}
+                                    </button>
+                                    <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
+                                        取消
+                                    </button>
+                                </>
+                            )}
+                            {orderResults.length > 0 && (
+                                <button onClick={() => { setShowConfirm(false); setOrderResults([]); setCheckedAccounts(new Set()); setQuantities({}); }} className="btn btn-secondary">
+                                    重新下單
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
-
             </div>
-
-            {/* Order Results */}
-            {orderResults.length > 0 && (
-                <div className="order-results">
-                    <h3>下單結果</h3>
-                    <table className="results-table">
-                        <thead>
-                            <tr>
-                                <th>訂單 ID</th>
-                                <th>帳戶</th>
-                                <th>狀態</th>
-                                <th>已成交</th>
-                                <th>均價</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orderResults.map((result) => (
-                                <tr key={result.orderId}>
-                                    <td>{result.orderId}</td>
-                                    <td>{result.account}</td>
-                                    <td className={`status-${result.status.toLowerCase()}`}>{result.status}</td>
-                                    <td>
-                                        {result.filled} / {result.filled + result.remaining}
-                                    </td>
-                                    <td>{result.avgFillPrice > 0 ? `$${result.avgFillPrice.toFixed(2)}` : '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
         </div>
     )
 }

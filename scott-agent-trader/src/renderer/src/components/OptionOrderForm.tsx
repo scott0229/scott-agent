@@ -197,7 +197,6 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
     if (selectedStrike === null || selectedRight === null || !selectedExpiry) return
 
     setSubmitting(true)
-    setShowConfirm(false)
     try {
       const request = {
         symbol: symbol.toUpperCase(),
@@ -403,58 +402,84 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
             ) : (
               <div className="confirm-section">
                 <div className="confirm-summary">
-                  確定要 <strong>{action === 'BUY' ? '買入' : '賣出'}</strong>{' '}
-                  <strong>{contractDesc}</strong> 共{' '}
-                  <strong>{qty}</strong> 口 x{' '}
-                  <strong>{targetAccounts.length}</strong> 個帳戶，
-                  限價: <strong>{limitPrice}</strong>？
+                  {orderResults.length > 0 ? (
+                    '下單結果'
+                  ) : (
+                    <>
+                      確定要 <strong>{action === 'BUY' ? '買入' : '賣出'}</strong>{' '}
+                      <strong>{contractDesc}</strong> 共{' '}
+                      <strong>{qty}</strong> 口 x{' '}
+                      <strong>{targetAccounts.length}</strong> 個帳戶，
+                      限價: <strong>{limitPrice}</strong>？
+                    </>
+                  )}
                 </div>
+                <table className="allocation-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '1%', whiteSpace: 'nowrap' }}></th>
+                      <th style={{ width: '25%' }}>帳戶</th>
+                      <th style={{ width: '30%' }}>合約</th>
+                      <th style={{ width: '10%' }}>數量</th>
+                      <th style={{ width: '20%' }}>狀態</th>
+                      {orderResults.length > 0 && <th style={{ width: '8%' }}>操作</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {targetAccounts.map((acct, index) => {
+                      const result = orderResults.find((r) => r.account === acct.accountId)
+                      const canCancel = result && !['Filled', 'Cancelled', 'Inactive'].includes(result.status)
+                      return (
+                        <tr key={acct.accountId}>
+                          <td>{index + 1}.</td>
+                          <td style={{ fontWeight: 'bold' }}>{acct.alias || acct.accountId}</td>
+                          <td>{contractDesc}</td>
+                          <td style={{ color: '#1a3a6b' }}>{qty}</td>
+                          <td>
+                            {result ? (
+                              <span className={`status-${result.status.toLowerCase()}`}>
+                                {result.status} {result.filled > 0 ? `(${result.filled}/${result.filled + result.remaining})` : ''}
+                              </span>
+                            ) : (orderResults.length > 0 ? '-' : '')}
+                          </td>
+                          {orderResults.length > 0 && (
+                            <td>
+                              {canCancel && (
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: '2px 8px', fontSize: '12px' }}
+                                  onClick={() => window.ibApi.cancelOrder(result.orderId)}
+                                >
+                                  取消
+                                </button>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
                 <div className="confirm-buttons">
-                  <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
-                    {submitting ? '下單中...' : '✅ 確認下單'}
-                  </button>
-                  <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
-                    取消
-                  </button>
+                  {orderResults.length === 0 && (
+                    <>
+                      <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
+                        {submitting ? '下單中...' : '✅ 確認下單'}
+                      </button>
+                      <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
+                        取消
+                      </button>
+                    </>
+                  )}
+                  {orderResults.length > 0 && (
+                    <button onClick={() => { setShowConfirm(false); setOrderResults([]); setSelectedUser('ALL'); setQuantity(''); }} className="btn btn-secondary">
+                      重新下單
+                    </button>
+                  )}
                 </div>
               </div>
             )}
           </div>
-
-          {/* Order Results */}
-          {orderResults.length > 0 && (
-            <div className="order-results">
-              <h3>下單結果</h3>
-              <table className="results-table">
-                <thead>
-                  <tr>
-                    <th>訂單 ID</th>
-                    <th>帳戶</th>
-                    <th>合約</th>
-                    <th>狀態</th>
-                    <th>已成交</th>
-                    <th>均價</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderResults.map((result) => (
-                    <tr key={result.orderId}>
-                      <td>{result.orderId}</td>
-                      <td>{result.account}</td>
-                      <td>{result.symbol}</td>
-                      <td className={`status-${result.status.toLowerCase()}`}>{result.status}</td>
-                      <td>
-                        {result.filled} / {result.filled + result.remaining}
-                      </td>
-                      <td>
-                        {result.avgFillPrice > 0 ? `$${result.avgFillPrice.toFixed(2)}` : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
     </div>
