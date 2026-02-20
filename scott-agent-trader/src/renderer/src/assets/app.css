@@ -1,7 +1,7 @@
 /* === Base Reset & Variables === */
 :root {
     color-scheme: light;
-    --bg-primary: #f8f6f3;
+    --bg-primary: #f5f0eb;
     --bg-secondary: #ffffff;
     --bg-card: #f3f0eb;
     --bg-hover: #eae5de;
@@ -26,7 +26,7 @@
 }
 
 body {
-    font-family: 'Segoe UI', 'Microsoft JhengHei', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Segoe UI', 'Microsoft JhengHei', system-ui, -apple-system, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     line-height: 1.6;
@@ -44,9 +44,12 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 24px;
-    background: var(--bg-secondary);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     position: relative;
     z-index: 10;
     -webkit-app-region: drag;
@@ -168,7 +171,7 @@ body {
 }
 
 .tab-btn {
-    padding: 6px 16px;
+    padding: 8px 16px;
     background: none;
     border: none;
     color: var(--text-muted);
@@ -177,6 +180,7 @@ body {
     cursor: pointer;
     border-radius: var(--radius);
     transition: all 0.2s;
+    gap: 8px;
 }
 
 .tab-btn:hover {
@@ -185,8 +189,8 @@ body {
 }
 
 .tab-btn.active {
-    color: var(--accent-blue);
-    background: var(--bg-card);
+    color: #ffffff;
+    background: #956b68;
     font-weight: 600;
 }
 
