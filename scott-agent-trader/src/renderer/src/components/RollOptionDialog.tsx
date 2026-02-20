@@ -479,6 +479,13 @@ export default function RollOptionDialog({
         return { bid: spreadBid, ask: spreadAsk, mid: spreadMid }
     }, [targetGreek, positions, findCurrentGreek])
 
+    // Auto-populate limit price with mid price whenever spread changes (new target selected)
+    useEffect(() => {
+        if (spreadPrices) {
+            setLimitPrice(spreadPrices.mid.toFixed(2))
+        }
+    }, [spreadPrices])
+
     // Scroll dropdown to mid-price when it opens
     useEffect(() => {
         if (limitDropdownOpen && limitDropdownRef.current && spreadPrices) {
@@ -529,11 +536,6 @@ export default function RollOptionDialog({
             <div className="roll-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="roll-dialog-header">
                     <h3>{symbol} 批次展期</h3>
-                    {targetStrike !== null && targetRight !== null && (
-                        <span className="roll-dialog-selected-badge">
-                            → {formatExpiry(targetExpiry)} ${targetStrike} {targetRight === 'C' ? 'CALL' : 'PUT'}
-                        </span>
-                    )}
                     <button className="roll-dialog-close" onClick={onClose}>
                         ✕
                     </button>
@@ -794,6 +796,14 @@ export default function RollOptionDialog({
                         >
                             {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
                         </button>
+                        <span className="roll-order-label">賣價</span>
+                        <button
+                            className="roll-order-price-btn roll-order-ask"
+                            disabled={!spreadPrices}
+                            onClick={() => spreadPrices && setLimitPrice(spreadPrices.ask.toFixed(2))}
+                        >
+                            {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
+                        </button>
                         <span className="roll-order-label">限價</span>
                         <div className="roll-limit-wrapper" ref={limitInputRef}>
                             <input
@@ -804,6 +814,13 @@ export default function RollOptionDialog({
                                 onFocus={() => priceOptions.length > 0 && setLimitDropdownOpen(true)}
                                 onClick={() => priceOptions.length > 0 && setLimitDropdownOpen(true)}
                                 placeholder="0.00"
+                                style={spreadPrices ? (
+                                    limitPrice === spreadPrices.bid.toFixed(2)
+                                        ? { borderColor: '#22c55e', color: '#15803d' }
+                                        : limitPrice === spreadPrices.ask.toFixed(2)
+                                            ? { borderColor: '#ef4444', color: '#b91c1c' }
+                                            : {}
+                                ) : {}}
                             />
                             <span className="roll-limit-arrow" onClick={() => priceOptions.length > 0 && setLimitDropdownOpen(v => !v)}>▾</span>
                             {limitDropdownOpen && priceOptions.length > 0 && createPortal(
@@ -842,14 +859,6 @@ export default function RollOptionDialog({
                                 document.body
                             )}
                         </div>
-                        <span className="roll-order-label">賣價</span>
-                        <button
-                            className="roll-order-price-btn roll-order-ask"
-                            disabled={!spreadPrices}
-                            onClick={() => spreadPrices && setLimitPrice(spreadPrices.ask.toFixed(2))}
-                        >
-                            {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
-                        </button>
                     </div>
 
                     {/* Positions table */}
@@ -880,7 +889,7 @@ export default function RollOptionDialog({
                                                     <td style={{ fontWeight: 'bold' }}>{getAlias(pos.account)}</td>
                                                     <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{Math.abs(pos.quantity)}口</td>
                                                     <td>{currentDesc}</td>
-                                                    <td>{targetDesc}</td>
+                                                    <td style={{ backgroundColor: '#e0f2fe' }}>{targetDesc}</td>
                                                     <td
                                                         className={
                                                             displayVal !== null && !isNaN(displayVal as number)
@@ -889,6 +898,13 @@ export default function RollOptionDialog({
                                                                     : 'spread-negative'
                                                                 : ''
                                                         }
+                                                        style={spreadPrices && limitPrice ? (
+                                                            limitPrice === spreadPrices.bid.toFixed(2)
+                                                                ? { color: '#15803d' }
+                                                                : limitPrice === spreadPrices.ask.toFixed(2)
+                                                                    ? { color: '#b91c1c' }
+                                                                    : {}
+                                                        ) : {}}
                                                     >
                                                         {displayVal !== null && !isNaN(displayVal as number)
                                                             ? `${(displayVal as number) >= 0 ? '+' : ''}${(displayVal as number).toFixed(2)}`

@@ -313,8 +313,11 @@ export async function placeRollOrder(
     const orderId = getNextOrderId()
 
     // Build readable combo description for UI display
-    const fmtExp = (e: string): string => e.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3')
-    const comboDesc = `${fmtExp(request.closeExpiry)} ${request.closeStrike}${request.closeRight} → ${fmtExp(request.openExpiry)} ${request.openStrike}${request.openRight}`
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const fmtExp = (e: string): string => { const m = months[parseInt(e.substring(4,6))-1]; const d = e.substring(6,8); return `${m}${d}` }
+    const closePrefix = closeAction === 'BUY' ? '+' : '-'
+    const openPrefix = openAction === 'BUY' ? '+' : '-'
+    const comboDesc = `${closePrefix}${fmtExp(request.closeExpiry)} ${request.closeStrike}${request.closeRight} → ${openPrefix}${fmtExp(request.openExpiry)} ${request.openStrike}${request.openRight}`
     comboDescriptionMap.set(orderId, comboDesc)
 
     const order: Order = {
@@ -586,13 +589,15 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     }
 
     // Build descriptions for each BAG order
-    const fmtExp = (e: string): string => e.substring(0, 8).replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3')
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const fmtExp = (e: string): string => { const m = months[parseInt(e.substring(4,6))-1]; const d = e.substring(6,8); return `${m}${d}` }
     for (const [orderId, legs] of bagOrderLegs.entries()) {
       const legDescs = legs.map((leg) => {
         const d = leg.conId ? conIdDetails.get(leg.conId) : undefined
         if (!d) return '?'
         const r = d.right === 'C' || d.right === 'CALL' ? 'C' : 'P'
-        return `${fmtExp(d.expiry)} ${d.strike}${r}`
+        const prefix = leg.action === 'BUY' ? '+' : '-'
+        return `${prefix}${fmtExp(d.expiry)} ${d.strike}${r}`
       })
       const desc = legDescs.join(' → ')
       comboDescriptionMap.set(orderId, desc)

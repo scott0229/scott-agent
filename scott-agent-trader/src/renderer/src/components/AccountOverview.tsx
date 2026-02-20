@@ -407,7 +407,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
 
                                 {/* Open Orders */}
                                 {!selectMode && openOrders.filter(o => o.account === account.accountId).length > 0 && (
-                                    <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
+                                    <div className="positions-section order-section" style={{ backgroundColor: '#fffbe6' }}>
 
                                         <table className="positions-table">
                                             <thead>
@@ -427,7 +427,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             ? `${order.symbol} ${order.comboDescription}`
                                                             : order.symbol
                                                     return (
-                                                        <tr key={order.orderId} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, order }) }}>
+                                                        <tr key={order.orderId} onContextMenu={(e) => { e.preventDefault(); if (order.status !== 'PendingCancel') setContextMenu({ x: e.clientX, y: e.clientY, order }) }}>
                                                             <td className="pos-symbol">{desc}</td>
                                                             <td style={{ color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 600 }}>
                                                                 {order.action === 'BUY' ? '買' : '賣'}
@@ -473,7 +473,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                                 ) : order.orderType === 'LMT' ? (order.limitPrice ?? 0).toFixed(2) : '市價'}
                                                             </td>
                                                             <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
-                                                                {({ Submitted: '已送出', PendingSubmit: '待送出', PreSubmitted: '預送出', Filled: '已成交', Cancelled: '已取消', Inactive: '未啟用' } as Record<string, string>)[order.status] || order.status}
+                                                                {({ Submitted: '已送出', PendingSubmit: '待送出', PreSubmitted: '預送出', PendingCancel: '取消中', Filled: '已成交', Cancelled: '已取消', Inactive: '未啟用' } as Record<string, string>)[order.status] || order.status}
                                                             </td>
                                                         </tr>
                                                     )
