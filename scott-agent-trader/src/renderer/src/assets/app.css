@@ -328,7 +328,7 @@ body {
 }
 
 .account-card-selected {
-    border-color: var(--accent-blue);
+    border-color: #956b68;
 }
 
 
@@ -1160,6 +1160,11 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .allocation-table tbody tr:last-child td,
 .results-table tbody tr:last-child td {
+    border-bottom: 1px solid #999;
+}
+
+.allocation-table tbody tr:nth-last-child(2) td[rowspan],
+.results-table tbody tr:nth-last-child(2) td[rowspan] {
     border-bottom: 1px solid #999;
 }
 
@@ -2001,6 +2006,45 @@ input[type="number"]::-webkit-outer-spin-button {
     accent-color: var(--accent-blue);
 }
 
+.settings-type-select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 13px;
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary, #333);
+    cursor: pointer;
+    outline: none;
+}
+
+.settings-type-select:focus {
+    border-color: var(--accent-blue, #2563eb);
+}
+
+.account-type-select {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.account-type-select .custom-select-trigger {
+    padding: 1px 8px;
+    font-size: 12px;
+    color: #555;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: #f5f5f5;
+    white-space: nowrap;
+}
+
+.account-type-select .custom-select-trigger:hover {
+    border-color: #ddd;
+    background-color: #eee;
+}
+
+.account-type-select .custom-select-dropdown {
+    white-space: nowrap;
+}
+
 /* === Selectable Row (for select mode in AccountOverview) === */
 .selectable-row:hover {
     background: #fff9c4;
@@ -2110,4 +2154,48 @@ input[type="number"]::-webkit-outer-spin-button {
     overflow-y: auto;
     overflow-x: auto;
     flex: 1;
+}
+
+/* === Transfer Dialog === */
+.transfer-dialog {
+    max-width: 800px;
+}
+
+.transfer-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.transfer-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.transfer-input-group label {
+    font-size: 11px;
+    color: #888;
+    font-weight: 500;
+}
+
+.transfer-source-symbol {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a3a6b;
+    padding: 4px 0;
+}
+
+.transfer-arrow {
+    font-size: 22px;
+    color: #999;
+    padding-bottom: 6px;
+    font-weight: bold;
+}
+
+.transfer-price-hint {
+    font-size: 11px;
+    color: #999;
 }

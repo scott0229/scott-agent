@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 export interface AccountData {
   accountId: string
   alias: string
+  accountType: string
   netLiquidation: number
   availableFunds: number
   totalCashValue: number
@@ -143,7 +144,10 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
           .then((aliasMap) => {
             aliasRef.current = { ...aliasRef.current, ...aliasMap }
             setAccounts((prev) =>
-              prev.map((a) => ({ ...a, alias: aliasMap[a.accountId] || a.alias }))
+              prev.map((a) => ({
+                ...a,
+                alias: aliasMap[a.accountId] || a.alias
+              }))
             )
           })
           .catch(() => { /* ignore alias errors */ })

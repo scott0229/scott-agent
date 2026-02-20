@@ -3,6 +3,13 @@ import type { AccountData, PositionData, OpenOrderData, ExecutionDataItem } from
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import BatchOrderForm from './BatchOrderForm'
+import TransferStockDialog from './TransferStockDialog'
+
+const TRADING_TYPE_OPTIONS = [
+    { value: 'reg_t', label: 'Reg T 保證金' },
+    { value: 'portfolio_margin', label: '投資組合保證金' },
+    { value: 'cash', label: '現金帳戶' }
+]
 
 interface AccountOverviewProps {
     connected: boolean
@@ -14,9 +21,11 @@ interface AccountOverviewProps {
     executions: ExecutionDataItem[]
     loading: boolean
     refresh?: () => void
+    accountTypes?: Record<string, string>
+    onSetAccountType?: (accountId: string, type: string) => void
 }
 
-export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh }: AccountOverviewProps): JSX.Element {
+export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh, accountTypes, onSetAccountType }: AccountOverviewProps): JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
 
@@ -24,6 +33,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
     const [showRollDialog, setShowRollDialog] = useState(false)
     const [showBatchOrder, setShowBatchOrder] = useState(false)
+    const [showTransferDialog, setShowTransferDialog] = useState(false)
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
@@ -125,6 +135,15 @@ export default function AccountOverview({ connected, accounts, positions, quotes
             const pSide = p.quantity < 0 ? 'SELL' : 'BUY'
             return p.symbol === symbol && p.right === right && pSide === side
         })
+    }, [selectedPositions, positions])
+
+    const canTransferStocks = useMemo(() => {
+        if (selectedPositions.size === 0) return false
+        const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
+        if (selected.length === 0) return false
+        if (!selected.every((p) => p.secType === 'STK')) return false
+        const symbol = selected[0].symbol
+        return selected.every((p) => p.symbol === symbol && p.quantity > 0)
     }, [selectedPositions, positions])
 
     const uniqueSymbols = useMemo(() => {
@@ -253,9 +272,16 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 展期
                             </button>
                         )}
-                        <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
-                            股票下單
-                        </button>
+                        {selectMode === 'STK' && canTransferStocks && (
+                            <button className="select-toggle-btn" onClick={() => setShowTransferDialog(true)}>
+                                轉倉
+                            </button>
+                        )}
+                        {!selectMode && (
+                            <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
+                                股票下單
+                            </button>
+                        )}
                     </div>
                     <CustomSelect
                         value={sortBy}
@@ -278,7 +304,13 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                             <div key={account.accountId} className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`} onClick={() => setSelectedAccount(prev => prev === account.accountId ? null : account.accountId)}>
                                 <div className="account-header">
                                     <span className="account-id">{account.alias || account.accountId}</span>
-
+                                    <div className="account-type-select" onClick={(e) => e.stopPropagation()}>
+                                        <CustomSelect
+                                            value={accountTypes?.[account.accountId] || 'reg_t'}
+                                            options={TRADING_TYPE_OPTIONS}
+                                            onChange={(v) => onSetAccountType?.(account.accountId, v)}
+                                        />
+                                    </div>
                                 </div>
 
                                 {!selectMode && <div className="account-metrics">
@@ -501,7 +533,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {executions.filter(e => e.account === account.accountId).sort((a, b) => b.time.localeCompare(a.time)).map((exec) => {
+                                                {executions.filter(e => e.account === account.accountId).filter(e => {
+                                                    // Hide OPT legs that belong to a combo (BAG) order
+                                                    if (e.secType === 'OPT') {
+                                                        const hasCombo = executions.some(b => b.account === account.accountId && b.orderId === e.orderId && b.secType === 'BAG')
+                                                        if (hasCombo) return false
+                                                    }
+                                                    return true
+                                                }).sort((a, b) => b.time.localeCompare(a.time)).map((exec) => {
                                                     const acctExecs = executions.filter(e => e.account === account.accountId)
                                                     let desc: string
                                                     if (exec.secType === 'OPT') {
@@ -510,11 +549,19 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                         // Build description from sibling OPT legs with the same orderId
                                                         const legs = acctExecs.filter(e => e.orderId === exec.orderId && e.secType === 'OPT')
                                                         if (legs.length > 0) {
-                                                            const legDescs = legs.map(l => {
+                                                            const seen = new Set<string>()
+                                                            const legDescs: string[] = []
+                                                            for (const l of legs) {
                                                                 const exp = l.expiry ? l.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''
                                                                 const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
-                                                                return `${exp} ${l.strike}${r}`
-                                                            })
+                                                                const sign = l.side === 'BOT' ? '+' : '-'
+                                                                const key = `${sign}${exp} ${l.strike}${r}`
+                                                                if (!seen.has(key)) {
+                                                                    seen.add(key)
+                                                                    legDescs.push(key)
+                                                                }
+                                                            }
+                                                            legDescs.sort((a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1))
                                                             desc = `${exec.symbol} ${legDescs.join(' → ')}`
                                                         } else {
                                                             desc = `${exec.symbol} COMBO`
@@ -565,6 +612,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                     </div>
                 </div>
             )}
+            <TransferStockDialog
+                open={showTransferDialog}
+                onClose={() => setShowTransferDialog(false)}
+                selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
+                accounts={accounts}
+                positions={positions}
+                quotes={quotes}
+            />
 
             {/* Context menu for order cancellation */}
             {contextMenu && (

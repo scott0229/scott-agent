@@ -265,7 +265,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                         }}
                                     />
                                 </th>
-                                <th style={{ width: '15%' }}>帳號</th>
+                                <th style={{ width: '15%', textAlign: 'left' }}>帳號</th>
                                 <th style={{ width: '9%' }}>淨值</th>
                                 <th style={{ width: '9%' }}>現金</th>
 
@@ -307,7 +307,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                                 }}
                                             />
                                         </td>
-                                        <td style={{ fontWeight: 'bold' }}>{acct.alias || acct.accountId}</td>
+                                        <td style={{ fontWeight: 'bold', textAlign: 'left' }}>{acct.alias || acct.accountId}</td>
                                         <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                                         <td style={acct.totalCashValue < 0 ? { color: '#8b1a1a' } : undefined}>{acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
 

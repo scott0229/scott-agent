@@ -7,6 +7,7 @@ import { useAccountStore } from './hooks/useAccountStore'
 import './assets/app.css'
 
 const HIDDEN_ACCOUNTS_PREFIX = 'scott-trader-hidden-accounts'
+const ACCOUNT_TYPES_PREFIX = 'scott-trader-account-types'
 
 function getHiddenAccountsKey(port: number): string {
   return `${HIDDEN_ACCOUNTS_PREFIX}-${port}`
@@ -20,12 +21,25 @@ function loadHiddenAccounts(port: number): Set<string> {
   return new Set()
 }
 
+function getAccountTypesKey(port: number): string {
+  return `${ACCOUNT_TYPES_PREFIX}-${port}`
+}
+
+function loadAccountTypes(port: number): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(getAccountTypesKey(port))
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return {}
+}
+
 function App(): JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
+  const [accountTypes, setAccountTypes] = useState<Record<string, string>>(() => loadAccountTypes(7497))
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -47,6 +61,7 @@ function App(): JSX.Element {
   // Reload hidden accounts when port changes
   useEffect(() => {
     setHiddenAccounts(loadHiddenAccounts(connectedPort))
+    setAccountTypes(loadAccountTypes(connectedPort))
   }, [connectedPort])
 
   const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort)
@@ -57,6 +72,19 @@ function App(): JSX.Element {
       if (next.has(accountId)) next.delete(accountId)
       else next.add(accountId)
       localStorage.setItem(getHiddenAccountsKey(connectedPort), JSON.stringify([...next]))
+      return next
+    })
+  }, [connectedPort])
+
+  const setAccountType = useCallback((accountId: string, type: string) => {
+    setAccountTypes((prev) => {
+      const next = { ...prev }
+      if (type) {
+        next[accountId] = type
+      } else {
+        delete next[accountId]
+      }
+      localStorage.setItem(getAccountTypesKey(connectedPort), JSON.stringify(next))
       return next
     })
   }, [connectedPort])
@@ -121,6 +149,8 @@ function App(): JSX.Element {
             executions={visibleExecutions}
             loading={loading}
             refresh={refresh}
+            accountTypes={accountTypes}
+            onSetAccountType={setAccountType}
           />
         )}
         {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}

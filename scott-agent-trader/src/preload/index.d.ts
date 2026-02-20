@@ -70,6 +70,7 @@ interface IBApi {
     Array<{
       accountId: string
       alias: string
+      accountType: string
       netLiquidation: number
       availableFunds: number
       totalCashValue: number

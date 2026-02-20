@@ -11,6 +11,7 @@ export interface AccountSummaryItem {
 export interface AccountData {
     accountId: string
     alias: string
+    accountType: string
     netLiquidation: number
     availableFunds: number
     totalCashValue: number
@@ -78,8 +79,10 @@ function requestSingleAccountAlias(accountId: string): Promise<string> {
       _currency: string,
       accountName: string
     ): void => {
-      if (accountName === accountId && key === 'AccountOrGroup' && value && value !== accountId) {
-        alias = value
+      if (accountName === accountId) {
+        if (key === 'AccountOrGroup' && value && value !== accountId) {
+          alias = value
+        }
       }
     }
 
@@ -88,7 +91,6 @@ function requestSingleAccountAlias(accountId: string): Promise<string> {
         resolved = true
         api.removeListener(EventName.updateAccountValue, valueHandler)
         api.removeListener(EventName.accountDownloadEnd, endHandler)
-        // Unsubscribe
         api.reqAccountUpdates(false, accountId)
         resolve(alias)
       }
@@ -123,15 +125,15 @@ export function clearAliasCache(): void {
   aliasCache.clear()
 }
 
-// Request account aliases for all accounts (parallel + cached)
+// Request aliases for all accounts (parallel + cached)
 async function requestAccountAliases(accountIds: string[]): Promise<Map<string, string>> {
-  const aliasMap = new Map<string, string>()
+  const result = new Map<string, string>()
   const uncached: string[] = []
 
   // Use cached values first
   for (const id of accountIds) {
     if (aliasCache.has(id)) {
-      aliasMap.set(id, aliasCache.get(id)!)
+      result.set(id, aliasCache.get(id)!)
     } else {
       uncached.push(id)
     }
@@ -145,12 +147,12 @@ async function requestAccountAliases(accountIds: string[]): Promise<Map<string, 
     for (const { id, alias } of results) {
       if (alias) {
         aliasCache.set(id, alias)
-        aliasMap.set(id, alias)
+        result.set(id, alias)
       }
     }
   }
 
-  return aliasMap
+  return result
 }
 
 
@@ -163,6 +165,7 @@ function buildAccountMap(summaryItems: AccountSummaryItem[]): Map<string, Accoun
       accountMap.set(item.account, {
         accountId: item.account,
         alias: '',
+        accountType: '',
         netLiquidation: 0,
         availableFunds: 0,
         totalCashValue: 0,
@@ -229,6 +232,7 @@ function requestAccountSummaryRaw(
       currency: string
     ): void => {
       if (_reqId === reqId) {
+
         summaryItems.push({ account, tag, value, currency })
       }
     }
@@ -298,7 +302,7 @@ export function requestPositions(): Promise<PositionData[]> {
             resolve(positions)
         }
 
-        api.on(EventName.position, posHandler)
+        api.on(EventName.position, posHandler as any)
         api.on(EventName.positionEnd, endHandler)
 
         // Timeout after 1 second
