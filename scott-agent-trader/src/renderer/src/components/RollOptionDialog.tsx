@@ -214,7 +214,12 @@ export default function RollOptionDialog({
                 if (prev.includes(exp)) {
                     return prev.filter((e) => e !== exp)
                 }
-                if (prev.length >= 5) return prev
+                if (prev.length >= 5) {
+                    const sorted = [...prev].sort()
+                    // Clicking below range → drop latest; clicking above → drop earliest
+                    const drop = exp < sorted[0] ? sorted[sorted.length - 1] : sorted[0]
+                    return [...prev.filter((e) => e !== drop), exp]
+                }
                 return [...prev, exp]
             })
         },
@@ -227,7 +232,11 @@ export default function RollOptionDialog({
                 if (prev.includes(strike)) {
                     return prev.filter((s) => s !== strike)
                 }
-                if (prev.length >= 10) return prev
+                if (prev.length >= 10) {
+                    // Clicking below range → drop largest; clicking above → drop smallest
+                    const drop = strike < Math.min(...prev) ? Math.max(...prev) : Math.min(...prev)
+                    return [...prev.filter((s) => s !== drop), strike]
+                }
                 return [...prev, strike]
             })
         },
@@ -513,7 +522,7 @@ export default function RollOptionDialog({
     if (!open) return null
 
     const targetMid = midPrice(targetGreek)
-    const dataReady = !loadingChain && displayExpirations.length > 0 && displayStrikes.length > 0
+    const dataReady = !loadingChain && displayExpirations.length > 0 && displayStrikes.length > 0 && allTargetGreeks.length > 0
 
     return (
         <div className="roll-dialog-overlay" onClick={onClose}>
@@ -611,12 +620,12 @@ export default function RollOptionDialog({
                                                 {availableExpirations.map((exp) => (
                                                     <label
                                                         key={exp}
-                                                        className={`roll-expiry-option ${selectedExpirations.includes(exp) ? 'checked' : ''} ${!selectedExpirations.includes(exp) && selectedExpirations.length >= 5 ? 'disabled' : ''}`}
+                                                        className={`roll-expiry-option ${selectedExpirations.includes(exp) ? 'checked' : ''}`}
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedExpirations.includes(exp)}
-                                                            disabled={!selectedExpirations.includes(exp) && selectedExpirations.length >= 5}
+
                                                             onChange={() => toggleExpiry(exp)}
                                                         />
                                                         {formatExpiry(exp)}
@@ -647,12 +656,12 @@ export default function RollOptionDialog({
                                                 {availableStrikes.map((strike) => (
                                                     <label
                                                         key={strike}
-                                                        className={`roll-expiry-option ${selectedStrikes.includes(strike) ? 'checked' : ''} ${!selectedStrikes.includes(strike) && selectedStrikes.length >= 10 ? 'disabled' : ''}`}
+                                                        className={`roll-expiry-option ${selectedStrikes.includes(strike) ? 'checked' : ''}`}
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedStrikes.includes(strike)}
-                                                            disabled={!selectedStrikes.includes(strike) && selectedStrikes.length >= 10}
+
                                                             onChange={() => toggleStrike(strike)}
                                                         />
                                                         {strike}
