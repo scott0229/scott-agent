@@ -363,6 +363,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    align-items: center;
+    text-align: center;
 }
 
 .metric-label {

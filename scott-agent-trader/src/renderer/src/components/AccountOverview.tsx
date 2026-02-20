@@ -301,18 +301,21 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             {account.netLiquidation > 0 ? (account.grossPositionValue / account.netLiquidation).toFixed(2) : '-'}
                                         </span>
                                     </div>
-                                    <div className="metric">
-                                        <span className="metric-label">潛在融資</span>
-                                        <span className="metric-value">
-                                            {(() => {
-                                                if (account.netLiquidation <= 0) return '-'
-                                                const putAssignmentCost = positions
-                                                    .filter(p => p.account === account.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
-                                                    .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)
-                                                return ((account.grossPositionValue + putAssignmentCost) / account.netLiquidation).toFixed(2)
-                                            })()}
-                                        </span>
-                                    </div>
+                                    {(() => {
+                                        const potentialMargin = account.netLiquidation > 0
+                                            ? (account.grossPositionValue + positions
+                                                .filter(p => p.account === account.accountId && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT') && p.quantity < 0)
+                                                .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)) / account.netLiquidation
+                                            : null
+                                        return (
+                                            <div className="metric" style={potentialMargin !== null && potentialMargin > 1.3 ? { backgroundColor: '#ffe4e6', borderRadius: '4px' } : undefined}>
+                                                <span className="metric-label">潛在融資</span>
+                                                <span className="metric-value">
+                                                    {potentialMargin !== null ? potentialMargin.toFixed(2) : '-'}
+                                                </span>
+                                            </div>
+                                        )
+                                    })()}
                                 </div>}
 
                                 {/* Stock Positions */}
