@@ -12,6 +12,13 @@ const TRADING_TYPE_OPTIONS = [
     { value: 'cash', label: '現金帳戶' }
 ]
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function formatOptionLabel(symbol: string, expiry?: string, strike?: number, right?: string): string {
+    const exp = expiry ? (() => { const mm = parseInt(expiry.slice(4, 6), 10) - 1; const dd = expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd}` })() : ''
+    const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
+    return `${symbol} ${exp} ${strike || ''}${r}`
+}
+
 interface AccountOverviewProps {
     connected: boolean
     accounts: AccountData[]
@@ -488,7 +495,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                 {openOrders.filter(o => o.account === account.accountId).map((order) => {
                                                     const arrow = <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
                                                     const desc: React.ReactNode = order.secType === 'OPT'
-                                                        ? `${order.symbol} ${order.expiry ? order.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${order.strike || ''} ${order.right === 'C' || order.right === 'CALL' ? 'C' : 'P'}`
+                                                        ? formatOptionLabel(order.symbol, order.expiry, order.strike, order.right)
                                                         : order.secType === 'BAG' && order.comboDescription
                                                             ? <>{order.symbol} {order.comboDescription.split(' → ').map((p, i) => <React.Fragment key={i}>{i > 0 && arrow}{p}</React.Fragment>)}</>
                                                             : order.symbol
@@ -575,7 +582,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                     const acctExecs = executions.filter(e => e.account === account.accountId)
                                                     let desc: React.ReactNode
                                                     if (exec.secType === 'OPT') {
-                                                        desc = `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
+                                                        desc = formatOptionLabel(exec.symbol, exec.expiry, exec.strike, exec.right)
                                                     } else if (exec.secType === 'BAG') {
                                                         // Build description from sibling OPT legs with the same orderId
                                                         const legs = acctExecs.filter(e => e.orderId === exec.orderId && e.secType === 'OPT' && e.symbol === exec.symbol)
@@ -583,7 +590,6 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             const seen = new Set<string>()
                                                             const legDescs: string[] = []
                                                             for (const l of legs) {
-                                                                const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
                                                                 const exp = l.expiry ? (() => { const mm = parseInt(l.expiry.slice(4, 6), 10) - 1; const dd = l.expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd}` })() : ''
                                                                 const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                                                 const sign = l.side === 'BOT' ? '+' : '-'
