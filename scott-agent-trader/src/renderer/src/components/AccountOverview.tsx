@@ -24,9 +24,10 @@ interface AccountOverviewProps {
     refresh?: () => void
     accountTypes?: Record<string, string>
     onSetAccountType?: (accountId: string, type: string) => void
+    marginLimit?: number
 }
 
-export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh, accountTypes, onSetAccountType }: AccountOverviewProps): JSX.Element {
+export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh, accountTypes, onSetAccountType, marginLimit = 1.3 }: AccountOverviewProps): JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
 
@@ -369,7 +370,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                 .reduce((sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity), 0)) / account.netLiquidation
                                             : null
                                         return (
-                                            <div className="metric" style={potentialMargin !== null && potentialMargin > 1.3 ? { backgroundColor: '#ffe4e6', borderRadius: '4px' } : undefined}>
+                                            <div className="metric" style={potentialMargin !== null && potentialMargin > marginLimit ? { backgroundColor: '#ffe4e6', borderRadius: '4px' } : undefined}>
                                                 <span className="metric-label">潛在融資</span>
                                                 <span className="metric-value">
                                                     {potentialMargin !== null ? potentialMargin.toFixed(2) : '-'}

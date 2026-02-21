@@ -68,7 +68,7 @@ interface AccountStore {
 
 const POLL_INTERVAL = 1000
 
-export function useAccountStore(connected: boolean, port: number): AccountStore {
+export function useAccountStore(connected: boolean, port: number, onAliasUpdate?: (aliases: Record<string, string>) => void): AccountStore {
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
@@ -92,6 +92,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
     window.ibApi.getCachedAliases(port).then((cached) => {
       if (Object.keys(cached).length > 0) {
         aliasRef.current = cached
+        onAliasUpdate?.(cached)
       }
     }).catch(() => { /* ignore */ })
   }, [port])
@@ -143,6 +144,7 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
           .getAccountAliases(accountIds, port)
           .then((aliasMap) => {
             aliasRef.current = { ...aliasRef.current, ...aliasMap }
+            onAliasUpdate?.(aliasMap)
             setAccounts((prev) =>
               prev.map((a) => ({
                 ...a,

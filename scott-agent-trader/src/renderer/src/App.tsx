@@ -4,6 +4,7 @@ import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
 import { useAccountStore } from './hooks/useAccountStore'
+import { useTraderSettings } from './hooks/useTraderSettings'
 import './assets/app.css'
 
 const HIDDEN_ACCOUNTS_PREFIX = 'scott-trader-hidden-accounts'
@@ -40,6 +41,7 @@ function App(): JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [accountTypes, setAccountTypes] = useState<Record<string, string>>(() => loadAccountTypes(7497))
+  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -64,7 +66,7 @@ function App(): JSX.Element {
     setAccountTypes(loadAccountTypes(connectedPort))
   }, [connectedPort])
 
-  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort)
+  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort, mergeAccountAliases)
 
   const toggleHiddenAccount = useCallback((accountId: string) => {
     setHiddenAccounts((prev) => {
@@ -125,12 +127,7 @@ function App(): JSX.Element {
           >
             帳戶總覽
           </button>
-          <button
-            className={`tab-btn ${activeTab === 'option' ? 'active' : ''}`}
-            onClick={() => setActiveTab('option')}
-          >
-            期權下單
-          </button>
+
         </nav>
         <div className="header-actions">
           <ConnectionStatus onRefresh={refresh} />
@@ -152,6 +149,7 @@ function App(): JSX.Element {
               refresh={refresh}
               accountTypes={accountTypes}
               onSetAccountType={setAccountType}
+              marginLimit={marginLimit}
             />
           )}
           {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}
@@ -164,6 +162,10 @@ function App(): JSX.Element {
         accounts={accounts}
         hiddenAccounts={hiddenAccounts}
         onToggleAccount={toggleHiddenAccount}
+        marginLimit={marginLimit}
+        onSetMarginLimit={setMarginLimit}
+        watchSymbols={watchSymbols}
+        onSetWatchSymbol={setWatchSymbol}
       />
     </div>
   )
