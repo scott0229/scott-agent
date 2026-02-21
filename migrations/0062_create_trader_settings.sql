@@ -9,3 +9,4 @@ CREATE TABLE IF NOT EXISTS TRADER_SETTINGS (
 INSERT OR IGNORE INTO TRADER_SETTINGS (key, value) VALUES ('margin_limit', '1.3');
 INSERT OR IGNORE INTO TRADER_SETTINGS (key, value) VALUES ('watch_symbols', '[]');
 INSERT OR IGNORE INTO TRADER_SETTINGS (key, value) VALUES ('account_aliases', '{}');
+INSERT OR IGNORE INTO TRADER_SETTINGS (key, value) VALUES ('account_types', '{}');
