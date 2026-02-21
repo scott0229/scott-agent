@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { AccountData, PositionData, OpenOrderData, ExecutionDataItem } from '../hooks/useAccountStore'
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
@@ -43,6 +43,18 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const editInputRef = useRef<HTMLInputElement | null>(null)
     // Context menu state for order cancellation
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; order: OpenOrderData } | null>(null)
+
+    // Reset all filters and selections on reconnect
+    useEffect(() => {
+        setFilterSymbol('')
+        setSelectMode(false)
+        setSelectedPositions(new Set())
+        setSelectedAccount(null)
+        setShowRollDialog(false)
+        setShowBatchOrder(false)
+        setShowTransferDialog(false)
+        setShowOptionOrder(false)
+    }, [connected])
 
     // Close context menu on any click or right-click elsewhere
     useEffect(() => {
@@ -289,17 +301,17 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 轉倉
                             </button>
                         )}
-                        {!selectMode && (
-                            <>
-                                <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
-                                    股票下單
-                                </button>
-                                <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
-                                    期權下單
-                                </button>
-                            </>
-                        )}
                     </div>
+                    {!selectMode && (
+                        <>
+                            <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
+                                股票下單
+                            </button>
+                            <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
+                                期權下單
+                            </button>
+                        </>
+                    )}
                     <CustomSelect
                         value={sortBy}
                         onChange={setSortBy}
@@ -473,10 +485,11 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             </thead>
                                             <tbody>
                                                 {openOrders.filter(o => o.account === account.accountId).map((order) => {
-                                                    const desc = order.secType === 'OPT'
+                                                    const arrow = <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
+                                                    const desc: React.ReactNode = order.secType === 'OPT'
                                                         ? `${order.symbol} ${order.expiry ? order.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${order.strike || ''} ${order.right === 'C' || order.right === 'CALL' ? 'C' : 'P'}`
                                                         : order.secType === 'BAG' && order.comboDescription
-                                                            ? `${order.symbol} ${order.comboDescription}`
+                                                            ? <>{order.symbol} {order.comboDescription.split(' → ').map((p, i) => <React.Fragment key={i}>{i > 0 && arrow}{p}</React.Fragment>)}</>
                                                             : order.symbol
                                                     return (
                                                         <tr key={order.orderId} onContextMenu={(e) => { e.preventDefault(); if (order.status !== 'PendingCancel') setContextMenu({ x: e.clientX, y: e.clientY, order }) }}>
@@ -559,17 +572,18 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                     return true
                                                 }).sort((a, b) => b.time.localeCompare(a.time)).map((exec) => {
                                                     const acctExecs = executions.filter(e => e.account === account.accountId)
-                                                    let desc: string
+                                                    let desc: React.ReactNode
                                                     if (exec.secType === 'OPT') {
                                                         desc = `${exec.symbol} ${exec.expiry ? exec.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''} ${exec.strike || ''} ${exec.right === 'C' || exec.right === 'CALL' ? 'C' : 'P'}`
                                                     } else if (exec.secType === 'BAG') {
                                                         // Build description from sibling OPT legs with the same orderId
-                                                        const legs = acctExecs.filter(e => e.orderId === exec.orderId && e.secType === 'OPT')
+                                                        const legs = acctExecs.filter(e => e.orderId === exec.orderId && e.secType === 'OPT' && e.symbol === exec.symbol)
                                                         if (legs.length > 0) {
                                                             const seen = new Set<string>()
                                                             const legDescs: string[] = []
                                                             for (const l of legs) {
-                                                                const exp = l.expiry ? l.expiry.replace(/^(\d{4})(\d{2})(\d{2})$/, '$2/$3') : ''
+                                                                const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                                                                const exp = l.expiry ? (() => { const mm = parseInt(l.expiry.slice(4, 6), 10) - 1; const dd = l.expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd}` })() : ''
                                                                 const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                                                 const sign = l.side === 'BOT' ? '+' : '-'
                                                                 const key = `${sign}${exp} ${l.strike}${r}`
@@ -579,7 +593,8 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                                 }
                                                             }
                                                             legDescs.sort((a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1))
-                                                            desc = `${exec.symbol} ${legDescs.join(' → ')}`
+                                                            const arrow = <span style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}>→</span>
+                                                            desc = <>{exec.symbol} {legDescs.map((l, i) => <React.Fragment key={i}>{i > 0 && arrow}{l}</React.Fragment>)}</>
                                                         } else {
                                                             desc = `${exec.symbol} COMBO`
                                                         }
@@ -587,8 +602,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                         desc = exec.symbol
                                                     }
                                                     const isAssignment = exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
-                                                    // Format "20260218 18:14:12 Asia/Taipei" → "18:14"
-                                                    const fmtTime = exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
+                                                    // Convert IB time (e.g. "20260218 18:14:12 Asia/Taipei") → US Eastern "05:14"
+                                                    const fmtTime = (() => {
+                                                        const m = exec.time.match(/^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(.+)$/)
+                                                        if (!m) return exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
+                                                        const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
+                                                        const d = new Date(new Date(iso).toLocaleString('en-US', { timeZone: m[7] }))
+                                                        return d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false })
+                                                    })()
                                                     return (
                                                         <tr key={exec.execId}>
                                                             <td className="pos-symbol">{desc}{isAssignment && <span style={{ color: '#1a6baa', fontWeight: 600, marginLeft: 6, fontSize: '0.92em' }}>(到期)</span>}</td>

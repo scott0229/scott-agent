@@ -138,22 +138,24 @@ function App(): JSX.Element {
       </header>
 
       <main className="app-main">
-        {activeTab === 'overview' && (
-          <AccountOverview
-            connected={connected}
-            accounts={visibleAccounts}
-            positions={visiblePositions}
-            quotes={quotes}
-            optionQuotes={optionQuotes}
-            openOrders={visibleOpenOrders}
-            executions={visibleExecutions}
-            loading={loading}
-            refresh={refresh}
-            accountTypes={accountTypes}
-            onSetAccountType={setAccountType}
-          />
-        )}
-        {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}
+        <div className="app-main-inner">
+          {activeTab === 'overview' && (
+            <AccountOverview
+              connected={connected}
+              accounts={visibleAccounts}
+              positions={visiblePositions}
+              quotes={quotes}
+              optionQuotes={optionQuotes}
+              openOrders={visibleOpenOrders}
+              executions={visibleExecutions}
+              loading={loading}
+              refresh={refresh}
+              accountTypes={accountTypes}
+              onSetAccountType={setAccountType}
+            />
+          )}
+          {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}
+        </div>
       </main>
 
       <SettingsPanel

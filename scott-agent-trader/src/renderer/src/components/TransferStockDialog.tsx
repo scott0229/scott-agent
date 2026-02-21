@@ -390,7 +390,7 @@ export default function TransferStockDialog({
                                         )}
                                     </div>
                                     {quote && (
-                                        <div className="quote-display" style={{ flex: '0 0 auto' }}>
+                                        <div className="quote-display" style={{ flex: '0 0 auto', fontSize: 13 }}>
                                             <span className="quote-bid">{quote.bid.toFixed(2)}</span>
                                             <span className="quote-separator">|</span>
                                             <span className="quote-ask">{quote.ask.toFixed(2)}</span>
@@ -444,7 +444,7 @@ export default function TransferStockDialog({
                                 )}
                             </div>
                             {targetSymbol.trim() && buyQuote && (
-                                <div className="quote-display" style={{ flex: '0 0 auto' }}>
+                                <div className="quote-display" style={{ flex: '0 0 auto', fontSize: 13 }}>
                                     <span className="quote-bid">{buyQuote.bid.toFixed(2)}</span>
                                     <span className="quote-separator">|</span>
                                     <span className="quote-ask">{buyQuote.ask.toFixed(2)}</span>
