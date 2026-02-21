@@ -2181,6 +2181,28 @@ input[type="number"]::-webkit-outer-spin-button {
     max-width: 800px;
 }
 
+.transfer-dialog table td,
+.transfer-dialog table th {
+    padding: 8px 8px !important;
+    line-height: 1.4;
+}
+
+.transfer-dialog .allocation-table input[type='number'] {
+    height: 24px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    margin: 0;
+    line-height: normal;
+}
+
+.transfer-dialog .allocation-table tr {
+    height: 40px;
+}
+
+
+
+
 .transfer-input-row {
     display: flex;
     align-items: flex-end;

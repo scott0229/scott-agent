@@ -57,6 +57,7 @@ export default function TransferStockDialog({
     // TIF dropdown open states (per-symbol for sell, single for buy)
     const [sellTifOpen, setSellTifOpen] = useState<string | null>(null)
     const [buyTifOpen, setBuyTifOpen] = useState(false)
+    const [cashStrategy, setCashStrategy] = useState<'sell_only' | 'zero_cash'>('sell_only')
     const tifRef = useRef<HTMLDivElement>(null)
 
     // Derive unique source symbols
@@ -188,7 +189,8 @@ export default function TransferStockDialog({
                 totalSellValue += value
             }
 
-            const buyQty = buyPriceNum > 0 ? Math.floor(totalSellValue / buyPriceNum) : 0
+            const cashAdjust = cashStrategy === 'zero_cash' ? (acct?.totalCashValue || 0) : 0
+            const buyQty = buyPriceNum > 0 ? Math.max(0, Math.floor((totalSellValue + cashAdjust) / buyPriceNum)) : 0
             result.push({
                 accountId,
                 alias: acct?.alias || accountId,
@@ -203,7 +205,7 @@ export default function TransferStockDialog({
             const acctB = accounts.find((x) => x.accountId === b.accountId)
             return (acctB?.netLiquidation || 0) - (acctA?.netLiquidation || 0)
         })
-    }, [accountSymbolPositions, accounts, sellPrices, buyPrice, quotes, sellQtyOverrides])
+    }, [accountSymbolPositions, accounts, sellPrices, buyPrice, quotes, sellQtyOverrides, cashStrategy])
 
     const totalSellQty = previews.reduce((s, p) => s + p.sells.reduce((ss, sell) => ss + sell.qty, 0), 0)
     const totalBuyQty = previews.reduce((s, p) => s + p.buyQty, 0)
@@ -454,6 +456,35 @@ export default function TransferStockDialog({
                         </div>
                     </div>
 
+                    {/* Cash strategy */}
+                    <div className="order-form">
+                        <div className="form-row" style={{ flexWrap: 'nowrap', alignItems: 'center', gap: '16px' }}>
+                            <span style={{ fontWeight: 600, fontSize: '13px', flexShrink: 0 }}>現金</span>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                <input
+                                    type="radio"
+                                    name="cashStrategy"
+                                    value="sell_only"
+                                    checked={cashStrategy === 'sell_only'}
+                                    onChange={() => setCashStrategy('sell_only')}
+                                    disabled={step !== 'preview'}
+                                />
+                                僅用賣出所得
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                <input
+                                    type="radio"
+                                    name="cashStrategy"
+                                    value="zero_cash"
+                                    checked={cashStrategy === 'zero_cash'}
+                                    onChange={() => setCashStrategy('zero_cash')}
+                                    disabled={step !== 'preview'}
+                                />
+                                買入後現金歸零 (可能是動用或償還)
+                            </label>
+                        </div>
+                    </div>
+
                     {/* Preview table */}
                     {(step === 'preview' ? previews : confirmedPreviews).length > 0 && (
                         <div className="allocation-section">
@@ -476,9 +507,9 @@ export default function TransferStockDialog({
                                         if (!acct) return null
                                         const displayTargetSymbol = step === 'preview' ? targetSymbol.toUpperCase() : confirmedTargetSymbol
                                         const rowCount = p.sells.length + 1 // sells + buy
-
+                                        const isLast = (step === 'preview' ? previews : confirmedPreviews).indexOf(p) === (step === 'preview' ? previews : confirmedPreviews).length - 1
                                         return (
-                                            <tbody key={p.accountId} style={{ borderBottom: '2px solid #e5e7eb' }}>
+                                            <tbody key={p.accountId} style={isLast ? undefined : { borderBottom: '2px solid #e5e7eb' }}>
                                                 {p.sells.map((sell, idx) => {
                                                     const sellResult = orderResults.find((r) => r.account === p.accountId && r.symbol === sell.symbol)
                                                     const overrideKey = `${sell.symbol}:${p.accountId}`
@@ -486,9 +517,9 @@ export default function TransferStockDialog({
                                                         <tr key={`${p.accountId}-sell-${sell.symbol}`}>
                                                             {idx === 0 && (
                                                                 <>
-                                                                    <td rowSpan={rowCount} style={{ fontWeight: 'bold', textAlign: 'left' }}>{p.alias}</td>
-                                                                    <td rowSpan={rowCount}>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
-                                                                    <td rowSpan={rowCount} style={acct.totalCashValue < 0 ? { color: '#8b1a1a' } : undefined}>
+                                                                    <td rowSpan={rowCount} style={{ fontWeight: 'bold', textAlign: 'left', borderBottom: '1px solid #b0b0b0' }}>{p.alias}</td>
+                                                                    <td rowSpan={rowCount} style={{ borderBottom: '1px solid #b0b0b0' }}>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                                                                    <td rowSpan={rowCount} style={{ borderBottom: '1px solid #b0b0b0', ...(acct.totalCashValue < 0 ? { color: '#8b1a1a' } : {}) }}>
                                                                         {acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                                                     </td>
                                                                 </>
