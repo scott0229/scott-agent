@@ -691,6 +691,7 @@ export default function OptionOrderDialog({
                                 <tr>
                                     <th style={{ width: 30 }}></th>
                                     <th style={{ width: 200 }}>帳戶</th>
+                                    <th style={{ width: 90, textAlign: 'center' }}>現金</th>
                                     <th style={{ width: 90, textAlign: 'center' }}>潛在融資</th>
                                     <th style={{ width: 90, textAlign: 'center' }}>新潛在融資</th>
                                     <th style={{ width: 90, textAlign: 'center' }}>成本基礎</th>
@@ -716,7 +717,10 @@ export default function OptionOrderDialog({
                                                 style={{ fontWeight: 'bold', overflow: 'visible', whiteSpace: 'nowrap', cursor: 'pointer' }}
                                                 onClick={() => setCheckedAccounts(prev => ({ ...prev, [acct.accountId]: !prev[acct.accountId] }))}
                                             >{getAlias(acct.accountId)}</td>
-                                            <td style={{ fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                            <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center', color: acct.totalCashValue < 0 ? '#8b1a1a' : undefined }}>
+                                                {acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                            </td>
+                                            <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
                                                 {(() => {
                                                     if (!acct.netLiquidation || acct.netLiquidation <= 0) return '-'
                                                     const shortPutNotional = positions
@@ -725,7 +729,7 @@ export default function OptionOrderDialog({
                                                     return ((acct.grossPositionValue + shortPutNotional) / acct.netLiquidation).toFixed(2)
                                                 })()}
                                             </td>
-                                            <td style={{ fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                            <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
                                                 {(() => {
                                                     if (!acct.netLiquidation || acct.netLiquidation <= 0 || !selStrike || qtyNum <= 0) return '-'
                                                     const shortPutNotional = positions
@@ -742,7 +746,7 @@ export default function OptionOrderDialog({
                                                     return ((newGrossPositionValue + newShortPutNotional) / acct.netLiquidation).toFixed(2)
                                                 })()}
                                             </td>
-                                            <td style={{ fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                            <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
                                                 {(() => {
                                                     const price = parseFloat(limitPrice)
                                                     if (!price || price <= 0) return '-'
@@ -799,7 +803,7 @@ export default function OptionOrderDialog({
                             setOrderSubmitted(false)
                         } : handleSubmit}
                     >
-                        {submitting ? '下單中...' : orderSubmitted ? '重新下單' : '確認下單'}
+                        {submitting ? '下單中...' : orderSubmitted ? '重新下單' : selExpiry && selStrike !== null && selRight !== null ? `確認下單 ${symbol} ${formatExpiry(selExpiry)} ${selStrike}${selRight === 'C' ? 'C' : 'P'}` : '確認下單'}
                     </button>
                 </div>
             </div>

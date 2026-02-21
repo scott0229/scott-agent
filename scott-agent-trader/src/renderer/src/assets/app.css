@@ -710,6 +710,7 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    table-layout: fixed;
 }
 
 .allocation-table th {
@@ -1537,7 +1538,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .roll-dialog-table tbody tr:hover {
-    background: var(--bg-hover);
+    background: rgba(0, 0, 0, 0.03);
 }
 
 .roll-positions-table,
@@ -2147,8 +2148,12 @@ input[type="number"]::-webkit-outer-spin-button {
     height: auto;
 }
 
+.stock-order-dialog .allocation-table tbody tr:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
 .stock-order-dialog .allocation-table {
-    table-layout: auto;
+    table-layout: fixed;
     width: 100%;
 }
 
