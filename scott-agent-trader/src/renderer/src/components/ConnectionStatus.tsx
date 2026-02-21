@@ -78,6 +78,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Ele
                             type="text"
                             value={port}
                             onChange={(e) => setPort(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleConnect() }}
                             placeholder="Port"
                             className="input-field input-port"
                         />
