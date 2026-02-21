@@ -17,7 +17,7 @@ export default function SettingsPanel({
 }: SettingsPanelProps): JSX.Element | null {
     if (!open) return null
 
-    const sorted = [...accounts].sort((a, b) => a.accountId.localeCompare(b.accountId))
+    const sorted = [...accounts].sort((a, b) => (b.netLiquidation || 0) - (a.netLiquidation || 0))
 
     return (
         <div className="settings-overlay" onClick={onClose}>

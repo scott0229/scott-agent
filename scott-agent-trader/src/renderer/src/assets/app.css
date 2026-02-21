@@ -1341,6 +1341,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* Multi-expiry chain table */
 .roll-chain-multi {
+    min-height: 325px;
     max-height: 325px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1422,6 +1423,11 @@ input[type="number"]::-webkit-outer-spin-button {
     color: #333 !important;
     white-space: nowrap;
     padding: 3px 8px !important;
+}
+
+.roll-chain-expiry-row td {
+    padding-top: 3px;
+    padding-bottom: 4px;
 }
 
 .roll-chain-subheader-row td {
@@ -1677,7 +1683,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .roll-order-input {
     background: #ffffff;
-    border: 1px solid #1a6dcc;
+    border: 1px solid #ccc;
     border-radius: 4px;
     padding: 4px 14px;
     font-size: 13px;
@@ -1685,6 +1691,8 @@ input[type="number"]::-webkit-outer-spin-button {
     color: #1a6dcc;
     width: 80px;
     text-align: right;
+    height: 28px;
+    box-sizing: border-box;
 }
 
 .roll-order-input:focus {
@@ -1823,6 +1831,8 @@ input[type="number"]::-webkit-outer-spin-button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    height: 28px;
+    box-sizing: border-box;
 }
 
 .roll-expiry-dropdown-btn:hover {

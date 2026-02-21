@@ -4,6 +4,7 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
+import OptionOrderDialog from './OptionOrderDialog'
 
 const TRADING_TYPE_OPTIONS = [
     { value: 'reg_t', label: 'Reg T 保證金' },
@@ -34,6 +35,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [showRollDialog, setShowRollDialog] = useState(false)
     const [showBatchOrder, setShowBatchOrder] = useState(false)
     const [showTransferDialog, setShowTransferDialog] = useState(false)
+    const [showOptionOrder, setShowOptionOrder] = useState(false)
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
@@ -288,9 +290,14 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                             </button>
                         )}
                         {!selectMode && (
-                            <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
-                                股票下單
-                            </button>
+                            <>
+                                <button className="select-toggle-btn" onClick={() => setShowBatchOrder(true)} style={{ marginLeft: 'auto' }}>
+                                    股票下單
+                                </button>
+                                <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
+                                    期權下單
+                                </button>
+                            </>
                         )}
                     </div>
                     <CustomSelect
@@ -628,6 +635,12 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
                 accounts={accounts}
                 quotes={quotes}
+            />
+            <OptionOrderDialog
+                open={showOptionOrder}
+                onClose={() => setShowOptionOrder(false)}
+                accounts={accounts}
+                positions={positions}
             />
 
             {/* Context menu for order cancellation */}
