@@ -41,7 +41,7 @@ function App(): JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [accountTypes, setAccountTypes] = useState<Record<string, string>>(() => loadAccountTypes(7497))
-  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases } = useTraderSettings()
+  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, setApiKey } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -166,6 +166,7 @@ function App(): JSX.Element {
         onSetMarginLimit={setMarginLimit}
         watchSymbols={watchSymbols}
         onSetWatchSymbol={setWatchSymbol}
+        onSetApiKey={setApiKey}
       />
     </div>
   )
