@@ -5,11 +5,13 @@ const API_KEY_STORAGE = 'scott-trader-api-key'
 const MARGIN_KEY = 'scott-trader-margin-limit'
 const SYMBOLS_KEY = 'scott-trader-watch-symbols'
 const ALIASES_KEY = 'scott-trader-account-aliases'
+const TYPES_KEY = 'scott-trader-account-types'
 
 function loadLocal() {
     let marginLimit = 1.3
     let watchSymbols: string[] = []
     let accountAliases: Record<string, string> = {}
+    let accountTypes: Record<string, string> = {}
     try {
         const raw = localStorage.getItem(MARGIN_KEY)
         if (raw) marginLimit = parseFloat(raw) || 1.3
@@ -20,7 +22,10 @@ function loadLocal() {
     try {
         accountAliases = JSON.parse(localStorage.getItem(ALIASES_KEY) || '{}')
     } catch { /* ignore */ }
-    return { marginLimit, watchSymbols, accountAliases }
+    try {
+        accountTypes = JSON.parse(localStorage.getItem(TYPES_KEY) || '{}')
+    } catch { /* ignore */ }
+    return { marginLimit, watchSymbols, accountAliases, accountTypes }
 }
 
 export function useTraderSettings() {
@@ -28,6 +33,7 @@ export function useTraderSettings() {
     const [marginLimit, setMarginLimitState] = useState<number>(local.marginLimit)
     const [watchSymbols, setWatchSymbolsState] = useState<string[]>(local.watchSymbols)
     const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>(local.accountAliases)
+    const [accountTypes, setAccountTypesState] = useState<Record<string, string>>(local.accountTypes)
     const apiKey = useRef<string>(localStorage.getItem(API_KEY_STORAGE) || '')
     const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -49,6 +55,11 @@ export function useTraderSettings() {
                     const aliases = data.settings.account_aliases as Record<string, string>
                     setAccountAliasesState(aliases)
                     localStorage.setItem(ALIASES_KEY, JSON.stringify(aliases))
+                }
+                if (data.settings.account_types && typeof data.settings.account_types === 'object' && !Array.isArray(data.settings.account_types)) {
+                    const types = data.settings.account_types as Record<string, string>
+                    setAccountTypesState(types)
+                    localStorage.setItem(TYPES_KEY, JSON.stringify(types))
                 }
             })
             .catch(() => { /* offline — use local */ })
@@ -95,6 +106,20 @@ export function useTraderSettings() {
         })
     }, [])
 
+    const setAccountType = useCallback((accountId: string, type: string) => {
+        setAccountTypesState(prev => {
+            const next = { ...prev }
+            if (type) {
+                next[accountId] = type
+            } else {
+                delete next[accountId]
+            }
+            localStorage.setItem(TYPES_KEY, JSON.stringify(next))
+            debounceSync('account_types', next)
+            return next
+        })
+    }, [])
+
     const setApiKey = useCallback((key: string) => {
         apiKey.current = key
         localStorage.setItem(API_KEY_STORAGE, key)
@@ -104,6 +129,7 @@ export function useTraderSettings() {
         marginLimit, setMarginLimit,
         watchSymbols, setWatchSymbol,
         accountAliases, mergeAccountAliases,
+        accountTypes, setAccountType,
         setApiKey
     }
 }
