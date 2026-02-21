@@ -122,7 +122,7 @@ export default function SettingsPanel({
                             onChange={(e) => setApiKeyInput(e.target.value)}
                             onBlur={() => onSetApiKey(apiKeyInput.trim())}
                             placeholder="貼上 Cloudflare API Key"
-                            style={{ width: 180, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.85em' }}
+                            style={{ width: 180, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em' }}
                         />
                     </div>
                 </div>
