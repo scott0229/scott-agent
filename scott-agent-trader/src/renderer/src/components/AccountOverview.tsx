@@ -141,9 +141,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         if (selectedPositions.size === 0) return false
         const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
         if (selected.length === 0) return false
-        if (!selected.every((p) => p.secType === 'STK')) return false
-        const symbol = selected[0].symbol
-        return selected.every((p) => p.symbol === symbol && p.quantity > 0)
+        return selected.every((p) => p.secType === 'STK' && p.quantity > 0)
     }, [selectedPositions, positions])
 
     const uniqueSymbols = useMemo(() => {
@@ -234,6 +232,18 @@ export default function AccountOverview({ connected, accounts, positions, quotes
             <div>
                 <div className="sort-bar">
                     <div className="select-actions">
+                        <button
+                            className="select-toggle-btn"
+                            style={{ padding: '7px 9px' }}
+                            title="重置篩選"
+                            onClick={() => { setFilterSymbol(''); setSelectMode(false); setSelectedPositions(new Set()) }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473" />
+                                <path d="m16.5 3.5 5 5" />
+                                <path d="m21.5 3.5-5 5" />
+                            </svg>
+                        </button>
                         <button
                             className={`select-toggle-btn${selectMode === 'STK' ? ' active' : ''}`}
                             onClick={() => toggleSelectMode('STK')}
@@ -617,7 +627,6 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 onClose={() => setShowTransferDialog(false)}
                 selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
                 accounts={accounts}
-                positions={positions}
                 quotes={quotes}
             />
 

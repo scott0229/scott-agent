@@ -165,7 +165,14 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
         window.ibApi
           .getQuotes(stockSymbols)
           .then((quoteData) => {
-            setQuotes(quoteData)
+            // Only update quotes that actually have a price (> 0)
+            setQuotes((prev) => {
+              const merged = { ...prev }
+              for (const [sym, price] of Object.entries(quoteData)) {
+                if (price > 0) merged[sym] = price
+              }
+              return merged
+            })
           })
           .catch(() => { /* ignore quote errors */ })
       }
@@ -186,7 +193,14 @@ export function useAccountStore(connected: boolean, port: number): AccountStore 
         window.ibApi
           .getOptionQuotes(optionContracts)
           .then((optQuoteData) => {
-            setOptionQuotes((prev) => ({ ...prev, ...optQuoteData }))
+            // Only update option quotes that actually have a price (> 0)
+            setOptionQuotes((prev) => {
+              const merged = { ...prev }
+              for (const [key, price] of Object.entries(optQuoteData)) {
+                if (price > 0) merged[key] = price
+              }
+              return merged
+            })
           })
           .catch(() => { /* ignore option quote errors */ })
       }
