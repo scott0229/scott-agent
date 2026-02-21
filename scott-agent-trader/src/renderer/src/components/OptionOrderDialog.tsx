@@ -79,6 +79,7 @@ export default function OptionOrderDialog({
     const fetchedExpiriesRef = useRef<Set<string>>(new Set())
     const fetchedStrikesRef = useRef<Set<number>>(new Set())
     const strikeDropdownRef = useRef<HTMLDivElement>(null)
+    const lastStrikeCenterRef = useRef<number | null>(null)
 
     // ── Order selection ──────────────────────────────────────────────────────
     const [selExpiry, setSelExpiry] = useState('')
@@ -132,6 +133,7 @@ export default function OptionOrderDialog({
             fetchedExpiriesRef.current = new Set()
             fetchedStrikesRef.current = new Set()
             setStockPrice(null)
+            lastStrikeCenterRef.current = null
         }
     }, [open])
 
@@ -151,6 +153,7 @@ export default function OptionOrderDialog({
             fetchedExpiriesRef.current = new Set()
             fetchedStrikesRef.current = new Set()
             setStockPrice(null)
+            lastStrikeCenterRef.current = null
         }
 
         window.ibApi.getStockQuote(sym).then(q => {
@@ -188,20 +191,23 @@ export default function OptionOrderDialog({
 
     // ── Auto-select ±5 strikes around stock price ─────────────────────────
     useEffect(() => {
-        if (availableStrikes.length > 0 && selectedStrikes.length === 0) {
-            if (stockPrice !== null) {
-                const idx = availableStrikes.findIndex(s => s >= stockPrice)
-                const center = idx === -1 ? availableStrikes.length - 1 : idx
-                const start = Math.max(0, center - 5)
-                const end = Math.min(availableStrikes.length, center + 6)
-                setSelectedStrikes(availableStrikes.slice(start, end).slice(0, 10))
-            } else {
-                // fallback: pick 10 from the middle
-                const mid = Math.floor(availableStrikes.length / 2)
-                const start = Math.max(0, mid - 5)
-                const end = Math.min(availableStrikes.length, start + 10)
-                setSelectedStrikes(availableStrikes.slice(start, end))
-            }
+        if (availableStrikes.length === 0) return
+        if (stockPrice !== null) {
+            // Only re-center if price moved to a different integer level
+            const rounded = Math.round(stockPrice)
+            if (lastStrikeCenterRef.current === rounded && selectedStrikes.length > 0) return
+            lastStrikeCenterRef.current = rounded
+            const idx = availableStrikes.findIndex(s => s >= stockPrice)
+            const center = idx === -1 ? availableStrikes.length - 1 : idx
+            const start = Math.max(0, center - 5)
+            const end = Math.min(availableStrikes.length, center + 6)
+            setSelectedStrikes(availableStrikes.slice(start, end).slice(0, 10))
+        } else if (selectedStrikes.length === 0) {
+            // fallback: pick 10 from the middle
+            const mid = Math.floor(availableStrikes.length / 2)
+            const start = Math.max(0, mid - 5)
+            const end = Math.min(availableStrikes.length, start + 10)
+            setSelectedStrikes(availableStrikes.slice(start, end))
         }
     }, [availableStrikes, stockPrice])
 
@@ -288,7 +294,14 @@ export default function OptionOrderDialog({
                 refreshingRef.current = false
             }
         }
-        const id = setInterval(refresh, 3000)
+        const id = setInterval(() => {
+            refresh()
+            // Also refresh stock price so strike filter stays centered
+            window.ibApi.getStockQuote(symbol).then(q => {
+                const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+                if (price) setStockPrice(price)
+            }).catch(() => { })
+        }, 3000)
         return () => { cancelled = true; clearInterval(id) }
     }, [symbol, displayExpirations, displayStrikes])
 
@@ -511,7 +524,17 @@ export default function OptionOrderDialog({
                                     {strikeDropdownOpen && (
                                         <>
                                             <div className="roll-expiry-backdrop" onClick={(e) => { e.stopPropagation(); setStrikeDropdownOpen(false) }} />
-                                            <div className="roll-expiry-dropdown" ref={strikeDropdownRef} style={{ right: 0, left: 'auto' }}>
+                                            <div className="roll-expiry-dropdown" ref={(el) => {
+                                                (strikeDropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+                                                if (el && selectedStrikes.length > 0) {
+                                                    const sortedSel = [...selectedStrikes].sort((a, b) => a - b)
+                                                    const firstIdx = availableStrikes.indexOf(sortedSel[0])
+                                                    if (firstIdx > 0) {
+                                                        const label = el.children[firstIdx] as HTMLElement
+                                                        if (label) label.scrollIntoView({ block: 'start' })
+                                                    }
+                                                }
+                                            }} style={{ right: 0, left: 'auto' }}>
                                                 {availableStrikes.map(strike => (
                                                     <label key={strike} className={`roll-expiry-option ${selectedStrikes.includes(strike) ? 'checked' : ''}`}>
                                                         <input type="checkbox" checked={selectedStrikes.includes(strike)} onChange={() => toggleStrike(strike)} />
@@ -803,7 +826,7 @@ export default function OptionOrderDialog({
                             setOrderSubmitted(false)
                         } : handleSubmit}
                     >
-                        {submitting ? '下單中...' : orderSubmitted ? '重新下單' : selExpiry && selStrike !== null && selRight !== null ? `確認下單 ${symbol} ${formatExpiry(selExpiry)} ${selStrike}${selRight === 'C' ? 'C' : 'P'}` : '確認下單'}
+                        {submitting ? '下單中...' : orderSubmitted ? '重新下單' : selExpiry && selStrike !== null && selRight !== null ? `確認下單 (${action === 'BUY' ? '買' : '賣'}) ${symbol} ${formatExpiry(selExpiry)} ${selStrike}${selRight === 'C' ? 'C' : 'P'}` : '確認下單'}
                     </button>
                 </div>
             </div>
