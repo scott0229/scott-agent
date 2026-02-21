@@ -14,7 +14,7 @@ const TRADING_TYPE_OPTIONS = [
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function formatOptionLabel(symbol: string, expiry?: string, strike?: number, right?: string): string {
-    const exp = expiry ? (() => { const yy = expiry.slice(2, 4); const mm = parseInt(expiry.slice(4, 6), 10) - 1; const dd = expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd} '${yy}` })() : ''
+    const exp = expiry ? (() => { const mm = parseInt(expiry.slice(4, 6), 10) - 1; const dd = expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd}` })() : ''
     const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
     return `${symbol} ${exp} ${strike || ''}${r}`
 }
@@ -590,7 +590,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                             const seen = new Set<string>()
                                                             const legDescs: string[] = []
                                                             for (const l of legs) {
-                                                                const exp = l.expiry ? (() => { const yy = l.expiry.slice(2, 4); const mm = parseInt(l.expiry.slice(4, 6), 10) - 1; const dd = l.expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd} '${yy}` })() : ''
+                                                                const exp = l.expiry ? (() => { const mm = parseInt(l.expiry.slice(4, 6), 10) - 1; const dd = l.expiry.slice(6, 8).replace(/^0/, ''); return `${MONTHS[mm]}${dd}` })() : ''
                                                                 const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                                                 const sign = l.side === 'BOT' ? '+' : '-'
                                                                 const key = `${sign}${exp} ${l.strike}${r}`
