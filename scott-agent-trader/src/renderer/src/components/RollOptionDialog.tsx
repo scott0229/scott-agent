@@ -959,7 +959,7 @@ export default function RollOptionDialog({
                             }
                         }}
                     >
-                        {submitting ? '下單中...' : '確認展期'}
+                        {submitting ? '下單中...' : targetExpiry && targetStrike !== null && targetRight ? `確認展期 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight}` : '確認展期'}
                     </button>
                 </div>
             </div>
