@@ -33,7 +33,7 @@ interface RollOptionDialogProps {
     accounts: AccountData[]
 }
 
-// Format expiry "20260321" -> "Feb 17 '26"
+// Format expiry "20260220" -> "Feb20"
 function formatExpiry(expiry: string): string {
     const months = [
         'Jan',
@@ -49,10 +49,9 @@ function formatExpiry(expiry: string): string {
         'Nov',
         'Dec'
     ]
-    const year = expiry.substring(2, 4)
     const month = months[parseInt(expiry.substring(4, 6)) - 1]
-    const day = expiry.substring(6, 8)
-    return `${month} ${day} '${year}`
+    const day = expiry.substring(6, 8).replace(/^0/, '')
+    return `${month}${day}`
 }
 
 function midPrice(greek: OptionGreek | undefined): number | null {
@@ -874,13 +873,13 @@ export default function RollOptionDialog({
                                                 curMid !== null && targetMid !== null ? curMid - targetMid : null
                                             // Show user's limit price if set, otherwise show live spread
                                             const displayVal = limitPrice ? parseFloat(limitPrice) : liveSpread
-                                            const rightLabel = pos.right === 'C' ? 'CALL' : pos.right === 'P' ? 'PUT' : ''
+                                            const rightLabel = pos.right === 'C' ? 'C' : pos.right === 'P' ? 'P' : ''
                                             const closePrefix = pos.quantity < 0 ? '+' : '-'
                                             const openPrefix = pos.quantity < 0 ? '-' : '+'
                                             const strikeStr = Number.isInteger(pos.strike) ? pos.strike : (pos.strike || 0).toFixed(1)
-                                            const currentDesc = `${closePrefix}${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr} ${rightLabel}`
+                                            const currentDesc = `${closePrefix}${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr}${rightLabel}`
                                             const targetDesc = targetExpiry && targetStrike !== null && targetRight
-                                                ? `${openPrefix}${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)} ${targetRight === 'C' ? 'CALL' : 'PUT'}`
+                                                ? `${openPrefix}${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
                                                 : '-'
 
                                             return (
