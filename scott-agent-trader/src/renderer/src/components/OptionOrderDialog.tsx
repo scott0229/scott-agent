@@ -100,6 +100,7 @@ export default function OptionOrderDialog({
 
     // ── Submit ───────────────────────────────────────────────────────────────
     const [submitting, setSubmitting] = useState(false)
+    const [orderSubmitted, setOrderSubmitted] = useState(false)
 
     // ── Reset on open ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -119,6 +120,7 @@ export default function OptionOrderDialog({
         setQtys(initQty)
         setCheckedAccounts({})
         setOrderStatuses({})
+        setOrderSubmitted(false)
         if (sym) {
             // triggerFetch internally checks if symbol changed before clearing data
             setTimeout(() => triggerFetch(sym), 0)
@@ -394,6 +396,7 @@ export default function OptionOrderDialog({
             setOrderStatuses(prev => ({ ...prev, ...errMap }))
         } finally {
             setSubmitting(false)
+            setOrderSubmitted(true)
         }
     }
 
@@ -700,7 +703,7 @@ export default function OptionOrderDialog({
                                     const qty = qtys[acct.accountId] ?? ''
                                     const qtyNum = parseInt(qty) || 0
                                     return (
-                                        <tr key={acct.accountId}>
+                                        <tr key={acct.accountId} style={{ height: 36 }}>
                                             <td style={{ textAlign: 'center', width: '30px' }}>
                                                 <input
                                                     type="checkbox"
@@ -709,7 +712,10 @@ export default function OptionOrderDialog({
                                                     style={{ cursor: 'pointer' }}
                                                 />
                                             </td>
-                                            <td style={{ fontWeight: 'bold', overflow: 'visible', whiteSpace: 'nowrap' }}>{getAlias(acct.accountId)}</td>
+                                            <td
+                                                style={{ fontWeight: 'bold', overflow: 'visible', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                                                onClick={() => setCheckedAccounts(prev => ({ ...prev, [acct.accountId]: !prev[acct.accountId] }))}
+                                            >{getAlias(acct.accountId)}</td>
                                             <td style={{ fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>
                                                 {(() => {
                                                     if (!acct.netLiquidation || acct.netLiquidation <= 0) return '-'
@@ -779,10 +785,21 @@ export default function OptionOrderDialog({
                     <button className="roll-dialog-cancel" onClick={onClose}>取消</button>
                     <button
                         className="roll-dialog-confirm"
-                        disabled={!canSubmit || submitting}
-                        onClick={handleSubmit}
+                        disabled={orderSubmitted ? false : (!canSubmit || submitting)}
+                        onClick={orderSubmitted ? () => {
+                            setSelExpiry('')
+                            setSelStrike(null)
+                            setSelRight(null)
+                            setLimitPrice('')
+                            const initQty: Record<string, string> = {}
+                            accounts.forEach(a => { initQty[a.accountId] = '' })
+                            setQtys(initQty)
+                            setCheckedAccounts({})
+                            setOrderStatuses({})
+                            setOrderSubmitted(false)
+                        } : handleSubmit}
                     >
-                        {submitting ? '下單中...' : '確認下單'}
+                        {submitting ? '下單中...' : orderSubmitted ? '重新下單' : '確認下單'}
                     </button>
                 </div>
             </div>
