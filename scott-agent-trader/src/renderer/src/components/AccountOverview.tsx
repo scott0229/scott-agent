@@ -4,7 +4,9 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
+import ClosePositionDialog from './ClosePositionDialog'
 import OptionOrderDialog from './OptionOrderDialog'
+import CloseOptionDialog from './CloseOptionDialog'
 
 const TRADING_TYPE_OPTIONS = [
     { value: 'reg_t', label: 'Reg T 保證金' },
@@ -43,7 +45,9 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [showRollDialog, setShowRollDialog] = useState(false)
     const [showBatchOrder, setShowBatchOrder] = useState(false)
     const [showTransferDialog, setShowTransferDialog] = useState(false)
+    const [showCloseDialog, setShowCloseDialog] = useState(false)
     const [showOptionOrder, setShowOptionOrder] = useState(false)
+    const [showCloseOptionDialog, setShowCloseOptionDialog] = useState(false)
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
@@ -61,7 +65,9 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         setShowRollDialog(false)
         setShowBatchOrder(false)
         setShowTransferDialog(false)
+        setShowCloseDialog(false)
         setShowOptionOrder(false)
+        setShowCloseOptionDialog(false)
     }, [connected])
 
     // Close context menu on any click or right-click elsewhere
@@ -157,6 +163,13 @@ export default function AccountOverview({ connected, accounts, positions, quotes
             const pSide = p.quantity < 0 ? 'SELL' : 'BUY'
             return p.symbol === symbol && p.right === right && pSide === side
         })
+    }, [selectedPositions, positions])
+
+    const canCloseOptions = useMemo(() => {
+        if (selectedPositions.size === 0) return false
+        const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
+        if (selected.length === 0) return false
+        return selected.every((p) => p.secType === 'OPT')
     }, [selectedPositions, positions])
 
     const canTransferStocks = useMemo(() => {
@@ -304,9 +317,19 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                 展期
                             </button>
                         )}
+                        {selectMode === 'OPT' && canCloseOptions && (
+                            <button className="select-toggle-btn" onClick={() => setShowCloseOptionDialog(true)}>
+                                期權平倉
+                            </button>
+                        )}
                         {selectMode === 'STK' && canTransferStocks && (
                             <button className="select-toggle-btn" onClick={() => setShowTransferDialog(true)}>
                                 轉倉
+                            </button>
+                        )}
+                        {selectMode === 'STK' && canTransferStocks && (
+                            <button className="select-toggle-btn" onClick={() => setShowCloseDialog(true)}>
+                                平倉
                             </button>
                         )}
                     </div>
@@ -664,9 +687,24 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                 accounts={accounts}
                 quotes={quotes}
             />
+            <ClosePositionDialog
+                open={showCloseDialog}
+                onClose={() => setShowCloseDialog(false)}
+                selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
+                accounts={accounts}
+                positions={positions}
+                quotes={quotes}
+            />
             <OptionOrderDialog
                 open={showOptionOrder}
                 onClose={() => setShowOptionOrder(false)}
+                accounts={accounts}
+                positions={positions}
+            />
+            <CloseOptionDialog
+                open={showCloseOptionDialog}
+                onClose={() => setShowCloseOptionDialog(false)}
+                selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
                 accounts={accounts}
                 positions={positions}
             />

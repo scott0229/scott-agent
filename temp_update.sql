@@ -1,0 +1,1 @@
+UPDATE USERS SET api_key = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07' WHERE id = (SELECT id FROM USERS LIMIT 1);

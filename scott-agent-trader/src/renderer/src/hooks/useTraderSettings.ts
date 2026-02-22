@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 
 const CLOUDFLARE_BASE = 'https://scott-agent.com'
 const API_KEY_STORAGE = 'scott-trader-api-key'
+const DEFAULT_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
 const MARGIN_KEY = 'scott-trader-margin-limit'
 const SYMBOLS_KEY = 'scott-trader-watch-symbols'
 const ALIASES_KEY = 'scott-trader-account-aliases'
@@ -34,7 +35,7 @@ export function useTraderSettings() {
     const [watchSymbols, setWatchSymbolsState] = useState<string[]>(local.watchSymbols)
     const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>(local.accountAliases)
     const [accountTypes, setAccountTypesState] = useState<Record<string, string>>(local.accountTypes)
-    const apiKey = useRef<string>(localStorage.getItem(API_KEY_STORAGE) || '')
+    const apiKey = useRef<string>(localStorage.getItem(API_KEY_STORAGE) || DEFAULT_API_KEY)
     const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // On mount: fetch from Cloudflare (Cloudflare wins)

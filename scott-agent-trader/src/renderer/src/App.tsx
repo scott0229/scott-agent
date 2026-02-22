@@ -27,7 +27,7 @@ function App(): JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType, setApiKey } = useTraderSettings()
+  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -138,7 +138,6 @@ function App(): JSX.Element {
         onSetMarginLimit={setMarginLimit}
         watchSymbols={watchSymbols}
         onSetWatchSymbol={setWatchSymbol}
-        onSetApiKey={setApiKey}
       />
     </div>
   )

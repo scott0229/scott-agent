@@ -13,7 +13,7 @@ interface SettingsPanelProps {
     onSetMarginLimit: (limit: number) => void
     watchSymbols: string[]
     onSetWatchSymbol: (index: number, value: string) => void
-    onSetApiKey: (key: string) => void
+
 }
 
 function SectionHeader({ title, onToggle }: { title: string; expanded: boolean; onToggle: () => void }) {
@@ -36,14 +36,13 @@ export default function SettingsPanel({
     marginLimit,
     onSetMarginLimit,
     watchSymbols,
-    onSetWatchSymbol,
-    onSetApiKey
+    onSetWatchSymbol
 }: SettingsPanelProps): JSX.Element | null {
     const [limitInput, setLimitInput] = useState(String(marginLimit))
     const [showRisk, setShowRisk] = useState(true)
     const [showSymbols, setShowSymbols] = useState(true)
     const [showAccounts, setShowAccounts] = useState(true)
-    const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('scott-trader-api-key') || '')
+
 
     if (!open) return null
 
@@ -113,18 +112,6 @@ export default function SettingsPanel({
                             })}
                         </div>
                     )}
-                    <SectionHeader title="雲端同步" expanded={true} onToggle={() => { }} />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 8px' }}>
-                        <label style={{ fontSize: '0.95em', color: '#555', whiteSpace: 'nowrap' }}>API Key</label>
-                        <input
-                            type="password"
-                            value={apiKeyInput}
-                            onChange={(e) => setApiKeyInput(e.target.value)}
-                            onBlur={() => onSetApiKey(apiKeyInput.trim())}
-                            placeholder="貼上 Cloudflare API Key"
-                            style={{ width: 180, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em' }}
-                        />
-                    </div>
                 </div>
             </div>
         </div>

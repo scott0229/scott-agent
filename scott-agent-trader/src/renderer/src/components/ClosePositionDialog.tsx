@@ -1,20 +1,20 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
-interface TransferStockDialogProps {
+interface ClosePositionDialogProps {
     open: boolean
     onClose: () => void
     selectedPositions: PositionData[]
     accounts: AccountData[]
+    positions: PositionData[]
     quotes: Record<string, number>
 }
 
-interface TransferPreview {
+interface ClosePreview {
     accountId: string
     alias: string
     sells: { symbol: string; qty: number; price: number; value: number }[]
     totalSellValue: number
-    buyQty: number
 }
 
 interface OrderResult {
@@ -27,21 +27,18 @@ interface OrderResult {
     symbol: string
 }
 
-export default function TransferStockDialog({
+export default function ClosePositionDialog({
     open,
     onClose,
     selectedPositions,
     accounts,
+    positions,
     quotes
-}: TransferStockDialogProps): JSX.Element | null {
-    const [targetSymbol, setTargetSymbol] = useState('')
-    const [buyTif, setBuyTif] = useState<'DAY' | 'GTC'>('DAY')
-    const [buyPrice, setBuyPrice] = useState('')
+}: ClosePositionDialogProps): JSX.Element | null {
     const [submitting, setSubmitting] = useState(false)
     const [orderResults, setOrderResults] = useState<OrderResult[]>([])
     const [step, setStep] = useState<'preview' | 'confirm' | 'done'>('preview')
-    const [confirmedPreviews, setConfirmedPreviews] = useState<TransferPreview[]>([])
-    const [confirmedTargetSymbol, setConfirmedTargetSymbol] = useState('')
+    const [confirmedPreviews, setConfirmedPreviews] = useState<ClosePreview[]>([])
 
     // Per-symbol sell state
     const [sellPrices, setSellPrices] = useState<Record<string, string>>({})
@@ -51,13 +48,8 @@ export default function TransferStockDialog({
     // sellQtyOverrides keyed by "symbol:accountId"
     const [sellQtyOverrides, setSellQtyOverrides] = useState<Record<string, number>>({})
 
-    const [buyOutsideRth, setBuyOutsideRth] = useState(false)
-    const [buyQuote, setBuyQuote] = useState<{ bid: number; ask: number; last: number } | null>(null)
-
-    // TIF dropdown open states (per-symbol for sell, single for buy)
+    // TIF dropdown open states (per-symbol for sell)
     const [sellTifOpen, setSellTifOpen] = useState<string | null>(null)
-    const [buyTifOpen, setBuyTifOpen] = useState(false)
-    const [cashStrategy, setCashStrategy] = useState<'sell_only' | 'zero_cash'>('sell_only')
     const tifRef = useRef<HTMLDivElement>(null)
 
     // Derive unique source symbols
@@ -71,7 +63,6 @@ export default function TransferStockDialog({
 
     // Group selected positions by account + symbol
     const accountSymbolPositions = useMemo(() => {
-        // Map<accountId, Map<symbol, { qty, avgCost }>>
         const map = new Map<string, Map<string, { qty: number; avgCost: number }>>()
         for (const pos of selectedPositions) {
             if (!map.has(pos.account)) map.set(pos.account, new Map())
@@ -96,7 +87,6 @@ export default function TransferStockDialog({
             const target = e.target as HTMLElement
             if (target.closest('.tif-dropdown')) return
             setSellTifOpen(null)
-            setBuyTifOpen(false)
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -130,31 +120,6 @@ export default function TransferStockDialog({
         }
     }, [sourceSymbols, quotes]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Fetch target quote on symbol change + auto-refresh
-    useEffect(() => {
-        const trimmed = targetSymbol.trim().toUpperCase()
-        if (!trimmed) {
-            setBuyQuote(null)
-            return
-        }
-        let isFirst = true
-        const fetchQuote = async (): Promise<void> => {
-            try {
-                const quote = await window.ibApi.getStockQuote(trimmed)
-                setBuyQuote(quote)
-                if (isFirst && quote.last > 0) {
-                    setBuyPrice(quote.last.toFixed(2))
-                    isFirst = false
-                }
-            } catch {
-                setBuyQuote(null)
-            }
-        }
-        const timer = setTimeout(fetchQuote, 500)
-        const interval = setInterval(fetchQuote, 5000)
-        return () => { clearTimeout(timer); clearInterval(interval) }
-    }, [targetSymbol])
-
     // Listen for order status updates
     useEffect(() => {
         const unsubscribe = window.ibApi.onOrderStatus((update: OrderResult) => {
@@ -169,14 +134,13 @@ export default function TransferStockDialog({
         return () => { unsubscribe() }
     }, [])
 
-    // Calculate preview for each account
-    const previews = useMemo((): TransferPreview[] => {
-        const buyPriceNum = parseFloat(buyPrice) || 0
-        const result: TransferPreview[] = []
+    // Calculate preview for each account (sell only, no buy)
+    const previews = useMemo((): ClosePreview[] => {
+        const result: ClosePreview[] = []
 
         for (const [accountId, symMap] of accountSymbolPositions) {
             const acct = accounts.find((a) => a.accountId === accountId)
-            const sells: TransferPreview['sells'] = []
+            const sells: ClosePreview['sells'] = []
             let totalSellValue = 0
 
             for (const [symbol, posInfo] of symMap) {
@@ -188,14 +152,11 @@ export default function TransferStockDialog({
                 totalSellValue += value
             }
 
-            const cashAdjust = cashStrategy === 'zero_cash' ? (acct?.totalCashValue || 0) : 0
-            const buyQty = buyPriceNum > 0 ? Math.max(0, Math.floor((totalSellValue + cashAdjust) / buyPriceNum)) : 0
             result.push({
                 accountId,
                 alias: acct?.alias || accountId,
                 sells: sells.sort((a, b) => a.symbol.localeCompare(b.symbol)),
-                totalSellValue,
-                buyQty
+                totalSellValue
             })
         }
 
@@ -204,13 +165,12 @@ export default function TransferStockDialog({
             const acctB = accounts.find((x) => x.accountId === b.accountId)
             return (acctB?.netLiquidation || 0) - (acctA?.netLiquidation || 0)
         })
-    }, [accountSymbolPositions, accounts, sellPrices, buyPrice, quotes, sellQtyOverrides, cashStrategy])
+    }, [accountSymbolPositions, accounts, sellPrices, quotes, sellQtyOverrides])
 
     const totalSellQty = previews.reduce((s, p) => s + p.sells.reduce((ss, sell) => ss + sell.qty, 0), 0)
-    const totalBuyQty = previews.reduce((s, p) => s + p.buyQty, 0)
 
     const handleSubmit = useCallback(async () => {
-        if (!targetSymbol.trim() || previews.length === 0) return
+        if (previews.length === 0) return
         setSubmitting(true)
 
         try {
@@ -242,53 +202,27 @@ export default function TransferStockDialog({
                 }
             }
 
-            // Place buy orders
-            const buyAllocations: Record<string, number> = {}
-            for (const p of previews) {
-                if (p.buyQty > 0) buyAllocations[p.accountId] = p.buyQty
-            }
-            if (Object.keys(buyAllocations).length > 0) {
-                const buyRequest = {
-                    symbol: targetSymbol.trim().toUpperCase(),
-                    action: 'BUY' as const,
-                    orderType: 'LMT' as const,
-                    limitPrice: parseFloat(buyPrice),
-                    totalQuantity: totalBuyQty,
-                    outsideRth: buyOutsideRth,
-                    tif: buyTif
-                }
-                const buyResults = await window.ibApi.placeBatchOrders(buyRequest, buyAllocations)
-                allResults.push(...buyResults.map((r: OrderResult) => ({ ...r, symbol: targetSymbol.trim().toUpperCase() })))
-            }
-
             setOrderResults(allResults)
             setStep('done')
         } catch (err) {
-            console.error('Transfer order failed:', err)
-            alert('轉倉下單失敗: ' + String(err))
+            console.error('Close position order failed:', err)
+            alert('平倉下單失敗: ' + String(err))
         } finally {
             setSubmitting(false)
         }
-    }, [targetSymbol, previews, sourceSymbols, sellPrices, sellTifs, sellOutsideRths, buyPrice, totalBuyQty, buyOutsideRth, buyTif])
+    }, [previews, sourceSymbols, sellPrices, sellTifs, sellOutsideRths])
 
     const handleClose = useCallback(() => {
-        setTargetSymbol('')
         setSellPrices({})
         setSellTifs({})
         setSellOutsideRths({})
         setSellQuotes({})
         setSellQtyOverrides({})
-        setBuyPrice('')
-        setBuyTif('DAY')
-        setBuyOutsideRth(false)
-        setBuyQuote(null)
         setOrderResults([])
         setStep('preview')
         setConfirmedPreviews([])
-        setConfirmedTargetSymbol('')
         setSubmitting(false)
         setSellTifOpen(null)
-        setBuyTifOpen(false)
         onClose()
     }, [onClose])
 
@@ -344,7 +278,7 @@ export default function TransferStockDialog({
         <div className="stock-order-dialog-overlay" onClick={handleClose}>
             <div className="stock-order-dialog transfer-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="stock-order-dialog-header">
-                    <h2>股票轉倉</h2>
+                    <h2>股票平倉</h2>
                     <button className="settings-close-btn" onClick={handleClose}>✕</button>
                 </div>
                 <div className="stock-order-dialog-body">
@@ -403,109 +337,28 @@ export default function TransferStockDialog({
                         )
                     })}
 
-                    {/* Buy row: target symbol */}
-                    <div className="order-form" style={{ marginTop: '8px' }}>
-                        <div className="form-row">
-                            <div className="form-group" style={{ flex: '0 0 auto' }}>
-                                <span style={{ fontWeight: 600, fontSize: '13px', color: '#1a6b3a', padding: '6px 0' }}>買入</span>
-                            </div>
-                            <div className="form-group">
-                                <input
-                                    type="text"
-                                    value={targetSymbol}
-                                    onChange={(e) => setTargetSymbol(e.target.value)}
-                                    placeholder="股票代碼"
-                                    style={{ textTransform: 'uppercase' }}
-                                    className="input-field"
-                                    disabled={step !== 'preview'}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <input
-                                    type="number"
-                                    value={buyPrice}
-                                    onChange={(e) => setBuyPrice(e.target.value)}
-                                    placeholder="限價"
-                                    step="0.01"
-                                    className="input-field"
-                                    disabled={step !== 'preview'}
-                                />
-                            </div>
-                            <div className="form-group" style={{ flex: '0 0 auto' }}>
-                                {renderTifDropdown(
-                                    null,
-                                    buyTif,
-                                    setBuyTif,
-                                    buyOutsideRth,
-                                    setBuyOutsideRth,
-                                    buyTifOpen,
-                                    setBuyTifOpen
-                                )}
-                            </div>
-                            {targetSymbol.trim() && buyQuote && (
-                                <div className="quote-display" style={{ flex: '0 0 auto', fontSize: 13 }}>
-                                    <span className="quote-bid">{buyQuote.bid.toFixed(2)}</span>
-                                    <span className="quote-separator">|</span>
-                                    <span className="quote-ask">{buyQuote.ask.toFixed(2)}</span>
-                                    <span className="quote-separator">|</span>
-                                    <span className="quote-label">Last</span>
-                                    <span className="quote-last" style={{ color: '#1a3a6b' }}>{buyQuote.last.toFixed(2)}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Cash strategy */}
-                    <div className="order-form">
-                        <div className="form-row" style={{ flexWrap: 'nowrap', alignItems: 'center', gap: '16px' }}>
-                            <span style={{ fontWeight: 600, fontSize: '13px', flexShrink: 0 }}>現金</span>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                <input
-                                    type="radio"
-                                    name="cashStrategy"
-                                    value="sell_only"
-                                    checked={cashStrategy === 'sell_only'}
-                                    onChange={() => setCashStrategy('sell_only')}
-                                    disabled={step !== 'preview'}
-                                />
-                                僅用賣出所得
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                <input
-                                    type="radio"
-                                    name="cashStrategy"
-                                    value="zero_cash"
-                                    checked={cashStrategy === 'zero_cash'}
-                                    onChange={() => setCashStrategy('zero_cash')}
-                                    disabled={step !== 'preview'}
-                                />
-                                買入後現金歸零 (可能是動用或償還)
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Preview table */}
+                    {/* Preview table (sell only, no buy row) */}
                     {(step === 'preview' ? previews : confirmedPreviews).length > 0 && (
                         <div className="allocation-section">
                             <table className="allocation-table">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '18%', textAlign: 'left' }}>帳號</th>
-                                        <th style={{ width: '12%' }}>淨值</th>
-                                        <th style={{ width: '12%' }}>現金</th>
-                                        <th style={{ width: '10%' }}>方向</th>
+                                        <th style={{ width: '15%', textAlign: 'left' }}>帳號</th>
+                                        <th style={{ width: '10%' }}>淨值</th>
+                                        <th style={{ width: '10%' }}>現金</th>
+                                        <th style={{ width: '10%' }}>新潛在融資</th>
+                                        <th style={{ width: '8%' }}>方向</th>
                                         <th style={{ width: '10%' }}>標的</th>
                                         <th style={{ width: '10%' }}>價格</th>
-                                        <th style={{ width: '12%' }}>數量</th>
-                                        {step === 'done' && <th style={{ width: '12%' }}>狀態</th>}
+                                        <th style={{ width: '10%' }}>數量</th>
+                                        {step === 'done' && <th style={{ width: '10%' }}>狀態</th>}
                                     </tr>
                                 </thead>
                                 <>
                                     {(step === 'preview' ? previews : confirmedPreviews).map((p) => {
                                         const acct = accounts.find((a) => a.accountId === p.accountId)
                                         if (!acct) return null
-                                        const displayTargetSymbol = step === 'preview' ? targetSymbol.toUpperCase() : confirmedTargetSymbol
-                                        const rowCount = p.sells.length + 1 // sells + buy
+                                        const rowCount = p.sells.length
                                         const isLast = (step === 'preview' ? previews : confirmedPreviews).indexOf(p) === (step === 'preview' ? previews : confirmedPreviews).length - 1
                                         return (
                                             <tbody key={p.accountId} style={isLast ? undefined : { borderBottom: '2px solid #e5e7eb' }}>
@@ -521,6 +374,15 @@ export default function TransferStockDialog({
                                                                     <td rowSpan={rowCount} style={{ borderBottom: '1px solid #b0b0b0', ...(acct.totalCashValue < 0 ? { color: '#8b1a1a' } : {}) }}>
                                                                         {acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                                                     </td>
+                                                                    {(() => {
+                                                                        if (acct.netLiquidation <= 0) return <td rowSpan={rowCount} style={{ borderBottom: '1px solid #b0b0b0' }}>無融資</td>
+                                                                        const putCost = positions
+                                                                            .filter(pos => pos.account === acct.accountId && pos.secType === 'OPT' && (pos.right === 'P' || pos.right === 'PUT') && pos.quantity < 0)
+                                                                            .reduce((sum, pos) => sum + (pos.strike || 0) * 100 * Math.abs(pos.quantity), 0)
+                                                                        const newGPV = Math.max(0, acct.grossPositionValue - p.totalSellValue)
+                                                                        const newLeverage = (newGPV + putCost) / acct.netLiquidation
+                                                                        return <td rowSpan={rowCount} style={{ borderBottom: '1px solid #b0b0b0' }}>{newLeverage > 0 ? newLeverage.toFixed(2) : '無融資'}</td>
+                                                                    })()}
                                                                 </>
                                                             )}
                                                             <td style={{ color: '#8b1a1a', fontWeight: 'bold' }}>賣出</td>
@@ -546,17 +408,6 @@ export default function TransferStockDialog({
                                                         </tr>
                                                     )
                                                 })}
-                                                <tr key={`${p.accountId}-buy`} style={{ backgroundColor: '#fffde7' }}>
-                                                    <td style={{ color: '#1a6b3a', fontWeight: 'bold' }}>買入</td>
-                                                    <td>{displayTargetSymbol || '-'}</td>
-                                                    <td>{buyPrice || '-'}</td>
-                                                    <td>{p.buyQty.toLocaleString()}</td>
-                                                    {step === 'done' && (
-                                                        <td style={{ fontSize: '11px' }}>
-                                                            {orderResults.find((r) => r.account === p.accountId && r.symbol === displayTargetSymbol)?.status || '-'}
-                                                        </td>
-                                                    )}
-                                                </tr>
                                             </tbody>
                                         )
                                     })}
@@ -570,10 +421,9 @@ export default function TransferStockDialog({
                         {step === 'preview' && (
                             <button
                                 className="btn btn-primary"
-                                disabled={!targetSymbol.trim() || totalBuyQty === 0 || Object.values(sellPrices).some(p => !p) || !buyPrice}
+                                disabled={totalSellQty === 0 || Object.values(sellPrices).some(p => !p)}
                                 onClick={() => {
                                     setConfirmedPreviews(previews)
-                                    setConfirmedTargetSymbol(targetSymbol.trim().toUpperCase())
                                     setStep('confirm')
                                 }}
                             >
@@ -587,7 +437,7 @@ export default function TransferStockDialog({
                                     disabled={submitting}
                                     onClick={handleSubmit}
                                 >
-                                    {submitting ? '下單中...' : `確認轉倉 (賣${confirmedSourceSymbols.join(',')} → 買${confirmedTargetSymbol})`}
+                                    {submitting ? '下單中...' : `確認平倉 (賣出 ${confirmedSourceSymbols.join(', ')})`}
                                 </button>
                                 <button className="btn btn-secondary" onClick={() => setStep('preview')}>
                                     返回修改
