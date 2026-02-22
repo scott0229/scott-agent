@@ -171,7 +171,7 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
             setQuotes((prev) => {
               const merged = { ...prev }
               for (const [sym, price] of Object.entries(quoteData)) {
-                if (price > 0) merged[sym] = price
+                if ((price as number) > 0) merged[sym] = price as number
               }
               return merged
             })
@@ -199,7 +199,7 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
             setOptionQuotes((prev) => {
               const merged = { ...prev }
               for (const [key, price] of Object.entries(optQuoteData)) {
-                if (price > 0) merged[key] = price
+                if ((price as number) > 0) merged[key] = price as number
               }
               return merged
             })
