@@ -165,6 +165,7 @@ interface IBApi {
     right?: string
   }) => Promise<void>
   cancelOrder: (orderId: number) => Promise<void>
+  getFedFundsRate: () => Promise<number>
 
   removeAllListeners: () => void
 }

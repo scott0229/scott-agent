@@ -18,6 +18,7 @@ import {
 import { requestOptionChain, requestOptionGreeks } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
+import { getFedFundsRate } from './rates'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -160,6 +161,11 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('ib:cancelOrder', async (_event, orderId: number) => {
     return cancelOrder(orderId)
+  })
+
+  // Rates
+  ipcMain.handle('rates:getFedFundsRate', async () => {
+    return getFedFundsRate()
   })
 }
 

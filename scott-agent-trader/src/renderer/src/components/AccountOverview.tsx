@@ -70,6 +70,12 @@ export default function AccountOverview({ connected, accounts, positions, quotes
         setShowCloseOptionDialog(false)
     }, [connected])
 
+    // Fetch Fed Funds Rate from FRED on mount
+    const [fedRate, setFedRate] = useState<number | null>(null)
+    useEffect(() => {
+        window.ibApi.getFedFundsRate().then(setFedRate).catch(() => { /* ignore */ })
+    }, [])
+
     // Close context menu on any click or right-click elsewhere
     useEffect(() => {
         if (!contextMenu) return undefined
@@ -387,6 +393,21 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             {formatCurrency(account.totalCashValue, account.currency)}
                                         </span>
                                     </div>
+                                    {account.totalCashValue < 0 && fedRate !== null && (() => {
+                                        const loan = account.totalCashValue
+                                        const abs = Math.abs(loan)
+                                        const spread = abs <= 100_000 ? 1.5 : abs <= 1_000_000 ? 1.0 : abs <= 3_000_000 ? 0.5 : 0.25
+                                        const annualRate = (fedRate + spread) / 100
+                                        const dailyInterest = abs * annualRate / 360
+                                        return (
+                                            <div className="metric" style={{ backgroundColor: '#ffe4e6', borderRadius: '4px' }} title={`BM ${fedRate.toFixed(2)}% + ${spread}% = ${(fedRate + spread).toFixed(2)}% p.a.`}>
+                                                <span className="metric-label">日利息</span>
+                                                <span className="metric-value" style={{ color: '#b91c1c' }}>
+                                                    -{dailyInterest.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )
+                                    })()}
                                     <div className="metric">
                                         <span className="metric-label">融資率</span>
                                         <span className="metric-value">

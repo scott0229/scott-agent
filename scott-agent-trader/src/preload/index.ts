@@ -65,6 +65,7 @@ const ibApi = {
   getExecutions: (): Promise<any[]> => ipcRenderer.invoke('ib:getExecutions'),
   modifyOrder: (req: any): Promise<void> => ipcRenderer.invoke('ib:modifyOrder', req),
   cancelOrder: (orderId: number): Promise<void> => ipcRenderer.invoke('ib:cancelOrder', orderId),
+  getFedFundsRate: (): Promise<number> => ipcRenderer.invoke('rates:getFedFundsRate'),
 
   // Cleanup
   removeAllListeners: (): void => {
