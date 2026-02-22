@@ -1,44 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 
 const CLOUDFLARE_BASE = 'https://scott-agent.com'
-const API_KEY_STORAGE = 'scott-trader-api-key'
 const DEFAULT_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
-const MARGIN_KEY = 'scott-trader-margin-limit'
-const SYMBOLS_KEY = 'scott-trader-watch-symbols'
-const ALIASES_KEY = 'scott-trader-account-aliases'
-const TYPES_KEY = 'scott-trader-account-types'
-
-function loadLocal() {
-    let marginLimit = 1.3
-    let watchSymbols: string[] = []
-    let accountAliases: Record<string, string> = {}
-    let accountTypes: Record<string, string> = {}
-    try {
-        const raw = localStorage.getItem(MARGIN_KEY)
-        if (raw) marginLimit = parseFloat(raw) || 1.3
-    } catch { /* ignore */ }
-    try {
-        watchSymbols = JSON.parse(localStorage.getItem(SYMBOLS_KEY) || '[]')
-    } catch { /* ignore */ }
-    try {
-        accountAliases = JSON.parse(localStorage.getItem(ALIASES_KEY) || '{}')
-    } catch { /* ignore */ }
-    try {
-        accountTypes = JSON.parse(localStorage.getItem(TYPES_KEY) || '{}')
-    } catch { /* ignore */ }
-    return { marginLimit, watchSymbols, accountAliases, accountTypes }
-}
 
 export function useTraderSettings() {
-    const local = loadLocal()
-    const [marginLimit, setMarginLimitState] = useState<number>(local.marginLimit)
-    const [watchSymbols, setWatchSymbolsState] = useState<string[]>(local.watchSymbols)
-    const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>(local.accountAliases)
-    const [accountTypes, setAccountTypesState] = useState<Record<string, string>>(local.accountTypes)
-    const apiKey = useRef<string>(localStorage.getItem(API_KEY_STORAGE) || DEFAULT_API_KEY)
+    const [marginLimit, setMarginLimitState] = useState<number>(1.3)
+    const [watchSymbols, setWatchSymbolsState] = useState<string[]>([])
+    const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>({})
+    const [accountTypes, setAccountTypesState] = useState<Record<string, string>>({})
+    const apiKey = useRef<string>(DEFAULT_API_KEY)
     const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    // On mount: fetch from Cloudflare (Cloudflare wins)
+    // On mount: fetch from Cloudflare D1 (single source of truth)
     useEffect(() => {
         fetch(`${CLOUDFLARE_BASE}/api/trader-settings`)
             .then(r => r.json())
@@ -46,24 +19,18 @@ export function useTraderSettings() {
                 if (!data.settings) return
                 if (typeof data.settings.margin_limit === 'number') {
                     setMarginLimitState(data.settings.margin_limit)
-                    localStorage.setItem(MARGIN_KEY, String(data.settings.margin_limit))
                 }
                 if (Array.isArray(data.settings.watch_symbols)) {
                     setWatchSymbolsState(data.settings.watch_symbols as string[])
-                    localStorage.setItem(SYMBOLS_KEY, JSON.stringify(data.settings.watch_symbols))
                 }
                 if (data.settings.account_aliases && typeof data.settings.account_aliases === 'object' && !Array.isArray(data.settings.account_aliases)) {
-                    const aliases = data.settings.account_aliases as Record<string, string>
-                    setAccountAliasesState(aliases)
-                    localStorage.setItem(ALIASES_KEY, JSON.stringify(aliases))
+                    setAccountAliasesState(data.settings.account_aliases as Record<string, string>)
                 }
                 if (data.settings.account_types && typeof data.settings.account_types === 'object' && !Array.isArray(data.settings.account_types)) {
-                    const types = data.settings.account_types as Record<string, string>
-                    setAccountTypesState(types)
-                    localStorage.setItem(TYPES_KEY, JSON.stringify(types))
+                    setAccountTypesState(data.settings.account_types as Record<string, string>)
                 }
             })
-            .catch(() => { /* offline — use local */ })
+            .catch(() => { /* offline — use defaults */ })
     }, [])
 
     function syncToCloud(key: string, value: unknown) {
@@ -83,7 +50,6 @@ export function useTraderSettings() {
 
     const setMarginLimit = useCallback((v: number) => {
         setMarginLimitState(v)
-        localStorage.setItem(MARGIN_KEY, String(v))
         debounceSync('margin_limit', v)
     }, [])
 
@@ -91,7 +57,6 @@ export function useTraderSettings() {
         setWatchSymbolsState(prev => {
             const next = [...prev]
             next[index] = value
-            localStorage.setItem(SYMBOLS_KEY, JSON.stringify(next))
             debounceSync('watch_symbols', next)
             return next
         })
@@ -101,7 +66,6 @@ export function useTraderSettings() {
     const mergeAccountAliases = useCallback((incoming: Record<string, string>) => {
         setAccountAliasesState(prev => {
             const merged = { ...prev, ...incoming }
-            localStorage.setItem(ALIASES_KEY, JSON.stringify(merged))
             debounceSync('account_aliases', merged)
             return merged
         })
@@ -115,7 +79,6 @@ export function useTraderSettings() {
             } else {
                 delete next[accountId]
             }
-            localStorage.setItem(TYPES_KEY, JSON.stringify(next))
             debounceSync('account_types', next)
             return next
         })
@@ -123,7 +86,6 @@ export function useTraderSettings() {
 
     const setApiKey = useCallback((key: string) => {
         apiKey.current = key
-        localStorage.setItem(API_KEY_STORAGE, key)
     }, [])
 
     return {

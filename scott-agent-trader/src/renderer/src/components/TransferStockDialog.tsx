@@ -490,11 +490,11 @@ export default function TransferStockDialog({
                             <table className="allocation-table">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '18%', textAlign: 'left' }}>帳號</th>
+                                        <th style={{ width: '22%', textAlign: 'left' }}>帳號</th>
                                         <th style={{ width: '12%' }}>淨值</th>
                                         <th style={{ width: '12%' }}>現金</th>
-                                        <th style={{ width: '10%' }}>方向</th>
-                                        <th style={{ width: '10%' }}>標的</th>
+                                        <th style={{ width: '7%' }}>方向</th>
+                                        <th style={{ width: '8%' }}>標的</th>
                                         <th style={{ width: '10%' }}>價格</th>
                                         <th style={{ width: '12%' }}>數量</th>
                                         {step === 'done' && <th style={{ width: '12%' }}>狀態</th>}
@@ -587,7 +587,7 @@ export default function TransferStockDialog({
                                     disabled={submitting}
                                     onClick={handleSubmit}
                                 >
-                                    {submitting ? '下單中...' : `確認轉倉 (賣${confirmedSourceSymbols.join(',')} → 買${confirmedTargetSymbol})`}
+                                    {submitting ? '下單中...' : `確認轉倉 (賣${confirmedSourceSymbols.join(',')} → 買${confirmedTargetSymbol} ${confirmedPreviews.reduce((s, p) => s + p.buyQty, 0).toLocaleString()}股)`}
                                 </button>
                                 <button className="btn btn-secondary" onClick={() => setStep('preview')}>
                                     返回修改

@@ -343,12 +343,12 @@ export default function ClosePositionDialog({
                             <table className="allocation-table">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '15%', textAlign: 'left' }}>帳號</th>
+                                        <th style={{ width: '22%', textAlign: 'left' }}>帳號</th>
                                         <th style={{ width: '10%' }}>淨值</th>
                                         <th style={{ width: '10%' }}>現金</th>
                                         <th style={{ width: '10%' }}>新潛在融資</th>
-                                        <th style={{ width: '8%' }}>方向</th>
-                                        <th style={{ width: '10%' }}>標的</th>
+                                        <th style={{ width: '7%' }}>方向</th>
+                                        <th style={{ width: '8%' }}>標的</th>
                                         <th style={{ width: '10%' }}>價格</th>
                                         <th style={{ width: '10%' }}>數量</th>
                                         {step === 'done' && <th style={{ width: '10%' }}>狀態</th>}
@@ -437,7 +437,7 @@ export default function ClosePositionDialog({
                                     disabled={submitting}
                                     onClick={handleSubmit}
                                 >
-                                    {submitting ? '下單中...' : `確認平倉 (賣出 ${confirmedSourceSymbols.join(', ')})`}
+                                    {submitting ? '下單中...' : `確認平倉 (賣出 ${confirmedSourceSymbols.join(', ')}，金額 $${confirmedPreviews.reduce((s, p) => s + p.totalSellValue, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
                                 </button>
                                 <button className="btn btn-secondary" onClick={() => setStep('preview')}>
                                     返回修改

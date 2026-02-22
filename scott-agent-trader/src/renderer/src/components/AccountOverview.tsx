@@ -589,7 +589,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                                                     />
                                                                 ) : order.orderType === 'LMT' ? (order.limitPrice ?? 0).toFixed(2) : '市價'}
                                                             </td>
-                                                            <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
+                                                            <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>
                                                                 {({ Submitted: '已送出', PendingSubmit: '待送出', PreSubmitted: '預送出', PendingCancel: '取消中', Filled: '已成交', Cancelled: '已取消', Inactive: '未啟用' } as Record<string, string>)[order.status] || order.status}
                                                             </td>
                                                         </tr>
