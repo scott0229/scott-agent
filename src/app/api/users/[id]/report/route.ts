@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { calculateUserTwr } from '@/lib/twr';
 import { getMarketData } from '@/lib/market-data';
+import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,6 +220,23 @@ export async function GET(
         const marginUsed = (marginResult?.open_put_covered_capital || 0) + debt;
         const marginRate = accountNetWorth > 0 ? marginUsed / accountNetWorth : 0;
 
+        // Calculate daily interest using FRED rate
+        let dailyInterest = 0;
+        const cashNum = Number(cashBalance) || 0;
+        if (cashNum < 0 && latestEquity?.date) {
+            const dateNum = Number(latestEquity.date);
+            try {
+                const fredRateMap = await fetchFredRatesForYear(currentYear);
+                dailyInterest = calculateDailyInterest(cashNum, dateNum, fredRateMap);
+            } catch (err) {
+                console.warn('Failed to fetch FRED rates for report, using fallback:', err);
+                // Fallback: use hardcoded rate (4.33% + 1.5% spread) / 360
+                const loanAmount = Math.abs(cashNum);
+                const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
+                dailyInterest = -(loanAmount * (4.33 + spread) / 100 / 360);
+            }
+        }
+
         // 9. Get open positions
         const { results: openOptions } = await db.prepare(`
             SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, SUM(premium) as premium
@@ -243,6 +261,7 @@ export async function GET(
                 cost2026,
                 netProfit2026,
                 cashBalance,
+                dailyInterest,
                 marginRate,
                 ytdReturn,
                 maxDrawdown,

@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
 import { calculateBenchmarkStats, calculateUserTwr, findPrice } from '@/lib/twr';
 import { cacheResponse, clearCache } from '@/lib/response-cache';
+import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,6 +138,14 @@ export async function GET(request: NextRequest) {
                     });
                 }
 
+                // Fetch FRED rate map for the year (for daily interest calculation)
+                let fredRateMap: Record<string, number> = {};
+                try {
+                    fredRateMap = await fetchFredRatesForYear(year);
+                } catch (err) {
+                    console.warn('Failed to fetch FRED rates for bulk:', err);
+                }
+
                 return (users.results as any[]).map(u => {
                     const uEq = (equityRecords.results as any[]).filter(r => r.user_id === u.id);
 
@@ -176,6 +185,23 @@ export async function GET(request: NextRequest) {
                     const latestRecord = uEq.length > 0 ? uEq[uEq.length - 1] : null;
                     const currentCashBalance = latestRecord ? (latestRecord.cash_balance ?? 0) : 0;
 
+                    // Calculate total daily interest (with weekend/holiday gap logic)
+                    let totalDailyInterest = 0;
+                    for (let i = 0; i < uEq.length; i++) {
+                        const row = uEq[i];
+                        const todayInterest = calculateDailyInterest(row.cash_balance ?? 0, row.date, fredRateMap);
+                        let recordInterest = todayInterest;
+                        if (i > 0) {
+                            const prevDate = uEq[i - 1].date as number;
+                            const gapDays = Math.round((row.date - prevDate) / 86400);
+                            if (gapDays > 1) {
+                                const prevDayInterest = calculateDailyInterest(uEq[i - 1].cash_balance ?? 0, prevDate, fredRateMap);
+                                recordInterest = prevDayInterest * (gapDays - 1) + todayInterest;
+                            }
+                        }
+                        totalDailyInterest += recordInterest;
+                    }
+
                     const total_deposit = uEq.reduce((acc: number, r: any) => acc + (r.deposit || 0), 0);
                     return {
                         ...u,
@@ -183,6 +209,7 @@ export async function GET(request: NextRequest) {
                         current_cash_balance: currentCashBalance,
                         open_put_covered_capital: putCapitalByUser.get(u.id) || 0,
                         total_deposit,
+                        total_daily_interest: totalDailyInterest,
                         top_holdings: topHoldings,
                         qqqStats,
                         qldStats
@@ -215,10 +242,13 @@ export async function GET(request: NextRequest) {
             // Re-run loop for Single User to get exact shape text:
             const uEq = equityRecords.results as any[];
 
-            // Synthesize Deposit[] from uEq.deposit
-            // We don't really need uDep array for the loop below since we iterate uEq directly,
-            // but we need it if we wanted to call helper or for benchmark consistency.
-            // Actually, the loop uses `depositMap`? No, updated logic should just read `row.deposit`.
+            // Fetch FRED rate map for the year (for daily interest calculation)
+            let fredRateMap: Record<string, number> = {};
+            try {
+                fredRateMap = await fetchFredRatesForYear(year);
+            } catch (err) {
+                console.warn('Failed to fetch FRED rates, daily interest will be 0:', err);
+            }
 
             const rows = uEq;
             const singleResultData: any[] = [];
@@ -301,6 +331,31 @@ export async function GET(request: NextRequest) {
                     prevQLDEquity = currQLDEquity;
                 }
 
+                // Calculate estimated daily IB margin interest using FRED rate
+                const todayInterest = calculateDailyInterest(
+                    row.cash_balance ?? 0,
+                    row.date,
+                    fredRateMap
+                );
+
+                // Account for weekend/holiday gaps:
+                // If there's a gap between this record and the previous one,
+                // the missing days used the previous record's cash balance (and thus its rate).
+                // e.g. Monday = Friday_rate × 2 (Sat+Sun) + Monday_rate
+                let dailyInterest = todayInterest;
+                if (i > 0) {
+                    const prevDate = rows[i - 1].date as number;
+                    const gapDays = Math.round((row.date - prevDate) / 86400); // seconds in a day
+                    if (gapDays > 1) {
+                        const prevDayInterest = calculateDailyInterest(
+                            rows[i - 1].cash_balance ?? 0,
+                            prevDate,
+                            fredRateMap
+                        );
+                        dailyInterest = prevDayInterest * (gapDays - 1) + todayInterest;
+                    }
+                }
+
                 singleResultData.push({
                     id: row.id,
                     date: row.date,
@@ -320,6 +375,7 @@ export async function GET(request: NextRequest) {
                     qld_rate: qldRate,
                     management_fee: row.management_fee ?? 0,
                     interest: row.interest ?? 0,
+                    daily_interest: dailyInterest,
                     exposure_adjustment: row.exposure_adjustment ?? 'none'
                 });
 
@@ -460,7 +516,6 @@ export async function DELETE(request: NextRequest) {
                     initial_cost = 0,
                     initial_cash = 0,
                     initial_management_fee = 0,
-                    initial_interest = 0,
                     initial_deposit = 0,
                     updated_at = unixepoch()
                 WHERE id = ?

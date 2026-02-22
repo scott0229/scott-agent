@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { clearCache } from '@/lib/response-cache';
 import { customAlphabet } from 'nanoid';
+import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
 
 const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
 
@@ -68,7 +69,6 @@ function parseIBStatement(html: string) {
     // The subtotal row (總數): <tr class="subtotal"><td>...總數</td>...same pattern...
 
     let cashBalance = 0;
-    let interest = 0;
     let netEquity = 0;
     let managementFee = 0;
 
@@ -82,8 +82,6 @@ function parseIBStatement(html: string) {
 
         if (label === '現金') {
             cashBalance = parseNumber(currentTotal);
-        } else if (label === '應計利息') {
-            interest = parseNumber(currentTotal);
         } else if (label === '總數') {
             netEquity = parseNumber(currentTotal);
         }
@@ -341,7 +339,7 @@ function parseIBStatement(html: string) {
         year,
         userAlias,
         cashBalance,
-        interest,
+
         netEquity,
         managementFee,
         deposit,
@@ -384,9 +382,9 @@ export async function POST(request: NextRequest) {
 
         // Check for existing record
         const existing = await db.prepare(
-            'SELECT id, net_equity, cash_balance, interest, management_fee, deposit FROM DAILY_NET_EQUITY WHERE user_id = ? AND date = ?'
+            'SELECT id, net_equity, cash_balance, management_fee, deposit FROM DAILY_NET_EQUITY WHERE user_id = ? AND date = ?'
         ).bind(userResult.id, parsed.date).first<{
-            id: number; net_equity: number; cash_balance: number; interest: number; management_fee: number; deposit: number;
+            id: number; net_equity: number; cash_balance: number; management_fee: number; deposit: number;
         }>();
 
         // Preview mode: check for new positions and return parsed values
@@ -574,7 +572,7 @@ export async function POST(request: NextRequest) {
                     userAlias: parsed.userAlias,
                     netEquity: parsed.netEquity,
                     cashBalance: parsed.cashBalance,
-                    interest: parsed.interest,
+
                     managementFee: parsed.managementFee,
                     deposit: parsed.deposit,
                     isYearStart: parsed.isYearStart,
@@ -585,7 +583,6 @@ export async function POST(request: NextRequest) {
                 existing: existing ? {
                     netEquity: existing.net_equity,
                     cashBalance: existing.cash_balance,
-                    interest: existing.interest,
                     managementFee: existing.management_fee,
                     deposit: existing.deposit,
                 } : null,
@@ -603,37 +600,49 @@ export async function POST(request: NextRequest) {
                     initial_cost = ?,
                     initial_cash = ?,
                     initial_management_fee = ?,
-                    initial_interest = ?,
                     updated_at = unixepoch()
                 WHERE id = ?
             `).bind(
                 parsed.netEquity,
                 parsed.cashBalance,
                 parsed.managementFee,
-                parsed.interest,
                 userResult.id
             ).run();
             yearStartUpdated = true;
         } else {
+            // Calculate daily interest using FRED rate
+            let dailyInterest = 0;
+            if (parsed.cashBalance < 0) {
+                try {
+                    const fredRateMap = await fetchFredRatesForYear(parsed.year);
+                    dailyInterest = calculateDailyInterest(parsed.cashBalance, parsed.date, fredRateMap);
+                } catch (err) {
+                    console.warn('Failed to fetch FRED rates for IB import, using fallback:', err);
+                    const loanAmount = Math.abs(parsed.cashBalance);
+                    const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
+                    dailyInterest = -(loanAmount * (4.33 + spread) / 100 / 360);
+                }
+            }
+
             // Normal day: upsert daily net equity record
             await db.prepare(`
-                INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, interest, deposit, management_fee, year, updated_at)
+                INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, daily_interest, year, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
                 ON CONFLICT(user_id, date) DO UPDATE SET
                     net_equity = excluded.net_equity,
                     cash_balance = excluded.cash_balance,
-                    interest = excluded.interest,
                     deposit = excluded.deposit,
                     management_fee = excluded.management_fee,
+                    daily_interest = excluded.daily_interest,
                     updated_at = unixepoch()
             `).bind(
                 userResult.id,
                 parsed.date,
                 parsed.netEquity,
                 parsed.cashBalance,
-                parsed.interest,
                 parsed.deposit,
                 parsed.managementFee,
+                dailyInterest,
                 parsed.year
             ).run();
         }

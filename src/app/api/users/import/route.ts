@@ -30,7 +30,7 @@ interface ImportUser {
     initial_cash?: number | null;
     initial_management_fee?: number | null;
     initial_deposit?: number | null;
-    initial_interest?: number | null;
+
     start_date?: string | null;
     fee_exempt_months?: number | null;
     year?: number | null;
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
                     // Update existing user
                     await db.prepare(
                         `UPDATE USERS SET 
-                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, initial_interest = ?, start_date = ?, fee_exempt_months = ?, updated_at = unixepoch()
+                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, start_date = ?, fee_exempt_months = ?, updated_at = unixepoch()
                          WHERE id = ?`
                     ).bind(
                         user.role,
@@ -117,7 +117,6 @@ export async function POST(req: NextRequest) {
                         user.initial_cash ?? 0,
                         user.initial_management_fee ?? 0,
                         user.initial_deposit ?? 0,
-                        user.initial_interest ?? 0,
                         user.start_date || null,
                         user.fee_exempt_months ?? 0,
                         existing.id
@@ -126,8 +125,8 @@ export async function POST(req: NextRequest) {
                 } else {
                     // Insert new user
                     const { meta } = await db.prepare(
-                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, year, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, year, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                     ).bind(
                         user.user_id || null,
                         user.email,
@@ -141,7 +140,6 @@ export async function POST(req: NextRequest) {
                         user.initial_cash ?? 0,
                         user.initial_management_fee ?? 0,
                         user.initial_deposit ?? 0,
-                        user.initial_interest ?? 0,
                         user.start_date || null,
                         user.fee_exempt_months ?? 0,
                         targetYear
@@ -176,7 +174,7 @@ export async function POST(req: NextRequest) {
                         if (!existingRecord) {
                             try {
                                 await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, exposure_adjustment, year, created_at, updated_at)
+                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, daily_interest, exposure_adjustment, year, created_at, updated_at)
                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
@@ -185,7 +183,7 @@ export async function POST(req: NextRequest) {
                                     record.cash_balance ?? 0,
                                     record.deposit ?? 0,
                                     record.management_fee ?? 0,
-                                    record.interest ?? 0,
+                                    record.daily_interest ?? 0,
                                     record.exposure_adjustment || 'none',
                                     recordYear
                                 ).run();

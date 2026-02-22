@@ -19,6 +19,7 @@ interface UserSummary {
     initial_cost: number;
     current_net_equity: number;
     current_cash_balance?: number;
+    total_daily_interest?: number;
     open_put_covered_capital?: number;
     total_deposit?: number;
     top_holdings?: Array<{
@@ -56,6 +57,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
         netProfit: true,
         potentialMargin: true,
         cashBalance: true,
+        totalInterest: true,
         returnRate: true,
         maxDrawdown: true,
         annualizedReturn: true,
@@ -515,6 +517,30 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             )}
                                         >
                                             {formatMoney(cashBalance)}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
+
+                        {/* 14.5. Total Interest */}
+                        {visibleRows.totalInterest && (
+                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                    <RowToggleIcon rowKey="totalInterest" visible={visibleRows.totalInterest} />
+                                    利息總合
+                                </td>
+                                {users.filter(isColumnVisible).map(user => {
+                                    const totalInterest = (user as any).total_daily_interest || 0;
+                                    return (
+                                        <td
+                                            key={user.id}
+                                            className={cn(
+                                                "h-7 py-1 px-2 text-center",
+                                                totalInterest < 0 && "bg-pink-50"
+                                            )}
+                                        >
+                                            {formatMoney(totalInterest)}
                                         </td>
                                     );
                                 })}

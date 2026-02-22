@@ -271,6 +271,7 @@ export default function AdminUsersPage() {
         report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
         report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
+        report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
         report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
         report += `----------------------------------------\n`;
@@ -1450,7 +1451,7 @@ export default function AdminUsersPage() {
                         <Textarea
                             value={reportDialog?.report || ''}
                             readOnly
-                            className="font-mono text-sm min-h-[600px] resize-none"
+                            className="font-mono text-sm min-h-[650px] resize-none"
                         />
                     </DialogContent>
                 </Dialog>
@@ -1640,11 +1641,7 @@ export default function AdminUsersPage() {
                                                         <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.cashBalance)}</td>
                                                         {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.cashBalance)}</td>}
                                                     </tr>
-                                                    <tr className="border-t">
-                                                        <td className="p-1.5">應計利息</td>
-                                                        <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.interest)}</td>
-                                                        {ibImportPreview.existing && <td className="text-right p-1.5 font-mono text-muted-foreground">{formatIbMoney(ibImportPreview.existing.interest)}</td>}
-                                                    </tr>
+
                                                     <tr className="border-t">
                                                         <td className="p-1.5">顧問費用</td>
                                                         <td className="text-right p-1.5 font-mono">{formatIbMoney(ibImportPreview.parsed.managementFee)}</td>

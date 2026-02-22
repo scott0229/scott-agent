@@ -52,7 +52,8 @@ interface PerformanceRecord {
     net_equity: number;
     cash_balance?: number | null;
     management_fee?: number | null;
-    interest?: number | null;
+
+    daily_interest?: number | null;
     daily_deposit: number;
     daily_return: number;
     nav_ratio: number;
@@ -73,7 +74,7 @@ export default function NetEquityDetailPage() {
     const [initialCost, setInitialCost] = useState<number>(0);
     const [initialCash, setInitialCash] = useState<number>(0);
     const [initialManagementFee, setInitialManagementFee] = useState<number>(0);
-    const [initialInterest, setInitialInterest] = useState<number>(0);
+
     const [initialDeposit, setInitialDeposit] = useState<number>(0);
     const [userDbId, setUserDbId] = useState<number | null>(null);
     const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
@@ -163,7 +164,7 @@ export default function NetEquityDetailPage() {
                             setInitialCost((user as any).initial_cost || 0);
                             setInitialCash((user as any).initial_cash || 0);
                             setInitialManagementFee((user as any).initial_management_fee || 0);
-                            setInitialInterest((user as any).initial_interest || 0);
+
                             setInitialDeposit((user as any).initial_deposit || 0);
                             setUserDbId(user.id);
                         } else {
@@ -307,7 +308,7 @@ export default function NetEquityDetailPage() {
                 setInitialCost(0);
                 setInitialCash(0);
                 setInitialManagementFee(0);
-                setInitialInterest(0);
+
                 setInitialDeposit(0);
                 fetchRecords(); // Refresh data
             } else {
@@ -484,7 +485,8 @@ export default function NetEquityDetailPage() {
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>
-                            <TableHead className="text-center font-bold text-foreground">應計利息</TableHead>
+
+                            <TableHead className="text-center font-bold text-foreground">每日利息</TableHead>
                             <TableHead className="text-center font-bold text-foreground">顧問費用</TableHead>
                             <TableHead className="text-center font-bold text-foreground">存款和取款</TableHead>
                             <TableHead className="text-center font-bold text-foreground">當日報酬率</TableHead>
@@ -523,9 +525,10 @@ export default function NetEquityDetailPage() {
                                         <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
-                                <TableCell className={`text-center py-1 ${record.interest !== null && record.interest !== undefined && record.interest < 0 ? 'bg-red-50' : ''}`}>
-                                    {record.interest !== null && record.interest !== undefined && record.interest !== 0 ? (
-                                        formatMoney(record.interest)
+
+                                <TableCell className="text-center py-1">
+                                    {record.daily_interest !== null && record.daily_interest !== undefined && record.daily_interest !== 0 ? (
+                                        record.daily_interest.toFixed(1)
                                     ) : (
                                         "0"
                                     )}
@@ -627,9 +630,8 @@ export default function NetEquityDetailPage() {
                                 </div>
                             </TableCell>
                             <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-red-50' : ''}`}>{formatMoney(initialCash)}</TableCell>
-                            <TableCell className={`text-center font-mono font-normal ${initialInterest < 0 ? 'bg-red-50' : ''}`}>
-                                {formatMoney(initialInterest)}
-                            </TableCell>
+
+                            <TableCell className="text-center font-mono font-normal text-muted-foreground">-</TableCell>
                             <TableCell className="text-center font-mono font-normal">
                                 {formatMoney(initialManagementFee)}
                             </TableCell>
@@ -669,14 +671,15 @@ export default function NetEquityDetailPage() {
                             </TableCell>
                             <TableCell className="text-center"></TableCell>
                             <TableCell className="text-center"></TableCell>
+
                             <TableCell className="text-center font-mono">
                                 {(() => {
-                                    // Accrued interest is a running balance, use the latest record's value
-                                    const latestInterest = records.length > 0 ? (records[0].interest || 0) : 0;
+                                    // Sum all daily_interest values
+                                    const totalDailyInterest = records.reduce((s, r) => s + (r.daily_interest || 0), 0);
                                     return (
                                         <div className="flex justify-center">
-                                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
-                                                {formatMoney(latestInterest)}
+                                            <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-50 border border-orange-200">
+                                                {totalDailyInterest.toFixed(1)}
                                             </Badge>
                                         </div>
                                     );
@@ -739,8 +742,7 @@ export default function NetEquityDetailPage() {
                     initialCost,
                     initialCash,
                     initialManagementFee,
-                    initialDeposit,
-                    initialInterest: initialInterest // Assuming dialog supports it, need to check next
+                    initialDeposit
                 }}
                 onSuccess={() => checkAuthAndFetch()}
             />

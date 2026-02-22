@@ -627,7 +627,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, initialInterest, startDate, feeExemptMonths } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, startDate, feeExemptMonths } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -640,7 +640,7 @@ export async function PUT(req: NextRequest) {
             initialCash?: number;
             initialManagementFee?: number;
             initialDeposit?: number;
-            initialInterest?: number;
+
             startDate?: string;
             feeExemptMonths?: number;
         };
@@ -732,10 +732,7 @@ export async function PUT(req: NextRequest) {
             params.push(initialDeposit);
         }
 
-        if (typeof initialInterest !== 'undefined') {
-            updateQuery += ', initial_interest = ?';
-            params.push(initialInterest);
-        }
+
 
         if (typeof startDate !== 'undefined') {
             updateQuery += ', start_date = ?';

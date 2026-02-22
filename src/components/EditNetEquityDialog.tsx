@@ -35,7 +35,7 @@ interface PerformanceRecord {
     net_equity: number;
     cash_balance?: number | null;
     management_fee?: number | null;
-    interest?: number | null;
+
 }
 
 interface EditNetEquityDialogProps {
@@ -99,7 +99,6 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
         cash_balance: '',
         management_fee: '',
         deposit: '',
-        interest: '',
         exposure_adjustment: 'none'
     });
     const [error, setError] = useState<string | null>(null);
@@ -115,7 +114,6 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 cash_balance: (recordToEdit.cash_balance !== null && recordToEdit.cash_balance !== undefined) ? formatNumber(recordToEdit.cash_balance.toString()) : '',
                 management_fee: (recordToEdit.management_fee !== null && recordToEdit.management_fee !== undefined) ? formatNumber(recordToEdit.management_fee.toString()) : '0',
                 deposit: (recordToEdit as any).deposit !== undefined && (recordToEdit as any).deposit !== null ? formatNumber((recordToEdit as any).deposit.toString()) : '0',
-                interest: (recordToEdit.interest !== null && recordToEdit.interest !== undefined) ? formatNumber(recordToEdit.interest.toString()) : '0',
                 exposure_adjustment: (recordToEdit as any).exposure_adjustment || 'none'
             });
         }
@@ -136,7 +134,6 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 cash_balance: formData.cash_balance ? parseNumber(formData.cash_balance) : null,
                 management_fee: formData.management_fee ? parseNumber(formData.management_fee) : 0,
                 deposit: formData.deposit ? parseNumber(formData.deposit) : 0,
-                interest: formData.interest ? parseNumber(formData.interest) : 0,
                 exposure_adjustment: formData.exposure_adjustment
             };
 
@@ -279,29 +276,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                         />
                     </div>
 
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="interest" className="text-right">應計利息</Label>
-                        <Input
-                            id="interest"
-                            type="text"
-                            className="col-span-3"
-                            value={formData.interest}
-                            onCompositionStart={() => isComposing.current = true}
-                            onCompositionEnd={(e) => {
-                                isComposing.current = false;
-                                setFormData({ ...formData, interest: formatNumber(e.currentTarget.value) });
-                            }}
-                            onChange={(e) => {
-                                if (isComposing.current) {
-                                    setFormData({ ...formData, interest: e.target.value });
-                                    return;
-                                }
-                                const formatted = formatNumber(e.target.value);
-                                setFormData({ ...formData, interest: formatted });
-                            }}
-                            autoComplete="off"
-                        />
-                    </div>
+
 
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="deposit" className="text-right">存款和取款</Label>

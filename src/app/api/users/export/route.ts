@@ -24,7 +24,7 @@ async function checkAdmin(req: NextRequest) {
 async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true, includeStrategies: boolean = true) {
     const db = await getDb();
 
-    let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, initial_interest, start_date, fee_exempt_months
+    let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months
             FROM USERS 
             WHERE email != 'admin'`;
 
@@ -90,7 +90,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(interest, 0) as interest, exposure_adjustment, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(daily_interest, 0) as daily_interest, exposure_adjustment, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;

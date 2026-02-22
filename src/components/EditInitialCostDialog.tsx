@@ -21,7 +21,7 @@ interface EditInitialCostDialogProps {
         initialCash: number;
         initialManagementFee: number;
         initialDeposit: number;
-        initialInterest: number;
+
     };
 }
 
@@ -71,7 +71,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
         initialCash: '',
         initialManagementFee: '',
         initialDeposit: '',
-        initialInterest: ''
+
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -84,7 +84,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                 initialCash: formatNumber(initialValues.initialCash.toString()),
                 initialManagementFee: formatNumber(initialValues.initialManagementFee.toString()),
                 initialDeposit: formatNumber(initialValues.initialDeposit.toString()),
-                initialInterest: formatNumber(initialValues.initialInterest.toString())
+
             });
         }
     }, [open, initialValues]);
@@ -115,7 +115,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                 initialCash: parseNumber(formData.initialCash),
                 initialManagementFee: parseNumber(formData.initialManagementFee),
                 initialDeposit: parseNumber(formData.initialDeposit),
-                initialInterest: parseNumber(formData.initialInterest)
+
             };
 
             const res = await fetch('/api/users', {
@@ -216,21 +216,7 @@ export function EditInitialCostDialog({ open, onOpenChange, onSuccess, userDbId,
                         />
                     </div>
 
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="initial_interest" className="text-right">應計利息</Label>
-                        <Input
-                            id="initial_interest"
-                            type="text"
-                            className="col-span-3"
-                            value={formData.initialInterest}
-                            onCompositionStart={() => isComposing.current = true}
-                            onCompositionEnd={(e) => {
-                                isComposing.current = false;
-                                handleChange('initialInterest', e.currentTarget.value);
-                            }}
-                            onChange={(e) => handleChange('initialInterest', e.target.value)}
-                        />
-                    </div>
+
 
                     <div className="flex justify-end gap-3 mt-4">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

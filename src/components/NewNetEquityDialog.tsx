@@ -104,7 +104,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
     const [equity, setEquity] = useState('');
     const [cashBalance, setCashBalance] = useState('');
     const [managementFee, setManagementFee] = useState('');
-    const [interest, setInterest] = useState('');
+
     const [deposit, setDeposit] = useState('');
     const [exposureAdjustment, setExposureAdjustment] = useState('none');
     const [isLoading, setIsLoading] = useState(false);
@@ -161,7 +161,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                     cash_balance: cashBalance ? parseNumber(cashBalance) : null,
                     deposit: deposit ? parseNumber(deposit) : 0,
                     management_fee: managementFee ? parseNumber(managementFee) : 0,
-                    interest: interest ? parseNumber(interest) : 0,
+
                     year: selectedYear !== 'All' ? selectedYear : undefined,
                     exposure_adjustment: exposureAdjustment
                 }),
@@ -179,7 +179,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
             setEquity('');
             setCashBalance('');
             setManagementFee('');
-            setInterest('');
+
             setDeposit('');
             setExposureAdjustment('none');
             setDate(getNextBusinessDay(new Date())); // Reset to fallback date
@@ -311,31 +311,7 @@ export function NewNetEquityDialog({ open, onOpenChange, userId, year: selectedY
                             autoComplete="off"
                         />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="interest" className="text-right">
-                            應計利息
-                        </Label>
-                        <Input
-                            id="interest"
-                            type="text"
-                            className="col-span-3"
-                            value={interest}
-                            onCompositionStart={() => isComposing.current = true}
-                            onCompositionEnd={(e) => {
-                                isComposing.current = false;
-                                setInterest(formatNumber(e.currentTarget.value));
-                            }}
-                            onChange={(e) => {
-                                if (isComposing.current) {
-                                    setInterest(e.target.value);
-                                    return;
-                                }
-                                const formatted = formatNumber(e.target.value);
-                                setInterest(formatted);
-                            }}
-                            autoComplete="off"
-                        />
-                    </div>
+
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="deposit" className="text-right">
                             存款和取款

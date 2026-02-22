@@ -119,7 +119,7 @@ export async function DELETE(
 
         if (mode === 'clear_records') {
             // Also reset account initial values
-            await db.prepare('UPDATE USERS SET initial_cost = 0, initial_cash = 0, initial_interest = 0, initial_management_fee = 0, initial_deposit = 0 WHERE id = ?').bind(id).run();
+            await db.prepare('UPDATE USERS SET initial_cost = 0, initial_cash = 0, initial_management_fee = 0, initial_deposit = 0 WHERE id = ?').bind(id).run();
             return NextResponse.json({ success: true, mode: 'clear_records' });
         }
 
