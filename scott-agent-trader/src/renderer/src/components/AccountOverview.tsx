@@ -403,7 +403,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                                             <div className="metric" style={{ backgroundColor: '#ffe4e6', borderRadius: '4px' }} title={`BM ${fedRate.toFixed(2)}% + ${spread}% = ${(fedRate + spread).toFixed(2)}% p.a.`}>
                                                 <span className="metric-label">日利息</span>
                                                 <span className="metric-value" style={{ color: '#b91c1c' }}>
-                                                    -{dailyInterest.toFixed(2)}
+                                                    -{dailyInterest.toFixed(0)}
                                                 </span>
                                             </div>
                                         )
