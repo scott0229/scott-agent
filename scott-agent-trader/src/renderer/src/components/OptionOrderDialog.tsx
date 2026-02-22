@@ -809,7 +809,18 @@ export default function OptionOrderDialog({
 
                 {/* Footer */}
                 <div className="roll-dialog-footer">
-                    <button className="roll-dialog-cancel" onClick={onClose}>取消</button>
+                    <button className="roll-dialog-cancel" onClick={() => {
+                        setSelExpiry('')
+                        setSelStrike(null)
+                        setSelRight(null)
+                        setLimitPrice('')
+                        const initQty: Record<string, string> = {}
+                        accounts.forEach(a => { initQty[a.accountId] = '' })
+                        setQtys(initQty)
+                        setCheckedAccounts({})
+                        setOrderStatuses({})
+                        setOrderSubmitted(false)
+                    }}>取消</button>
                     <button
                         className="roll-dialog-confirm"
                         disabled={orderSubmitted ? false : (!canSubmit || submitting)}

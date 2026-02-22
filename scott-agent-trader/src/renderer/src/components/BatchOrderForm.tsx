@@ -266,7 +266,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                     />
                                 </th>
                                 <th style={{ width: '20%', textAlign: 'left' }}>帳號</th>
-                                <th style={{ width: '9%' }}>淨值</th>
+
                                 <th style={{ width: '9%' }}>現金</th>
 
                                 <th style={{ width: '7%' }}>潛在融資</th>
@@ -316,7 +316,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                                 return next
                                             })}
                                         >{acct.alias || acct.accountId}</td>
-                                        <td>{acct.netLiquidation.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+
                                         <td style={acct.totalCashValue < 0 ? { color: '#8b1a1a' } : undefined}>{acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
 
                                         <td>{(() => {
@@ -341,7 +341,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                                         })()}</td>
                                         {action === 'SELL' && <td>{stockHolding}</td>}
                                         {action === 'SELL' && <td>{stockAvgCost > 0 ? stockAvgCost.toFixed(2) : '-'}</td>}
-                                        {isChecked ? (
+                                        {isChecked && !(action === 'SELL' && stockHolding === 0) ? (
                                             <>
                                                 <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                                 <td>{symbol.toUpperCase() || '-'}</td>
@@ -379,7 +379,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                     <button
                         onClick={() => setShowConfirm(true)}
                         className="btn btn-primary"
-                        disabled={!symbol.trim() || totalAllocated === 0 || submitting || checkedAccounts.size !== Object.keys(allocations).length}
+                        disabled={!symbol.trim() || totalAllocated === 0 || submitting}
                     >
                         預覽下單
                     </button>
@@ -391,19 +391,19 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
                         <table className="allocation-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '1%', whiteSpace: 'nowrap' }}></th>
-                                    <th style={{ width: '15%' }}>帳戶</th>
+
+                                    <th style={{ width: '22%' }}>帳戶</th>
                                     <th style={{ width: '8%' }}>方向</th>
                                     <th style={{ width: '10%' }}>標的</th>
                                     <th style={{ width: '10%' }}>限價</th>
                                     <th style={{ width: '8%' }}>數量</th>
                                     <th style={{ width: '12%' }}>新潛在融資</th>
-                                    <th style={{ width: '20%' }}>狀態</th>
+                                    <th style={{ width: '12%' }}>狀態</th>
                                     {orderResults.length > 0 && <th style={{ width: '8%' }}>操作</th>}
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(allocations).map(([accountId, qty], index) => {
+                                {Object.entries(allocations).map(([accountId, qty]) => {
                                     const acct = targetAccounts.find((a) => a.accountId === accountId)
                                     const price = parseFloat(limitPrice) || 0
                                     const orderValue = qty * price
@@ -416,7 +416,7 @@ export default function BatchOrderForm({ connected, accounts, positions }: Batch
 
                                     return (
                                         <tr key={accountId}>
-                                            <td>{index + 1}.</td>
+
                                             <td style={{ fontWeight: 'bold' }}>{acct?.alias || accountId}</td>
                                             <td style={{ color: action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>{action === 'BUY' ? '買入' : '賣出'}</td>
                                             <td>{symbol.toUpperCase()}</td>
