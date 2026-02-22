@@ -67,6 +67,10 @@ const ibApi = {
   cancelOrder: (orderId: number): Promise<void> => ipcRenderer.invoke('ib:cancelOrder', orderId),
   getFedFundsRate: (): Promise<number> => ipcRenderer.invoke('rates:getFedFundsRate'),
 
+  // Settings
+  getSettings: (): Promise<any> => ipcRenderer.invoke('settings:get'),
+  putSettings: (key: string, value: unknown): Promise<any> => ipcRenderer.invoke('settings:put', key, value),
+
   // Cleanup
   removeAllListeners: (): void => {
     ipcRenderer.removeAllListeners('ib:connectionStatus')

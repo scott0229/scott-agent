@@ -13,7 +13,8 @@ interface SettingsPanelProps {
     onSetMarginLimit: (limit: number) => void
     watchSymbols: string[]
     onSetWatchSymbol: (index: number, value: string) => void
-
+    symbolOptionTypes: Record<string, { cc: boolean; pp: boolean }>
+    onSetSymbolOptionType: (symbol: string, type: 'cc' | 'pp', enabled: boolean) => void
 }
 
 function SectionHeader({ title, onToggle }: { title: string; expanded: boolean; onToggle: () => void }) {
@@ -36,7 +37,9 @@ export default function SettingsPanel({
     marginLimit,
     onSetMarginLimit,
     watchSymbols,
-    onSetWatchSymbol
+    onSetWatchSymbol,
+    symbolOptionTypes,
+    onSetSymbolOptionType
 }: SettingsPanelProps): JSX.Element | null {
     const [limitInput, setLimitInput] = useState(String(marginLimit))
     const [showRisk, setShowRisk] = useState(true)
@@ -74,23 +77,39 @@ export default function SettingsPanel({
                                     setLimitInput(String(marginLimit))
                                 }
                             }}
-                            style={{ width: 80, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em', textAlign: 'center' }}
+                            style={{ width: 100, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em', textAlign: 'center' }}
                         />
                     </div>}
 
                     <SectionHeader title="可交易標的" expanded={showSymbols} onToggle={() => setShowSymbols(v => !v)} />
-                    {showSymbols && LABELS.map((label, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 8px' }}>
-                            <label style={{ fontSize: '0.95em', color: '#555' }}>標的{label}</label>
-                            <input
-                                type="text"
-                                value={watchSymbols[i] || ''}
-                                onChange={(e) => onSetWatchSymbol(i, e.target.value.toUpperCase())}
-                                placeholder=""
-                                style={{ width: 100, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em', textAlign: 'center', textTransform: 'uppercase' }}
-                            />
-                        </div>
-                    ))}
+                    {showSymbols && LABELS.map((label, i) => {
+                        const sym = watchSymbols[i] || ''
+                        const opts = sym ? (symbolOptionTypes[sym] || { cc: true, pp: true }) : { cc: true, pp: true }
+                        return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 10, padding: '0 8px', gap: 10 }}>
+                                <label style={{ fontSize: '0.95em', color: '#555', minWidth: 50 }}>標的{label}</label>
+                                <input
+                                    type="text"
+                                    value={sym}
+                                    onChange={(e) => onSetWatchSymbol(i, e.target.value.toUpperCase())}
+                                    placeholder=""
+                                    style={{ width: 80, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.95em', textAlign: 'center', textTransform: 'uppercase', marginLeft: 'auto' }}
+                                />
+                                {sym && (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.9em', color: '#555', cursor: 'pointer', userSelect: 'none' }}>
+                                            <input type="checkbox" checked={opts.cc} onChange={(e) => onSetSymbolOptionType(sym, 'cc', e.target.checked)} />
+                                            CC
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.9em', color: '#555', cursor: 'pointer', userSelect: 'none' }}>
+                                            <input type="checkbox" checked={opts.pp} onChange={(e) => onSetSymbolOptionType(sym, 'pp', e.target.checked)} />
+                                            PP
+                                        </label>
+                                    </span>
+                                )}
+                            </div>
+                        )
+                    })}
 
                     <SectionHeader title="帳戶顯示" expanded={showAccounts} onToggle={() => setShowAccounts(v => !v)} />
                     {showAccounts && (

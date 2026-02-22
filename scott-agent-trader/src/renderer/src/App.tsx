@@ -27,7 +27,7 @@ function App(): JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType } = useTraderSettings()
+  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType, symbolOptionTypes, setSymbolOptionType, saveAllSettings } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -130,7 +130,7 @@ function App(): JSX.Element {
 
       <SettingsPanel
         open={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={() => { saveAllSettings(); setShowSettings(false) }}
         accounts={accounts}
         hiddenAccounts={hiddenAccounts}
         onToggleAccount={toggleHiddenAccount}
@@ -138,6 +138,8 @@ function App(): JSX.Element {
         onSetMarginLimit={setMarginLimit}
         watchSymbols={watchSymbols}
         onSetWatchSymbol={setWatchSymbol}
+        symbolOptionTypes={symbolOptionTypes}
+        onSetSymbolOptionType={setSymbolOptionType}
       />
     </div>
   )

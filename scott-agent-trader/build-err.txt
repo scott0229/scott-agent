@@ -1,0 +1,71 @@
+  ??electron-builder  version=26.7.0 os=10.0.26200
+  ??loaded configuration  file=C:\Users\scott\my project\scott-agent\scott-agent-trader\electron-builder.yml
+  ??effective config  config=directories:
+  output: dist
+  buildResources: build
+appId: com.electron.app
+productName: scott-agent-trader
+files:
+  - filter:
+      - '!**/.vscode/*'
+      - '!src/*'
+      - '!electron.vite.config.{js,ts,mjs,cjs}'
+      - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+      - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+      - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+win:
+  executableName: scott-agent-trader
+  forceCodeSigning: false
+  signDll: false
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: electronjs.org
+  category: Utility
+appImage:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: generic
+  url: https://example.com/auto-updates
+
+  漼?Invalid configuration object. electron-builder 26.7.0 has been initialized using a configuration object that does not match the API schema.
+ - configuration.win has an unknown property 'signDll'. These properties are valid:
+   object { appId?, artifactName?, asar?, asarUnpack?, azureSignOptions?, compression?, cscKeyPassword?, cscLink?, defaultArch?, detectUpdateChannel?, disableDefaultIgnoredFiles?, electronLanguages?, electronUpdaterCompatibility?, executableName?, extraFiles?, extraResources?, fileAssociations?, files?, forceCodeSigning?, generateUpdatesFilesForAllChannels?, icon?, legalTrademarks?, protocols?, publish?, releaseInfo?, requestedExecutionLevel?, signAndEditExecutable?, signExts?, signtoolOptions?, target?, verifyUpdateCodeSignature? }
+     How to fix:
+     1. Open https://www.electron.build/win
+     2. Search the option name on the page (or type in into Search to find across the docs).
+       * Not found? The option was deprecated or not exists (check spelling).
+       * Found? Check that the option in the appropriate place. e.g. "title" only in the "dmg", not in the root.
+  failedTask=build stackTrace=ValidationError: Invalid configuration object. electron-builder 26.7.0 has been initialized using a configuration object that does not match the API schema.
+ - configuration.win has an unknown property 'signDll'. These properties are valid:
+   object { appId?, artifactName?, asar?, asarUnpack?, azureSignOptions?, compression?, cscKeyPassword?, cscLink?, defaultArch?, detectUpdateChannel?, disableDefaultIgnoredFiles?, electronLanguages?, electronUpdaterCompatibility?, executableName?, extraFiles?, extraResources?, fileAssociations?, files?, forceCodeSigning?, generateUpdatesFilesForAllChannels?, icon?, legalTrademarks?, protocols?, publish?, releaseInfo?, requestedExecutionLevel?, signAndEditExecutable?, signExts?, signtoolOptions?, target?, verifyUpdateCodeSignature? }
+     How to fix:
+     1. Open https://www.electron.build/win
+     2. Search the option name on the page (or type in into Search to find across the docs).
+       * Not found? The option was deprecated or not exists (check spelling).
+       * Found? Check that the option in the appropriate place. e.g. "title" only in the "dmg", not in the root.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                at validate (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\@develar\schema-utils\dist\validate.js:86:11)
+    at validateConfiguration (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\util\config\config.ts:239:3)
+    at Packager.validateConfig (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\packager.ts:398:5)
+    at Packager.build (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\packager.ts:406:5)
+    at executeFinally (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\builder-util\src\promise.ts:12:14)

@@ -167,6 +167,32 @@ function setupIpcHandlers(): void {
   ipcMain.handle('rates:getFedFundsRate', async () => {
     return getFedFundsRate()
   })
+
+  // Settings (proxy through main process to bypass CORS)
+  const SETTINGS_URL = 'https://scott-agent.com/api/trader-settings'
+  const SETTINGS_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
+
+  ipcMain.handle('settings:get', async () => {
+    try {
+      const res = await fetch(SETTINGS_URL)
+      return await res.json()
+    } catch {
+      return { settings: null }
+    }
+  })
+
+  ipcMain.handle('settings:put', async (_event, key: string, value: unknown) => {
+    try {
+      const res = await fetch(SETTINGS_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SETTINGS_API_KEY}` },
+        body: JSON.stringify({ key, value })
+      })
+      return await res.json()
+    } catch {
+      return { success: false }
+    }
+  })
 }
 
 // === App Lifecycle ===

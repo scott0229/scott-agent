@@ -1,20 +1,25 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
-const CLOUDFLARE_BASE = 'https://scott-agent.com'
-const DEFAULT_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
+declare global {
+    interface Window {
+        ibApi: {
+            getSettings: () => Promise<{ settings?: Record<string, unknown> }>
+            putSettings: (key: string, value: unknown) => Promise<any>
+            [key: string]: any
+        }
+    }
+}
 
 export function useTraderSettings() {
     const [marginLimit, setMarginLimitState] = useState<number>(1.3)
     const [watchSymbols, setWatchSymbolsState] = useState<string[]>([])
     const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>({})
     const [accountTypes, setAccountTypesState] = useState<Record<string, string>>({})
-    const apiKey = useRef<string>(DEFAULT_API_KEY)
-    const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [symbolOptionTypes, setSymbolOptionTypesState] = useState<Record<string, { cc: boolean; pp: boolean }>>({})
 
-    // On mount: fetch from Cloudflare D1 (single source of truth)
+    // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
     useEffect(() => {
-        fetch(`${CLOUDFLARE_BASE}/api/trader-settings`)
-            .then(r => r.json())
+        window.ibApi.getSettings()
             .then((data: { settings?: Record<string, unknown> }) => {
                 if (!data.settings) return
                 if (typeof data.settings.margin_limit === 'number') {
@@ -29,44 +34,40 @@ export function useTraderSettings() {
                 if (data.settings.account_types && typeof data.settings.account_types === 'object' && !Array.isArray(data.settings.account_types)) {
                     setAccountTypesState(data.settings.account_types as Record<string, string>)
                 }
+                if (data.settings.symbol_option_types && typeof data.settings.symbol_option_types === 'object' && !Array.isArray(data.settings.symbol_option_types)) {
+                    setSymbolOptionTypesState(data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>)
+                }
             })
             .catch(() => { /* offline — use defaults */ })
     }, [])
 
-    function syncToCloud(key: string, value: unknown) {
-        const k = apiKey.current
-        if (!k) return
-        fetch(`${CLOUDFLARE_BASE}/api/trader-settings`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${k}` },
-            body: JSON.stringify({ key, value })
-        }).catch(() => { /* silently fail */ })
-    }
-
-    function debounceSync(key: string, value: unknown) {
-        if (saveTimeout.current) clearTimeout(saveTimeout.current)
-        saveTimeout.current = setTimeout(() => syncToCloud(key, value), 800)
-    }
+    // Save ALL settings to cloud at once (called when settings panel closes)
+    const saveAllSettings = useCallback(() => {
+        window.ibApi.putSettings('margin_limit', marginLimit).catch(() => {})
+        window.ibApi.putSettings('watch_symbols', watchSymbols).catch(() => {})
+        window.ibApi.putSettings('account_aliases', accountAliases).catch(() => {})
+        window.ibApi.putSettings('account_types', accountTypes).catch(() => {})
+        window.ibApi.putSettings('symbol_option_types', symbolOptionTypes).catch(() => {})
+    }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes])
 
     const setMarginLimit = useCallback((v: number) => {
         setMarginLimitState(v)
-        debounceSync('margin_limit', v)
     }, [])
 
     const setWatchSymbol = useCallback((index: number, value: string) => {
         setWatchSymbolsState(prev => {
             const next = [...prev]
             next[index] = value
-            debounceSync('watch_symbols', next)
             return next
         })
     }, [])
 
-    // Called when IB returns aliases (merges with existing, syncs to cloud)
+    // Called when IB returns aliases (merges with existing, syncs to cloud immediately)
     const mergeAccountAliases = useCallback((incoming: Record<string, string>) => {
         setAccountAliasesState(prev => {
             const merged = { ...prev, ...incoming }
-            debounceSync('account_aliases', merged)
+            // Auto-sync aliases since they come from IB, not from user settings panel
+            window.ibApi.putSettings('account_aliases', merged).catch(() => {})
             return merged
         })
     }, [])
@@ -79,13 +80,18 @@ export function useTraderSettings() {
             } else {
                 delete next[accountId]
             }
-            debounceSync('account_types', next)
+            window.ibApi.putSettings('account_types', next).catch(() => {})
             return next
         })
     }, [])
 
-    const setApiKey = useCallback((key: string) => {
-        apiKey.current = key
+    const setSymbolOptionType = useCallback((symbol: string, type: 'cc' | 'pp', enabled: boolean) => {
+        setSymbolOptionTypesState(prev => {
+            const current = prev[symbol] || { cc: true, pp: true }
+            const next = { ...prev, [symbol]: { ...current, [type]: enabled } }
+            window.ibApi.putSettings('symbol_option_types', next).catch(() => {})
+            return next
+        })
     }, [])
 
     return {
@@ -93,6 +99,7 @@ export function useTraderSettings() {
         watchSymbols, setWatchSymbol,
         accountAliases, mergeAccountAliases,
         accountTypes, setAccountType,
-        setApiKey
+        symbolOptionTypes, setSymbolOptionType,
+        saveAllSettings
     }
 }

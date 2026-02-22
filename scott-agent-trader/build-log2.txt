@@ -1,0 +1,251 @@
+﻿  ??electron-builder  version=26.7.0 os=10.0.26200
+  ??loaded configuration  file=C:\Users\scott\my project\scott-agent\scott-agent-trader\electron-builder.yml
+  ??effective config  config=directories:
+  output: dist
+  buildResources: build
+appId: com.electron.app
+productName: scott-agent-trader
+files:
+  - filter:
+      - '!**/.vscode/*'
+      - '!src/*'
+      - '!electron.vite.config.{js,ts,mjs,cjs}'
+      - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+      - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+      - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+win:
+  executableName: scott-agent-trader
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: electronjs.org
+  category: Utility
+appImage:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: generic
+  url: https://example.com/auto-updates
+
+  ??no event listeners found  event=beforePack
+  ??skipped dependencies rebuild  reason=npmRebuild is set to false
+  ??packaging       platform=win32 arch=x64 electron=39.6.0 appOutDir=dist\win-unpacked
+  ??no custom electronDist provided, unpacking default Electron distribution
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe unpack-electron --configuration [{"platform":"win32","arch":"x64","version":"39.6.0"}] --output C:\Users\scott\my project\scott-agent\scott-agent-trader\dist\win-unpacked --distMacOsAppName Electron.app
+  ??map async       taskCount=2
+  ??map async       taskCount=1
+  ??map async       taskCount=75
+  ??exited          command=app-builder.exe code=0 pid=10968
+  ??no event listeners found  event=afterExtract
+  ??spawning        command=npm prefix -w cwd=C:\Users\scott\my project\scott-agent\scott-agent-trader
+  ??exited          command=npm code=1 pid=9048
+  ??searching for node modules  pm=npm searchDir=C:\Users\scott\my project\scott-agent\scott-agent-trader
+node.exe : (node:9444) [DEP0190] DeprecationWarning: Passing args t
+o a child process with shell option true can lead to security vulne
+rabilities, as the arguments are not escaped, only concatenated.
+位於 線路:1 字元:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/nod
+e_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~
+    + CategoryInfo          : NotSpecified: ((node:9444) [DE...y c 
+   oncatenated.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was c
+reated)
+  ??node modules collection complete  packageName=scott-agent-trader depCount=10
+  ??collected node modules  pm=npm nodeModules=[{"name":"@electron-toolkit/preload","version":"3.0.2","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\@electron-toolkit\\preload"},{"name":"@electron-toolkit/utils","version":"4.0.0","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\@electron-toolkit\\utils"},{"name":"@stoqey/ib","version":"1.5.3","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\@stoqey\\ib"},{"name":"colors","version":"1.4.0","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\colors"},{"name":"command-buffer","version":"0.1.0","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\command-buffer"},{"name":"dotenv","version":"16.6.1","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\dotenv"},{"name":"eventemitter3","version":"5.0.4","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\eventemitter3"},{"name":"function-rate-limit","version":"1.1.0","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\function-rate-limit"},{"name":"rxjs","version":"7.8.2","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\rxjs"},{"name":"tslib","version":"2.8.1","dir":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\node_modules\\tslib"}]
+  ??identified module  dep=@electron-toolkit/preload from=node_modules\@electron-toolkit\preload to=dist\win-unpacked\resources\app\node_modules\@electron-toolkit\preload filesCount=4
+  ??identified module  dep=@electron-toolkit/utils from=node_modules\@electron-toolkit\utils to=dist\win-unpacked\resources\app\node_modules\@electron-toolkit\utils filesCount=6
+  ??identified module  dep=@stoqey/ib from=node_modules\@stoqey\ib to=dist\win-unpacked\resources\app\node_modules\@stoqey\ib filesCount=420
+  ??identified module  dep=colors from=node_modules\colors to=dist\win-unpacked\resources\app\node_modules\colors filesCount=16
+  ??identified module  dep=command-buffer from=node_modules\command-buffer to=dist\win-unpacked\resources\app\node_modules\command-buffer filesCount=2
+  ??identified module  dep=dotenv from=node_modules\dotenv to=dist\win-unpacked\resources\app\node_modules\dotenv filesCount=8
+  ??identified module  dep=eventemitter3 from=node_modules\eventemitter3 to=dist\win-unpacked\resources\app\node_modules\eventemitter3 filesCount=10
+  ??identified module  dep=function-rate-limit from=node_modules\function-rate-limit to=dist\win-unpacked\resources\app\node_modules\function-rate-limit filesCount=3
+  ??identified module  dep=rxjs from=node_modules\rxjs to=dist\win-unpacked\resources\app\node_modules\rxjs filesCount=2025
+  ??identified module  dep=tslib from=node_modules\tslib to=dist\win-unpacked\resources\app\node_modules\tslib filesCount=11
+  ??updating asar integrity executable resource  executablePath=dist\win-unpacked\scott-agent-trader.exe
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe icon --format ico --root C:\Users\scott\my project\scott-agent\scott-agent-trader\build --root C:\Users\scott\my project\scott-agent\scott-agent-trader --out C:\Users\scott\my project\scott-agent\scott-agent-trader\dist\.icon-ico
+  ??path resolved   path=C:\Users\scott\my project\scott-agent\scott-agent-trader\build\icon.ico outputFormat=ico
+  ??exited          command=app-builder.exe code=0 pid=18620 out={"icons":[{"file":"C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\build\\icon.ico","size":256}],"isFallback":false}
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe rcedit --args ["C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\dist\\win-unpacked\\scott-agent-trader.exe","--set-version-string","FileDescription","scott-agent-trader","--set-version-string","ProductName","scott-agent-trader","--set-version-string","LegalCopyright","Copyright 穢 2026 example.com","--set-file-version","1.0.0","--set-p 69538d6df69c62000b9f4d0237e6179fd7d59cdffc225ba6285742a123801b07 (sha256 hash) (sha256 hash) project\\scott-agent\\scott-agent-trader\\build\\icon.ico"]
+  ??computing effective URL  initialUrl=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                             currentUrl=https://release-assets.githubusercontent.com/github-production-release-asset/65527128/f73f2200-5d53-11ea-8264-ddd345f11ee4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-02-22T13%3A01%3A33Z&rscd=attachment%3B+filename%3DwinCodeSign-2.6.0.7z&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-02-22T12%3A01%3A14Z&ske=2026-02-22T13%3A01%3A33Z&sks=b&skv=2018-11-09&sig=Xo49wwNUbvlEvhpYIqhUh8EDyE6bsP%2Bsu%2BD0vb6A%2F%2BA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3MTc2MzYwNCwibmJmIjoxNzcxNzYzMzA0LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.o8LahQnNN6TOzYtE1V4U_u_Yfa8dENq5dgUHlKodz10&response-content-disposition=attachment%3B%20filename%3DwinCodeSign-2.6.0.7z&response-content-type=application%2Foctet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z length=5635384 contentType=application/octet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z size=5.6 MB parts=1
+  ??map async       taskCount=1
+  ??download part   range=bytes=0-5635383 index=0
+  ??downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z duration=1.443s
+  ??execute command  command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551'
+                     workingDirectory=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  漼?cannot execute  cause=exit status 2
+                    out=
+    7-Zip (a) 21.07 (x64) : Copyright (c) 1999-2021 Igor Pavlov : 2021-12-26
+    
+    Scanning the drive for archives:
+    1 file, 5635384 bytes (5504 KiB)
+    
+    Extracting archive: C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551.7z
+    --
+    Path = C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551.7z
+    Type = 7z
+    Physical Size = 5635384
+    Headers Size = 1492
+    Method = LZMA2:24m LZMA:20 BCJ2
+    Solid = +
+    Blocks = 2
+    
+    
+    Sub items Errors: 2
+    
+    Archives with Errors: 1
+    
+    Sub items Errors: 2
+    
+                    errorOut=ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551\darwin\10.12\lib\libcrypto.dylib
+    ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551\darwin\10.12\lib\libssl.dylib
+    
+                    command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\740560551'
+                    workingDir=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  ??exited          command=app-builder.exe code=2 pid=16124
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe rcedit --args ["C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\dist\\win-unpacked\\scott-agent-trader.exe","--set-version-string","FileDescription","scott-agent-trader","--set-version-string","ProductName","scott-agent-trader","--set-version-string","LegalCopyright","Copyright 穢 2026 example.com","--set-file-version","1.0.0","--set-p 69538d6df69c62000b9f4d0237e6179fd7d59cdffc225ba6285742a123801b07 (sha256 hash) (sha256 hash) project\\scott-agent\\scott-agent-trader\\build\\icon.ico"]
+  ??computing effective URL  initialUrl=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                             currentUrl=https://release-assets.githubusercontent.com/github-production-release-asset/65527128/f73f2200-5d53-11ea-8264-ddd345f11ee4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-02-22T13%3A01%3A33Z&rscd=attachment%3B+filename%3DwinCodeSign-2.6.0.7z&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-02-22T12%3A01%3A14Z&ske=2026-02-22T13%3A01%3A33Z&sks=b&skv=2018-11-09&sig=Xo49wwNUbvlEvhpYIqhUh8EDyE6bsP%2Bsu%2BD0vb6A%2F%2BA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3MTc2MzYwNCwibmJmIjoxNzcxNzYzMzA0LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.o8LahQnNN6TOzYtE1V4U_u_Yfa8dENq5dgUHlKodz10&response-content-disposition=attachment%3B%20filename%3DwinCodeSign-2.6.0.7z&response-content-type=application%2Foctet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z length=5635384 contentType=application/octet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z size=5.6 MB parts=1
+  ??map async       taskCount=1
+  ??download part   range=bytes=0-5635383 index=0
+  ??downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z duration=1.517s
+  ??execute command  command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491'
+                     workingDirectory=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  漼?cannot execute  cause=exit status 2
+                    out=
+    7-Zip (a) 21.07 (x64) : Copyright (c) 1999-2021 Igor Pavlov : 2021-12-26
+    
+    Scanning the drive for archives:
+    1 file, 5635384 bytes (5504 KiB)
+    
+    Extracting archive: C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491.7z
+    --
+    Path = C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491.7z
+    Type = 7z
+    Physical Size = 5635384
+    Headers Size = 1492
+    Method = LZMA2:24m LZMA:20 BCJ2
+    Solid = +
+    Blocks = 2
+    
+    
+    Sub items Errors: 2
+    
+    Archives with Errors: 1
+    
+    Sub items Errors: 2
+    
+                    errorOut=ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491\darwin\10.12\lib\libcrypto.dylib
+    ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491\darwin\10.12\lib\libssl.dylib
+    
+                    command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\106695491'
+                    workingDir=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  ??exited          command=app-builder.exe code=2 pid=25324
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe rcedit --args ["C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\dist\\win-unpacked\\scott-agent-trader.exe","--set-version-string","FileDescription","scott-agent-trader","--set-version-string","ProductName","scott-agent-trader","--set-version-string","LegalCopyright","Copyright 穢 2026 example.com","--set-file-version","1.0.0","--set-p 69538d6df69c62000b9f4d0237e6179fd7d59cdffc225ba6285742a123801b07 (sha256 hash) (sha256 hash) project\\scott-agent\\scott-agent-trader\\build\\icon.ico"]
+  ??computing effective URL  initialUrl=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                             currentUrl=https://release-assets.githubusercontent.com/github-production-release-asset/65527128/f73f2200-5d53-11ea-8264-ddd345f11ee4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-02-22T13%3A01%3A33Z&rscd=attachment%3B+filename%3DwinCodeSign-2.6.0.7z&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-02-22T12%3A01%3A14Z&ske=2026-02-22T13%3A01%3A33Z&sks=b&skv=2018-11-09&sig=Xo49wwNUbvlEvhpYIqhUh8EDyE6bsP%2Bsu%2BD0vb6A%2F%2BA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3MTc2MzYwNCwibmJmIjoxNzcxNzYzMzA0LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.o8LahQnNN6TOzYtE1V4U_u_Yfa8dENq5dgUHlKodz10&response-content-disposition=attachment%3B%20filename%3DwinCodeSign-2.6.0.7z&response-content-type=application%2Foctet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z length=5635384 contentType=application/octet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z size=5.6 MB parts=1
+  ??map async       taskCount=1
+  ??download part   range=bytes=0-5635383 index=0
+  ??downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z duration=1.621s
+  ??execute command  command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655'
+                     workingDirectory=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  漼?cannot execute  cause=exit status 2
+                    out=
+    7-Zip (a) 21.07 (x64) : Copyright (c) 1999-2021 Igor Pavlov : 2021-12-26
+    
+    Scanning the drive for archives:
+    1 file, 5635384 bytes (5504 KiB)
+    
+    Extracting archive: C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655.7z
+    --
+    Path = C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655.7z
+    Type = 7z
+    Physical Size = 5635384
+    Headers Size = 1492
+    Method = LZMA2:24m LZMA:20 BCJ2
+    Solid = +
+    Blocks = 2
+    
+    
+    Sub items Errors: 2
+    
+    Archives with Errors: 1
+    
+    Sub items Errors: 2
+    
+                    errorOut=ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655\darwin\10.12\lib\libcrypto.dylib
+    ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655\darwin\10.12\lib\libssl.dylib
+    
+                    command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\646688655'
+                    workingDir=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  ??exited          command=app-builder.exe code=2 pid=20252
+  ??spawning        command=C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-bin\win\x64\app-builder.exe rcedit --args ["C:\\Users\\scott\\my project\\scott-agent\\scott-agent-trader\\dist\\win-unpacked\\scott-agent-trader.exe","--set-version-string","FileDescription","scott-agent-trader","--set-version-string","ProductName","scott-agent-trader","--set-version-string","LegalCopyright","Copyright 穢 2026 example.com","--set-file-version","1.0.0","--set-p 69538d6df69c62000b9f4d0237e6179fd7d59cdffc225ba6285742a123801b07 (sha256 hash) (sha256 hash) project\\scott-agent\\scott-agent-trader\\build\\icon.ico"]
+  ??computing effective URL  initialUrl=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z
+                             currentUrl=https://release-assets.githubusercontent.com/github-production-release-asset/65527128/f73f2200-5d53-11ea-8264-ddd345f11ee4?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-02-22T13%3A01%3A33Z&rscd=attachment%3B+filename%3DwinCodeSign-2.6.0.7z&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-02-22T12%3A01%3A14Z&ske=2026-02-22T13%3A01%3A33Z&sks=b&skv=2018-11-09&sig=Xo49wwNUbvlEvhpYIqhUh8EDyE6bsP%2Bsu%2BD0vb6A%2F%2BA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3MTc2MzYwNCwibmJmIjoxNzcxNzYzMzA0LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.o8LahQnNN6TOzYtE1V4U_u_Yfa8dENq5dgUHlKodz10&response-content-disposition=attachment%3B%20filename%3DwinCodeSign-2.6.0.7z&response-content-type=application%2Foctet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z length=5635384 contentType=application/octet-stream
+  ??downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z size=5.6 MB parts=1
+  ??map async       taskCount=1
+  ??download part   range=bytes=0-5635383 index=0
+  ??downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z duration=1.243s
+  ??execute command  command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607'
+                     workingDirectory=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  漼?cannot execute  cause=exit status 2
+                    out=
+    7-Zip (a) 21.07 (x64) : Copyright (c) 1999-2021 Igor Pavlov : 2021-12-26
+    
+    Scanning the drive for archives:
+    1 file, 5635384 bytes (5504 KiB)
+    
+    Extracting archive: C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607.7z
+    --
+    Path = C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607.7z
+    Type = 7z
+    Physical Size = 5635384
+    Headers Size = 1492
+    Method = LZMA2:24m LZMA:20 BCJ2
+    Solid = +
+    Blocks = 2
+    
+    
+    Sub items Errors: 2
+    
+    Archives with Errors: 1
+    
+    Sub items Errors: 2
+    
+                    errorOut=ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607\darwin\10.12\lib\libcrypto.dylib
+    ERROR: Cannot create symbolic link : 用戶端沒有這項特殊權限。 : C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607\darwin\10.12\lib\libssl.dylib
+    
+                    command='C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\7zip-bin\win\x64\7za.exe' x -snld -bd 'C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607.7z' '-oC:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign\576417607'
+                    workingDir=C:\Users\scott\AppData\Local\electron-builder\Cache\winCodeSign
+  ??exited          command=app-builder.exe code=2 pid=320
