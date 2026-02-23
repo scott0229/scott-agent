@@ -398,6 +398,14 @@ export default function RollOptionDialog({
                         })
                     )
                 })
+                // Refresh stock price
+                promises.push(
+                    window.ibApi.getStockQuote(symbol).then((q) => {
+                        if (cancelled) return
+                        const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+                        if (price) setStockPrice(price)
+                    })
+                )
                 // Refresh target greeks
                 displayExpirations.forEach((exp) => {
                     promises.push(
@@ -679,6 +687,9 @@ export default function RollOptionDialog({
                             >
                                 {chainHidden ? '顯示期權鏈 ▼' : '隱藏期權鏈 ▲'}
                             </button>
+                            {stockPrice !== null && (
+                                <span className="roll-stock-price">{symbol} 股價 {stockPrice.toFixed(2)}</span>
+                            )}
                         </div>
                     )}
 

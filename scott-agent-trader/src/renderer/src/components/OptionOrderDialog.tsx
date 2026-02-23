@@ -488,6 +488,9 @@ export default function OptionOrderDialog({
                             )}
                         </div>
 
+                        {stockPrice !== null && (
+                            <span className="roll-stock-price">股價 {stockPrice.toFixed(2)}</span>
+                        )}
                         {/* Filter buttons pushed to the right */}
                         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
                             {dataReady && availableExpirations.length > 0 && (
