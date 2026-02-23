@@ -49,9 +49,10 @@ function formatExpiry(expiry: string): string {
         'Nov',
         'Dec'
     ]
+    const year = expiry.substring(2, 4)
     const month = months[parseInt(expiry.substring(4, 6)) - 1]
     const day = expiry.substring(6, 8).replace(/^0/, '')
-    return `${month}${day}`
+    return `${month}${day} '${year}`
 }
 
 function midPrice(greek: OptionGreek | undefined): number | null {

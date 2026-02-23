@@ -39,8 +39,8 @@ function formatExpiry(expiry: string): string {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     const year = expiry.substring(2, 4)
     const month = months[parseInt(expiry.substring(4, 6)) - 1]
-    const day = expiry.substring(6, 8)
-    return `${month} ${day} '${year}`
+    const day = parseInt(expiry.substring(6, 8), 10)
+    return `${month}${day} '${year}`
 }
 
 const formatPrice = (v: number): string => (v > 0 ? v.toFixed(2) : '-')
@@ -79,7 +79,10 @@ export default function OptionOrderDialog({
     const fetchedExpiriesRef = useRef<Set<string>>(new Set())
     const fetchedStrikesRef = useRef<Set<number>>(new Set())
     const strikeDropdownRef = useRef<HTMLDivElement>(null)
+    const strikeScrolledRef = useRef(false)
+    const dialogBodyRef = useRef<HTMLDivElement>(null)
     const lastStrikeCenterRef = useRef<number | null>(null)
+    const userModifiedStrikesRef = useRef(false)
 
     // ── Order selection ──────────────────────────────────────────────────────
     const [selExpiry, setSelExpiry] = useState('')
@@ -154,6 +157,7 @@ export default function OptionOrderDialog({
             fetchedStrikesRef.current = new Set()
             setStockPrice(null)
             lastStrikeCenterRef.current = null
+            userModifiedStrikesRef.current = false
         }
 
         window.ibApi.getStockQuote(sym).then(q => {
@@ -192,6 +196,7 @@ export default function OptionOrderDialog({
     // ── Auto-select ±5 strikes around stock price ─────────────────────────
     useEffect(() => {
         if (availableStrikes.length === 0) return
+        if (userModifiedStrikesRef.current) return
         if (stockPrice !== null) {
             // Only re-center if price moved to a different integer level
             const rounded = Math.round(stockPrice)
@@ -233,6 +238,9 @@ export default function OptionOrderDialog({
     }, [])
 
     const toggleStrike = useCallback((strike: number) => {
+        userModifiedStrikesRef.current = true
+        // Preserve dialog body scroll position across the re-render
+        const scrollTop = dialogBodyRef.current?.scrollTop ?? 0
         setSelectedStrikes(prev => {
             if (prev.includes(strike)) return prev.filter(s => s !== strike)
             if (prev.length >= 10) {
@@ -240,6 +248,9 @@ export default function OptionOrderDialog({
                 return [...prev.filter(s => s !== drop), strike]
             }
             return [...prev, strike]
+        })
+        requestAnimationFrame(() => {
+            if (dialogBodyRef.current) dialogBodyRef.current.scrollTop = scrollTop
         })
     }, [])
 
@@ -426,7 +437,7 @@ export default function OptionOrderDialog({
                     <button className="roll-dialog-close" onClick={onClose}>✕</button>
                 </div>
 
-                <div className="roll-dialog-body">
+                <div className="roll-dialog-body" ref={dialogBodyRef}>
 
                     {/* Symbol + Action + Filters — single combined row */}
                     <div className="roll-selectors-row" style={{ marginBottom: 8, gap: 8 }}>
@@ -520,7 +531,7 @@ export default function OptionOrderDialog({
                                 <div className="roll-expiry-selector">
                                     <button
                                         className="roll-expiry-dropdown-btn"
-                                        onClick={() => setStrikeDropdownOpen(v => !v)}
+                                        onClick={() => { strikeScrolledRef.current = false; setStrikeDropdownOpen(v => !v) }}
                                     >
                                         行使價 ▾ <span className="roll-expiry-count">{selectedStrikes.length}</span>
                                     </button>
@@ -529,12 +540,13 @@ export default function OptionOrderDialog({
                                             <div className="roll-expiry-backdrop" onClick={(e) => { e.stopPropagation(); setStrikeDropdownOpen(false) }} />
                                             <div className="roll-expiry-dropdown" ref={(el) => {
                                                 (strikeDropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = el
-                                                if (el && selectedStrikes.length > 0) {
+                                                if (el && !strikeScrolledRef.current && selectedStrikes.length > 0) {
+                                                    strikeScrolledRef.current = true
                                                     const sortedSel = [...selectedStrikes].sort((a, b) => a - b)
                                                     const firstIdx = availableStrikes.indexOf(sortedSel[0])
                                                     if (firstIdx > 0) {
                                                         const label = el.children[firstIdx] as HTMLElement
-                                                        if (label) label.scrollIntoView({ block: 'start' })
+                                                        if (label) el.scrollTop = label.offsetTop
                                                     }
                                                 }
                                             }} style={{ right: 0, left: 'auto' }}>
