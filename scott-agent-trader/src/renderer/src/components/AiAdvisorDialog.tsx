@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface Recommendation {
@@ -32,7 +32,7 @@ const ACTION_LABELS: Record<string, { text: string; color: string; bg: string }>
     sell: { text: '賣出 CALL', color: '#1e40af', bg: '#dbeafe' }
 }
 
-export default function AiAdvisorDialog({ open, onClose, account, positions, quotes, optionQuotes }: AiAdvisorDialogProps): JSX.Element | null {
+export default function AiAdvisorDialog({ open, onClose, account, positions, quotes, optionQuotes }: AiAdvisorDialogProps) {
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<AdvisorResponse | null>(null)
     const [error, setError] = useState<string | null>(null)
