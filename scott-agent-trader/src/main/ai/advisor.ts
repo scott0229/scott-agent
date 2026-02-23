@@ -524,16 +524,9 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
     console.log(`[AI Advisor] Monthly-only symbols (no weekly/daily options): ${[...monthlyOnlySymbols].join(', ')}`)
   }
 
-  // 7. Filter out monthly-only stock positions so AI cannot suggest CC/CSP for them
-  if (monthlyOnlySymbols.size > 0) {
-    filteredPositions = filteredPositions.filter(p => {
-      if (p.secType !== 'OPT' && monthlyOnlySymbols.has(p.symbol)) {
-        console.log(`[AI Advisor] Removing monthly-only stock from prompt: ${p.symbol}`)
-        return false
-      }
-      return true
-    })
-  }
+  // Note: Monthly-only stocks are NOT filtered out from the prompt.
+  // The (僅月期權) tag and prompt rules instruct the AI to skip CC suggestions for them,
+  // but the AI should still see these positions for overall portfolio analysis.
 
   // 8. Build prompt
   const prompt = buildPrompt(
