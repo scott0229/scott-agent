@@ -1,3 +1,4 @@
+import React from 'react'
 import { useMemo } from 'react'
 
 interface OptionGreek {
@@ -29,7 +30,7 @@ export default function OptionChainTable({
   selectedRight,
   onSelect,
   currentPrice
-}: OptionChainTableProps): JSX.Element {
+}: OptionChainTableProps): React.JSX.Element {
   // Group greeks by strike
   const strikeData = useMemo(() => {
     const map = new Map<number, { call?: OptionGreek; put?: OptionGreek }>()

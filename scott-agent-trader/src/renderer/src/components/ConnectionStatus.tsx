@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 
 interface ConnectionState {
@@ -10,13 +11,12 @@ interface ConnectionState {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ConnectionStatusProps { }
 
-export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Element {
+export default function ConnectionStatus(_props: ConnectionStatusProps): React.JSX.Element {
     const [state, setState] = useState<ConnectionState>({
         status: 'disconnected',
         host: '127.0.0.1',
         port: 7497
     })
-    const [host, setHost] = useState('127.0.0.1')
     const [port, setPort] = useState('7497')
 
     useEffect(() => {
@@ -36,8 +36,8 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): JSX.Ele
     const handleConnect = useCallback(async () => {
         const portNum = parseInt(port, 10)
         if (isNaN(portNum)) return
-        await window.ibApi.connect(host, portNum)
-    }, [host, port])
+        await window.ibApi.connect('127.0.0.1', portNum)
+    }, [port])
 
     const handleDisconnect = useCallback(async () => {
         await window.ibApi.disconnect()

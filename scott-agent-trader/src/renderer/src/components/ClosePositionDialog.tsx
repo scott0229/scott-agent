@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface ClosePositionDialogProps {
@@ -34,7 +35,7 @@ export default function ClosePositionDialog({
     accounts,
     positions,
     quotes
-}: ClosePositionDialogProps): JSX.Element | null {
+}: ClosePositionDialogProps): React.JSX.Element | null {
     const [submitting, setSubmitting] = useState(false)
     const [orderResults, setOrderResults] = useState<OrderResult[]>([])
     const [step, setStep] = useState<'preview' | 'confirm' | 'done'>('preview')
@@ -50,7 +51,6 @@ export default function ClosePositionDialog({
 
     // TIF dropdown open states (per-symbol for sell)
     const [sellTifOpen, setSellTifOpen] = useState<string | null>(null)
-    const tifRef = useRef<HTMLDivElement>(null)
 
     // Derive unique source symbols
     const sourceSymbols = useMemo(() => {
@@ -229,14 +229,14 @@ export default function ClosePositionDialog({
     if (!open) return null
 
     const renderTifDropdown = (
-        sym: string | null,
+        _sym: string | null,
         tif: 'DAY' | 'GTC',
         setTif: (v: 'DAY' | 'GTC') => void,
         outsideRth: boolean,
         setOutsideRth: (v: boolean) => void,
         isOpen: boolean,
         setIsOpen: (v: boolean) => void
-    ): JSX.Element => (
+    ): React.JSX.Element => (
         <div className="tif-dropdown" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
             <button
                 type="button"

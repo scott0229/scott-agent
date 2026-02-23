@@ -36,7 +36,7 @@ interface AccountOverviewProps {
     marginLimit?: number
 }
 
-export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh, accountTypes, onSetAccountType, marginLimit = 1.3 }: AccountOverviewProps): JSX.Element {
+export default function AccountOverview({ connected, accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh, accountTypes, onSetAccountType, marginLimit = 1.3 }: AccountOverviewProps): React.JSX.Element {
     const [sortBy, setSortBy] = useState('netLiquidation')
     const [filterSymbol, setFilterSymbol] = useState('')
 

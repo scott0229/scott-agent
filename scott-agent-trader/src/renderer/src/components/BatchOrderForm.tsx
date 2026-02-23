@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import CustomSelect from './CustomSelect'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
@@ -20,7 +21,7 @@ interface BatchOrderFormProps {
     positions: PositionData[]
 }
 
-export default function BatchOrderForm({ connected, accounts, positions }: BatchOrderFormProps): JSX.Element {
+export default function BatchOrderForm({ connected, accounts, positions }: BatchOrderFormProps): React.JSX.Element {
     const [symbol, setSymbol] = useState('')
     const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
     const [limitPrice, setLimitPrice] = useState('')

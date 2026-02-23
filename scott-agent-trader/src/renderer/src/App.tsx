@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
@@ -21,7 +22,7 @@ function loadHiddenAccounts(port: number): Set<string> {
   return new Set()
 }
 
-function App(): JSX.Element {
+function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
@@ -102,7 +103,7 @@ function App(): JSX.Element {
 
         </nav>
         <div className="header-actions">
-          <ConnectionStatus onRefresh={refresh} />
+          <ConnectionStatus />
         </div>
       </header>
 

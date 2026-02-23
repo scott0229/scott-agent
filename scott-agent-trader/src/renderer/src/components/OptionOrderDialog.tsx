@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
@@ -55,7 +56,7 @@ export default function OptionOrderDialog({
     accounts,
     positions,
     initialSymbol = 'QQQ'
-}: OptionOrderDialogProps): JSX.Element | null {
+}: OptionOrderDialogProps): React.JSX.Element | null {
 
     // ── Symbol ──────────────────────────────────────────────────────────────
     const [symbol, setSymbol] = useState(initialSymbol)

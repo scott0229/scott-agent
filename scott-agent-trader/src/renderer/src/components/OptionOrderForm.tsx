@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import OptionChainTable from './OptionChainTable'
 import CustomSelect from './CustomSelect'
@@ -44,7 +45,7 @@ interface OptionOrderFormProps {
   accounts: AccountData[]
 }
 
-export default function OptionOrderForm({ connected, accounts }: OptionOrderFormProps): JSX.Element {
+export default function OptionOrderForm({ connected, accounts }: OptionOrderFormProps): React.JSX.Element {
   // Search state
   const [symbol, setSymbol] = useState('')
   const [chainParams, setChainParams] = useState<OptionChainParams[]>([])

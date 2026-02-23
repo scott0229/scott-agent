@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState } from 'react'
 import type { AccountData } from '../hooks/useAccountStore'
 
@@ -40,7 +41,7 @@ export default function SettingsPanel({
     onSetWatchSymbol,
     symbolOptionTypes,
     onSetSymbolOptionType
-}: SettingsPanelProps): JSX.Element | null {
+}: SettingsPanelProps): React.JSX.Element | null {
     const [limitInput, setLimitInput] = useState(String(marginLimit))
     const [showRisk, setShowRisk] = useState(true)
     const [showSymbols, setShowSymbols] = useState(true)

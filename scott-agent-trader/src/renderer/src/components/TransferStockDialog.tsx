@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface TransferStockDialogProps {
@@ -33,7 +34,7 @@ export default function TransferStockDialog({
     selectedPositions,
     accounts,
     quotes
-}: TransferStockDialogProps): JSX.Element | null {
+}: TransferStockDialogProps): React.JSX.Element | null {
     const [targetSymbol, setTargetSymbol] = useState('')
     const [buyTif, setBuyTif] = useState<'DAY' | 'GTC'>('DAY')
     const [buyPrice, setBuyPrice] = useState('')
@@ -58,7 +59,6 @@ export default function TransferStockDialog({
     const [sellTifOpen, setSellTifOpen] = useState<string | null>(null)
     const [buyTifOpen, setBuyTifOpen] = useState(false)
     const [cashStrategy, setCashStrategy] = useState<'sell_only' | 'zero_cash'>('sell_only')
-    const tifRef = useRef<HTMLDivElement>(null)
 
     // Derive unique source symbols
     const sourceSymbols = useMemo(() => {
@@ -206,7 +206,6 @@ export default function TransferStockDialog({
         })
     }, [accountSymbolPositions, accounts, sellPrices, buyPrice, quotes, sellQtyOverrides, cashStrategy])
 
-    const totalSellQty = previews.reduce((s, p) => s + p.sells.reduce((ss, sell) => ss + sell.qty, 0), 0)
     const totalBuyQty = previews.reduce((s, p) => s + p.buyQty, 0)
 
     const handleSubmit = useCallback(async () => {
@@ -295,14 +294,14 @@ export default function TransferStockDialog({
     if (!open) return null
 
     const renderTifDropdown = (
-        sym: string | null,
+        _sym: string | null,
         tif: 'DAY' | 'GTC',
         setTif: (v: 'DAY' | 'GTC') => void,
         outsideRth: boolean,
         setOutsideRth: (v: boolean) => void,
         isOpen: boolean,
         setIsOpen: (v: boolean) => void
-    ): JSX.Element => (
+    ): React.JSX.Element => (
         <div className="tif-dropdown" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
             <button
                 type="button"

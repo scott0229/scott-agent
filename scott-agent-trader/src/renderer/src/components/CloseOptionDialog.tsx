@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
@@ -63,7 +64,7 @@ export default function CloseOptionDialog({
     selectedPositions,
     accounts,
     positions: _positions
-}: CloseOptionDialogProps): JSX.Element | null {
+}: CloseOptionDialogProps): React.JSX.Element | null {
     const [submitting, setSubmitting] = useState(false)
     const [orderResults, setOrderResults] = useState<OrderResult[]>([])
     const [step, setStep] = useState<'preview' | 'confirm' | 'done'>('preview')
@@ -162,7 +163,7 @@ export default function CloseOptionDialog({
                         strike: c.strike,
                         right: c.right
                     })
-                    const priceVal = Object.values(result)[0] || 0
+                    const priceVal = (Object.values(result)[0] as number) || 0
                     setOptQuotes((prev) => ({
                         ...prev,
                         [key]: { bid: priceVal, ask: priceVal, last: priceVal }
@@ -344,7 +345,7 @@ export default function CloseOptionDialog({
         setTif: (v: 'DAY' | 'GTC') => void,
         setOutsideRthVal: (v: boolean) => void,
         setOpen: (v: boolean) => void
-    ): JSX.Element => (
+    ): React.JSX.Element => (
         <div className="tif-dropdown">
             <button
                 type="button"

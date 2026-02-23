@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
@@ -73,7 +74,7 @@ export default function RollOptionDialog({
     onClose,
     selectedPositions,
     accounts
-}: RollOptionDialogProps): JSX.Element | null {
+}: RollOptionDialogProps): React.JSX.Element | null {
     // Snapshot positions on open so parent re-renders don't cause re-fetches
     const snappedPositions = useRef<PositionData[]>([])
     const snappedAccounts = useRef<AccountData[]>([])
@@ -83,7 +84,6 @@ export default function RollOptionDialog({
     const [targetStrike, setTargetStrike] = useState<number | null>(null)
     const [targetRight, setTargetRight] = useState<'C' | 'P' | null>(null)
     const [loadingChain, setLoadingChain] = useState(false)
-    const [loadingGreeks, setLoadingGreeks] = useState(false)
     const [currentGreeks, setCurrentGreeks] = useState<OptionGreek[]>([])
     const [allTargetGreeks, setAllTargetGreeks] = useState<OptionGreek[]>([])
     const [errorMsg, setErrorMsg] = useState('')
@@ -329,7 +329,6 @@ export default function RollOptionDialog({
 
         if (fetchPairs.length === 0) return
 
-        setLoadingGreeks(true)
         let completed = 0
         const totalFetches = fetchPairs.length
         const fetchedGreeks: OptionGreek[] = []
@@ -339,7 +338,6 @@ export default function RollOptionDialog({
                 setAllTargetGreeks((prev) => [...prev, ...greeks])
                 completed++
                 if (completed >= totalFetches) {
-                    setLoadingGreeks(false)
                     // Check for missing delta (delta===0 but has bid/ask data) and retry after 3s
                     const missingDeltaExpiries = new Set<string>()
                     fetchedGreeks.forEach((g) => {
@@ -348,7 +346,7 @@ export default function RollOptionDialog({
                         }
                     })
                     if (missingDeltaExpiries.size > 0) {
-                        const retryTimer = setTimeout(() => {
+                        setTimeout(() => {
                             const retryExpiries = Array.from(missingDeltaExpiries)
                             console.log('[RollOption] Retrying greeks for expiries with missing delta:', retryExpiries)
                             retryExpiries.forEach((exp) => {
@@ -361,12 +359,11 @@ export default function RollOptionDialog({
                                 })
                             })
                         }, 3000)
-                        return () => clearTimeout(retryTimer)
+                        // cleanup handled by useEffect return
                     }
                 }
             }).catch((err: unknown) => {
                 completed++
-                if (completed >= totalFetches) setLoadingGreeks(false)
                 setErrorMsg(`取得報價失敗: ${err instanceof Error ? err.message : String(err)}`)
             })
         })
