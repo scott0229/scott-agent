@@ -132,6 +132,9 @@ export default function SettingsPanel({
                         </div>
                     )}
                 </div>
+                <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', textAlign: 'center', fontSize: 15, color: '#aaa' }}>
+                    version {import.meta.env.VITE_APP_VERSION || '—'}
+                </div>
             </div>
         </div>
     )
