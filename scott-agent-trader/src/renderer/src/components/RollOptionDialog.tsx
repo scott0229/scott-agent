@@ -391,10 +391,27 @@ export default function RollOptionDialog({
                     const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
                     promises.push(
                         window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
-                            if (cancelled) return
+                            if (cancelled || greeks.length === 0) return
                             setCurrentGreeks((prev) => {
-                                const filtered = prev.filter((g) => g.expiry !== exp)
-                                return [...filtered, ...greeks]
+                                const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
+                                    ...old,
+                                    bid: n.bid > 0 ? n.bid : old.bid,
+                                    ask: n.ask > 0 ? n.ask : old.ask,
+                                    last: n.last > 0 ? n.last : old.last,
+                                    delta: n.delta !== 0 ? n.delta : old.delta,
+                                    gamma: n.gamma !== 0 ? n.gamma : old.gamma,
+                                    theta: n.theta !== 0 ? n.theta : old.theta,
+                                    vega: n.vega !== 0 ? n.vega : old.vega,
+                                    impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol,
+                                })
+                                const incoming = new Map<string, OptionGreek>(greeks.map(g => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+                                const existingKeys = new Set(prev.map(g => `${g.expiry}_${g.strike}_${g.right}`))
+                                const updated = prev.map(g => {
+                                    const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+                                    return n ? mergeGreek(g, n) : g
+                                })
+                                const newEntries = greeks.filter(g => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`) && (g.bid > 0 || g.ask > 0 || g.delta !== 0))
+                                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
                             })
                         })
                     )
@@ -411,10 +428,27 @@ export default function RollOptionDialog({
                 displayExpirations.forEach((exp) => {
                     promises.push(
                         window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
-                            if (cancelled) return
+                            if (cancelled || greeks.length === 0) return
                             setAllTargetGreeks((prev) => {
-                                const filtered = prev.filter((g) => g.expiry !== exp)
-                                return [...filtered, ...greeks]
+                                const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
+                                    ...old,
+                                    bid: n.bid > 0 ? n.bid : old.bid,
+                                    ask: n.ask > 0 ? n.ask : old.ask,
+                                    last: n.last > 0 ? n.last : old.last,
+                                    delta: n.delta !== 0 ? n.delta : old.delta,
+                                    gamma: n.gamma !== 0 ? n.gamma : old.gamma,
+                                    theta: n.theta !== 0 ? n.theta : old.theta,
+                                    vega: n.vega !== 0 ? n.vega : old.vega,
+                                    impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol,
+                                })
+                                const incoming = new Map<string, OptionGreek>(greeks.map(g => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+                                const existingKeys = new Set(prev.map(g => `${g.expiry}_${g.strike}_${g.right}`))
+                                const updated = prev.map(g => {
+                                    const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+                                    return n ? mergeGreek(g, n) : g
+                                })
+                                const newEntries = greeks.filter(g => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`) && (g.bid > 0 || g.ask > 0 || g.delta !== 0))
+                                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
                             })
                         })
                     )

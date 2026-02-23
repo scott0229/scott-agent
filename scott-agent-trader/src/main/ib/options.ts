@@ -31,6 +31,9 @@ function getNextReqId(): number {
   return reqIdCounter++
 }
 
+// Cache resolved conIds so we don't re-request on every chain refresh
+const conIdCache = new Map<string, number>()
+
 /**
  * Request the option chain parameters (available expirations and strikes)
  * for the given underlying symbol.
@@ -87,6 +90,9 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
  * Get the contract ID for an underlying stock symbol.
  */
 async function getUnderlyingConId(symbol: string): Promise<number> {
+  // Return cached value if available
+  if (conIdCache.has(symbol)) return conIdCache.get(symbol)!
+
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
@@ -103,18 +109,26 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
       currency: 'USD'
     }
 
-    api.on(EventName.contractDetails, (id: number, details: any) => {
+    const onDetails = (id: number, details: any) => {
       if (id !== reqId) return
       clearTimeout(timeout)
-      resolve(details.contract.conId)
-    })
+      api.removeListener(EventName.contractDetails, onDetails)
+      api.removeListener(EventName.error, onErr)
+      const cid = details.contract.conId
+      conIdCache.set(symbol, cid)
+      resolve(cid)
+    }
 
-    api.on(EventName.error, (err: Error, _code: number, id: number) => {
+    const onErr = (err: Error, _code: number, id: number) => {
       if (id !== reqId) return
       clearTimeout(timeout)
+      api.removeListener(EventName.contractDetails, onDetails)
+      api.removeListener(EventName.error, onErr)
       reject(new Error(`Failed to get contract details for ${symbol}: ${err.message}`))
-    })
+    }
 
+    api.on(EventName.contractDetails, onDetails)
+    api.on(EventName.error, onErr)
     api.reqContractDetails(reqId, contract)
   })
 }
@@ -304,6 +318,7 @@ export async function requestOptionGreeks(
     }
 
     function cleanup(): void {
+      api!.removeListener(EventName.tickPrice, debugTickListener)
       api!.removeListener(EventName.tickPrice, onTickPrice)
       api!.removeListener(EventName.tickOptionComputation, onTickOptionComputation)
       api!.removeListener(EventName.tickSnapshotEnd, onTickSnapshotEnd)
