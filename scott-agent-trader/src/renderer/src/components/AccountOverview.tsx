@@ -7,6 +7,7 @@ import TransferStockDialog from './TransferStockDialog'
 import ClosePositionDialog from './ClosePositionDialog'
 import OptionOrderDialog from './OptionOrderDialog'
 import CloseOptionDialog from './CloseOptionDialog'
+import AiAdvisorDialog from './AiAdvisorDialog'
 
 const TRADING_TYPE_OPTIONS = [
     { value: 'reg_t', label: 'Reg T 保證金' },
@@ -48,6 +49,7 @@ export default function AccountOverview({ connected, accounts, positions, quotes
     const [showCloseDialog, setShowCloseDialog] = useState(false)
     const [showOptionOrder, setShowOptionOrder] = useState(false)
     const [showCloseOptionDialog, setShowCloseOptionDialog] = useState(false)
+    const [showAiAdvisor, setShowAiAdvisor] = useState<string | null>(null)
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
     // Inline editing state: tracks which cell is being edited
     const [editingCell, setEditingCell] = useState<{ orderId: number; field: 'quantity' | 'price' } | null>(null)
@@ -370,6 +372,11 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                             <div key={account.accountId} className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`} onClick={() => setSelectedAccount(prev => prev === account.accountId ? null : account.accountId)}>
                                 <div className="account-header">
                                     <span className="account-id">{account.alias || account.accountId}</span>
+                                    <button
+                                        className="ai-advisor-btn"
+                                        title="AI 交易建議"
+                                        onClick={(e) => { e.stopPropagation(); setShowAiAdvisor(account.accountId) }}
+                                    >💡</button>
                                     <div className="account-type-select" onClick={(e) => e.stopPropagation()}>
                                         <CustomSelect
                                             value={accountTypes?.[account.accountId] || 'reg_t'}
@@ -748,6 +755,21 @@ export default function AccountOverview({ connected, accounts, positions, quotes
                     }}>取消委託</div>
                 </div>
             )}
+
+            {/* AI Advisor Dialog */}
+            {showAiAdvisor && (() => {
+                const acct = accounts.find(a => a.accountId === showAiAdvisor)
+                return acct ? (
+                    <AiAdvisorDialog
+                        open={true}
+                        onClose={() => setShowAiAdvisor(null)}
+                        account={acct}
+                        positions={positions}
+                        quotes={quotes}
+                        optionQuotes={optionQuotes}
+                    />
+                ) : null
+            })()}
 
         </>
     )

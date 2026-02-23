@@ -167,6 +167,39 @@ interface IBApi {
   cancelOrder: (orderId: number) => Promise<void>
   getFedFundsRate: () => Promise<number>
 
+  // AI Advisor
+  getAiAdvice: (request: {
+    account: {
+      accountId: string
+      alias: string
+      netLiquidation: number
+      totalCashValue: number
+      grossPositionValue: number
+    }
+    positions: Array<{
+      symbol: string
+      secType: string
+      quantity: number
+      avgCost: number
+      expiry?: string
+      strike?: number
+      right?: string
+    }>
+    optionQuotes: Record<string, number>
+    quotes: Record<string, number>
+  }) => Promise<{
+    recommendations: Array<{
+      position: string
+      action: 'roll' | 'hold' | 'close'
+      targetExpiry?: string
+      targetStrike?: number
+      estimatedCredit?: string
+      reason: string
+    }>
+    summary: string
+    error?: string
+  }>
+
   removeAllListeners: () => void
 }
 

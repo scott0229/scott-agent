@@ -184,7 +184,7 @@ export default function OptionOrderDialog({
     const availableStrikes = useMemo(() => {
         const set = new Set<number>()
         chainParams.forEach(p => p.strikes.forEach(s => set.add(s)))
-        return Array.from(set).filter(s => Number.isInteger(s)).sort((a, b) => a - b)
+        return Array.from(set).sort((a, b) => a - b)
     }, [chainParams])
 
     // ── Auto-select first 3 expirations ──────────────────────────────────────

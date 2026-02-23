@@ -19,6 +19,7 @@ import { requestOptionChain, requestOptionGreeks } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
+import { getAiAdvice } from './ai/advisor'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -166,6 +167,11 @@ function setupIpcHandlers(): void {
   // Rates
   ipcMain.handle('rates:getFedFundsRate', async () => {
     return getFedFundsRate()
+  })
+
+  // AI Advisor
+  ipcMain.handle('ai:getAdvice', async (_event, request) => {
+    return getAiAdvice(request)
   })
 
   // Settings (proxy through main process to bypass CORS)
