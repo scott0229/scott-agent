@@ -28,7 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
 import { NetEquityChart } from '@/components/NetEquityChart';
 import { NetEquitySummaryTable } from '@/components/NetEquitySummaryTable';
-import { MarketDataProgressDialog } from '@/components/MarketDataProgressDialog';
 
 import { Pencil, BarChart3, Coins } from "lucide-react";
 
@@ -94,9 +93,7 @@ export default function NetEquityPage() {
     const router = useRouter();
     const [editCostDialog, setEditCostDialog] = useState<{ open: boolean; userId: number; currentCost: number } | null>(null);
     const [sortOrder, setSortOrder] = useState('return-desc');
-    const [isBackfilling, setIsBackfilling] = useState(false);
     const { toast } = useToast();
-    const [progressDialogOpen, setProgressDialogOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -131,13 +128,6 @@ export default function NetEquityPage() {
         }
     };
 
-    const handleBackfillMarketData = () => {
-        setProgressDialogOpen(true);
-    };
-
-    const handleProgressComplete = () => {
-        fetchData(); // Refresh data after update completes
-    };
 
     const formatDate = (timestamp: number) => {
         const date = new Date(timestamp * 1000);
@@ -233,23 +223,6 @@ export default function NetEquityPage() {
                             <SelectItem value="margin-desc">融資需求-從高到低</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button
-                        variant="secondary"
-                        className="hover:bg-accent hover:text-accent-foreground"
-                        onClick={handleBackfillMarketData}
-                        disabled={isBackfilling}
-                    >
-                        {isBackfilling ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                更新中...
-                            </>
-                        ) : (
-                            <>
-                                更新市場資料
-                            </>
-                        )}
-                    </Button>
                 </div>
             </div>
 
@@ -525,14 +498,6 @@ export default function NetEquityPage() {
                 )
             }
 
-            {/* Market Data Progress Dialog */}
-            <MarketDataProgressDialog
-                open={progressDialogOpen}
-                onOpenChange={setProgressDialogOpen}
-                userId={1}
-                year={selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear)}
-                onComplete={handleProgressComplete}
-            />
         </div >
     );
 }
