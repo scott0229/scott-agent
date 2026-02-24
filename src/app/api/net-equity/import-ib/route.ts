@@ -626,14 +626,14 @@ export async function POST(request: NextRequest) {
 
             // Normal day: upsert daily net equity record
             await db.prepare(`
-                INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, daily_interest, year, updated_at)
+                INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
                 ON CONFLICT(user_id, date) DO UPDATE SET
                     net_equity = excluded.net_equity,
                     cash_balance = excluded.cash_balance,
                     deposit = excluded.deposit,
                     management_fee = excluded.management_fee,
-                    daily_interest = excluded.daily_interest,
+                    interest = excluded.interest,
                     updated_at = unixepoch()
             `).bind(
                 userResult.id,

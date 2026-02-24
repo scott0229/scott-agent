@@ -188,6 +188,14 @@ export default function OptionsPage() {
             const marginRateB = equityB > 0 ? (b.open_put_covered_capital || 0) / equityB : 0;
 
             return marginRateB - marginRateA;
+        } else if (sortOrder === 'premium-rate-desc') {
+            const costA = (a.initial_cost || 0) + (a.net_deposit || 0);
+            const rateA = costA > 0 ? (a.total_profit || 0) / costA : 0;
+
+            const costB = (b.initial_cost || 0) + (b.net_deposit || 0);
+            const rateB = costB > 0 ? (b.total_profit || 0) / costB : 0;
+
+            return rateB - rateA;
         }
         return 0;
     });
@@ -235,6 +243,7 @@ export default function OptionsPage() {
                         <SelectItem value="alphabetical">按字母</SelectItem>
                         <SelectItem value="profit-desc">當前淨值-從大到小</SelectItem>
                         <SelectItem value="margin-desc">融資需求-從高到低</SelectItem>
+                        <SelectItem value="premium-rate-desc">權利金率-從高到低</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

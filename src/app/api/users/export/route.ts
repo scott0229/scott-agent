@@ -90,7 +90,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).deposits = [];
 
         let netEquityQuery = `
-            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(daily_interest, 0) as daily_interest, exposure_adjustment, year
+            SELECT date, net_equity, COALESCE(cash_balance, 0) as cash_balance, COALESCE(deposit, 0) as deposit, COALESCE(management_fee, 0) as management_fee, COALESCE(interest, 0) as daily_interest, exposure_adjustment, year
             FROM DAILY_NET_EQUITY
             WHERE user_id = ?
         `;
