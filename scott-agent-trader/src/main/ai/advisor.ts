@@ -36,7 +36,14 @@ export interface AdvisorRequest {
 export interface Recommendation {
   position: string
   action: 'roll' | 'hold' | 'close' | 'sell' | 'skip_stock' | 'skip_option' | 'already_traded'
-  optionAction?: 'roll' | 'hold' | 'close' | 'sell' | 'skip_stock' | 'skip_option' | 'already_traded'
+  optionAction?:
+    | 'roll'
+    | 'hold'
+    | 'close'
+    | 'sell'
+    | 'skip_stock'
+    | 'skip_option'
+    | 'already_traded'
   targetExpiry?: string
   targetStrike?: number
   estimatedCredit?: string
@@ -59,7 +66,13 @@ async function fetchHistoricalData(alias: string): Promise<{
   try {
     // Extract just the user_id part from alias (e.g. 'profit.967 (SZU HSIEN LEE)' -> 'profit.967')
     const userId = alias.split(/[\s(]/)[0]
-    console.log('[AI Advisor] Fetching historical data for userId:', userId, '(from alias:', alias, ')')
+    console.log(
+      '[AI Advisor] Fetching historical data for userId:',
+      userId,
+      '(from alias:',
+      alias,
+      ')'
+    )
     const url = `${STAGING_BASE_URL}/api/trader-options?alias=${encodeURIComponent(userId)}&apiKey=${STAGING_API_KEY}`
     const res = await fetch(url)
     if (!res.ok) {
@@ -82,7 +95,7 @@ function parseTargetExpiry(expiryStr: string): string | null {
   if (!match) return null
   const monthName = match[1]
   const day = parseInt(match[2], 10)
-  const monthIdx = MONTHS.findIndex(m => m.toLowerCase() === monthName.toLowerCase())
+  const monthIdx = MONTHS.findIndex((m) => m.toLowerCase() === monthName.toLowerCase())
   if (monthIdx < 0 || day < 1 || day > 31) return null
   const now = new Date()
   let year = now.getFullYear()
@@ -102,8 +115,8 @@ function buildPrompt(
   monthlyOnlySymbols: Set<string>
 ): string {
   // Format current option positions
-  const optionPositions = positions.filter(p => p.secType === 'OPT')
-  const stockPositions = positions.filter(p => p.secType !== 'OPT')
+  const optionPositions = positions.filter((p) => p.secType === 'OPT')
+  const stockPositions = positions.filter((p) => p.secType !== 'OPT')
 
   const formatExpiry = (exp: string): string => {
     if (!exp || exp.length < 8) return exp
@@ -116,7 +129,10 @@ function buildPrompt(
   const calcDTE = (exp: string): number => {
     if (!exp || exp.length < 8) return -1
     const d = new Date(`${exp.slice(0, 4)}-${exp.slice(4, 6)}-${exp.slice(6, 8)}T00:00:00`)
-    return Math.max(0, Math.ceil((d.getTime() - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)))
+    return Math.max(
+      0,
+      Math.ceil((d.getTime() - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))
+    )
   }
 
   // Current holdings section
@@ -126,7 +142,7 @@ function buildPrompt(
     currentHoldings += '### 股票持倉\n'
     for (const p of stockPositions) {
       const lastPrice = quotes[p.symbol]
-      const pnl = lastPrice ? ((lastPrice - p.avgCost) * p.quantity) : 0
+      const pnl = lastPrice ? (lastPrice - p.avgCost) * p.quantity : 0
       const ccNote = stocksWithCC.has(p.symbol) ? ' (已有CC)' : ''
       const monthlyNote = monthlyOnlySymbols.has(p.symbol) ? ' (僅月期權)' : ''
       currentHoldings += `- ${p.symbol}: ${p.quantity.toLocaleString()}股, 均價=${p.avgCost.toFixed(2)}, 現價=${lastPrice?.toFixed(2) || '未知'}, 損益=${pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}${ccNote}${monthlyNote}\n`
@@ -143,7 +159,7 @@ function buildPrompt(
       const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
       const lastPrice = optionQuotes[key]
       const avgUnit = p.avgCost / 100
-      const pnl = lastPrice ? ((lastPrice - avgUnit) * p.quantity * 100) : 0
+      const pnl = lastPrice ? (lastPrice - avgUnit) * p.quantity * 100 : 0
       const direction = p.quantity > 0 ? 'Long(買入)' : 'Short(賣出)'
       currentHoldings += `- ${label}: ${direction} ${Math.abs(p.quantity)}張, DTE=${dte}, 均價=${avgUnit.toFixed(2)}, 現價=${lastPrice?.toFixed(2) || '未知'}, 損益=${pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n`
     }
@@ -167,7 +183,7 @@ function buildPrompt(
     for (const sym of expiryKeys) {
       const dates = availableExpiries[sym]
       // Format dates: 20260224 -> Feb24, 20260227 -> Feb27
-      const formatted = dates.map(d => {
+      const formatted = dates.map((d) => {
         const m = MONTHS[parseInt(d.substring(4, 6), 10) - 1]
         const day = parseInt(d.substring(6, 8), 10)
         return `${m}${day}`
@@ -210,7 +226,8 @@ function buildPrompt(
     const closedOptions = historical.options.filter((o: any) => o.to_date && o.open_date)
     console.log('[AI Advisor] Closed options (with to_date) count:', closedOptions.length)
     if (closedOptions.length > 0) {
-      const winRate = closedOptions.filter((o: any) => (o.final_profit || 0) > 0).length / closedOptions.length
+      const winRate =
+        closedOptions.filter((o: any) => (o.final_profit || 0) > 0).length / closedOptions.length
       const rollCount = closedOptions.filter((o: any) => o.operation === '滾動').length
 
       histSection += `### 期權交易模式分析\n`
@@ -219,7 +236,10 @@ function buildPrompt(
       histSection += `- 展期次數: ${rollCount} (${closedOptions.length > 0 ? ((rollCount / closedOptions.length) * 100).toFixed(0) : 0}%)\n\n`
 
       // Per-underlying + type stats
-      const groupMap: Record<string, { count: number; totalDays: number; totalPremium: number; deltas: number[] }> = {}
+      const groupMap: Record<
+        string,
+        { count: number; totalDays: number; totalPremium: number; deltas: number[] }
+      > = {}
       for (const o of closedOptions) {
         const right = o.type === 'CALL' ? 'CALL' : o.type === 'PUT' ? 'PUT' : o.type
         const key = `${o.underlying} ${right}`
@@ -228,7 +248,7 @@ function buildPrompt(
         if (o.open_date && o.to_date) {
           groupMap[key].totalDays += Math.max(1, Math.round((o.to_date - o.open_date) / 86400))
         }
-        groupMap[key].totalPremium += (o.premium || 0)
+        groupMap[key].totalPremium += o.premium || 0
         if (o.delta) groupMap[key].deltas.push(Math.abs(o.delta))
       }
 
@@ -236,7 +256,10 @@ function buildPrompt(
       for (const [key, g] of Object.entries(groupMap)) {
         const avgDays = g.count > 0 ? (g.totalDays / g.count).toFixed(1) : '?'
         const avgPrem = g.count > 0 ? (g.totalPremium / g.count).toFixed(2) : '?'
-        const avgDelta = g.deltas.length > 0 ? (g.deltas.reduce((a, b) => a + b, 0) / g.deltas.length).toFixed(3) : '?'
+        const avgDelta =
+          g.deltas.length > 0
+            ? (g.deltas.reduce((a, b) => a + b, 0) / g.deltas.length).toFixed(3)
+            : '?'
         histSection += `- ${key}: ${g.count}筆, 平均持有${avgDays}天, 平均權利金=${avgPrem}, 平均delta=${avgDelta}\n`
       }
       histSection += '\n'
@@ -252,7 +275,9 @@ function buildPrompt(
     const recent = historical.stockTrades.slice(0, 10)
     for (const s of recent) {
       const openDate = s.open_date ? new Date(s.open_date * 1000).toLocaleDateString('zh-TW') : '?'
-      const closeDate = s.close_date ? new Date(s.close_date * 1000).toLocaleDateString('zh-TW') : '持有中'
+      const closeDate = s.close_date
+        ? new Date(s.close_date * 1000).toLocaleDateString('zh-TW')
+        : '持有中'
       histSection += `- [${s.status}] ${s.symbol} | ${s.quantity}股 | ${openDate}→${closeDate} | 開=${s.open_price} 關=${s.close_price || '—'}\n`
     }
     histSection += '\n'
@@ -428,7 +453,7 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
   try {
     const executions = await requestExecutions()
     // Filter executions for this account only
-    const acctExecs = executions.filter(e => e.account === account.accountId)
+    const acctExecs = executions.filter((e) => e.account === account.accountId)
     if (acctExecs.length > 0) {
       // Build a set of option keys that have been traded today (by symbol+expiry+strike+right)
       const tradedKeys = new Set<string>()
@@ -441,24 +466,28 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
       }
 
       if (tradedKeys.size > 0) {
-        console.log(`[AI Advisor] Today's traded option keys for ${account.accountId}:`, [...tradedKeys])
-        const beforeCount = filteredPositions.filter(p => p.secType === 'OPT').length
+        console.log(`[AI Advisor] Today's traded option keys for ${account.accountId}:`, [
+          ...tradedKeys
+        ])
+        const beforeCount = filteredPositions.filter((p) => p.secType === 'OPT').length
         // Collect positions that are being filtered out
-        alreadyTradedPositions = positions.filter(p => {
+        alreadyTradedPositions = positions.filter((p) => {
           if (p.secType !== 'OPT') return false
           const r = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : p.right
           const key = `${p.symbol}|${p.expiry}|${p.strike}|${r}`
           return tradedKeys.has(key)
         })
-        filteredPositions = positions.filter(p => {
+        filteredPositions = positions.filter((p) => {
           if (p.secType !== 'OPT') return true // Keep stock positions
           // Check if this specific option was traded today
           const r = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : p.right
           const key = `${p.symbol}|${p.expiry}|${p.strike}|${r}`
           return !tradedKeys.has(key)
         })
-        const afterCount = filteredPositions.filter(p => p.secType === 'OPT').length
-        console.log(`[AI Advisor] Filtered out ${beforeCount - afterCount} already-traded option positions (${beforeCount} → ${afterCount})`)
+        const afterCount = filteredPositions.filter((p) => p.secType === 'OPT').length
+        console.log(
+          `[AI Advisor] Filtered out ${beforeCount - afterCount} already-traded option positions (${beforeCount} → ${afterCount})`
+        )
       }
     }
   } catch (err) {
@@ -467,7 +496,9 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
 
   // 5. Fetch available expiry dates for each underlying with option positions
   const availableExpiries: Record<string, string[]> = {}
-  const optSymbols = [...new Set(filteredPositions.filter(p => p.secType === 'OPT').map(p => p.symbol))]
+  const optSymbols = [
+    ...new Set(filteredPositions.filter((p) => p.secType === 'OPT').map((p) => p.symbol))
+  ]
   const today = new Date()
   const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
   for (const sym of optSymbols) {
@@ -485,7 +516,9 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
         const nearExpiries = [...allExpiries].sort().slice(0, 10) // Next 10 available dates
         if (nearExpiries.length > 0) {
           availableExpiries[sym] = nearExpiries
-          console.log(`[AI Advisor] ${sym} available expiries (${chains.length} chains merged): ${nearExpiries.join(', ')}`)
+          console.log(
+            `[AI Advisor] ${sym} available expiries (${chains.length} chains merged): ${nearExpiries.join(', ')}`
+          )
         }
       }
     } catch (err) {
@@ -495,7 +528,9 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
 
   // 6. Detect monthly-only symbols (less than 3 expiry dates in next 14 days = monthly only)
   const monthlyOnlySymbols = new Set<string>()
-  const stockSymbols = [...new Set(positions.filter(p => p.secType !== 'OPT').map(p => p.symbol))]
+  const stockSymbols = [
+    ...new Set(positions.filter((p) => p.secType !== 'OPT').map((p) => p.symbol))
+  ]
   for (const sym of stockSymbols) {
     const expiries = availableExpiries[sym]
     if (!expiries || expiries.length === 0) {
@@ -525,14 +560,16 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
       const now = new Date()
       const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
       const in14DaysStr = `${in14Days.getFullYear()}${String(in14Days.getMonth() + 1).padStart(2, '0')}${String(in14Days.getDate()).padStart(2, '0')}`
-      const nearExpiries = expiries.filter(e => e >= todayStr && e <= in14DaysStr)
+      const nearExpiries = expiries.filter((e) => e >= todayStr && e <= in14DaysStr)
       if (nearExpiries.length < 2) {
         monthlyOnlySymbols.add(sym)
       }
     }
   }
   if (monthlyOnlySymbols.size > 0) {
-    console.log(`[AI Advisor] Monthly-only symbols (no weekly/daily options): ${[...monthlyOnlySymbols].join(', ')}`)
+    console.log(
+      `[AI Advisor] Monthly-only symbols (no weekly/daily options): ${[...monthlyOnlySymbols].join(', ')}`
+    )
   }
 
   // Note: Monthly-only stocks are NOT filtered out from the prompt.
@@ -590,10 +627,24 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
       if (alreadyTradedPositions.length > 0) {
         for (const p of alreadyTradedPositions) {
           const right = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : (p.right ?? '')
-          const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-          const expLabel = p.expiry && p.expiry.length === 8
-            ? `${MONTHS[parseInt(p.expiry.slice(4, 6), 10) - 1]}${p.expiry.slice(2, 4)}`
-            : (p.expiry ?? '')
+          const MONTHS = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec'
+          ]
+          const expLabel =
+            p.expiry && p.expiry.length === 8
+              ? `${MONTHS[parseInt(p.expiry.slice(4, 6), 10) - 1]}${p.expiry.slice(2, 4)}`
+              : (p.expiry ?? '')
           const posLabel = `${p.symbol} ${expLabel} ${p.strike}${right}`.trim()
           recs.push({
             position: posLabel,
@@ -679,7 +730,9 @@ async function enrichWithRealQuotes(
     // ── ROLL action ───────────────────────────────────────────────────────────
     if (rec.action !== 'roll' || !rec.targetExpiry || !rec.targetStrike) continue
 
-    console.log(`[AI Advisor] Processing roll rec[${i}]: position="${rec.position}" targetExpiry="${rec.targetExpiry}" targetStrike=${rec.targetStrike}`)
+    console.log(
+      `[AI Advisor] Processing roll rec[${i}]: position="${rec.position}" targetExpiry="${rec.targetExpiry}" targetStrike=${rec.targetStrike}`
+    )
 
     // Parse the position field to extract symbol and right
     // Format: "QQQ Feb23 614C" or "PLTR Feb23 130P"
@@ -699,9 +752,11 @@ async function enrichWithRealQuotes(
     }
 
     // Find the matching current position
-    const currentPos = positions.find(p =>
-      p.symbol === symbol && p.secType === 'OPT' &&
-      (p.right === right || p.right === (right === 'C' ? 'CALL' : 'PUT'))
+    const currentPos = positions.find(
+      (p) =>
+        p.symbol === symbol &&
+        p.secType === 'OPT' &&
+        (p.right === right || p.right === (right === 'C' ? 'CALL' : 'PUT'))
     )
 
     // Build target contract
@@ -721,13 +776,15 @@ async function enrichWithRealQuotes(
         symbol: currentPos.symbol,
         expiry: currentPos.expiry,
         strike: currentPos.strike,
-        right  // Use parsed 'C'/'P' to keep key format consistent
+        right // Use parsed 'C'/'P' to keep key format consistent
       }
       currentKey = `${currentPos.symbol}|${currentPos.expiry}|${currentPos.strike}|${right}`
       allContracts.push(currentContract)
     }
 
-    console.log(`[AI Advisor] Parsed: symbol=${symbol} right=${right} ibExpiry=${ibExpiry} targetKey="${targetKey}" currentKey="${currentKey}"`)
+    console.log(
+      `[AI Advisor] Parsed: symbol=${symbol} right=${right} ibExpiry=${ibExpiry} targetKey="${targetKey}" currentKey="${currentKey}"`
+    )
 
     recInfo.push({ recIdx: i, targetKey, currentKey, isSell: false })
   }
@@ -736,42 +793,52 @@ async function enrichWithRealQuotes(
 
   // De-duplicate contracts so we don't fetch the same one twice
   const seen = new Set<string>()
-  const uniqueContracts = allContracts.filter(c => {
+  const uniqueContracts = allContracts.filter((c) => {
     const k = `${c.symbol}|${c.expiry}|${c.strike}|${c.right}`
     if (seen.has(k)) return false
     seen.add(k)
     return true
   })
 
-  console.log(`[AI Advisor] Fetching ${uniqueContracts.length} quotes from IB (${allContracts.length} before dedup)`)
+  console.log(
+    `[AI Advisor] Fetching ${uniqueContracts.length} quotes from IB (${allContracts.length} before dedup)`
+  )
   const quotes = await getOptionQuotes(uniqueContracts)
   console.log('[AI Advisor] All quotes:', quotes)
 
   // Update each recommendation with real values
   for (const { recIdx, targetKey, currentKey, isSell } of recInfo) {
     const newPrice = quotes[targetKey] || 0
-    const oldPrice = currentKey ? (quotes[currentKey] || 0) : 0
+    const oldPrice = currentKey ? quotes[currentKey] || 0 : 0
 
-    console.log(`[AI Advisor] ${recs[recIdx].position}: oldPrice(${currentKey})=${oldPrice} newPrice(${targetKey})=${newPrice}`)
+    console.log(
+      `[AI Advisor] ${recs[recIdx].position}: oldPrice(${currentKey})=${oldPrice} newPrice(${targetKey})=${newPrice}`
+    )
 
     if (newPrice > 0) {
       if (isSell) {
         // For new sell (CC/CSP): the credit is the full bid price
         recs[recIdx].estimatedCredit = `+$${newPrice.toFixed(2)}`
-        console.log(`[AI Advisor] Real SELL quote: bid@${newPrice.toFixed(2)} = +$${newPrice.toFixed(2)}`)
+        console.log(
+          `[AI Advisor] Real SELL quote: bid@${newPrice.toFixed(2)} = +$${newPrice.toFixed(2)}`
+        )
       } else {
         // For roll: net credit = new bid - cost to close current
         const netCredit = newPrice - oldPrice
         const sign = netCredit >= 0 ? '+' : ''
         recs[recIdx].estimatedCredit = `${sign}$${netCredit.toFixed(2)}`
-        console.log(`[AI Advisor] Real ROLL quote: close@${oldPrice.toFixed(2)} → new@${newPrice.toFixed(2)} = ${sign}$${netCredit.toFixed(2)}`)
+        console.log(
+          `[AI Advisor] Real ROLL quote: close@${oldPrice.toFixed(2)} → new@${newPrice.toFixed(2)} = ${sign}$${netCredit.toFixed(2)}`
+        )
       }
     } else {
       // Keep Claude's estimate but mark it
       if (recs[recIdx].estimatedCredit && !recs[recIdx].estimatedCredit.includes('估')) {
         recs[recIdx].estimatedCredit = `${recs[recIdx].estimatedCredit} (估)`
       }
-      console.log(`[AI Advisor] No real quote for ${targetKey}, keeping estimate: ${recs[recIdx].estimatedCredit}`)
+      console.log(
+        `[AI Advisor] No real quote for ${targetKey}, keeping estimate: ${recs[recIdx].estimatedCredit}`
+      )
     }
   }
 }

@@ -97,6 +97,24 @@ interface IBApi {
   getOptionQuotes: (
     contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
   ) => Promise<Record<string, number>>
+  getHistoricalData: (req: {
+    symbol: string
+    secType?: string
+    endDateTime?: string
+    durationString?: string
+    barSizeSetting?: string
+    whatToShow?: string
+    useRTH?: number
+  }) => Promise<
+    Array<{
+      time: string
+      open: number
+      high: number
+      low: number
+      close: number
+      volume?: number
+    }>
+  >
   placeBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>

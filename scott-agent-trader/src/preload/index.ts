@@ -41,8 +41,10 @@ const ibApi = {
     ipcRenderer.invoke('ib:getStockQuote', symbol),
   getQuotes: (symbols: string[]): Promise<Record<string, number>> =>
     ipcRenderer.invoke('ib:getQuotes', symbols),
-  getOptionQuotes: (contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>): Promise<Record<string, number>> =>
-    ipcRenderer.invoke('ib:getOptionQuotes', contracts),
+  getOptionQuotes: (
+    contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+  ): Promise<Record<string, number>> => ipcRenderer.invoke('ib:getOptionQuotes', contracts),
+  getHistoricalData: (req: any): Promise<any[]> => ipcRenderer.invoke('ib:getHistoricalData', req),
 
   // Options
   getOptionChain: (symbol: string): Promise<any[]> =>
@@ -57,10 +59,8 @@ const ibApi = {
     request: any,
     accountQuantities: Record<string, number>
   ): Promise<any[]> => ipcRenderer.invoke('ib:placeOptionBatchOrders', request, accountQuantities),
-  placeRollOrder: (
-    request: any,
-    accountQuantities: Record<string, number>
-  ): Promise<any[]> => ipcRenderer.invoke('ib:placeRollOrder', request, accountQuantities),
+  placeRollOrder: (request: any, accountQuantities: Record<string, number>): Promise<any[]> =>
+    ipcRenderer.invoke('ib:placeRollOrder', request, accountQuantities),
   getOpenOrders: (): Promise<any[]> => ipcRenderer.invoke('ib:getOpenOrders'),
   getExecutions: (): Promise<any[]> => ipcRenderer.invoke('ib:getExecutions'),
   modifyOrder: (req: any): Promise<void> => ipcRenderer.invoke('ib:modifyOrder', req),
@@ -72,7 +72,14 @@ const ibApi = {
 
   // Settings
   getSettings: (): Promise<any> => ipcRenderer.invoke('settings:get'),
-  putSettings: (key: string, value: unknown): Promise<any> => ipcRenderer.invoke('settings:put', key, value),
+  putSettings: (key: string, value: unknown): Promise<any> =>
+    ipcRenderer.invoke('settings:put', key, value),
+
+  // Price Upload (per-symbol)
+  uploadSymbol: (
+    symbol: string
+  ): Promise<{ success: boolean; count?: number; error?: string }> =>
+    ipcRenderer.invoke('prices:uploadSymbol', symbol),
 
   // Cleanup
   removeAllListeners: (): void => {

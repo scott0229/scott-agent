@@ -6,13 +6,13 @@ const { IBApi, EventName, SecType, OptionType } = require('@stoqey/ib')
 
 const HOST = '127.0.0.1'
 const PORT = 7497
-const CLIENT_ID = 99  // Use a different clientId to avoid conflicts with main app
+const CLIENT_ID = 99 // Use a different clientId to avoid conflicts with main app
 
 const api = new IBApi({ host: HOST, port: PORT, clientId: CLIENT_ID })
 
 // Test contract: QQQ call option, near ATM
 const SYMBOL = 'QQQ'
-const EXPIRY = '20260220'  // This Friday's expiry
+const EXPIRY = '20260220' // This Friday's expiry
 const STRIKE = 600
 const RIGHT = OptionType.Call
 
@@ -45,9 +45,26 @@ api.on(EventName.tickSize, (reqId, tickType, value) => {
   console.log(`[TICK_SIZE] reqId=${reqId}, tickType=${tickType}, value=${value}`)
 })
 
-api.on(EventName.tickOptionComputation, (reqId, field, tickAttrib, impliedVol, delta, optPrice, pvDividend, gamma, vega, theta, undPrice) => {
-  console.log(`[TICK_OPTION] reqId=${reqId}, field=${field}, IV=${impliedVol}, delta=${delta}, gamma=${gamma}, vega=${vega}, theta=${theta}, undPrice=${undPrice}`)
-})
+api.on(
+  EventName.tickOptionComputation,
+  (
+    reqId,
+    field,
+    tickAttrib,
+    impliedVol,
+    delta,
+    optPrice,
+    pvDividend,
+    gamma,
+    vega,
+    theta,
+    undPrice
+  ) => {
+    console.log(
+      `[TICK_OPTION] reqId=${reqId}, field=${field}, IV=${impliedVol}, delta=${delta}, gamma=${gamma}, vega=${vega}, theta=${theta}, undPrice=${undPrice}`
+    )
+  }
+)
 
 api.on(EventName.tickSnapshotEnd, (reqId) => {
   console.log(`[SNAPSHOT_END] reqId=${reqId}`)
@@ -74,11 +91,11 @@ function startTest() {
     exchange: 'SMART',
     currency: 'USD'
   }
-  
+
   // First test stock to confirm connection works
   api.reqMarketDataType(4) // delayed-frozen, same as quotes.ts
   api.reqMktData(1001, stockContract, '', true, false)
-  
+
   // After 3 seconds, test option
   setTimeout(() => {
     console.log()
@@ -176,7 +193,7 @@ function startTest() {
       api.cancelMktData(4001)
       api.cancelMktData(5001)
       api.cancelMktData(6001)
-    } catch(e) {}
+    } catch (e) {}
     setTimeout(() => {
       api.disconnect()
       process.exit(0)

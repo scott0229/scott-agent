@@ -13,12 +13,12 @@ const ib = new IBApi({ port: PORT, host: HOST, clientId: CLIENT_ID })
 
 // 各種可能組合：symbol / secType / exchange
 const candidates = [
-  { symbol: 'USFD',  secType: 'IND', exchange: 'NYSE',   desc: 'USFD/NYSE' },
-  { symbol: 'USFD',  secType: 'IND', exchange: 'NASDAQ', desc: 'USFD/NASDAQ' },
-  { symbol: 'IBKR',  secType: 'IND', exchange: 'NASDAQ', desc: 'IBKR IND' },
-  { symbol: 'GS',    secType: 'STK', exchange: 'SMART',  desc: 'GS STK (test)' },
-  { symbol: 'SHY',   secType: 'STK', exchange: 'SMART',  desc: 'SHY ETF (T-Bill proxy)' },
-  { symbol: 'IBKR',  secType: 'STK', exchange: 'SMART',  desc: 'IBKR STK (test)' },
+  { symbol: 'USFD', secType: 'IND', exchange: 'NYSE', desc: 'USFD/NYSE' },
+  { symbol: 'USFD', secType: 'IND', exchange: 'NASDAQ', desc: 'USFD/NASDAQ' },
+  { symbol: 'IBKR', secType: 'IND', exchange: 'NASDAQ', desc: 'IBKR IND' },
+  { symbol: 'GS', secType: 'STK', exchange: 'SMART', desc: 'GS STK (test)' },
+  { symbol: 'SHY', secType: 'STK', exchange: 'SMART', desc: 'SHY ETF (T-Bill proxy)' },
+  { symbol: 'IBKR', secType: 'STK', exchange: 'SMART', desc: 'IBKR STK (test)' }
 ]
 
 let reqIdBase = 20000
@@ -34,7 +34,7 @@ ib.on(EventName.connected, () => {
       symbol: c.symbol,
       secType: c.secType,
       exchange: c.exchange,
-      currency: 'USD',
+      currency: 'USD'
     }
     results[reqId] = { ...c, ticks: [] }
     console.log(`📡 Requesting [${c.desc}] reqId=${reqId}`)
@@ -43,7 +43,7 @@ ib.on(EventName.connected, () => {
 
   setTimeout(() => {
     console.log('\n=== 結果 ===')
-    Object.values(results).forEach(r => {
+    Object.values(results).forEach((r) => {
       const status = r.ticks.length ? r.ticks.join(', ') : '無資料'
       console.log(`${r.desc}: ${status}`)
     })
@@ -54,7 +54,16 @@ ib.on(EventName.connected, () => {
 
 ib.on(EventName.tickPrice, (reqId, tickType, value) => {
   if (!results[reqId]) return
-  const names = { 1:'bid',2:'ask',4:'last',9:'close',68:'d_bid',69:'d_ask',70:'d_last',75:'d_close' }
+  const names = {
+    1: 'bid',
+    2: 'ask',
+    4: 'last',
+    9: 'close',
+    68: 'd_bid',
+    69: 'd_ask',
+    70: 'd_last',
+    75: 'd_close'
+  }
   const n = names[tickType] || `t${tickType}`
   if (value > 0) {
     results[reqId].ticks.push(`${n}=${value}`)
@@ -78,7 +87,7 @@ ib.on(EventName.error, (err, code, reqId) => {
   if (results[reqId]) {
     console.warn(`  ⚠️ [${results[reqId].desc}] Error ${code}: ${err?.message || err}`)
     results[reqId].ticks.push(`ERR_${code}`)
-  } else if (![2104,2106,2158,2119].includes(code)) {
+  } else if (![2104, 2106, 2158, 2119].includes(code)) {
     console.error(`❌ IB Error [${code}]: ${err?.message || err}`)
   }
 })

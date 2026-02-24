@@ -146,7 +146,9 @@ export async function requestOptionGreeks(
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
-  console.log(`[IB] requestOptionGreeks called: symbol=${symbol}, expiry=${expiry}, strikes=${strikes.length}, exchange=${exchange}`)
+  console.log(
+    `[IB] requestOptionGreeks called: symbol=${symbol}, expiry=${expiry}, strikes=${strikes.length}, exchange=${exchange}`
+  )
 
   // Use frozen market data (type 2) to get last known bid/ask from market close
   // Type 1 (live) returns -1 when market is closed; type 2 (frozen) returns last snapshot
@@ -191,7 +193,9 @@ export async function requestOptionGreeks(
     // Hard timeout: safety net
     const timeout = setTimeout(() => {
       if (!resolved) {
-        console.log(`[IB] Hard timeout fired. tickDataReceived=${tickDataReceived}, errors=${errorReqIds.size}, completed=${completedCount}/${totalExpected}`)
+        console.log(
+          `[IB] Hard timeout fired. tickDataReceived=${tickDataReceived}, errors=${errorReqIds.size}, completed=${completedCount}/${totalExpected}`
+        )
         finish()
       }
     }, 8000)
@@ -202,7 +206,9 @@ export async function requestOptionGreeks(
       if (settleTimer) clearTimeout(settleTimer)
       settleTimer = setTimeout(() => {
         if (!resolved) {
-          console.log(`[IB] Settle timer fired, tickDataReceived=${tickDataReceived}, completed=${completedCount}/${totalExpected}`)
+          console.log(
+            `[IB] Settle timer fired, tickDataReceived=${tickDataReceived}, completed=${completedCount}/${totalExpected}`
+          )
           finish()
         }
       }, 1500)
@@ -215,7 +221,9 @@ export async function requestOptionGreeks(
       if (settleTimer) clearTimeout(settleTimer)
       cleanup()
       buildResults()
-      console.log(`[IB] Option greeks finished: ${results.filter(r => r.bid > 0 || r.ask > 0 || r.delta !== 0).length}/${results.length} have data`)
+      console.log(
+        `[IB] Option greeks finished: ${results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length}/${results.length} have data`
+      )
       resolve(results)
     }
 
@@ -231,9 +239,7 @@ export async function requestOptionGreeks(
 
       // Log first few ticks for debugging
       if (tickDataReceived < 5) {
-        console.log(
-          `[IB] Option tick: ${info.strike}${info.right} type=${tickType} value=${value}`
-        )
+        console.log(`[IB] Option tick: ${info.strike}${info.right} type=${tickType} value=${value}`)
       }
 
       tickDataReceived++
@@ -308,7 +314,9 @@ export async function requestOptionGreeks(
       // Only log first few errors to avoid flooding
       if (errorReqIds.size <= 3) {
         const info = reqIds.get(id)
-        console.log(`[IB] Option data error for ${info?.strike} ${info?.right}: code=${code}, msg=${err.message}`)
+        console.log(
+          `[IB] Option data error for ${info?.strike} ${info?.right}: code=${code}, msg=${err.message}`
+        )
       }
       // Count errors as completed to avoid hanging
       completedCount++
@@ -349,7 +357,9 @@ export async function requestOptionGreeks(
     let debugTickCount = 0
     const debugTickListener = (rId: number, tt: number, val: number): void => {
       if (debugTickCount < 3) {
-        console.log(`[IB] DEBUG tickPrice: reqId=${rId}, type=${tt}, value=${val}, isOurs=${reqIds.has(rId)}`)
+        console.log(
+          `[IB] DEBUG tickPrice: reqId=${rId}, type=${tt}, value=${val}, isOurs=${reqIds.has(rId)}`
+        )
         debugTickCount++
       }
     }

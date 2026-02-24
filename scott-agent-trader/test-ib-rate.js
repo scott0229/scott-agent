@@ -1,9 +1,9 @@
 /**
  * test-ib-rate.js
- * 
+ *
  * 從 IB Gateway 抓取 benchmark 利率（Fed Funds Rate）
  * 執行：node test-ib-rate.js
- * 
+ *
  * IB 利率相關 tickers：
  *   USFD  - US Federal Funds Rate (IND on CBOE)
  *   USIBKR- IB Benchmark Rate (if available)
@@ -11,16 +11,16 @@
 
 const { IBApi, EventName, SecType } = require('@stoqey/ib')
 
-const PORT = 7497   // TWS port
+const PORT = 7497 // TWS port
 const HOST = '127.0.0.1'
 const CLIENT_ID = 999
 
 const ib = new IBApi({ port: PORT, host: HOST, clientId: CLIENT_ID })
 
 const candidates = [
-  { symbol: 'USFD',  exchange: 'CBOE',   desc: 'US Fed Funds Rate' },
-  { symbol: 'SOFR',  exchange: 'CBOE',   desc: 'SOFR Rate' },
-  { symbol: 'LIBOR', exchange: 'CBOE',   desc: 'LIBOR (deprecated)' },
+  { symbol: 'USFD', exchange: 'CBOE', desc: 'US Fed Funds Rate' },
+  { symbol: 'SOFR', exchange: 'CBOE', desc: 'SOFR Rate' },
+  { symbol: 'LIBOR', exchange: 'CBOE', desc: 'LIBOR (deprecated)' }
 ]
 
 let reqIdBase = 10000
@@ -29,7 +29,7 @@ let received = 0
 
 ib.on(EventName.connected, () => {
   console.log('✅ Connected to IB Gateway')
-  ib.reqMarketDataType(4)  // delayed/frozen
+  ib.reqMarketDataType(4) // delayed/frozen
 
   candidates.forEach((c, i) => {
     const reqId = reqIdBase + i
@@ -37,7 +37,7 @@ ib.on(EventName.connected, () => {
       symbol: c.symbol,
       secType: SecType.IND,
       exchange: c.exchange,
-      currency: 'USD',
+      currency: 'USD'
     }
     results[reqId] = { ...c, ticks: [] }
     console.log(`📡 Requesting ${c.desc} (${c.symbol}) reqId=${reqId}`)
@@ -47,7 +47,7 @@ ib.on(EventName.connected, () => {
   // 5 秒後印出結果
   setTimeout(() => {
     console.log('\n=== 結果 ===')
-    Object.values(results).forEach(r => {
+    Object.values(results).forEach((r) => {
       console.log(`${r.desc} (${r.symbol}):`, r.ticks.length ? r.ticks : '無資料')
     })
     ib.disconnect()
@@ -58,8 +58,16 @@ ib.on(EventName.connected, () => {
 ib.on(EventName.tickPrice, (reqId, tickType, value, attrib) => {
   if (results[reqId]) {
     const tickNames = {
-      1: 'bid', 2: 'ask', 4: 'last', 6: 'high', 7: 'low', 9: 'close',
-      68: 'delayed_bid', 69: 'delayed_ask', 70: 'delayed_last', 75: 'delayed_close'
+      1: 'bid',
+      2: 'ask',
+      4: 'last',
+      6: 'high',
+      7: 'low',
+      9: 'close',
+      68: 'delayed_bid',
+      69: 'delayed_ask',
+      70: 'delayed_last',
+      75: 'delayed_close'
     }
     const name = tickNames[tickType] || `tick_${tickType}`
     results[reqId].ticks.push(`${name}=${value}`)

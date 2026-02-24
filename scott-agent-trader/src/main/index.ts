@@ -3,7 +3,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { connect, disconnect, getConnectionState, onConnectionStatusChange } from './ib/connection'
-import { requestManagedAccounts, requestAccountSummary, requestPositions, requestAccountAliasesForIds } from './ib/accounts'
+import {
+  requestManagedAccounts,
+  requestAccountSummary,
+  requestPositions,
+  requestAccountAliasesForIds
+} from './ib/accounts'
 import {
   placeBatchOrders,
   placeOptionBatchOrders,
@@ -17,6 +22,7 @@ import {
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
+import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
@@ -33,7 +39,8 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
@@ -118,8 +125,18 @@ function setupIpcHandlers(): void {
     return getQuotes(symbols)
   })
 
-  ipcMain.handle('ib:getOptionQuotes', async (_event, contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>) => {
-    return getOptionQuotes(contracts)
+  ipcMain.handle(
+    'ib:getOptionQuotes',
+    async (
+      _event,
+      contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+    ) => {
+      return getOptionQuotes(contracts)
+    }
+  )
+
+  ipcMain.handle('ib:getHistoricalData', async (_event, req) => {
+    return getHistoricalData(req)
   })
 
   // Options
@@ -191,12 +208,69 @@ function setupIpcHandlers(): void {
     try {
       const res = await fetch(SETTINGS_URL, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SETTINGS_API_KEY}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SETTINGS_API_KEY}`
+        },
         body: JSON.stringify({ key, value })
       })
       return await res.json()
     } catch {
       return { success: false }
+    }
+  })
+
+  // Upload 1-year daily closing prices for ONE symbol to D1
+  const MARKET_DATA_URL = 'https://scott-agent.com/api/market-data'
+
+  ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string) => {
+    try {
+      const bars = await getHistoricalData({
+        symbol,
+        durationString: '1 Y',
+        barSizeSetting: '1 day',
+        useRTH: 1,
+        whatToShow: 'TRADES'
+      })
+
+      const rows: { symbol: string; date: number; price: number }[] = bars.map((bar) => {
+        const t = String(bar.time)
+        const n = Number(t)
+        let dateSec: number
+        if (!isNaN(n) && t.length > 5) {
+          dateSec = n
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+          dateSec = Math.floor(new Date(t + 'T00:00:00Z').getTime() / 1000)
+        } else {
+          dateSec = Math.floor(new Date(t).getTime() / 1000)
+        }
+        return { symbol, date: dateSec, price: bar.close }
+      })
+
+      if (rows.length === 0) return { success: false, error: '無歷史資料' }
+
+      // Send in parallel chunks of 20 to the existing single-row endpoint
+      const CHUNK = 20
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK)
+        await Promise.all(
+          chunk.map((r) =>
+            fetch(MARKET_DATA_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${SETTINGS_API_KEY}`
+              },
+              body: JSON.stringify({ symbol: r.symbol, date: r.date, price: r.price })
+            })
+          )
+        )
+      }
+
+      return { success: true, count: rows.length }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { success: false, error: msg }
     }
   })
 }

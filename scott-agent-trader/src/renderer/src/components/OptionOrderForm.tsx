@@ -4,8 +4,6 @@ import OptionChainTable from './OptionChainTable'
 import CustomSelect from './CustomSelect'
 import type { AccountData } from '../hooks/useAccountStore'
 
-
-
 interface OrderResult {
   orderId: number
   account: string
@@ -45,7 +43,10 @@ interface OptionOrderFormProps {
   accounts: AccountData[]
 }
 
-export default function OptionOrderForm({ connected, accounts }: OptionOrderFormProps): React.JSX.Element {
+export default function OptionOrderForm({
+  connected,
+  accounts
+}: OptionOrderFormProps): React.JSX.Element {
   // Search state
   const [symbol, setSymbol] = useState('')
   const [chainParams, setChainParams] = useState<OptionChainParams[]>([])
@@ -145,9 +146,9 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
         const strikesToLoad =
           availableStrikes.length > 30
             ? availableStrikes.slice(
-              Math.max(0, Math.floor(availableStrikes.length / 2) - 15),
-              Math.min(availableStrikes.length, Math.floor(availableStrikes.length / 2) + 15)
-            )
+                Math.max(0, Math.floor(availableStrikes.length / 2) - 15),
+                Math.min(availableStrikes.length, Math.floor(availableStrikes.length / 2) + 15)
+              )
             : availableStrikes
 
         const data = await window.ibApi.getOptionGreeks(
@@ -187,7 +188,9 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
   const qty = parseInt(quantity || '0', 10) || 0
   const sortedAccounts = [...accounts].sort((a, b) => b.netLiquidation - a.netLiquidation)
   const targetAccounts =
-    selectedUser === 'ALL' ? sortedAccounts : sortedAccounts.filter((a) => a.accountId === selectedUser)
+    selectedUser === 'ALL'
+      ? sortedAccounts
+      : sortedAccounts.filter((a) => a.accountId === selectedUser)
   const allocations: Record<string, number> = {}
   for (const acct of targetAccounts) {
     if (qty > 0) allocations[acct.accountId] = qty
@@ -219,7 +222,17 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
     } finally {
       setSubmitting(false)
     }
-  }, [symbol, action, limitPrice, selectedExpiry, selectedStrike, selectedRight, allocations, totalAllocated, outsideRth])
+  }, [
+    symbol,
+    action,
+    limitPrice,
+    selectedExpiry,
+    selectedStrike,
+    selectedRight,
+    allocations,
+    totalAllocated,
+    outsideRth
+  ])
 
   const contractDesc =
     selectedStrike !== null && selectedRight !== null && selectedExpiry
@@ -277,8 +290,23 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                       const expiryDate = new Date(y, m, d)
                       const today = new Date()
                       today.setHours(0, 0, 0, 0)
-                      const diffDays = Math.round((expiryDate.getTime() - today.getTime()) / 86400000)
-                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                      const diffDays = Math.round(
+                        (expiryDate.getTime() - today.getTime()) / 86400000
+                      )
+                      const months = [
+                        'Jan',
+                        'Feb',
+                        'Mar',
+                        'Apr',
+                        'May',
+                        'Jun',
+                        'Jul',
+                        'Aug',
+                        'Sep',
+                        'Oct',
+                        'Nov',
+                        'Dec'
+                      ]
                       const formatted = `${months[m]} ${d} '${String(y).slice(2)}`
                       return {
                         value: exp,
@@ -385,8 +413,21 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
               )
             })()}
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}>
-            <input type="checkbox" checked={outsideRth} onChange={(e) => setOutsideRth(e.target.checked)} />
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              marginTop: '8px'
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={outsideRth}
+              onChange={(e) => setOutsideRth(e.target.checked)}
+            />
             允許盤前盤後
           </label>
 
@@ -408,10 +449,9 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                   ) : (
                     <>
                       確定要 <strong>{action === 'BUY' ? '買入' : '賣出'}</strong>{' '}
-                      <strong>{contractDesc}</strong> 共{' '}
-                      <strong>{qty}</strong> 口 x{' '}
-                      <strong>{targetAccounts.length}</strong> 個帳戶，
-                      限價: <strong>{limitPrice}</strong>？
+                      <strong>{contractDesc}</strong> 共 <strong>{qty}</strong> 口 x{' '}
+                      <strong>{targetAccounts.length}</strong> 個帳戶， 限價:{' '}
+                      <strong>{limitPrice}</strong>？
                     </>
                   )}
                 </div>
@@ -429,7 +469,8 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                   <tbody>
                     {targetAccounts.map((acct, index) => {
                       const result = orderResults.find((r) => r.account === acct.accountId)
-                      const canCancel = result && !['Filled', 'Cancelled', 'Inactive'].includes(result.status)
+                      const canCancel =
+                        result && !['Filled', 'Cancelled', 'Inactive'].includes(result.status)
                       return (
                         <tr key={acct.accountId}>
                           <td>{index + 1}.</td>
@@ -439,9 +480,16 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                           <td>
                             {result ? (
                               <span className={`status-${result.status.toLowerCase()}`}>
-                                {result.status} {result.filled > 0 ? `(${result.filled}/${result.filled + result.remaining})` : ''}
+                                {result.status}{' '}
+                                {result.filled > 0
+                                  ? `(${result.filled}/${result.filled + result.remaining})`
+                                  : ''}
                               </span>
-                            ) : (orderResults.length > 0 ? '-' : '')}
+                            ) : orderResults.length > 0 ? (
+                              '-'
+                            ) : (
+                              ''
+                            )}
                           </td>
                           {orderResults.length > 0 && (
                             <td>
@@ -464,7 +512,11 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                 <div className="confirm-buttons">
                   {orderResults.length === 0 && (
                     <>
-                      <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
+                      <button
+                        onClick={handleSubmit}
+                        className="btn btn-danger"
+                        disabled={submitting}
+                      >
                         {submitting ? '下單中...' : '✅ 確認下單'}
                       </button>
                       <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
@@ -473,7 +525,15 @@ export default function OptionOrderForm({ connected, accounts }: OptionOrderForm
                     </>
                   )}
                   {orderResults.length > 0 && (
-                    <button onClick={() => { setShowConfirm(false); setOrderResults([]); setSelectedUser('ALL'); setQuantity(''); }} className="btn btn-secondary">
+                    <button
+                      onClick={() => {
+                        setShowConfirm(false)
+                        setOrderResults([])
+                        setSelectedUser('ALL')
+                        setQuantity('')
+                      }}
+                      className="btn btn-secondary"
+                    >
                       重新下單
                     </button>
                   )}

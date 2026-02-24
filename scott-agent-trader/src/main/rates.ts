@@ -19,7 +19,7 @@ export async function getFedFundsRate(): Promise<number> {
 
   try {
     const res = await fetch(FRED_URL)
-    const json = await res.json() as { observations?: { value: string }[] }
+    const json = (await res.json()) as { observations?: { value: string }[] }
     const raw = json.observations?.[0]?.value
     if (raw && raw !== '.') {
       cachedRate = parseFloat(raw)
@@ -61,5 +61,5 @@ export function ibMarginRate(loanUsd: number, benchmarkRate: number): number {
 export function estimateDailyInterest(loanUsd: number, benchmarkRate: number): number {
   if (loanUsd >= 0) return 0
   const annualRate = ibMarginRate(loanUsd, benchmarkRate) / 100
-  return Math.abs(loanUsd) * annualRate / 360
+  return (Math.abs(loanUsd) * annualRate) / 360
 }

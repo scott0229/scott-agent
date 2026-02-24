@@ -1,4 +1,16 @@
-import { Contract, Order, OrderAction, OrderType, SecType, EventName, OptionType, Execution, ExecutionFilter, TimeInForce, ComboLeg } from '@stoqey/ib'
+import {
+  Contract,
+  Order,
+  OrderAction,
+  OrderType,
+  SecType,
+  EventName,
+  OptionType,
+  Execution,
+  ExecutionFilter,
+  TimeInForce,
+  ComboLeg
+} from '@stoqey/ib'
 import { getIBApi } from './connection'
 
 export interface BatchOrderRequest {
@@ -12,7 +24,6 @@ export interface BatchOrderRequest {
   preMarket?: boolean
   tif?: 'DAY' | 'GTC'
 }
-
 
 export interface OptionBatchOrderRequest {
   symbol: string
@@ -189,8 +200,8 @@ export interface RollOrderRequest {
   openStrike: number
   openRight: 'C' | 'P'
   // Order params
-  action: 'BUY' | 'SELL'   // action on the CLOSE leg (BUY to close short, SELL to close long)
-  limitPrice: number        // net combo limit price
+  action: 'BUY' | 'SELL' // action on the CLOSE leg (BUY to close short, SELL to close long)
+  limitPrice: number // net combo limit price
   outsideRth?: boolean
 }
 
@@ -250,7 +261,11 @@ async function resolveOptionConId(
       clearTimeout(timeout)
       api.removeListener(EventName.contractDetails, onDetails)
       api.removeListener(EventName.error, onErr)
-      reject(new Error(`Failed to resolve conId for ${symbol} ${expiry} ${strike}${right}: ${err.message}`))
+      reject(
+        new Error(
+          `Failed to resolve conId for ${symbol} ${expiry} ${strike}${right}: ${err.message}`
+        )
+      )
     }
 
     api.on(EventName.contractDetails, onDetails)
@@ -271,9 +286,16 @@ export async function placeRollOrder(
   if (!api) throw new Error('Not connected to IB')
 
   // 1. Resolve conIds for both legs in parallel
-  console.log(`[IB] Resolving conIds for roll: close=${request.symbol} ${request.closeExpiry} ${request.closeStrike}${request.closeRight}, open=${request.openExpiry} ${request.openStrike}${request.openRight}`)
+  console.log(
+    `[IB] Resolving conIds for roll: close=${request.symbol} ${request.closeExpiry} ${request.closeStrike}${request.closeRight}, open=${request.openExpiry} ${request.openStrike}${request.openRight}`
+  )
   const [closeConId, openConId] = await Promise.all([
-    resolveOptionConId(request.symbol, request.closeExpiry, request.closeStrike, request.closeRight),
+    resolveOptionConId(
+      request.symbol,
+      request.closeExpiry,
+      request.closeStrike,
+      request.closeRight
+    ),
     resolveOptionConId(request.symbol, request.openExpiry, request.openStrike, request.openRight)
   ])
 
@@ -313,8 +335,25 @@ export async function placeRollOrder(
     const orderId = getNextOrderId()
 
     // Build readable combo description for UI display
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    const fmtExp = (e: string): string => { const m = months[parseInt(e.substring(4,6))-1]; const d = e.substring(6,8); return `${m}${d}` }
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ]
+    const fmtExp = (e: string): string => {
+      const m = months[parseInt(e.substring(4, 6)) - 1]
+      const d = e.substring(6, 8)
+      return `${m}${d}`
+    }
     const closePrefix = closeAction === 'BUY' ? '+' : '-'
     const openPrefix = openAction === 'BUY' ? '+' : '-'
     const comboDesc = `${closePrefix}${fmtExp(request.closeExpiry)} ${request.closeStrike}${request.closeRight} → ${openPrefix}${fmtExp(request.openExpiry)} ${request.openStrike}${request.openRight}`
@@ -497,18 +536,22 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         symbol: contract.symbol || '',
         secType: contract.secType || '',
         action: order.action || '',
-        quantity: typeof order.totalQuantity === 'number' ? order.totalQuantity : Number(order.totalQuantity) || 0,
+        quantity:
+          typeof order.totalQuantity === 'number'
+            ? order.totalQuantity
+            : Number(order.totalQuantity) || 0,
         orderType: order.orderType || '',
         limitPrice: order.lmtPrice || 0,
         status,
         expiry: contract.lastTradeDateOrContractMonth || undefined,
         strike: contract.strike || undefined,
         right: contract.right || undefined,
-        comboDescription: contract.secType === 'BAG'
-          ? (comboDescriptionMap.get(orderId) || undefined)
-          : undefined
+        comboDescription:
+          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined
       })
-      console.log(`[IB] Open order received: orderId=${orderId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`)
+      console.log(
+        `[IB] Open order received: orderId=${orderId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`
+      )
     }
 
     const onOpenOrderEnd = (): void => {
@@ -546,42 +589,44 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     for (const conId of allConIds) {
       try {
         const reqId = getNextRollReqId()
-        const details = await new Promise<{ expiry: string; strike: number; right: string } | null>((res) => {
-          const t = setTimeout(() => {
-            api.removeListener(EventName.contractDetails, onDetails)
-            api.removeListener(EventName.error, onErr)
-            res(null)
-          }, 5000)
+        const details = await new Promise<{ expiry: string; strike: number; right: string } | null>(
+          (res) => {
+            const t = setTimeout(() => {
+              api.removeListener(EventName.contractDetails, onDetails)
+              api.removeListener(EventName.error, onErr)
+              res(null)
+            }, 5000)
 
-          const onDetails = (id: number, d: any): void => {
-            if (id !== reqId) return
-            clearTimeout(t)
-            api.removeListener(EventName.contractDetails, onDetails)
-            api.removeListener(EventName.error, onErr)
-            const c = d?.contract || d?.summary
-            if (c) {
-              res({
-                expiry: c.lastTradeDateOrContractMonth || '',
-                strike: c.strike || 0,
-                right: c.right || ''
-              })
-            } else {
+            const onDetails = (id: number, d: any): void => {
+              if (id !== reqId) return
+              clearTimeout(t)
+              api.removeListener(EventName.contractDetails, onDetails)
+              api.removeListener(EventName.error, onErr)
+              const c = d?.contract || d?.summary
+              if (c) {
+                res({
+                  expiry: c.lastTradeDateOrContractMonth || '',
+                  strike: c.strike || 0,
+                  right: c.right || ''
+                })
+              } else {
+                res(null)
+              }
+            }
+
+            const onErr = (_err: Error, _code: number, id: number): void => {
+              if (id !== reqId) return
+              clearTimeout(t)
+              api.removeListener(EventName.contractDetails, onDetails)
+              api.removeListener(EventName.error, onErr)
               res(null)
             }
-          }
 
-          const onErr = (_err: Error, _code: number, id: number): void => {
-            if (id !== reqId) return
-            clearTimeout(t)
-            api.removeListener(EventName.contractDetails, onDetails)
-            api.removeListener(EventName.error, onErr)
-            res(null)
+            api.on(EventName.contractDetails, onDetails)
+            api.on(EventName.error, onErr)
+            api.reqContractDetails(reqId, { conId })
           }
-
-          api.on(EventName.contractDetails, onDetails)
-          api.on(EventName.error, onErr)
-          api.reqContractDetails(reqId, { conId })
-        })
+        )
         if (details) conIdDetails.set(conId, details)
       } catch {
         // ignore resolution errors
@@ -589,8 +634,25 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     }
 
     // Build descriptions for each BAG order
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    const fmtExp = (e: string): string => { const m = months[parseInt(e.substring(4,6))-1]; const d = e.substring(6,8); return `${m}${d}` }
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ]
+    const fmtExp = (e: string): string => {
+      const m = months[parseInt(e.substring(4, 6)) - 1]
+      const d = e.substring(6, 8)
+      return `${m}${d}`
+    }
     for (const [orderId, legs] of bagOrderLegs.entries()) {
       const legDescs = legs.map((leg) => {
         const d = leg.conId ? conIdDetails.get(leg.conId) : undefined
@@ -603,7 +665,7 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       comboDescriptionMap.set(orderId, desc)
 
       // Update the order object
-      const order = orders.find(o => o.orderId === orderId)
+      const order = orders.find((o) => o.orderId === orderId)
       if (order) order.comboDescription = desc
     }
   }
@@ -646,11 +708,7 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
       resolve(executions)
     }, 10000)
 
-    const onExecDetails = (
-      _reqId: number,
-      contract: Contract,
-      execution: Execution
-    ): void => {
+    const onExecDetails = (_reqId: number, contract: Contract, execution: Execution): void => {
       if (_reqId !== reqId) return
 
       executions.push({
@@ -667,9 +725,10 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
         expiry: contract.lastTradeDateOrContractMonth || undefined,
         strike: contract.strike || undefined,
         right: contract.right || undefined,
-        comboDescription: (contract.secType === 'BAG' && (contract as any).comboLegsDescription)
-          ? (contract as any).comboLegsDescription
-          : undefined
+        comboDescription:
+          contract.secType === 'BAG' && (contract as any).comboLegsDescription
+            ? (contract as any).comboLegsDescription
+            : undefined
       })
     }
 

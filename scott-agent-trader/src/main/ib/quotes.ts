@@ -16,9 +16,9 @@ export interface StockQuote {
 
 export interface OptionQuoteRequest {
   symbol: string
-  expiry: string    // e.g. "20260220"
+  expiry: string // e.g. "20260220"
   strike: number
-  right: string     // "C" or "P"
+  right: string // "C" or "P"
 }
 
 /**
@@ -68,7 +68,11 @@ export async function getOptionQuote(req: OptionQuoteRequest): Promise<number> {
   }
 }
 
-function _fetchOptionQuote(api: ReturnType<typeof getIBApi> & object, req: OptionQuoteRequest, key: string): Promise<number> {
+function _fetchOptionQuote(
+  api: ReturnType<typeof getIBApi> & object,
+  req: OptionQuoteRequest,
+  key: string
+): Promise<number> {
   const reqId = getNextReqId()
   let last = 0
 
@@ -112,7 +116,11 @@ function _fetchOptionQuote(api: ReturnType<typeof getIBApi> & object, req: Optio
     function cleanup(): void {
       api!.off(EventName.tickPrice, onTickPrice)
       api!.off(EventName.tickSnapshotEnd, onTickSnapshotEnd)
-      try { api!.cancelMktData(reqId) } catch { /* ignore */ }
+      try {
+        api!.cancelMktData(reqId)
+      } catch {
+        /* ignore */
+      }
     }
 
     api.on(EventName.tickPrice, onTickPrice)
@@ -126,7 +134,7 @@ function _fetchOptionQuote(api: ReturnType<typeof getIBApi> & object, req: Optio
       currency: 'USD',
       lastTradeDateOrContractMonth: req.expiry,
       strike: req.strike,
-      right: (r === 'C' || r === 'CALL' ? OptionType.Call : OptionType.Put)
+      right: r === 'C' || r === 'CALL' ? OptionType.Call : OptionType.Put
     }
 
     api.reqMktData(reqId, contract, '', true, false)

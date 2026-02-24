@@ -4,6 +4,7 @@ import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
+import UploadProgressDialog from './components/UploadProgressDialog'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
 import './assets/app.css'
@@ -18,7 +19,9 @@ function loadHiddenAccounts(port: number): Set<string> {
   try {
     const raw = localStorage.getItem(getHiddenAccountsKey(port))
     if (raw) return new Set(JSON.parse(raw))
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return new Set()
 }
 
@@ -28,7 +31,19 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType, symbolOptionTypes, setSymbolOptionType, saveAllSettings } = useTraderSettings()
+  const [showUpload, setShowUpload] = useState(false)
+  const {
+    marginLimit,
+    setMarginLimit,
+    watchSymbols,
+    setWatchSymbol,
+    mergeAccountAliases,
+    accountTypes,
+    setAccountType,
+    symbolOptionTypes,
+    setSymbolOptionType,
+    saveAllSettings
+  } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -52,17 +67,21 @@ function App(): React.JSX.Element {
     setHiddenAccounts(loadHiddenAccounts(connectedPort))
   }, [connectedPort])
 
-  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } = useAccountStore(connected, connectedPort, mergeAccountAliases)
+  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } =
+    useAccountStore(connected, connectedPort, mergeAccountAliases)
 
-  const toggleHiddenAccount = useCallback((accountId: string) => {
-    setHiddenAccounts((prev) => {
-      const next = new Set(prev)
-      if (next.has(accountId)) next.delete(accountId)
-      else next.add(accountId)
-      localStorage.setItem(getHiddenAccountsKey(connectedPort), JSON.stringify([...next]))
-      return next
-    })
-  }, [connectedPort])
+  const toggleHiddenAccount = useCallback(
+    (accountId: string) => {
+      setHiddenAccounts((prev) => {
+        const next = new Set(prev)
+        if (next.has(accountId)) next.delete(accountId)
+        else next.add(accountId)
+        localStorage.setItem(getHiddenAccountsKey(connectedPort), JSON.stringify([...next]))
+        return next
+      })
+    },
+    [connectedPort]
+  )
 
   const visibleAccounts = useMemo(
     () => accounts.filter((a) => !hiddenAccounts.has(a.accountId)),
@@ -87,12 +106,31 @@ function App(): React.JSX.Element {
   return (
     <div className="app">
       <header className="app-header">
-        <button className="settings-btn" title="設定" onClick={() => setShowSettings(true)}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        </button>
+        <div className="header-left">
+          <button className="settings-btn" title="設定" onClick={() => setShowSettings(true)}>
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+          <button
+            className="upload-prices-btn"
+            title="上傳可交易標的過去一年股價到雲端"
+            disabled={!connected || watchSymbols.filter(Boolean).length === 0}
+            onClick={() => setShowUpload(true)}
+          >
+            ☁ 上傳股價
+          </button>
+        </div>
         <nav className="tab-nav-inline">
           <button
             className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
@@ -100,7 +138,6 @@ function App(): React.JSX.Element {
           >
             帳戶總覽
           </button>
-
         </nav>
         <div className="header-actions">
           <ConnectionStatus />
@@ -125,13 +162,17 @@ function App(): React.JSX.Element {
               marginLimit={marginLimit}
             />
           )}
-          {activeTab === 'option' && <OptionOrderForm connected={connected} accounts={visibleAccounts} />}
+          {activeTab === 'option' && (
+            <OptionOrderForm connected={connected} accounts={visibleAccounts} />
+          )}
         </div>
       </main>
-
       <SettingsPanel
         open={showSettings}
-        onClose={() => { saveAllSettings(); setShowSettings(false) }}
+        onClose={() => {
+          saveAllSettings()
+          setShowSettings(false)
+        }}
         accounts={accounts}
         hiddenAccounts={hiddenAccounts}
         onToggleAccount={toggleHiddenAccount}
@@ -141,8 +182,13 @@ function App(): React.JSX.Element {
         onSetWatchSymbol={setWatchSymbol}
         symbolOptionTypes={symbolOptionTypes}
         onSetSymbolOptionType={setSymbolOptionType}
-
       />
+      {showUpload && (
+        <UploadProgressDialog
+          symbols={watchSymbols.filter(Boolean)}
+          onClose={() => setShowUpload(false)}
+        />
+      )}
     </div>
   )
 }

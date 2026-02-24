@@ -11,7 +11,11 @@ export function getCachedAliases(port: number): Record<string, string> {
     const filePath = getCacheFilePath(port)
     if (existsSync(filePath)) {
       const data = JSON.parse(readFileSync(filePath, 'utf-8'))
-      console.log(`[AliasCache] Loaded cached aliases for port ${port}:`, Object.keys(data).length, 'accounts')
+      console.log(
+        `[AliasCache] Loaded cached aliases for port ${port}:`,
+        Object.keys(data).length,
+        'accounts'
+      )
       // Handle old format (objects with alias+accountType) by extracting alias
       const result: Record<string, string> = {}
       for (const [key, value] of Object.entries(data)) {
@@ -36,7 +40,11 @@ export function setCachedAliases(aliases: Record<string, string>, port: number):
     const existing = getCachedAliases(port)
     const merged = { ...existing, ...aliases }
     writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8')
-    console.log(`[AliasCache] Saved aliases for port ${port}:`, Object.keys(merged).length, 'accounts')
+    console.log(
+      `[AliasCache] Saved aliases for port ${port}:`,
+      Object.keys(merged).length,
+      'accounts'
+    )
   } catch (err) {
     console.error('[AliasCache] Error writing cache:', err)
   }

@@ -68,7 +68,11 @@ interface AccountStore {
 
 const POLL_INTERVAL = 1000
 
-export function useAccountStore(connected: boolean, port: number, onAliasUpdate?: (aliases: Record<string, string>) => void): AccountStore {
+export function useAccountStore(
+  connected: boolean,
+  port: number,
+  onAliasUpdate?: (aliases: Record<string, string>) => void
+): AccountStore {
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
@@ -89,12 +93,17 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
     setOpenOrders([])
     setExecutions([])
     aliasRef.current = {}
-    window.ibApi.getCachedAliases(port).then((cached) => {
-      if (Object.keys(cached).length > 0) {
-        aliasRef.current = cached
-        onAliasUpdate?.(cached)
-      }
-    }).catch(() => { /* ignore */ })
+    window.ibApi
+      .getCachedAliases(port)
+      .then((cached) => {
+        if (Object.keys(cached).length > 0) {
+          aliasRef.current = cached
+          onAliasUpdate?.(cached)
+        }
+      })
+      .catch(() => {
+        /* ignore */
+      })
   }, [port])
 
   const fetchData = useCallback(async () => {
@@ -152,7 +161,9 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
               }))
             )
           })
-          .catch(() => { /* ignore alias errors */ })
+          .catch(() => {
+            /* ignore alias errors */
+          })
       }
 
       // Fetch last prices in background (non-blocking)
@@ -176,19 +187,33 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
               return merged
             })
           })
-          .catch(() => { /* ignore quote errors */ })
+          .catch(() => {
+            /* ignore quote errors */
+          })
       }
 
       // Fetch option quotes in background (non-blocking)
-      const optionPositions = positionData.filter((p: PositionData) => p.secType === 'OPT' && p.expiry && p.strike && p.right)
+      const optionPositions = positionData.filter(
+        (p: PositionData) => p.secType === 'OPT' && p.expiry && p.strike && p.right
+      )
       // De-duplicate by contract key
       const seen = new Set<string>()
-      const optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }> = []
+      const optionContracts: Array<{
+        symbol: string
+        expiry: string
+        strike: number
+        right: string
+      }> = []
       for (const p of optionPositions) {
         const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
         if (!seen.has(key)) {
           seen.add(key)
-          optionContracts.push({ symbol: p.symbol, expiry: p.expiry!, strike: p.strike!, right: p.right! })
+          optionContracts.push({
+            symbol: p.symbol,
+            expiry: p.expiry!,
+            strike: p.strike!,
+            right: p.right!
+          })
         }
       }
       if (optionContracts.length > 0) {
@@ -204,7 +229,9 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
               return merged
             })
           })
-          .catch(() => { /* ignore option quote errors */ })
+          .catch(() => {
+            /* ignore option quote errors */
+          })
       }
     } catch (err: unknown) {
       console.error('Failed to fetch account data:', err)
@@ -236,5 +263,14 @@ export function useAccountStore(connected: boolean, port: number, onAliasUpdate?
     }
   }, [connected, fetchData])
 
-  return { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh: fetchData }
+  return {
+    accounts,
+    positions,
+    quotes,
+    optionQuotes,
+    openOrders,
+    executions,
+    loading,
+    refresh: fetchData
+  }
 }

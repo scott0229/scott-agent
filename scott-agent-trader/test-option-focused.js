@@ -10,7 +10,7 @@ console.log('=== Focused Option Data Test ===')
 
 api.on(EventName.connected, () => {
   console.log('[CONNECTED]')
-  
+
   // Log ALL events
   api.on(EventName.error, (err, code, reqId) => {
     console.log(`[ERROR] reqId=${reqId}, code=${code}, msg=${err.message}`)
@@ -21,9 +21,14 @@ api.on(EventName.connected, () => {
   api.on(EventName.tickSize, (reqId, tickType, value) => {
     console.log(`[TICK_SIZE] reqId=${reqId}, type=${tickType}, value=${value}`)
   })
-  api.on(EventName.tickOptionComputation, (reqId, field, tickAttrib, iv, delta, optPrice, pvDiv, gamma, vega, theta, undPrice) => {
-    console.log(`[TICK_OPT_COMP] reqId=${reqId}, field=${field}, iv=${iv}, delta=${delta}, theta=${theta}`)
-  })
+  api.on(
+    EventName.tickOptionComputation,
+    (reqId, field, tickAttrib, iv, delta, optPrice, pvDiv, gamma, vega, theta, undPrice) => {
+      console.log(
+        `[TICK_OPT_COMP] reqId=${reqId}, field=${field}, iv=${iv}, delta=${delta}, theta=${theta}`
+      )
+    }
+  )
   api.on(EventName.tickSnapshotEnd, (reqId) => {
     console.log(`[SNAPSHOT_END] reqId=${reqId}`)
   })
@@ -73,11 +78,21 @@ api.on(EventName.connected, () => {
   // Also check: what does the option chain return for QQQ?
   setTimeout(() => {
     console.log('\n--- Test F: reqSecDefOptParams for QQQ ---')
-    api.on(EventName.securityDefinitionOptionParameter, (reqId, exchange, underlyingConId, tradingClass, multiplier, expirations, strikes) => {
-      console.log(`[SEC_DEF_OPT] reqId=${reqId}, exchange=${exchange}, tradingClass=${tradingClass}, multiplier=${multiplier}`)
-      console.log(`  expirations (first 5): ${[...expirations].slice(0, 5).join(', ')}`)
-      console.log(`  strikes around 600 (nearest 5): ${[...strikes].filter(s => Math.abs(s - 600) <= 30).sort((a,b) => a-b).join(', ')}`)
-    })
+    api.on(
+      EventName.securityDefinitionOptionParameter,
+      (reqId, exchange, underlyingConId, tradingClass, multiplier, expirations, strikes) => {
+        console.log(
+          `[SEC_DEF_OPT] reqId=${reqId}, exchange=${exchange}, tradingClass=${tradingClass}, multiplier=${multiplier}`
+        )
+        console.log(`  expirations (first 5): ${[...expirations].slice(0, 5).join(', ')}`)
+        console.log(
+          `  strikes around 600 (nearest 5): ${[...strikes]
+            .filter((s) => Math.abs(s - 600) <= 30)
+            .sort((a, b) => a - b)
+            .join(', ')}`
+        )
+      }
+    )
     api.on(EventName.securityDefinitionOptionParameterEnd, (reqId) => {
       console.log(`[SEC_DEF_OPT_END] reqId=${reqId}`)
     })
@@ -94,7 +109,7 @@ api.on(EventName.connected, () => {
       api.cancelMktData(3001)
       api.cancelMktData(4001)
       api.cancelMktData(5001)
-    } catch(e) {}
+    } catch (e) {}
     setTimeout(() => {
       api.disconnect()
       process.exit(0)
@@ -103,4 +118,7 @@ api.on(EventName.connected, () => {
 })
 
 api.connect()
-setTimeout(() => { console.log('TIMEOUT'); process.exit(1) }, 30000)
+setTimeout(() => {
+  console.log('TIMEOUT')
+  process.exit(1)
+}, 30000)

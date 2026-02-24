@@ -10,18 +10,39 @@ api.on(EventName.connected, () => {
     console.log(`[ERROR] reqId=${reqId}, code=${code}, msg=${err.message}`)
   })
   api.on(EventName.tickPrice, (reqId, tickType, value) => {
-    const label = {1:'BID',2:'ASK',4:'LAST',6:'HIGH',7:'LOW',9:'CLOSE',14:'OPEN',
-                   66:'DELAYED_BID',67:'DELAYED_ASK',68:'DELAYED_BID',69:'DELAYED_ASK',
-                   70:'DELAYED_LAST',75:'DELAYED_CLOSE'}[tickType] || `TYPE_${tickType}`
+    const label =
+      {
+        1: 'BID',
+        2: 'ASK',
+        4: 'LAST',
+        6: 'HIGH',
+        7: 'LOW',
+        9: 'CLOSE',
+        14: 'OPEN',
+        66: 'DELAYED_BID',
+        67: 'DELAYED_ASK',
+        68: 'DELAYED_BID',
+        69: 'DELAYED_ASK',
+        70: 'DELAYED_LAST',
+        75: 'DELAYED_CLOSE'
+      }[tickType] || `TYPE_${tickType}`
     console.log(`[TICK] reqId=${reqId}, ${label}(${tickType})=${value}`)
   })
   api.on(EventName.tickSize, (reqId, tickType, value) => {
-    const label = {0:'BID_SIZE',3:'ASK_SIZE',5:'LAST_SIZE',8:'VOLUME',
-                   74:'DELAYED_BID_SIZE',75:'DELAYED_ASK_SIZE'}[tickType] || `SIZE_${tickType}`
+    const label =
+      {
+        0: 'BID_SIZE',
+        3: 'ASK_SIZE',
+        5: 'LAST_SIZE',
+        8: 'VOLUME',
+        74: 'DELAYED_BID_SIZE',
+        75: 'DELAYED_ASK_SIZE'
+      }[tickType] || `SIZE_${tickType}`
     if (value > 0) console.log(`[SIZE] reqId=${reqId}, ${label}(${tickType})=${value}`)
   })
   api.on(EventName.marketDataType, (reqId, type) => {
-    const label = {1:'LIVE',2:'FROZEN',3:'DELAYED',4:'DELAYED_FROZEN'}[type] || `TYPE_${type}`
+    const label =
+      { 1: 'LIVE', 2: 'FROZEN', 3: 'DELAYED', 4: 'DELAYED_FROZEN' }[type] || `TYPE_${type}`
     console.log(`[MKT_DATA_TYPE] reqId=${reqId}, ${label}(${type})`)
   })
 
@@ -55,10 +76,18 @@ api.on(EventName.connected, () => {
 
   setTimeout(() => {
     console.log('\n=== Done ===')
-    try { [1001,2001,3001,4001].forEach(id => api.cancelMktData(id)) } catch(e) {}
-    setTimeout(() => { api.disconnect(); process.exit(0) }, 1000)
+    try {
+      ;[1001, 2001, 3001, 4001].forEach((id) => api.cancelMktData(id))
+    } catch (e) {}
+    setTimeout(() => {
+      api.disconnect()
+      process.exit(0)
+    }, 1000)
   }, 14000)
 })
 
 api.connect()
-setTimeout(() => { console.log('TIMEOUT'); process.exit(1) }, 20000)
+setTimeout(() => {
+  console.log('TIMEOUT')
+  process.exit(1)
+}, 20000)

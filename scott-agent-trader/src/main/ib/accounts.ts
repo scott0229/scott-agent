@@ -2,63 +2,63 @@ import { EventName, SecType } from '@stoqey/ib'
 import { getIBApi } from './connection'
 
 export interface AccountSummaryItem {
-    account: string
-    tag: string
-    value: string
-    currency: string
+  account: string
+  tag: string
+  value: string
+  currency: string
 }
 
 export interface AccountData {
-    accountId: string
-    alias: string
-    accountType: string
-    netLiquidation: number
-    availableFunds: number
-    totalCashValue: number
-    grossPositionValue: number
-    currency: string
+  accountId: string
+  alias: string
+  accountType: string
+  netLiquidation: number
+  availableFunds: number
+  totalCashValue: number
+  grossPositionValue: number
+  currency: string
 }
 
 export interface PositionData {
-    account: string
-    symbol: string
-    secType: string
-    quantity: number
-    avgCost: number
-    marketValue?: number
-    expiry?: string
-    strike?: number
-    right?: string
+  account: string
+  symbol: string
+  secType: string
+  quantity: number
+  avgCost: number
+  marketValue?: number
+  expiry?: string
+  strike?: number
+  right?: string
 }
 
 // Request managed accounts list (FA accounts)
 export function requestManagedAccounts(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-        const api = getIBApi()
-        if (!api) {
-            reject(new Error('Not connected to IB'))
-            return
-        }
+  return new Promise((resolve, reject) => {
+    const api = getIBApi()
+    if (!api) {
+      reject(new Error('Not connected to IB'))
+      return
+    }
 
-        const handler = (accountsList: string): void => {
-            api.removeListener(EventName.managedAccounts, handler)
-            const accounts = accountsList
-                .split(',')
-                .map((a) => a.trim())
-                .filter((a) => a.length > 0)
-            resolve(accounts)
-        }
+    const handler = (accountsList: string): void => {
+      api.removeListener(EventName.managedAccounts, handler)
+      const accounts = accountsList
+        .split(',')
+        .map((a) => a.trim())
+        .filter((a) => a.length > 0)
+      resolve(accounts)
+    }
 
-        api.on(EventName.managedAccounts, handler)
+    api.on(EventName.managedAccounts, handler)
 
-        // Timeout after 10 seconds
-        setTimeout(() => {
-            api.removeListener(EventName.managedAccounts, handler)
-            reject(new Error('Timeout requesting managed accounts'))
-        }, 10000)
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      api.removeListener(EventName.managedAccounts, handler)
+      reject(new Error('Timeout requesting managed accounts'))
+    }, 10000)
 
-        api.reqManagedAccts()
-    })
+    api.reqManagedAccts()
+  })
 }
 
 // Request account alias for a single account using reqAccountUpdates
@@ -155,8 +155,6 @@ async function requestAccountAliases(accountIds: string[]): Promise<Map<string, 
   return result
 }
 
-
-
 // Build account data map from summary items
 function buildAccountMap(summaryItems: AccountSummaryItem[]): Map<string, AccountData> {
   const accountMap = new Map<string, AccountData>()
@@ -184,9 +182,7 @@ function buildAccountMap(summaryItems: AccountSummaryItem[]): Map<string, Accoun
 }
 
 // Request account summary for all accounts (no longer blocks on alias fetch)
-export async function requestAccountSummary(
-  group: string = 'All'
-): Promise<AccountData[]> {
+export async function requestAccountSummary(group: string = 'All'): Promise<AccountData[]> {
   // Cancel any in-flight summary request
   if (activeSummaryReqId !== null) {
     const api = getIBApi()
@@ -210,10 +206,7 @@ export async function requestAccountAliasesForIds(
 }
 
 // Raw account summary request (without aliases)
-function requestAccountSummaryRaw(
-  reqId: number,
-  group: string
-): Promise<AccountData[]> {
+function requestAccountSummaryRaw(reqId: number, group: string): Promise<AccountData[]> {
   return new Promise((resolve, reject) => {
     const api = getIBApi()
     if (!api) {
@@ -232,7 +225,6 @@ function requestAccountSummaryRaw(
       currency: string
     ): void => {
       if (_reqId === reqId) {
-
         summaryItems.push({ account, tag, value, currency })
       }
     }
@@ -264,54 +256,48 @@ function requestAccountSummaryRaw(
   })
 }
 
-
 // Request positions for all accounts
 export function requestPositions(): Promise<PositionData[]> {
-    return new Promise((resolve, reject) => {
-        const api = getIBApi()
-        if (!api) {
-            reject(new Error('Not connected to IB'))
-            return
-        }
+  return new Promise((resolve, reject) => {
+    const api = getIBApi()
+    if (!api) {
+      reject(new Error('Not connected to IB'))
+      return
+    }
 
-        const positions: PositionData[] = []
+    const positions: PositionData[] = []
 
-        const posHandler = (
-            account: string,
-            contract: any,
-            pos: number,
-            avgCost: number
-        ): void => {
-            if (pos !== 0) {
-                positions.push({
-                    account,
-                    symbol: contract.symbol || '',
-                    secType: contract.secType || SecType.STK,
-                    quantity: pos,
-                    avgCost,
-                    expiry: contract.lastTradeDateOrContractMonth || undefined,
-                    strike: contract.strike || undefined,
-                    right: contract.right || undefined
-                })
-            }
-        }
+    const posHandler = (account: string, contract: any, pos: number, avgCost: number): void => {
+      if (pos !== 0) {
+        positions.push({
+          account,
+          symbol: contract.symbol || '',
+          secType: contract.secType || SecType.STK,
+          quantity: pos,
+          avgCost,
+          expiry: contract.lastTradeDateOrContractMonth || undefined,
+          strike: contract.strike || undefined,
+          right: contract.right || undefined
+        })
+      }
+    }
 
-        const endHandler = (): void => {
-            api.removeListener(EventName.position, posHandler)
-            api.removeListener(EventName.positionEnd, endHandler)
-            resolve(positions)
-        }
+    const endHandler = (): void => {
+      api.removeListener(EventName.position, posHandler)
+      api.removeListener(EventName.positionEnd, endHandler)
+      resolve(positions)
+    }
 
-        api.on(EventName.position, posHandler as any)
-        api.on(EventName.positionEnd, endHandler)
+    api.on(EventName.position, posHandler as any)
+    api.on(EventName.positionEnd, endHandler)
 
-        // Timeout after 1 second
-        setTimeout(() => {
-            api.removeListener(EventName.position, posHandler)
-            api.removeListener(EventName.positionEnd, endHandler)
-            resolve(positions) // Return what we have
-        }, 1000)
+    // Timeout after 1 second
+    setTimeout(() => {
+      api.removeListener(EventName.position, posHandler)
+      api.removeListener(EventName.positionEnd, endHandler)
+      resolve(positions) // Return what we have
+    }, 1000)
 
-        api.reqPositions()
-    })
+    api.reqPositions()
+  })
 }

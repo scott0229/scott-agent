@@ -16,7 +16,7 @@ let stockTickCount = 0
 
 api.on(EventName.connected, () => {
   console.log('[CONNECTED]')
-  
+
   api.on(EventName.error, (err, code, reqId) => {
     console.log(`[ERROR] reqId=${reqId}, code=${code}`)
   })
@@ -55,18 +55,25 @@ api.on(EventName.connected, () => {
   setTimeout(() => {
     console.log('\n--- Step 2: Option data with mktDataType=1 ---')
     api.reqMarketDataType(1)
-    
+
     // Create 22 option requests (11 strikes x 2 C/P)
     const strikes = [585, 590, 595, 598, 600, 602, 605, 608, 610, 615, 620]
     let reqId = 200000
-    strikes.forEach(strike => {
-      ['C', 'P'].forEach(right => {
-        const contract = new Option('QQQ', '20260223', strike, right === 'C' ? OptionType.Call : OptionType.Put, 'SMART', 'USD')
+    strikes.forEach((strike) => {
+      ;['C', 'P'].forEach((right) => {
+        const contract = new Option(
+          'QQQ',
+          '20260223',
+          strike,
+          right === 'C' ? OptionType.Call : OptionType.Put,
+          'SMART',
+          'USD'
+        )
         api.reqMktData(reqId, contract, '', false, false)
         reqId++
       })
     })
-    console.log(`Sent ${reqId - 200000} option requests (reqIds 200000-${reqId-1})`)
+    console.log(`Sent ${reqId - 200000} option requests (reqIds 200000-${reqId - 1})`)
   }, 2000)
 
   // Step 3: After 4s, do another stock quote refresh (simulating auto-refresh)
@@ -84,12 +91,14 @@ api.on(EventName.connected, () => {
     console.log(`\n=== Results after 8s ===`)
     console.log(`Option ticks received: ${optionTickCount}`)
     console.log(`Stock ticks received: ${stockTickCount}`)
-    
+
     // Cancel all
     for (let id = 200000; id < 200022; id++) {
-      try { api.cancelMktData(id) } catch(e) {}
+      try {
+        api.cancelMktData(id)
+      } catch (e) {}
     }
-    
+
     setTimeout(() => {
       api.disconnect()
       process.exit(0)
@@ -98,4 +107,7 @@ api.on(EventName.connected, () => {
 })
 
 api.connect()
-setTimeout(() => { console.log('TIMEOUT'); process.exit(1) }, 15000)
+setTimeout(() => {
+  console.log('TIMEOUT')
+  process.exit(1)
+}, 15000)
