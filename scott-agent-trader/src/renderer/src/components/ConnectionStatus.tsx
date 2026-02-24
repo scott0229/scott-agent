@@ -54,7 +54,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
         disconnected: '未連線',
         connecting: '連線中...',
         connected: '已連線',
-        error: '連線錯誤'
+        error: '連線失敗'
     }
 
     return (
@@ -66,9 +66,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
                 />
                 <span className="status-text">{state.status === 'connected' ? `${state.port} 已連線` : statusLabels[state.status]}</span>
 
-                {state.status === 'error' && state.errorMessage && (
-                    <span className="error-message">{state.errorMessage}</span>
-                )}
+
             </div>
 
             <div className="connection-controls">

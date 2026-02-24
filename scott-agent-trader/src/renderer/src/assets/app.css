@@ -2389,6 +2389,13 @@ input[type="number"]::-webkit-outer-spin-button {
     color: var(--text-primary, #111);
 }
 
+.ai-advisor-rec-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .ai-advisor-rec-action {
     font-size: 12px;
     font-weight: 600;
@@ -2412,6 +2419,21 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .ai-advisor-rec-reason {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary, #374151);
+}
+
+.ai-advisor-rec-group-reasons {
+    margin: 6px 0 0 0;
+    padding: 0 0 0 16px;
+    list-style: disc;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ai-advisor-rec-group-reasons li {
     font-size: 13px;
     line-height: 1.6;
     color: var(--text-secondary, #374151);

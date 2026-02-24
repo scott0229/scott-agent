@@ -16,7 +16,7 @@ export function useTraderSettings() {
     const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>({})
     const [accountTypes, setAccountTypesState] = useState<Record<string, string>>({})
     const [symbolOptionTypes, setSymbolOptionTypesState] = useState<Record<string, { cc: boolean; pp: boolean }>>({})
-    const [claudeApiKey, setClaudeApiKeyState] = useState<string>('')
+
 
     // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
     useEffect(() => {
@@ -38,9 +38,7 @@ export function useTraderSettings() {
                 if (data.settings.symbol_option_types && typeof data.settings.symbol_option_types === 'object' && !Array.isArray(data.settings.symbol_option_types)) {
                     setSymbolOptionTypesState(data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>)
                 }
-                if (typeof data.settings.claudeApiKey === 'string') {
-                    setClaudeApiKeyState(data.settings.claudeApiKey as string)
-                }
+
             })
             .catch(() => { /* offline — use defaults */ })
     }, [])
@@ -52,8 +50,7 @@ export function useTraderSettings() {
         window.ibApi.putSettings('account_aliases', accountAliases).catch(() => {})
         window.ibApi.putSettings('account_types', accountTypes).catch(() => {})
         window.ibApi.putSettings('symbol_option_types', symbolOptionTypes).catch(() => {})
-        window.ibApi.putSettings('claudeApiKey', claudeApiKey).catch(() => {})
-    }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes, claudeApiKey])
+    }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes])
 
     const setMarginLimit = useCallback((v: number) => {
         setMarginLimitState(v)
@@ -105,7 +102,7 @@ export function useTraderSettings() {
         accountAliases, mergeAccountAliases,
         accountTypes, setAccountType,
         symbolOptionTypes, setSymbolOptionType,
-        claudeApiKey, setClaudeApiKey: setClaudeApiKeyState,
+
         saveAllSettings
     }
 }

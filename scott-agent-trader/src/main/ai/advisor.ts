@@ -35,7 +35,8 @@ export interface AdvisorRequest {
 
 export interface Recommendation {
   position: string
-  action: 'roll' | 'hold' | 'close'
+  action: 'roll' | 'hold' | 'close' | 'sell' | 'skip_stock' | 'skip_option' | 'already_traded'
+  optionAction?: 'roll' | 'hold' | 'close' | 'sell' | 'skip_stock' | 'skip_option' | 'already_traded'
   targetExpiry?: string
   targetStrike?: number
   estimatedCredit?: string
@@ -280,27 +281,33 @@ function buildPrompt(
 
 重要規則：
 - Short 持倉 = 賣出期權（CC/CSP），到期時通常展期繼續收租
-- Long 持倉 = 買入期權，簡短建議持有或平倉即可，不需要展期
+- Long 持倉 = 買入期權（Long Call / Long Put），必須在 recommendations 中產生一筆建議，使用 action="hold"，不需要展期。不可以只在 summary 中提及而不產生建議卡片。注意：Long 持倉不使用 skip_option，skip_option 只用於股票 card 的 optionAction 欄位
 - 「展期」(Roll) = 平倉現有 + 開新倉，用 action="roll" 並填 targetExpiry 和 targetStrike
 - Short 持倉到期（DTE=0 或 DTE=1）幾乎都應建議展期，即使 OTM 快歸零也要 roll 繼續收租
 - reason 要簡潔扼要，不要解釋策略定義，直接給出判斷和依據
 - reason 中不要使用 DTE=X 這種英文縮寫，改用中文「到期日剩X天」
+- reason 中提到虧損幅度時，一律使用百分比（如「目前虧損約27%」），不要使用絕對金額（如「虧損$23,140」）
 - 只有在以下特殊情況才使用 action="close"：用戶明顯想退出該標的、或該標的有重大風險不適合繼續做 CC/CSP
 - DTE=0 或 DTE=1 的期權非常緊急，優先分析，建議展期到合適的到期日和行權價
 - 展期建議必須填寫具體的 targetExpiry（如 "Mar7"）和 targetStrike（如 610）
 - 非常重要：展期天數必須遵守嚴格的規則：
-  * 你必須從「各標的可用到期日」中選擇一個實際存在的到期日。不同標的有不同的到期日週期（有些是每日到期，有些是每週五到期），絕對不能建議不存在的到期日
+  * 你必須從「各標的可用到期日」中選擇一個實際存在的到期日。不同標的有多種到期日週期（有些是每日到期，有些是每週五到期），絕對不能建議不存在的到期日
   * 在可用日期中，選擇最近的下一個到期日。對於每日到期的標的（如QQQ），這通常是明天；對於每週到期的標的（如TQQQ），這通常是下一個週五
   * 行權價選擇：優先使用相同行權價。如果當前期權是深度OTM（價外超過2%），可以把行權價往ATM方向移動一檔（例如614→613或615），但不要跳太多檔
   * 此規則不可違反，優先級高於歷史交易習慣數據
 - 考慮帳戶的融資率和現金狀況
 - 所有金額以美金計算
 - 如果帳戶只有股票沒有期權，可以建議賣出新的 CC/CSP，使用 action="sell" 並填入 targetExpiry 和 targetStrike
-- 非常重要：如果股票持倉標示了「(已有CC)」，代表該股票已經有賣出的 Covered Call，絕對不要再建議賣出新的 CC。已有 CC 的股票不需要出現在建議中（除非有其他非CC相關的建議）
-- 非常重要：如果股票持倉標示了「(僅月期權)」，代表該標的只有月期權（沒有每日或每週期權），不適合短期賣出 CC/CSP 策略，絕對不要建議賣出期權。這類標的不需要出現在建議中
-- 非常重要：賣出 Covered Call 的行權價必須高於該股票的持有成本（均價）。如果現價低於均價，表示目前是虧損狀態，賣出行權價低於均價的 CC 會在被行權時鎖定虧損。此時該股票不需要出現在建議中，不要建議任何動作（不要建議平倉、不要建議持有、不要建議賣出CC）
-- 非常重要：股票持倉只會出現在建議 CC 賣出的情境中。絕對不要對股票持倉建議「平倉」或「賣出股票」。這個工具只負責期權相關建議，不負責股票買賣決策。如果某股票不適合賣 CC，就完全跳過它
+- 非常重要：如果股票持倉標示了「(已有CC)」，代表該股票已經有賣出的 Covered Call，不要再建議賣出新的 CC。請使用 action="skip_stock" 並說明已有CC覆蓋
+- 非常重要：如果股票持倉標示了「(僅月期權)」，代表該標的只有月期權（沒有每日或每週期權），不適合短期賣出 CC/CSP 策略。請使用 action="skip_stock" 並說明僅有月期權不適合短期策略
+- 非常重要：賣出 Covered Call 的行權價必須高於該股票的持有成本（均價）。如果現價低於均價，表示目前是虧損狀態，賣出行權價低於均價的 CC 會在被行權時鎖定虧損。請使用 action="skip_stock" 並說明現價低於均價暫不適合賣CC
+- 非常重要：賣出 Covered Call 的行權價必須根據「現價」選擇，而非均價。行權價應選略高於現價的 ATM+1~5% 左右，不要選距現價過遠的深度 OTM。例如：PLTR 現價=$130，不應建議 Strike=150（太遠，權利金近乎零），應建議 132~136 左右。estimatedCredit 必須根據此 near-ATM 行權價的合理市場報價估算，不可虛高
+- 非常重要：股票持倉只會出現在建議 CC 賣出或 action="skip_stock" 的情境中。絕對不要對股票持倉建議「平倉」或「賣出股票」。這個工具只負責期權相關建議，不負責股票買賣決策
+- 非常重要：對於股票持倉的建議（action="skip_stock" 或 action="sell"），必須同時加上 optionAction 欄位，說明期權操作的建議：
+  * 如果該股票不需要賣出期權（如僅月期權、現價低於均價、已有CC覆蓋），使用 optionAction="skip_option"
+  * 如果建議賣出新的 CC，optionAction 使用 "sell"
 - reason 中除了說明展期原因，也要對照「各標的交易習慣」中的歷史平均權利金來評論這次展期的預估信用品質。例如：如果 TQQQ CALL 歷史平均權利金是 $0.85，而這次展期信用是 +$0.63，就說明低於平均；如果是 +$1.20 就說明高於平均。要讓用戶知道這次收益和過去比起來如何
+- summary 摘要欄位必須使用換行符（JSON 中的 \\n）來分段，每個主要觀點或標的分析用一個段落。絕對不要把所有內容擠在同一段。至少分成 2-3 段
 
 回答格式必須是以下 JSON（不要加 markdown code fence）：
 {
@@ -317,12 +324,23 @@ function buildPrompt(
       "position": "PLTR股票",
       "action": "sell",
       "targetExpiry": "Feb27",
-      "targetStrike": 135,
-      "estimatedCredit": "+$2.50",
-      "reason": "持有3000股，建議賣出135 Call收取權利金"
+      "targetStrike": 133,
+      "estimatedCredit": "+$0.80",
+      "reason": "持有3000股，現價$130.86，建議賣出133 Call（ATM+2%），預估權利金約$0.80"
+    },
+    {
+      "position": "QLD股票",
+      "action": "skip_stock",
+      "optionAction": "skip_option",
+      "reason": "僅有月期權，不適合短期CC策略"
+    },
+    {
+      "position": "SOFI Sep18 25C",
+      "action": "skip_option",
+      "reason": "Long持倉，到期日剩206天，屬於長期看漲部位，無需展期操作"
     }
   ],
-  "summary": "整體建議摘要..."
+  "summary": "第一段摘要內容\n\n第二段摘要內容\n\n第三段摘要內容"
 }`
 
   return `${systemPrompt}\n\n---\n\n${accountSection}\n${expirySection}${currentHoldings}\n${histSection}`
@@ -354,30 +372,17 @@ async function callClaude(prompt: string, apiKey: string): Promise<string> {
   return data.content?.[0]?.text || ''
 }
 
-// Read Claude API key from settings
-async function getClaudeApiKey(): Promise<string | null> {
-  try {
-    const res = await fetch(`${STAGING_BASE_URL}/api/trader-settings`)
-    const data = await res.json()
-    return data.settings?.claudeApiKey || null
-  } catch {
-    return null
-  }
+// Claude API key is read from user settings (electron-store) only
+function getClaudeApiKey(): string {
+  return ''
 }
 
 // Main advisor function
 export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorResponse> {
   const { account, positions, optionQuotes, quotes } = request
 
-  // 1. Check Claude API key
-  const claudeKey = await getClaudeApiKey()
-  if (!claudeKey) {
-    return {
-      recommendations: [],
-      summary: '',
-      error: '請先在設定中填入 Claude API Key'
-    }
-  }
+  // 1. Get Claude API key
+  const claudeKey = getClaudeApiKey()
 
   // 2. Get alias for this account
   const alias = account.alias
@@ -413,6 +418,7 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
 
   // 5. Fetch today's executions to skip already-traded positions
   let filteredPositions = positions
+  let alreadyTradedPositions: typeof positions = []
   try {
     const executions = await requestExecutions()
     // Filter executions for this account only
@@ -421,30 +427,29 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
       // Build a set of option keys that have been traded today (by symbol+expiry+strike+right)
       const tradedKeys = new Set<string>()
       for (const exec of acctExecs) {
-        if (exec.secType === 'OPT' || exec.secType === 'BAG') {
-          // For BAG (combo roll) orders, the symbol is the underlying
-          // Mark ALL option positions of this underlying as already traded
-          if (exec.secType === 'BAG') {
-            tradedKeys.add(`BAG:${exec.symbol}`)
-          } else if (exec.expiry && exec.strike) {
-            const r = exec.right === 'CALL' ? 'C' : exec.right === 'PUT' ? 'P' : exec.right
-            tradedKeys.add(`${exec.symbol}|${exec.expiry}|${exec.strike}|${r}`)
-          }
+        // Only track specific OPT executions (BAG combos also generate individual OPT leg events)
+        if (exec.secType === 'OPT' && exec.expiry && exec.strike) {
+          const r = exec.right === 'CALL' ? 'C' : exec.right === 'PUT' ? 'P' : exec.right
+          tradedKeys.add(`${exec.symbol}|${exec.expiry}|${exec.strike}|${r}`)
         }
       }
 
       if (tradedKeys.size > 0) {
         console.log(`[AI Advisor] Today's traded option keys for ${account.accountId}:`, [...tradedKeys])
         const beforeCount = filteredPositions.filter(p => p.secType === 'OPT').length
-        filteredPositions = positions.filter(p => {
-          if (p.secType !== 'OPT') return true // Keep stock positions
-          // Check if this specific option was traded
+        // Collect positions that are being filtered out
+        alreadyTradedPositions = positions.filter(p => {
+          if (p.secType !== 'OPT') return false
           const r = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : p.right
           const key = `${p.symbol}|${p.expiry}|${p.strike}|${r}`
-          if (tradedKeys.has(key)) return false
-          // Check if underlying was traded via BAG (combo roll)
-          if (tradedKeys.has(`BAG:${p.symbol}`)) return false
-          return true
+          return tradedKeys.has(key)
+        })
+        filteredPositions = positions.filter(p => {
+          if (p.secType !== 'OPT') return true // Keep stock positions
+          // Check if this specific option was traded today
+          const r = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : p.right
+          const key = `${p.symbol}|${p.expiry}|${p.strike}|${r}`
+          return !tradedKeys.has(key)
         })
         const afterCount = filteredPositions.filter(p => p.secType === 'OPT').length
         console.log(`[AI Advisor] Filtered out ${beforeCount - afterCount} already-traded option positions (${beforeCount} → ${afterCount})`)
@@ -515,7 +520,7 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
       const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
       const in14DaysStr = `${in14Days.getFullYear()}${String(in14Days.getMonth() + 1).padStart(2, '0')}${String(in14Days.getDate()).padStart(2, '0')}`
       const nearExpiries = expiries.filter(e => e >= todayStr && e <= in14DaysStr)
-      if (nearExpiries.length < 3) {
+      if (nearExpiries.length < 2) {
         monthlyOnlySymbols.add(sym)
       }
     }
@@ -575,6 +580,23 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
         console.warn('[AI Advisor] Failed to enrich with real quotes:', e)
       }
 
+      // Append already-traded positions as informational cards
+      if (alreadyTradedPositions.length > 0) {
+        for (const p of alreadyTradedPositions) {
+          const right = p.right === 'CALL' ? 'C' : p.right === 'PUT' ? 'P' : (p.right ?? '')
+          const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+          const expLabel = p.expiry && p.expiry.length === 8
+            ? `${MONTHS[parseInt(p.expiry.slice(4, 6), 10) - 1]}${p.expiry.slice(2, 4)}`
+            : (p.expiry ?? '')
+          const posLabel = `${p.symbol} ${expLabel} ${p.strike}${right}`.trim()
+          recs.push({
+            position: posLabel,
+            action: 'already_traded',
+            reason: '今日已執行展期操作，無需再次建議。'
+          })
+        }
+      }
+
       return {
         recommendations: recs,
         summary: parsed.summary || ''
@@ -613,10 +635,42 @@ async function enrichWithRealQuotes(
     recIdx: number
     targetKey: string
     currentKey: string
+    isSell: boolean
   }[] = []
 
   for (let i = 0; i < recs.length; i++) {
     const rec = recs[i]
+
+    // ── SELL action (new CC / CSP for a stock position) ──────────────────────
+    if (rec.action === 'sell' && rec.targetExpiry && rec.targetStrike) {
+      // Position field looks like "PLTR股票" or "PLTR 股票". Extract symbol.
+      const sellSymMatch = rec.position.match(/^([A-Z]+)/i)
+      if (!sellSymMatch) {
+        console.log(`[AI Advisor] Cannot parse sell position symbol: ${rec.position}, skipping`)
+        continue
+      }
+      const symbol = sellSymMatch[1].toUpperCase()
+      const ibExpiry = parseTargetExpiry(rec.targetExpiry)
+      if (!ibExpiry) {
+        console.log(`[AI Advisor] Cannot parse sell target expiry: ${rec.targetExpiry}, skipping`)
+        continue
+      }
+      // For stock CC recommendations, right is always 'C' (Covered Call)
+      const right = rec.optionAction === 'sell' || !rec.optionAction ? 'C' : 'C'
+      const targetContract: OptionQuoteRequest = {
+        symbol,
+        expiry: ibExpiry,
+        strike: rec.targetStrike,
+        right
+      }
+      const targetKey = `${symbol}|${ibExpiry}|${rec.targetStrike}|${right}`
+      allContracts.push(targetContract)
+      recInfo.push({ recIdx: i, targetKey, currentKey: '', isSell: true })
+      console.log(`[AI Advisor] Queuing SELL quote: ${targetKey}`)
+      continue
+    }
+
+    // ── ROLL action ───────────────────────────────────────────────────────────
     if (rec.action !== 'roll' || !rec.targetExpiry || !rec.targetStrike) continue
 
     console.log(`[AI Advisor] Processing roll rec[${i}]: position="${rec.position}" targetExpiry="${rec.targetExpiry}" targetStrike=${rec.targetStrike}`)
@@ -669,7 +723,7 @@ async function enrichWithRealQuotes(
 
     console.log(`[AI Advisor] Parsed: symbol=${symbol} right=${right} ibExpiry=${ibExpiry} targetKey="${targetKey}" currentKey="${currentKey}"`)
 
-    recInfo.push({ recIdx: i, targetKey, currentKey })
+    recInfo.push({ recIdx: i, targetKey, currentKey, isSell: false })
   }
 
   if (allContracts.length === 0) return
@@ -688,19 +742,24 @@ async function enrichWithRealQuotes(
   console.log('[AI Advisor] All quotes:', quotes)
 
   // Update each recommendation with real values
-  for (const { recIdx, targetKey, currentKey } of recInfo) {
+  for (const { recIdx, targetKey, currentKey, isSell } of recInfo) {
     const newPrice = quotes[targetKey] || 0
     const oldPrice = currentKey ? (quotes[currentKey] || 0) : 0
 
     console.log(`[AI Advisor] ${recs[recIdx].position}: oldPrice(${currentKey})=${oldPrice} newPrice(${targetKey})=${newPrice}`)
 
     if (newPrice > 0) {
-      // For short options (covered calls / CSP), rolling means:
-      // Buy back current at oldPrice, sell new at newPrice
-      const netCredit = newPrice - oldPrice
-      const sign = netCredit >= 0 ? '+' : ''
-      recs[recIdx].estimatedCredit = `${sign}$${netCredit.toFixed(2)}`
-      console.log(`[AI Advisor] Real quote: close@${oldPrice.toFixed(2)} → new@${newPrice.toFixed(2)} = ${sign}$${netCredit.toFixed(2)}`)
+      if (isSell) {
+        // For new sell (CC/CSP): the credit is the full bid price
+        recs[recIdx].estimatedCredit = `+$${newPrice.toFixed(2)}`
+        console.log(`[AI Advisor] Real SELL quote: bid@${newPrice.toFixed(2)} = +$${newPrice.toFixed(2)}`)
+      } else {
+        // For roll: net credit = new bid - cost to close current
+        const netCredit = newPrice - oldPrice
+        const sign = netCredit >= 0 ? '+' : ''
+        recs[recIdx].estimatedCredit = `${sign}$${netCredit.toFixed(2)}`
+        console.log(`[AI Advisor] Real ROLL quote: close@${oldPrice.toFixed(2)} → new@${newPrice.toFixed(2)} = ${sign}$${netCredit.toFixed(2)}`)
+      }
     } else {
       // Keep Claude's estimate but mark it
       if (recs[recIdx].estimatedCredit && !recs[recIdx].estimatedCredit.includes('估')) {

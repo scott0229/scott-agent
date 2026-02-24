@@ -16,8 +16,7 @@ interface SettingsPanelProps {
     onSetWatchSymbol: (index: number, value: string) => void
     symbolOptionTypes: Record<string, { cc: boolean; pp: boolean }>
     onSetSymbolOptionType: (symbol: string, type: 'cc' | 'pp', enabled: boolean) => void
-    claudeApiKey: string
-    onSetClaudeApiKey: (key: string) => void
+
 }
 
 function SectionHeader({ title, onToggle }: { title: string; expanded: boolean; onToggle: () => void }) {
@@ -43,14 +42,13 @@ export default function SettingsPanel({
     onSetWatchSymbol,
     symbolOptionTypes,
     onSetSymbolOptionType,
-    claudeApiKey,
-    onSetClaudeApiKey
+
 }: SettingsPanelProps): React.JSX.Element | null {
     const [limitInput, setLimitInput] = useState(String(marginLimit))
     const [showRisk, setShowRisk] = useState(true)
     const [showSymbols, setShowSymbols] = useState(true)
     const [showAccounts, setShowAccounts] = useState(true)
-    const [showAi, setShowAi] = useState(true)
+
 
 
     if (!open) return null
@@ -138,17 +136,7 @@ export default function SettingsPanel({
                         </div>
                     )}
 
-                    <SectionHeader title="AI 設定" expanded={showAi} onToggle={() => setShowAi(v => !v)} />
-                    {showAi && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 8px' }}>
-                        <label style={{ fontSize: '0.95em', color: '#555', whiteSpace: 'nowrap' }}>Claude API Key</label>
-                        <input
-                            type="password"
-                            value={claudeApiKey}
-                            onChange={(e) => onSetClaudeApiKey(e.target.value)}
-                            placeholder="sk-ant-..."
-                            style={{ width: 160, padding: '4px 8px', border: '1px solid #ccc', borderRadius: 6, fontSize: '0.85em', fontFamily: 'monospace' }}
-                        />
-                    </div>}
+
                 </div>
                 <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', textAlign: 'center', fontSize: 15, color: '#aaa' }}>
                     version {import.meta.env.VITE_APP_VERSION || '—'}

@@ -28,7 +28,7 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType, symbolOptionTypes, setSymbolOptionType, claudeApiKey, setClaudeApiKey, saveAllSettings } = useTraderSettings()
+  const { marginLimit, setMarginLimit, watchSymbols, setWatchSymbol, mergeAccountAliases, accountTypes, setAccountType, symbolOptionTypes, setSymbolOptionType, saveAllSettings } = useTraderSettings()
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -141,8 +141,7 @@ function App(): React.JSX.Element {
         onSetWatchSymbol={setWatchSymbol}
         symbolOptionTypes={symbolOptionTypes}
         onSetSymbolOptionType={setSymbolOptionType}
-        claudeApiKey={claudeApiKey}
-        onSetClaudeApiKey={setClaudeApiKey}
+
       />
     </div>
   )
