@@ -372,9 +372,15 @@ async function callClaude(prompt: string, apiKey: string): Promise<string> {
   return data.content?.[0]?.text || ''
 }
 
-// Claude API key is read from user settings (electron-store) only
-function getClaudeApiKey(): string {
-  return ''
+// Fetch Claude API key from settings API
+async function getClaudeApiKey(): Promise<string> {
+  try {
+    const res = await fetch('https://scott-agent.com/api/trader-settings')
+    const data = await res.json()
+    return (data?.settings?.claudeApiKey as string) || ''
+  } catch {
+    return ''
+  }
 }
 
 // Main advisor function
@@ -382,7 +388,7 @@ export async function getAiAdvice(request: AdvisorRequest): Promise<AdvisorRespo
   const { account, positions, optionQuotes, quotes } = request
 
   // 1. Get Claude API key
-  const claudeKey = getClaudeApiKey()
+  const claudeKey = await getClaudeApiKey()
 
   // 2. Get alias for this account
   const alias = account.alias
