@@ -38,7 +38,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
-import { MarketDataProgressDialog } from '@/components/MarketDataProgressDialog';
 import { Pencil, Trash2, Plus, FilterX, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -84,9 +83,7 @@ export default function StockTradingPage() {
     const [trades, setTrades] = useState<StockTrade[]>([]);
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<User[]>([]);
-    const [isUpdatingMarketData, setIsUpdatingMarketData] = useState(false);
     const { toast } = useToast();
-    const [progressDialogOpen, setProgressDialogOpen] = useState(false);
 
     // Filters
     const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
@@ -238,13 +235,6 @@ export default function StockTradingPage() {
 
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
-    const handleUpdateMarketData = () => {
-        setProgressDialogOpen(true);
-    };
-
-    const handleProgressComplete = () => {
-        fetchTrades(); // Refresh trades after update completes
-    };
 
     const handleBulkDelete = async () => {
         if (filteredTrades.length === 0) return;
@@ -345,14 +335,6 @@ export default function StockTradingPage() {
                             </Button>
                         )}
 
-                        <Button
-                            variant="secondary"
-                            onClick={handleUpdateMarketData}
-                            disabled={isUpdatingMarketData}
-                            className="hover:bg-accent hover:text-accent-foreground"
-                        >
-                            更新市場資料
-                        </Button>
 
                         <Button
                             onClick={() => { setTradeToEdit(null); setDialogOpen(true); }}
@@ -516,14 +498,6 @@ export default function StockTradingPage() {
                     </AlertDialogContent>
                 </AlertDialog>
 
-                {/* Market Data Progress Dialog */}
-                <MarketDataProgressDialog
-                    open={progressDialogOpen}
-                    onOpenChange={setProgressDialogOpen}
-                    userId={currentUser?.id || 1}
-                    year={displayYear}
-                    onComplete={handleProgressComplete}
-                />
                 {/* Bulk Delete Confirmation Dialog */}
                 <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={(open) => { if (!bulkDeleting) setBulkDeleteDialogOpen(open); }}>
                     <AlertDialogContent className="max-w-lg">

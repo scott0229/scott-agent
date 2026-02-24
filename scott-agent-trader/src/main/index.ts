@@ -221,7 +221,8 @@ function setupIpcHandlers(): void {
   })
 
   // Upload 1-year daily closing prices for ONE symbol to D1
-  const MARKET_DATA_URL = 'https://scott-agent.com/api/market-data'
+  const MARKET_DATA_BULK_URL = 'https://scott-agent.com/api/market-data/bulk'
+  const MARKET_DATA_CLEAR_CACHE_URL = 'https://scott-agent.com/api/market-data/clear-cache'
 
   ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string) => {
     try {
@@ -249,23 +250,30 @@ function setupIpcHandlers(): void {
 
       if (rows.length === 0) return { success: false, error: '無歷史資料' }
 
-      // Send in parallel chunks of 20 to the existing single-row endpoint
-      const CHUNK = 20
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK)
-        await Promise.all(
-          chunk.map((r) =>
-            fetch(MARKET_DATA_URL, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${SETTINGS_API_KEY}`
-              },
-              body: JSON.stringify({ symbol: r.symbol, date: r.date, price: r.price })
-            })
-          )
-        )
+      // Upload all rows in one bulk request
+      const bulkRes = await fetch(MARKET_DATA_BULK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SETTINGS_API_KEY}`
+        },
+        body: JSON.stringify({ rows })
+      })
+
+      if (!bulkRes.ok) {
+        const errText = await bulkRes.text().catch(() => bulkRes.statusText)
+        return { success: false, error: `Upload failed: ${errText}` }
       }
+
+      // Notify web app to clear market data cache for this symbol
+      fetch(MARKET_DATA_CLEAR_CACHE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SETTINGS_API_KEY}`
+        },
+        body: JSON.stringify({ symbols: [symbol] })
+      }).catch((e) => console.warn('[clear-cache] notify failed:', e))
 
       return { success: true, count: rows.length }
     } catch (err: unknown) {
