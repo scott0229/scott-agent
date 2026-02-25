@@ -110,6 +110,7 @@ export default function OptionOrderDialog({
   const [limitDropdownOpen, setLimitDropdownOpen] = useState(false)
   const limitInputRef = useRef<HTMLInputElement>(null)
   const limitDropdownRef = useRef<HTMLDivElement>(null)
+  const userEditedPriceRef = useRef(false)
 
   // ── Account quantities ───────────────────────────────────────────────────
   const [qtys, setQtys] = useState<Record<string, string>>({})
@@ -264,10 +265,6 @@ export default function OptionOrderDialog({
     const scrollTop = dialogBodyRef.current?.scrollTop ?? 0
     setSelectedStrikes((prev) => {
       if (prev.includes(strike)) return prev.filter((s) => s !== strike)
-      if (prev.length >= 10) {
-        const drop = strike < Math.min(...prev) ? Math.max(...prev) : Math.min(...prev)
-        return [...prev.filter((s) => s !== drop), strike]
-      }
       return [...prev, strike]
     })
     requestAnimationFrame(() => {
@@ -275,7 +272,19 @@ export default function OptionOrderDialog({
     })
   }, [])
 
-  // ── Request preload for new expiry/strike combinations, then poll cache ──────
+  const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
+    ...old,
+    bid: n.bid > 0 ? n.bid : old.bid,
+    ask: n.ask > 0 ? n.ask : old.ask,
+    last: n.last > 0 ? n.last : old.last,
+    delta: n.delta !== 0 ? n.delta : old.delta,
+    gamma: n.gamma !== 0 ? n.gamma : old.gamma,
+    theta: n.theta !== 0 ? n.theta : old.theta,
+    vega: n.vega !== 0 ? n.vega : old.vega,
+    impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
+  })
+
+  // ── Fetch greeks directly from IB for new expiry/strike combinations ──────
   useEffect(() => {
     if (displayStrikes.length === 0 || !symbol) return
     const newExpiries = displayExpirations.filter((e) => !fetchedExpiriesRef.current.has(e))
@@ -295,52 +304,52 @@ export default function OptionOrderDialog({
     }
     displayStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
 
-    // Kick off on-demand preload via the preloader (non-blocking, IB is called from main process)
+    // Fetch greeks directly from IB and update state
     fetchPairs.forEach(({ exp, strikes }) => {
-      window.ibApi.requestPreload(symbol, exp, strikes).catch(() => { })
+      window.ibApi.getOptionGreeks(symbol, exp, strikes).then((greeks) => {
+        if (greeks.length === 0) return
+        setAllGreeks((prev) => {
+          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+        })
+      }).catch(() => { })
     })
   }, [displayExpirations, displayStrikes, symbol])
 
-  // ── Poll the cache every 2s to pick up greeks as the preloader populates them ──
+  // ── Refresh greeks every 2s ──────────────────────────────────────────────
   useEffect(() => {
     if (!symbol || displayExpirations.length === 0) return
     let cancelled = false
 
-    const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
-      ...old,
-      bid: n.bid > 0 ? n.bid : old.bid,
-      ask: n.ask > 0 ? n.ask : old.ask,
-      last: n.last > 0 ? n.last : old.last,
-      delta: n.delta !== 0 ? n.delta : old.delta,
-      gamma: n.gamma !== 0 ? n.gamma : old.gamma,
-      theta: n.theta !== 0 ? n.theta : old.theta,
-      vega: n.vega !== 0 ? n.vega : old.vega,
-      impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
-    })
-
-    const pollCache = async (): Promise<void> => {
+    const refresh = async (): Promise<void> => {
+      const promises: Promise<void>[] = []
       for (const exp of displayExpirations) {
-        if (cancelled) return
-        const cached = await window.ibApi.getCachedGreeks(symbol, exp).catch(() => [] as OptionGreek[])
-        if (cancelled || cached.length === 0) continue
-        setAllGreeks((prev) => {
-          const incoming = new Map<string, OptionGreek>(cached.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-          const newEntries = cached.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
-        })
+        promises.push(
+          window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
+            if (cancelled || greeks.length === 0) return
+            setAllGreeks((prev) => {
+              const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+              const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+            })
+          }).catch(() => { })
+        )
       }
+      await Promise.all(promises)
     }
 
-    void pollCache()
-    const id = setInterval(() => { void pollCache() }, 2000)
+    const id = setInterval(() => { void refresh() }, 2000)
 
     return () => {
       cancelled = true
       clearInterval(id)
     }
-  }, [symbol, displayExpirations])
+  }, [symbol, displayExpirations, displayStrikes])
 
   // ── Group greeks by expiry ────────────────────────────────────────────────
   const greeksByExpiry = useMemo(() => {
@@ -373,10 +382,11 @@ export default function OptionOrderDialog({
 
   // ── Auto-fill mid price when selection changes ────────────────────────────
   useEffect(() => {
+    if (userEditedPriceRef.current) return
     if (selGreek && selGreek.bid > 0 && selGreek.ask > 0) {
       setLimitPrice(((selGreek.bid + selGreek.ask) / 2).toFixed(2))
     }
-  }, [selGreek])
+  }, [selExpiry, selStrike, selRight])
 
   // ── Scroll limit dropdown to mid on open ─────────────────────────────────
   useEffect(() => {
@@ -413,6 +423,7 @@ export default function OptionOrderDialog({
   if (!open) return null
 
   const handleSelect = (expiry: string, strike: number, right: 'C' | 'P'): void => {
+    userEditedPriceRef.current = false
     setSelExpiry(expiry)
     setSelStrike(strike)
     setSelRight(right)
@@ -824,19 +835,8 @@ export default function OptionOrderDialog({
                 type="text"
                 className="roll-order-input"
                 value={limitPrice}
-                onChange={(e) => setLimitPrice(e.target.value)}
+                onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
                 placeholder="0.00"
-                style={
-                  selGreek
-                    ? limitPrice === selGreek.bid.toFixed(2)
-                      ? { borderColor: '#22c55e', color: '#15803d' }
-                      : limitPrice === selGreek.ask.toFixed(2)
-                        ? { borderColor: '#ef4444', color: '#b91c1c' }
-                        : selGreek.bid > 0 && selGreek.ask > 0 && limitPrice === ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
-                          ? { borderColor: '#f59e0b', color: '#b45309' }
-                          : {}
-                    : {}
-                }
               />
             </div>
 

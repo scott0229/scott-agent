@@ -76,7 +76,7 @@ function _fetchOptionQuote(
   const reqId = getNextReqId()
   let last = 0
 
-  api.reqMarketDataType(4)
+  api.reqMarketDataType(1)
 
   return new Promise((resolve) => {
     let resolved = false
@@ -203,7 +203,7 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
   }
 
   // Request frozen/delayed data so we get close prices when market is closed
-  api.reqMarketDataType(4)
+  api.reqMarketDataType(1)
 
   return new Promise((resolve) => {
     let resolved = false

@@ -100,6 +100,7 @@ export default function RollOptionDialog({
   const [chainHidden, setChainHidden] = useState(false)
   const [limitPrice, setLimitPrice] = useState('')
   const limitInputRef = useRef<HTMLInputElement>(null)
+  const userEditedPriceRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Snapshot on open
@@ -173,20 +174,22 @@ export default function RollOptionDialog({
   }, [availableExpirations])
 
   // Auto-select nearby strikes (±5 around stock price or current position strike) when available
+  const strikeCenteredWithPriceRef = useRef(false)
   useEffect(() => {
-    if (availableStrikes.length > 0 && selectedStrikes.length === 0) {
-      // Use stock price if available, otherwise fall back to current position's strike
-      const centerPrice =
-        stockPrice ??
-        (currentCombos.length > 0 ? Math.max(...currentCombos.map((c) => c.strike)) : null)
-      if (centerPrice === null) return
-      const centerIdx = availableStrikes.findIndex((s) => s >= centerPrice)
-      const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
-      const nearbyRange = 5
-      const startIdx = Math.max(0, idx - nearbyRange)
-      const endIdx = Math.min(availableStrikes.length, idx + nearbyRange + 1)
-      setSelectedStrikes(availableStrikes.slice(startIdx, endIdx).slice(0, 10))
-    }
+    if (availableStrikes.length === 0) return
+    // Re-center if no strikes selected, or if we previously used fallback and now have real stock price
+    if (selectedStrikes.length > 0 && (strikeCenteredWithPriceRef.current || !stockPrice)) return
+    const centerPrice =
+      stockPrice ??
+      (currentCombos.length > 0 ? Math.max(...currentCombos.map((c) => c.strike)) : null)
+    if (centerPrice === null) return
+    strikeCenteredWithPriceRef.current = !!stockPrice
+    const centerIdx = availableStrikes.findIndex((s) => s >= centerPrice)
+    const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
+    const nearbyRange = 5
+    const startIdx = Math.max(0, idx - nearbyRange)
+    const endIdx = Math.min(availableStrikes.length, idx + nearbyRange + 1)
+    setSelectedStrikes(availableStrikes.slice(startIdx, endIdx).slice(0, 10))
   }, [availableStrikes, stockPrice, currentCombos])
 
   // Scroll strike dropdown to first checked item on open
@@ -220,11 +223,6 @@ export default function RollOptionDialog({
     setSelectedStrikes((prev) => {
       if (prev.includes(strike)) {
         return prev.filter((s) => s !== strike)
-      }
-      if (prev.length >= 10) {
-        // Clicking below range → drop largest; clicking above → drop smallest
-        const drop = strike < Math.min(...prev) ? Math.max(...prev) : Math.min(...prev)
-        return [...prev.filter((s) => s !== drop), strike]
       }
       return [...prev, strike]
     })
@@ -274,7 +272,19 @@ export default function RollOptionDialog({
 
   }, [open, symbol])
 
-  // Request preload for current position greeks once
+  const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
+    ...old,
+    bid: n.bid > 0 ? n.bid : old.bid,
+    ask: n.ask > 0 ? n.ask : old.ask,
+    last: n.last > 0 ? n.last : old.last,
+    delta: n.delta !== 0 ? n.delta : old.delta,
+    gamma: n.gamma !== 0 ? n.gamma : old.gamma,
+    theta: n.theta !== 0 ? n.theta : old.theta,
+    vega: n.vega !== 0 ? n.vega : old.vega,
+    impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
+  })
+
+  // Fetch current position greeks directly from IB
   useEffect(() => {
     if (!fetchKey || greeksFetched) return
     setGreeksFetched(true)
@@ -282,12 +292,20 @@ export default function RollOptionDialog({
     const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
     currentExpiries.forEach((exp) => {
       const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
-      // Trigger preloader to fetch from IB; the polling effect below will pick up the results
-      window.ibApi.requestPreload(symbol, exp, strikesForExp).catch(() => { })
+      window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
+        if (greeks.length === 0) return
+        setCurrentGreeks((prev) => {
+          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+        })
+      }).catch(() => { })
     })
   }, [fetchKey, greeksFetched])
 
-  // Request preload for target greeks incrementally per selected expiry AND new strikes
+  // Fetch target greeks directly from IB when expiry/strike selections change
   useEffect(() => {
     if (displayStrikes.length === 0 || !symbol) return
     const newExpiries = displayExpirations.filter((e) => !fetchedExpiriesRef.current.has(e))
@@ -310,61 +328,10 @@ export default function RollOptionDialog({
     }
     displayStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
 
-    // Trigger preloader to cache from IB (non-blocking); cache polling effect picks up results
+    // Fetch greeks directly from IB and update state
     fetchPairs.forEach(({ exp, strikes }) => {
-      window.ibApi.requestPreload(symbol, exp, strikes).catch(() => { })
-    })
-  }, [displayExpirations, displayStrikes, symbol])
-
-  // Poll cache every 2s for both current position greeks and target greeks
-  useEffect(() => {
-    if (!symbol) return
-    const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
-    if (currentExpiries.length === 0 && displayExpirations.length === 0) return
-
-    let cancelled = false
-
-    const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
-      ...old,
-      bid: n.bid > 0 ? n.bid : old.bid,
-      ask: n.ask > 0 ? n.ask : old.ask,
-      last: n.last > 0 ? n.last : old.last,
-      delta: n.delta !== 0 ? n.delta : old.delta,
-      gamma: n.gamma !== 0 ? n.gamma : old.gamma,
-      theta: n.theta !== 0 ? n.theta : old.theta,
-      vega: n.vega !== 0 ? n.vega : old.vega,
-      impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
-    })
-
-    const pollCache = async (): Promise<void> => {
-      // Refresh stock price
-      try {
-        const q = await window.ibApi.getStockQuote(symbol)
-        const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-        if (price && !cancelled) setStockPrice(price)
-      } catch { /* non-fatal */ }
-
-      // Refresh current position greeks from cache
-      for (const exp of currentExpiries) {
-        if (cancelled) return
-        const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
-        const greeks = await window.ibApi.getCachedGreeks(symbol, exp).catch(() => [] as OptionGreek[])
-        const filtered = greeks.filter((g) => strikesForExp.includes(g.strike))
-        if (cancelled || filtered.length === 0) continue
-        setCurrentGreeks((prev) => {
-          const incoming = new Map<string, OptionGreek>(filtered.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-          const newEntries = filtered.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
-        })
-      }
-
-      // Refresh target greeks from cache
-      for (const exp of displayExpirations) {
-        if (cancelled) return
-        const greeks = await window.ibApi.getCachedGreeks(symbol, exp).catch(() => [] as OptionGreek[])
-        if (cancelled || greeks.length === 0) continue
+      window.ibApi.getOptionGreeks(symbol, exp, strikes).then((greeks) => {
+        if (greeks.length === 0) return
         setAllTargetGreeks((prev) => {
           const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
           const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
@@ -372,17 +339,74 @@ export default function RollOptionDialog({
           const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
           return newEntries.length > 0 ? [...updated, ...newEntries] : updated
         })
+      }).catch(() => { })
+    })
+  }, [displayExpirations, displayStrikes, symbol])
+
+  // Refresh greeks and stock price every 2s
+  useEffect(() => {
+    if (!symbol) return
+    const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
+    if (currentExpiries.length === 0 && displayExpirations.length === 0) return
+
+    let cancelled = false
+
+    const refresh = async (): Promise<void> => {
+      // Fire all requests in parallel for maximum speed
+      const promises: Promise<void>[] = []
+
+      // Refresh stock price
+      promises.push(
+        window.ibApi.getStockQuote(symbol).then((q) => {
+          const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+          if (price && !cancelled) setStockPrice(price)
+        }).catch(() => { /* non-fatal */ })
+      )
+
+      // Refresh current position greeks — all expiries in parallel
+      for (const exp of currentExpiries) {
+        const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
+        promises.push(
+          window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
+            const filtered = greeks.filter((g) => strikesForExp.includes(g.strike))
+            if (cancelled || filtered.length === 0) return
+            setCurrentGreeks((prev) => {
+              const incoming = new Map<string, OptionGreek>(filtered.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+              const newEntries = filtered.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+            })
+          }).catch(() => { })
+        )
       }
+
+      // Refresh target greeks — all expiries in parallel
+      for (const exp of displayExpirations) {
+        promises.push(
+          window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
+            if (cancelled || greeks.length === 0) return
+            setAllTargetGreeks((prev) => {
+              const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+              const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+            })
+          }).catch(() => { })
+        )
+      }
+
+      await Promise.all(promises)
     }
 
-    void pollCache()
-    const interval = setInterval(() => { void pollCache() }, 2000)
+    const interval = setInterval(() => { void refresh() }, 2000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [symbol, currentCombos, displayExpirations])
+  }, [symbol, currentCombos, displayExpirations, displayStrikes])
 
 
 
@@ -397,6 +421,7 @@ export default function RollOptionDialog({
   }, [allTargetGreeks])
 
   const handleSelect = useCallback((expiry: string, strike: number, right: 'C' | 'P') => {
+    userEditedPriceRef.current = false
     setTargetExpiry(expiry)
     setTargetStrike(strike)
     setTargetRight(right)
@@ -438,8 +463,9 @@ export default function RollOptionDialog({
     return { bid: spreadBid, ask: spreadAsk, mid: spreadMid }
   }, [targetGreek, positions, findCurrentGreek])
 
-  // Auto-populate limit price with mid price whenever spread changes (new target selected)
+  // Auto-populate limit price with mid price whenever target selection changes
   useEffect(() => {
+    if (userEditedPriceRef.current) return
     if (spreadPrices) {
       setLimitPrice(spreadPrices.mid.toFixed(2))
     }
@@ -692,19 +718,8 @@ export default function RollOptionDialog({
                 type="text"
                 className="roll-order-input"
                 value={limitPrice}
-                onChange={(e) => setLimitPrice(e.target.value)}
+                onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
                 placeholder="0.00"
-                style={
-                  spreadPrices
-                    ? limitPrice === spreadPrices.bid.toFixed(2)
-                      ? { borderColor: '#22c55e', color: '#15803d' }
-                      : limitPrice === spreadPrices.ask.toFixed(2)
-                        ? { borderColor: '#ef4444', color: '#b91c1c' }
-                        : limitPrice === spreadPrices.mid.toFixed(2)
-                          ? { borderColor: '#f59e0b', color: '#b45309' }
-                          : {}
-                    : {}
-                }
               />
             </div>
 

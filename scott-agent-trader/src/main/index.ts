@@ -20,13 +20,13 @@ import {
   setupNextOrderIdListener,
   setupOrderStatusListener
 } from './ib/orders'
-import { requestOptionChain, requestOptionGreeks, getCachedGreeks } from './ib/options'
+import { requestOptionChain, requestOptionGreeks } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
-import { startOptionPreloader, stopOptionPreloader, preloadSymbolExpiry } from './ib/optionPreloader'
+
 
 let mainWindow: BrowserWindow | null = null
 
@@ -152,21 +152,7 @@ function setupIpcHandlers(): void {
     }
   )
 
-  // On-demand preload: trigger the preloader to fetch+cache a specific symbol/expiry/strikes from IB
-  ipcMain.handle(
-    'ib:requestPreload',
-    async (_event, symbol: string, expiry: string, strikes: number[]) => {
-      await preloadSymbolExpiry(symbol, expiry, strikes)
-    }
-  )
 
-  // Read-only cache access: return cached greeks without touching IB
-  ipcMain.handle(
-    'ib:getCachedGreeks',
-    (_event, symbol: string, expiry: string) => {
-      return getCachedGreeks(symbol, expiry)
-    }
-  )
 
   ipcMain.handle(
     'ib:placeOptionBatchOrders',
@@ -336,10 +322,6 @@ app.whenReady().then(() => {
           mainWindow.webContents.send('ib:orderStatus', update)
         }
       })
-      // Start background option chain preloading after connection stabilises
-      setTimeout(() => startOptionPreloader(), 3000)
-    } else {
-      stopOptionPreloader()
     }
   })
 

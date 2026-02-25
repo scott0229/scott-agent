@@ -55,10 +55,7 @@ const ibApi = {
     strikes: number[],
     exchange?: string
   ): Promise<any[]> => ipcRenderer.invoke('ib:getOptionGreeks', symbol, expiry, strikes, exchange),
-  requestPreload: (symbol: string, expiry: string, strikes: number[]): Promise<void> =>
-    ipcRenderer.invoke('ib:requestPreload', symbol, expiry, strikes),
-  getCachedGreeks: (symbol: string, expiry: string): Promise<any[]> =>
-    ipcRenderer.invoke('ib:getCachedGreeks', symbol, expiry),
+
   placeOptionBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>

@@ -42,13 +42,13 @@ interface CachedChain {
 const chainParamsCache = new Map<string, CachedChain>()
 const CHAIN_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
-// Cache greeks data — populated by preloader, consumed by requestOptionGreeks
+// Cache greeks data — short-lived debounce to avoid redundant IB requests
 interface CachedGreeks {
   greeks: OptionGreek[]
   fetchedAt: number
 }
 const greeksCache = new Map<string, CachedGreeks>()
-const GREEKS_CACHE_TTL_MS = 30_000 // 30 seconds
+const GREEKS_CACHE_TTL_MS = 2_000 // 2 seconds debounce
 
 /** Build cache key for greeks lookup — keyed by symbol+expiry only so
  *  different strike lists can still hit the same cache entry. */
@@ -91,16 +91,19 @@ export function setGreeksCache(key: string, greeks: OptionGreek[]): void {
   }
 }
 
+
+
 /**
- * Read greeks from cache for a given symbol+expiry without touching IB.
- * Returns all cached greeks (all strikes, both calls and puts).
- * Returns empty array if not yet cached.
+ * Look up the tradingClass for a given symbol+expiry from the cached chain params.
+ * Returns undefined if not found (chain not yet cached or expiry not in chain).
+ * Used by orders.ts to set tradingClass on contracts before reqContractDetails.
  */
-export function getCachedGreeks(symbol: string, expiry: string): OptionGreek[] {
-  const key = buildGreeksCacheKey(symbol, expiry)
-  const cached = greeksCache.get(key)
-  if (!cached) return []
-  return cached.greeks
+export function getTradingClass(symbol: string, expiry: string): string | undefined {
+  const cached = chainParamsCache.get(symbol)
+  if (!cached) return undefined
+  const preferred = cached.params.find((p) => p.exchange === 'SMART' && p.expirations.includes(expiry))
+  const fallback = cached.params.find((p) => p.expirations.includes(expiry))
+  return (preferred || fallback)?.tradingClass
 }
 
 /**
@@ -229,40 +232,26 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
 
 /**
  * Request market data (bid/ask/greeks) for a batch of option contracts.
- * When forceRefresh=false (default, used by dialogs): always returns from cache.
- * When forceRefresh=true (used by preloader): bypasses cache and fetches from IB.
+ * Returns from short-lived cache if available; otherwise fetches from IB.
  */
 export async function requestOptionGreeks(
   symbol: string,
   expiry: string,
   strikes: number[],
-  exchange: string = 'SMART',
-  forceRefresh: boolean = false
+  exchange: string = 'SMART'
 ): Promise<OptionGreek[]> {
   const cacheKey = buildGreeksCacheKey(symbol, expiry)
   const cached = greeksCache.get(cacheKey)
 
-  // Dialogs (forceRefresh=false): return from cache when available
-  // If cache exists (even with empty data), always return from cache to avoid overwhelming IB.
-  // If NO cache entry at all, fall through to fetch from IB (one-time bootstrap).
-  if (!forceRefresh && cached && Date.now() - cached.fetchedAt < GREEKS_CACHE_TTL_MS) {
+  // Return from cache if fresh (within TTL)
+  if (cached && Date.now() - cached.fetchedAt < GREEKS_CACHE_TTL_MS) {
     const strikeSet = new Set(strikes)
     const filtered = cached.greeks.filter((g) => strikeSet.has(g.strike))
     const withData = filtered.filter((g) => g.bid > 0 || g.ask > 0 || g.last > 0)
     console.log(`[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${strikes.length * 2} matched, ${withData.length} with data)`)
     return filtered
   }
-  if (!forceRefresh && cached) {
-    // Cache exists but expired — still return stale cache for dialogs (preloader will refresh)
-    const strikeSet = new Set(strikes)
-    const filtered = cached.greeks.filter((g) => strikeSet.has(g.strike))
-    console.log(`[IB] Greeks stale cache for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, returning stale)`)
-    return filtered
-  }
-  // No cache entry at all — allow one-time IB fetch (bootstrap)
-  if (!forceRefresh) {
-    console.log(`[IB] Greeks cache MISS for ${symbol} ${expiry} — bootstrapping from IB`)
-  }
+  console.log(`[IB] Greeks fetching from IB: ${symbol} ${expiry} (${strikes.length} strikes)`)
 
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
@@ -296,7 +285,7 @@ export async function requestOptionGreeks(
 
   // Use frozen market data (type 2) to get last known bid/ask from market close
   // Type 1 (live) returns -1 when market is closed; type 2 (frozen) returns last snapshot
-  api.reqMarketDataType(2)
+  api.reqMarketDataType(1)
 
   const results: OptionGreek[] = []
   const reqIds: Map<number, { strike: number; right: 'C' | 'P' }> = new Map()

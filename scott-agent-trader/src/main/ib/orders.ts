@@ -1,5 +1,6 @@
 import {
   Contract,
+  ContractDetails,
   Order,
   OrderAction,
   OrderType,
@@ -12,6 +13,7 @@ import {
   ComboLeg
 } from '@stoqey/ib'
 import { getIBApi } from './connection'
+import { getTradingClass } from './options'
 
 export interface BatchOrderRequest {
   symbol: string
@@ -227,9 +229,19 @@ async function resolveOptionConId(
 
   return new Promise((resolve, reject) => {
     const reqId = getNextRollReqId()
+    let settled = false
+
     const timeout = setTimeout(() => {
-      reject(new Error(`Timeout resolving conId for ${symbol} ${expiry} ${strike}${right}`))
+      if (!settled) {
+        settled = true
+        cleanup()
+        reject(new Error(`Timeout resolving conId for ${symbol} ${expiry} ${strike}${right}`))
+      }
     }, 10000)
+
+    // Resolve tradingClass from chain cache to disambiguate QQQ weekly vs monthly options
+    const tradingClass = getTradingClass(symbol, expiry)
+    console.log(`[IB] resolveOptionConId: ${symbol} ${expiry} ${strike}${right}, tradingClass=${tradingClass ?? 'none'}`)
 
     const contract: Contract = {
       symbol,
@@ -242,11 +254,23 @@ async function resolveOptionConId(
       multiplier: 100
     }
 
-    const onDetails = (id: number, details: any): void => {
-      if (id !== reqId) return
-      clearTimeout(timeout)
+    // Set tradingClass when available — required for QQQ to distinguish weekly/monthly series
+    if (tradingClass) {
+      contract.tradingClass = tradingClass
+    }
+
+    const cleanup = (): void => {
       api.removeListener(EventName.contractDetails, onDetails)
+      api.removeListener(EventName.contractDetailsEnd, onDetailsEnd)
       api.removeListener(EventName.error, onErr)
+    }
+
+    const onDetails = (id: number, details: ContractDetails): void => {
+      if (id !== reqId) return
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      cleanup()
       const conId = details.contract?.conId
       if (!conId) {
         reject(new Error(`No conId in contract details for ${symbol} ${expiry} ${strike}${right}`))
@@ -256,11 +280,23 @@ async function resolveOptionConId(
       }
     }
 
+    const onDetailsEnd = (id: number): void => {
+      if (id !== reqId) return
+      // contractDetailsEnd fired without a matching contractDetails → no contract found
+      if (!settled) {
+        settled = true
+        clearTimeout(timeout)
+        cleanup()
+        reject(new Error(`No contract found for ${symbol} ${expiry} ${strike}${right}`))
+      }
+    }
+
     const onErr = (err: Error, _code: number, id: number): void => {
       if (id !== reqId) return
+      if (settled) return
+      settled = true
       clearTimeout(timeout)
-      api.removeListener(EventName.contractDetails, onDetails)
-      api.removeListener(EventName.error, onErr)
+      cleanup()
       reject(
         new Error(
           `Failed to resolve conId for ${symbol} ${expiry} ${strike}${right}: ${err.message}`
@@ -269,6 +305,7 @@ async function resolveOptionConId(
     }
 
     api.on(EventName.contractDetails, onDetails)
+    api.on(EventName.contractDetailsEnd, onDetailsEnd)
     api.on(EventName.error, onErr)
     api.reqContractDetails(reqId, contract)
   })
