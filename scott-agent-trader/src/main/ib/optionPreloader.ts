@@ -11,10 +11,21 @@ import { getStockQuote } from './quotes'
 const PRELOAD_SYMBOLS = ['QQQ', 'TQQQ']
 const REFRESH_INTERVAL_MS = 30_000
 const NUM_EXPIRATIONS = 3
-const STRIKES_RADIUS = 10 // ±10 strikes around current price
+const STRIKES_RADIUS = 40 // ±40 strikes around current price
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let running = false
+
+// Cache of last-known stock prices from preloader cycles
+const stockPriceCache = new Map<string, number>()
+
+/**
+ * Get the cached stock price for a symbol (populated by the preloader).
+ * Returns null if not yet fetched.
+ */
+export function getCachedStockPrice(symbol: string): number | null {
+  return stockPriceCache.get(symbol.toUpperCase()) ?? null
+}
 
 /**
  * Start the background preloader.  Safe to call multiple times —
@@ -92,6 +103,10 @@ async function preloadSymbol(symbol: string): Promise<void> {
     const q = await getStockQuote(symbol)
     stockPrice =
       q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+    if (stockPrice !== null) {
+      stockPriceCache.set(symbol.toUpperCase(), stockPrice)
+      console.log(`[Preloader] Cached stock price for ${symbol}: ${stockPrice}`)
+    }
   } catch {
     // non-fatal
   }

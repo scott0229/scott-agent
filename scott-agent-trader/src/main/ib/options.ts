@@ -342,7 +342,7 @@ export async function requestOptionGreeks(
         )
         finish()
       }
-    }, 3000)
+    }, 8000)
 
     // "Settle" timer: resolve early once data stops flowing for 200ms
     function resetSettleTimer(): void {

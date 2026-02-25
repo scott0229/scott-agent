@@ -59,6 +59,8 @@ const ibApi = {
     ipcRenderer.invoke('ib:requestPreload', symbol, expiry, strikes),
   getCachedGreeks: (symbol: string, expiry: string): Promise<any[]> =>
     ipcRenderer.invoke('ib:getCachedGreeks', symbol, expiry),
+  getCachedStockPrice: (symbol: string): Promise<number | null> =>
+    ipcRenderer.invoke('ib:getCachedStockPrice', symbol),
   placeOptionBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>

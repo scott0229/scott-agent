@@ -26,7 +26,7 @@ import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
-import { startOptionPreloader, stopOptionPreloader, preloadSymbolExpiry } from './ib/optionPreloader'
+import { startOptionPreloader, stopOptionPreloader, preloadSymbolExpiry, getCachedStockPrice } from './ib/optionPreloader'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -166,7 +166,12 @@ function setupIpcHandlers(): void {
     (_event, symbol: string, expiry: string) => {
       return getCachedGreeks(symbol, expiry)
     }
-  )
+   )
+
+  // Read-only cache access: return cached stock price from preloader
+  ipcMain.handle('ib:getCachedStockPrice', (_event, symbol: string) => {
+    return getCachedStockPrice(symbol)
+  })
 
   ipcMain.handle(
     'ib:placeOptionBatchOrders',

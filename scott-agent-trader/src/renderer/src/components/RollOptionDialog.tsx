@@ -97,31 +97,38 @@ export default function RollOptionDialog({
   const fetchedExpiriesRef = useRef<Set<string>>(new Set())
   const fetchedStrikesRef = useRef<Set<number>>(new Set())
   const strikeDropdownRef = useRef<HTMLDivElement>(null)
+  const lastStrikeCenterRef = useRef<number | null>(null)
+  const userModifiedStrikesRef = useRef(false)
+  const fetchedSymbolRef = useRef('')
   const [chainHidden, setChainHidden] = useState(false)
   const [limitPrice, setLimitPrice] = useState('')
   const limitInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Snapshot on open
+  // Snapshot on open — also compute currentCombosKeyRef for stable memoization
   useEffect(() => {
     if (open) {
       snappedPositions.current = selectedPositions
       snappedAccounts.current = accounts
+      currentCombosKeyRef.current = selectedPositions
+        .map((p) => `${p.expiry}_${p.strike}`)
+        .sort()
+        .join(',')
     }
   }, [open]) // only on open change
 
-  // Use snapped data
+  // Use snapped data (direct ref access — snapshot effect runs before these are used)
   const positions = open ? snappedPositions.current : []
   const accts = open ? snappedAccounts.current : []
 
   // Derive common properties
   const symbol = positions[0]?.symbol || ''
 
-  // Unique current expiry/strike combos - stable via ref
-  const currentCombosKey = positions
-    .map((p) => `${p.expiry}_${p.strike}`)
-    .sort()
-    .join(',')
+  // Stable key for current combos — stored in a ref so it never changes on re-render
+  // Inline computation from positions (a conditional expression) caused a new string
+  // on every render → currentCombos useMemo recalculated every render →
+  // polling effect restarted every render (cancelling the 2s interval).
+  const currentCombosKeyRef = useRef('')
 
   const currentCombos = useMemo(() => {
     const map = new Map<string, { expiry: string; strike: number }>()
@@ -132,7 +139,8 @@ export default function RollOptionDialog({
       }
     })
     return Array.from(map.values())
-  }, [currentCombosKey])
+  }, [currentCombosKeyRef.current]) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const getAlias = useCallback(
     (accountId: string): string => {
@@ -172,22 +180,30 @@ export default function RollOptionDialog({
     }
   }, [availableExpirations])
 
-  // Auto-select nearby strikes (±5 around stock price or current position strike) when available
+  // ── Auto-select ±5 strikes around stock price ──
+  // For roll dialog: initially center on position strike,
+  // but re-center when stockPrice arrives.
   useEffect(() => {
-    if (availableStrikes.length > 0 && selectedStrikes.length === 0) {
-      // Use stock price if available, otherwise fall back to current position's strike
-      const centerPrice =
-        stockPrice ??
-        (currentCombos.length > 0 ? Math.max(...currentCombos.map((c) => c.strike)) : null)
-      if (centerPrice === null) return
-      const centerIdx = availableStrikes.findIndex((s) => s >= centerPrice)
-      const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
-      const nearbyRange = 5
-      const startIdx = Math.max(0, idx - nearbyRange)
-      const endIdx = Math.min(availableStrikes.length, idx + nearbyRange + 1)
-      setSelectedStrikes(availableStrikes.slice(startIdx, endIdx).slice(0, 10))
-    }
+    if (availableStrikes.length === 0) return
+    if (userModifiedStrikesRef.current) return
+
+    // Use stockPrice if available, otherwise fallback to position strike
+    const posStrike = currentCombos[0]?.strike
+    const centerPrice = stockPrice ?? posStrike
+    if (!centerPrice) return
+
+    // Only update if the center price has meaningfully changed
+    // (e.g. from posStrike to stockPrice)
+    if (lastStrikeCenterRef.current === Math.round(centerPrice)) return
+    lastStrikeCenterRef.current = Math.round(centerPrice)
+
+    const idx = availableStrikes.findIndex((s) => s >= centerPrice)
+    const center = idx === -1 ? availableStrikes.length - 1 : idx
+    const start = Math.max(0, center - 5)
+    const end = Math.min(availableStrikes.length, center + 6)
+    setSelectedStrikes(availableStrikes.slice(start, end).slice(0, 10))
   }, [availableStrikes, stockPrice, currentCombos])
+
 
   // Scroll strike dropdown to first checked item on open
   useEffect(() => {
@@ -217,6 +233,7 @@ export default function RollOptionDialog({
   }, [])
 
   const toggleStrike = useCallback((strike: number) => {
+    userModifiedStrikesRef.current = true
     setSelectedStrikes((prev) => {
       if (prev.includes(strike)) {
         return prev.filter((s) => s !== strike)
@@ -233,32 +250,49 @@ export default function RollOptionDialog({
   // Stable key for greeks fetch trigger
   const fetchKey = useMemo(() => {
     if (displayExpirations.length === 0 || displayStrikes.length === 0) return ''
-    return `${symbol}_${displayExpirations.join(',')}_${displayStrikes.join(',')}_${currentCombosKey}`
-  }, [symbol, displayExpirations, displayStrikes, currentCombosKey])
+    return `${symbol}_${displayExpirations.join(',')}_${displayStrikes.join(',')}_${currentCombosKeyRef.current}`
+  }, [symbol, displayExpirations, displayStrikes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch option chain on dialog open
   useEffect(() => {
     if (!open || !symbol) return
 
+    const isNewSymbol = fetchedSymbolRef.current !== symbol
+    fetchedSymbolRef.current = symbol
+
+    // Always reset order-specific state
     setTargetExpiry('')
     setTargetStrike(null)
     setTargetRight(null)
-    setCurrentGreeks([])
-    setAllTargetGreeks([])
     setErrorMsg('')
-    setGreeksFetched(false)
-    setSelectedExpirations([])
-    setSelectedStrikes([])
-    setStockPrice(null)
-    fetchedExpiriesRef.current = new Set()
-    fetchedStrikesRef.current = new Set()
+
+    // Only reset all data when symbol changes (same-symbol = instant display with cached greeks)
+    if (isNewSymbol) {
+      setSelectedExpirations([])
+      setChainParams([])
+      setSelectedStrikes([])
+      setStockPrice(null)
+      setCurrentGreeks([])
+      setAllTargetGreeks([])
+      setGreeksFetched(false)
+      fetchedExpiriesRef.current = new Set()
+      fetchedStrikesRef.current = new Set()
+      lastStrikeCenterRef.current = null
+      userModifiedStrikesRef.current = false
+    }
 
     // Fetch stock price for strike centering
     window.ibApi
       .getStockQuote(symbol)
-      .then((q) => {
+      .then(async (q) => {
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-        if (price) setStockPrice(price)
+        if (price) {
+          setStockPrice(price)
+        } else {
+          // Fallback: use preloader's cached stock price
+          const cached = await window.ibApi.getCachedStockPrice(symbol)
+          if (cached) setStockPrice(cached)
+        }
       })
       .catch(() => { })
 
@@ -341,7 +375,13 @@ export default function RollOptionDialog({
       try {
         const q = await window.ibApi.getStockQuote(symbol)
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-        if (price && !cancelled) setStockPrice(price)
+        if (price && !cancelled) {
+          setStockPrice(price)
+        } else if (!cancelled) {
+          // Fallback: use preloader's cached stock price
+          const cached = await window.ibApi.getCachedStockPrice(symbol)
+          if (cached) setStockPrice(cached)
+        }
       } catch { /* non-fatal */ }
 
       // Refresh current position greeks from cache
