@@ -179,9 +179,15 @@ export default function OptionOrderDialog({
 
     window.ibApi
       .getStockQuote(sym)
-      .then((q) => {
+      .then(async (q) => {
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-        if (price) setStockPrice(price)
+        if (price) {
+          setStockPrice(price)
+        } else {
+          // Fallback: use preloader's cached stock price
+          const cached = await window.ibApi.getCachedStockPrice(sym)
+          if (cached) setStockPrice(cached)
+        }
       })
       .catch(() => { })
 
@@ -226,7 +232,7 @@ export default function OptionOrderDialog({
     if (stockPrice !== null) {
       // Only re-center if price moved to a different integer level
       const rounded = Math.round(stockPrice)
-      if (lastStrikeCenterRef.current === rounded && selectedStrikes.length > 0) return
+      if (lastStrikeCenterRef.current === rounded) return
       lastStrikeCenterRef.current = rounded
       const idx = availableStrikes.findIndex((s) => s >= stockPrice)
       const center = idx === -1 ? availableStrikes.length - 1 : idx
@@ -370,7 +376,8 @@ export default function OptionOrderDialog({
   }, [allGreeks, selExpiry, selStrike, selRight])
 
   // ── Price options for dropdown ────────────────────────────────────────────
-  const priceOptions = useMemo(() => {
+  /*
+  const _priceOptions = useMemo(() => {
     if (!selGreek) return []
     const lo = Math.min(selGreek.bid, selGreek.ask) - 0.3
     const hi = Math.max(selGreek.bid, selGreek.ask) + 0.3
@@ -379,6 +386,7 @@ export default function OptionOrderDialog({
     for (let i = 0; i < steps; i++) opts.push((hi - i * 0.01).toFixed(2))
     return opts
   }, [selGreek])
+  */
 
   // ── Auto-fill mid price when selection changes ────────────────────────────
   useEffect(() => {
