@@ -33,7 +33,6 @@ interface User {
     user_id: string | null;
     avatar_url: string | null;
     role?: string;
-    api_key?: string | null;
 }
 
 export function UserProfileMenu() {
@@ -43,12 +42,9 @@ export function UserProfileMenu() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [editUserId, setEditUserId] = useState('');
     const [editAvatarUrl, setEditAvatarUrl] = useState('');
-    const [editApiKey, setEditApiKey] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [autoUpdateHour, setAutoUpdateHour] = useState<string>('6');
-    const [autoUpdateMinute, setAutoUpdateMinute] = useState<string>('0');
     const [isUpdating, setIsUpdating] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
@@ -68,13 +64,7 @@ export function UserProfileMenu() {
                     console.log('UserProfileMenu - User role:', data.user.role);
                     setEditUserId(data.user.user_id || '');
                     setEditAvatarUrl(data.user.avatar_url || '');
-                    setEditApiKey(data.user.api_key || '');
-                    // Parse auto update time if exists (format: "HH:MM")
-                    if (data.user.auto_update_time) {
-                        const [hour, minute] = data.user.auto_update_time.split(':');
-                        setAutoUpdateHour(hour || '6');
-                        setAutoUpdateMinute(minute || '0');
-                    }
+
                 }
             }
         } catch (error) {
@@ -160,9 +150,7 @@ export function UserProfileMenu() {
         try {
             const payload: any = {
                 userId: editUserId,
-                avatarUrl: editAvatarUrl || null,
-                apiKey: editApiKey || null,
-                autoUpdateTime: `${autoUpdateHour.padStart(2, '0')}:${autoUpdateMinute.padStart(2, '0')}`
+                avatarUrl: editAvatarUrl || null
             };
 
             // Include password fields if changing password
@@ -283,116 +271,7 @@ export function UserProfileMenu() {
                                     disabled={user.user_id === 'admin'}
                                 />
                             </div>
-                            {/* API KEY - Only for admin users */}
-                            {user.role === 'admin' && (
-                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                    <Label htmlFor="edit-apiKey">API KEY</Label>
-                                    <Input
-                                        id="edit-apiKey"
-                                        value={editApiKey}
-                                        onChange={(e) => setEditApiKey(e.target.value)}
-                                        placeholder="輸入您的 Alpha Vantage API KEY"
-                                        type="text"
-                                    />
-                                </div>
-                            )}
 
-                            {/* Auto Update Time - Only for admin users */}
-                            {user.role === 'admin' && (
-                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                    <Label htmlFor="auto-update-time">自動更新</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            max="23"
-                                            value={autoUpdateHour}
-                                            onChange={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                if (!isNaN(val) && val >= 0 && val <= 23) {
-                                                    setAutoUpdateHour(e.target.value);
-                                                } else if (e.target.value === '') {
-                                                    setAutoUpdateHour('');
-                                                }
-                                            }}
-                                            className="flex-1"
-                                            placeholder="00"
-                                        />
-                                        <span className="text-gray-500">:</span>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            max="59"
-                                            value={autoUpdateMinute}
-                                            onChange={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                if (!isNaN(val) && val >= 0 && val <= 59) {
-                                                    setAutoUpdateMinute(e.target.value);
-                                                } else if (e.target.value === '') {
-                                                    setAutoUpdateMinute('');
-                                                }
-                                            }}
-                                            className="flex-1"
-                                            placeholder="00"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Last Auto Update Status - Only for admin users */}
-                            {user.role === 'admin' && (user as any).last_auto_update_time && (
-                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                    <Label>上次更新</Label>
-                                    <div className="text-sm">
-                                        <div className="flex items-center gap-2">
-                                            {(() => {
-                                                const lastUpdateTime = (user as any).last_auto_update_time;
-                                                const status = (user as any).last_auto_update_status;
-                                                const message = (user as any).last_auto_update_message;
-
-                                                // Format time as relative time
-                                                const now = Date.now();
-                                                const updateTime = lastUpdateTime * 1000;
-                                                const diffMs = now - updateTime;
-                                                const diffMins = Math.floor(diffMs / 60000);
-                                                const diffHours = Math.floor(diffMins / 60);
-                                                const diffDays = Math.floor(diffHours / 24);
-
-                                                let timeAgo = '';
-                                                if (diffDays > 0) {
-                                                    timeAgo = `${diffDays} 天前`;
-                                                } else if (diffHours > 0) {
-                                                    timeAgo = `${diffHours} 小時前`;
-                                                } else if (diffMins > 0) {
-                                                    timeAgo = `${diffMins} 分鐘前`;
-                                                } else {
-                                                    timeAgo = '剛剛';
-                                                }
-
-                                                // Status badge
-                                                let statusBadge;
-                                                if (status === 'success') {
-                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">✓ 成功</span>;
-                                                } else if (status === 'failed') {
-                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">✗ 失敗</span>;
-                                                } else if (status === 'running') {
-                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">⟳ 執行中</span>;
-                                                } else {
-                                                    statusBadge = <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">-</span>;
-                                                }
-
-                                                return (
-                                                    <>
-                                                        <span className="text-muted-foreground">{timeAgo}</span>
-                                                        {statusBadge}
-                                                        {message && <span className="text-muted-foreground">- {message}</span>}
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                             {/* Display Settings - Admin Only */}
                             {user.role === 'admin' && (

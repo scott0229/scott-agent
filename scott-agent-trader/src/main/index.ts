@@ -20,12 +20,13 @@ import {
   setupNextOrderIdListener,
   setupOrderStatusListener
 } from './ib/orders'
-import { requestOptionChain, requestOptionGreeks } from './ib/options'
+import { requestOptionChain, requestOptionGreeks, getCachedGreeks } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
+import { startOptionPreloader, stopOptionPreloader, preloadSymbolExpiry } from './ib/optionPreloader'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -151,6 +152,22 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // On-demand preload: trigger the preloader to fetch+cache a specific symbol/expiry/strikes from IB
+  ipcMain.handle(
+    'ib:requestPreload',
+    async (_event, symbol: string, expiry: string, strikes: number[]) => {
+      await preloadSymbolExpiry(symbol, expiry, strikes)
+    }
+  )
+
+  // Read-only cache access: return cached greeks without touching IB
+  ipcMain.handle(
+    'ib:getCachedGreeks',
+    (_event, symbol: string, expiry: string) => {
+      return getCachedGreeks(symbol, expiry)
+    }
+  )
+
   ipcMain.handle(
     'ib:placeOptionBatchOrders',
     async (_event, request, accountQuantities: Record<string, number>) => {
@@ -220,9 +237,21 @@ function setupIpcHandlers(): void {
     }
   })
 
-  // Upload 1-year daily closing prices for ONE symbol to D1
-  const MARKET_DATA_BULK_URL = 'https://scott-agent.com/api/market-data/bulk'
-  const MARKET_DATA_CLEAR_CACHE_URL = 'https://scott-agent.com/api/market-data/clear-cache'
+  // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
+  const UPLOAD_TARGETS = [
+    {
+      label: 'staging',
+      apiKey: 'MZ12MUOIJXFNK7LZ',
+      bulk: 'https://staging.scott-agent.com/api/market-data/bulk',
+      clearCache: 'https://staging.scott-agent.com/api/market-data/clear-cache'
+    },
+    {
+      label: 'production',
+      apiKey: SETTINGS_API_KEY,
+      bulk: 'https://scott-agent.com/api/market-data/bulk',
+      clearCache: 'https://scott-agent.com/api/market-data/clear-cache'
+    }
+  ]
 
   ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string) => {
     try {
@@ -250,30 +279,33 @@ function setupIpcHandlers(): void {
 
       if (rows.length === 0) return { success: false, error: '無歷史資料' }
 
-      // Upload all rows in one bulk request
-      const bulkRes = await fetch(MARKET_DATA_BULK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${SETTINGS_API_KEY}`
-        },
-        body: JSON.stringify({ rows })
-      })
+      const body = JSON.stringify({ rows })
 
-      if (!bulkRes.ok) {
-        const errText = await bulkRes.text().catch(() => bulkRes.statusText)
-        return { success: false, error: `Upload failed: ${errText}` }
+      // Upload to both staging & production in parallel
+      const results = await Promise.allSettled(
+        UPLOAD_TARGETS.map(async (t) => {
+          const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
+          const res = await fetch(t.bulk, { method: 'POST', headers: hdrs, body })
+          if (!res.ok) throw new Error(`${t.label}: ${await res.text().catch(() => res.statusText)}`)
+          return t.label
+        })
+      )
+
+      const failures = results.filter((r) => r.status === 'rejected')
+      if (failures.length === UPLOAD_TARGETS.length) {
+        const msgs = failures.map((r) => (r as PromiseRejectedResult).reason?.message).join('; ')
+        return { success: false, error: `Upload failed: ${msgs}` }
+      }
+      if (failures.length > 0) {
+        failures.forEach((r) => console.warn('[upload] partial fail:', (r as PromiseRejectedResult).reason?.message))
       }
 
-      // Notify web app to clear market data cache for this symbol
-      fetch(MARKET_DATA_CLEAR_CACHE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${SETTINGS_API_KEY}`
-        },
-        body: JSON.stringify({ symbols: [symbol] })
-      }).catch((e) => console.warn('[clear-cache] notify failed:', e))
+      // Clear cache on both environments
+      for (const t of UPLOAD_TARGETS) {
+        const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
+        fetch(t.clearCache, { method: 'POST', headers: hdrs, body: JSON.stringify({ symbols: [symbol] }) })
+          .catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))
+      }
 
       return { success: true, count: rows.length }
     } catch (err: unknown) {
@@ -304,6 +336,10 @@ app.whenReady().then(() => {
           mainWindow.webContents.send('ib:orderStatus', update)
         }
       })
+      // Start background option chain preloading after connection stabilises
+      setTimeout(() => startOptionPreloader(), 3000)
+    } else {
+      stopOptionPreloader()
     }
   })
 

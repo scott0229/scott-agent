@@ -536,6 +536,7 @@ body {
 
 .positions-table td.pos-symbol {
   font-weight: 600;
+  font-size: 12px;
   text-align: left !important;
   white-space: nowrap;
   padding-left: 8px;
@@ -1701,7 +1702,7 @@ input[type='number']::-webkit-outer-spin-button {
   border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 4px;
   background: #f8f8f8;
   margin-bottom: 12px;
 }
@@ -1744,6 +1745,18 @@ input[type='number']::-webkit-outer-spin-button {
 .roll-order-price-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.roll-order-value {
+  font-size: 13px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  min-width: 40px;
+  text-align: right;
+  display: inline-block;
+}
+
+.roll-order-label+.roll-order-value+.roll-order-label {
+  margin-left: 12px;
 }
 
 .roll-order-bid {

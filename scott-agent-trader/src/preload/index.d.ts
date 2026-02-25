@@ -139,6 +139,8 @@ interface IBApi {
     strikes: number[],
     exchange?: string
   ) => Promise<OptionGreek[]>
+  requestPreload: (symbol: string, expiry: string, strikes: number[]) => Promise<void>
+  getCachedGreeks: (symbol: string, expiry: string) => Promise<OptionGreek[]>
   placeOptionBatchOrders: (
     request: any,
     accountQuantities: Record<string, number>

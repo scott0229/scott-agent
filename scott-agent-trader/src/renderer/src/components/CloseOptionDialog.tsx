@@ -11,10 +11,11 @@ function formatOptionLabel(
   right?: string
 ): string {
   if (!expiry || strike === undefined || !right) return symbol
+  const yy = expiry.slice(2, 4)
   const m = MONTHS[parseInt(expiry.slice(4, 6), 10) - 1] || expiry.slice(4, 6)
   const d = parseInt(expiry.slice(6, 8), 10)
   const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
-  return `${symbol} ${m}${d} ${strike}${r}`
+  return `${symbol} ${m}${d}'${yy} ${strike}${r}`
 }
 
 // Unique key for an option contract

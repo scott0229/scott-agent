@@ -29,10 +29,11 @@ function formatOptionLabel(
 ): string {
   const exp = expiry
     ? (() => {
-        const mm = parseInt(expiry.slice(4, 6), 10) - 1
-        const dd = expiry.slice(6, 8).replace(/^0/, '')
-        return `${MONTHS[mm]}${dd}`
-      })()
+      const yy = expiry.slice(2, 4)
+      const mm = parseInt(expiry.slice(4, 6), 10) - 1
+      const dd = expiry.slice(6, 8).replace(/^0/, '')
+      return `${MONTHS[mm]}${dd}'${yy}`
+    })()
     : ''
   const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
   return `${symbol} ${exp} ${strike || ''}${r}`
@@ -296,11 +297,12 @@ export default function AccountOverview({
         'Dec'
       ]
       // expiry format from IB: "20260217"
+      const yy = pos.expiry.substring(2, 4)
       const month = months[parseInt(pos.expiry.substring(4, 6)) - 1]
       const day = pos.expiry.substring(6, 8)
       const strike = Number.isInteger(pos.strike) ? pos.strike.toString() : pos.strike.toFixed(1)
       const right = pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
-      return `${pos.symbol} ${month}${day} ${strike}${right}`
+      return `${pos.symbol} ${month}${day}'${yy} ${strike}${right}`
     }
     return pos.symbol
   }
@@ -566,19 +568,19 @@ export default function AccountOverview({
                       const potentialMargin =
                         account.netLiquidation > 0
                           ? (account.grossPositionValue +
-                              positions
-                                .filter(
-                                  (p) =>
-                                    p.account === account.accountId &&
-                                    p.secType === 'OPT' &&
-                                    (p.right === 'P' || p.right === 'PUT') &&
-                                    p.quantity < 0
-                                )
-                                .reduce(
-                                  (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                                  0
-                                )) /
-                            account.netLiquidation
+                            positions
+                              .filter(
+                                (p) =>
+                                  p.account === account.accountId &&
+                                  p.secType === 'OPT' &&
+                                  (p.right === 'P' || p.right === 'PUT') &&
+                                  p.quantity < 0
+                              )
+                              .reduce(
+                                (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                                0
+                              )) /
+                          account.netLiquidation
                           : null
                       return (
                         <div
@@ -660,9 +662,9 @@ export default function AccountOverview({
                                 >
                                   {quotes[pos.symbol]
                                     ? (
-                                        (quotes[pos.symbol] - pos.avgCost) *
-                                        pos.quantity
-                                      ).toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                      (quotes[pos.symbol] - pos.avgCost) *
+                                      pos.quantity
+                                    ).toLocaleString('en-US', { maximumFractionDigits: 0 })
                                     : '-'}
                                 </td>
                               </tr>
@@ -721,20 +723,20 @@ export default function AccountOverview({
                                 {(() => {
                                   const days = pos.expiry
                                     ? Math.max(
-                                        0,
-                                        Math.ceil(
-                                          (new Date(
-                                            pos.expiry.substring(0, 4) +
-                                              '-' +
-                                              pos.expiry.substring(4, 6) +
-                                              '-' +
-                                              pos.expiry.substring(6, 8) +
-                                              'T00:00:00'
-                                          ).getTime() -
-                                            new Date().setHours(0, 0, 0, 0)) /
-                                            (1000 * 60 * 60 * 24)
-                                        )
+                                      0,
+                                      Math.ceil(
+                                        (new Date(
+                                          pos.expiry.substring(0, 4) +
+                                          '-' +
+                                          pos.expiry.substring(4, 6) +
+                                          '-' +
+                                          pos.expiry.substring(6, 8) +
+                                          'T00:00:00'
+                                        ).getTime() -
+                                          new Date().setHours(0, 0, 0, 0)) /
+                                        (1000 * 60 * 60 * 24)
                                       )
+                                    )
                                     : null
                                   return (
                                     <td
@@ -852,7 +854,7 @@ export default function AccountOverview({
                                     onDoubleClick={() => startEdit(order, 'quantity')}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'quantity' ? (
+                                      editingCell.field === 'quantity' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -890,7 +892,7 @@ export default function AccountOverview({
                                     }}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'price' ? (
+                                      editingCell.field === 'price' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -1002,10 +1004,11 @@ export default function AccountOverview({
                                   for (const l of legs) {
                                     const exp = l.expiry
                                       ? (() => {
-                                          const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                          const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                          return `${MONTHS[mm]}${dd}`
-                                        })()
+                                        const yy = l.expiry.slice(2, 4)
+                                        const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                        const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                        return `${MONTHS[mm]}${dd}'${yy}`
+                                      })()
                                       : ''
                                     const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                     const sign = l.side === 'BOT' ? '+' : '-'
