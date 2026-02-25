@@ -1,6 +1,6 @@
 import React from 'react'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
+
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 
 interface OptionChainParams {
@@ -64,10 +64,11 @@ function midPrice(greek: OptionGreek | undefined): number | null {
 }
 
 const formatPrice = (v: number): string => (v > 0 ? v.toFixed(2) : '-')
-const formatDelta = (v: number | null | undefined): string => {
-  if (v === null || v === undefined) return '-'
+const formatGreek = (v: number): string => {
+  if (v === 0) return '-'
   return v.toFixed(3)
 }
+
 
 export default function RollOptionDialog({
   open,
@@ -83,7 +84,7 @@ export default function RollOptionDialog({
   const [targetExpiry, setTargetExpiry] = useState('')
   const [targetStrike, setTargetStrike] = useState<number | null>(null)
   const [targetRight, setTargetRight] = useState<'C' | 'P' | null>(null)
-  const [loadingChain, setLoadingChain] = useState(false)
+
   const [currentGreeks, setCurrentGreeks] = useState<OptionGreek[]>([])
   const [allTargetGreeks, setAllTargetGreeks] = useState<OptionGreek[]>([])
   const [errorMsg, setErrorMsg] = useState('')
@@ -98,9 +99,7 @@ export default function RollOptionDialog({
   const strikeDropdownRef = useRef<HTMLDivElement>(null)
   const [chainHidden, setChainHidden] = useState(false)
   const [limitPrice, setLimitPrice] = useState('')
-  const [limitDropdownOpen, setLimitDropdownOpen] = useState(false)
   const limitInputRef = useRef<HTMLInputElement>(null)
-  const limitDropdownRef = useRef<HTMLDivElement>(null)
   const [submitting, setSubmitting] = useState(false)
 
   // Snapshot on open
@@ -161,13 +160,15 @@ export default function RollOptionDialog({
   const availableStrikes = useMemo(() => {
     const set = new Set<number>()
     chainParams.forEach((p) => p.strikes.forEach((s) => set.add(s)))
-    return Array.from(set).sort((a, b) => a - b)
+    return Array.from(set)
+      .filter((s) => (s * 2) % 1 === 0)
+      .sort((a, b) => a - b)
   }, [chainParams])
 
-  // Auto-select first 3 expirations when available
+  // Auto-select first expiration when available
   useEffect(() => {
     if (availableExpirations.length > 0 && selectedExpirations.length === 0) {
-      setSelectedExpirations(availableExpirations.slice(0, 3))
+      setSelectedExpirations(availableExpirations.slice(0, 1))
     }
   }, [availableExpirations])
 
@@ -204,23 +205,15 @@ export default function RollOptionDialog({
   )
 
   const displayStrikes = useMemo(
-    () => selectedStrikes.filter((s) => availableStrikes.includes(s)).sort((a, b) => a - b),
+    () =>
+      selectedStrikes
+        .filter((s) => availableStrikes.includes(s))
+        .sort((a, b) => a - b),
     [selectedStrikes, availableStrikes]
   )
 
   const toggleExpiry = useCallback((exp: string) => {
-    setSelectedExpirations((prev) => {
-      if (prev.includes(exp)) {
-        return prev.filter((e) => e !== exp)
-      }
-      if (prev.length >= 5) {
-        const sorted = [...prev].sort()
-        // Clicking below range → drop latest; clicking above → drop earliest
-        const drop = exp < sorted[0] ? sorted[sorted.length - 1] : sorted[0]
-        return [...prev.filter((e) => e !== drop), exp]
-      }
-      return [...prev, exp]
-    })
+    setSelectedExpirations([exp])
   }, [])
 
   const toggleStrike = useCallback((strike: number) => {
@@ -246,8 +239,7 @@ export default function RollOptionDialog({
   // Fetch option chain on dialog open
   useEffect(() => {
     if (!open || !symbol) return
-    setLoadingChain(true)
-    setChainParams([])
+
     setTargetExpiry('')
     setTargetStrike(null)
     setTargetRight(null)
@@ -268,7 +260,7 @@ export default function RollOptionDialog({
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
         if (price) setStockPrice(price)
       })
-      .catch(() => {})
+      .catch(() => { })
 
     window.ibApi
       .getOptionChain(symbol)
@@ -279,10 +271,10 @@ export default function RollOptionDialog({
       .catch((err: unknown) => {
         setErrorMsg(`查詢失敗: ${err instanceof Error ? err.message : String(err)}`)
       })
-      .finally(() => setLoadingChain(false))
+
   }, [open, symbol])
 
-  // Fetch current position greeks once
+  // Request preload for current position greeks once
   useEffect(() => {
     if (!fetchKey || greeksFetched) return
     setGreeksFetched(true)
@@ -290,21 +282,17 @@ export default function RollOptionDialog({
     const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
     currentExpiries.forEach((exp) => {
       const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
-      window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
-        setCurrentGreeks((prev) => [...prev, ...greeks])
-      })
+      // Trigger preloader to fetch from IB; the polling effect below will pick up the results
+      window.ibApi.requestPreload(symbol, exp, strikesForExp).catch(() => { })
     })
   }, [fetchKey, greeksFetched])
 
-  // Fetch target greeks incrementally per selected expiry AND new strikes
+  // Request preload for target greeks incrementally per selected expiry AND new strikes
   useEffect(() => {
     if (displayStrikes.length === 0 || !symbol) return
     const newExpiries = displayExpirations.filter((e) => !fetchedExpiriesRef.current.has(e))
     const newStrikes = displayStrikes.filter((s) => !fetchedStrikesRef.current.has(s))
 
-    // Determine what to fetch:
-    // 1. New expiries → fetch all displayStrikes for them
-    // 2. New strikes (but no new expiries) → fetch only new strikes for all existing expiries
     const fetchPairs: { exp: string; strikes: number[] }[] = []
 
     if (newExpiries.length > 0) {
@@ -314,172 +302,89 @@ export default function RollOptionDialog({
       })
     }
     if (newStrikes.length > 0) {
-      // For already-fetched expiries, fetch only the new strikes
       const existingExpiries = displayExpirations.filter((e) => !newExpiries.includes(e))
       existingExpiries.forEach((exp) => {
         fetchPairs.push({ exp, strikes: newStrikes })
       })
       newStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
     }
-    // Also track current strikes
     displayStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
 
-    if (fetchPairs.length === 0) return
-
-    let completed = 0
-    const totalFetches = fetchPairs.length
-    const fetchedGreeks: OptionGreek[] = []
+    // Trigger preloader to cache from IB (non-blocking); cache polling effect picks up results
     fetchPairs.forEach(({ exp, strikes }) => {
-      window.ibApi
-        .getOptionGreeks(symbol, exp, strikes)
-        .then((greeks) => {
-          fetchedGreeks.push(...greeks)
-          setAllTargetGreeks((prev) => [...prev, ...greeks])
-          completed++
-          if (completed >= totalFetches) {
-            // Check for missing delta (delta===0 but has bid/ask data) and retry after 3s
-            const missingDeltaExpiries = new Set<string>()
-            fetchedGreeks.forEach((g) => {
-              if (g.delta === 0 && (g.bid > 0 || g.ask > 0)) {
-                missingDeltaExpiries.add(g.expiry)
-              }
-            })
-            if (missingDeltaExpiries.size > 0) {
-              setTimeout(() => {
-                const retryExpiries = Array.from(missingDeltaExpiries)
-                console.log(
-                  '[RollOption] Retrying greeks for expiries with missing delta:',
-                  retryExpiries
-                )
-                retryExpiries.forEach((exp) => {
-                  window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((retryGreeks) => {
-                    setAllTargetGreeks((prev) => {
-                      // Replace entries for retried expiry with new data
-                      const filtered = prev.filter((g) => g.expiry !== exp)
-                      return [...filtered, ...retryGreeks]
-                    })
-                  })
-                })
-              }, 3000)
-              // cleanup handled by useEffect return
-            }
-          }
-        })
-        .catch((err: unknown) => {
-          completed++
-          setErrorMsg(`取得報價失敗: ${err instanceof Error ? err.message : String(err)}`)
-        })
+      window.ibApi.requestPreload(symbol, exp, strikes).catch(() => { })
     })
   }, [displayExpirations, displayStrikes, symbol])
 
-  // Auto-refresh greeks — non-overlapping to avoid IB API exhaustion
-  const refreshingRef = useRef(false)
+  // Poll cache every 2s for both current position greeks and target greeks
   useEffect(() => {
-    if (!symbol || displayStrikes.length === 0) return
+    if (!symbol) return
     const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
     if (currentExpiries.length === 0 && displayExpirations.length === 0) return
 
     let cancelled = false
 
-    async function refreshGreeks(): Promise<void> {
-      if (refreshingRef.current || cancelled) return
-      refreshingRef.current = true
+    const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
+      ...old,
+      bid: n.bid > 0 ? n.bid : old.bid,
+      ask: n.ask > 0 ? n.ask : old.ask,
+      last: n.last > 0 ? n.last : old.last,
+      delta: n.delta !== 0 ? n.delta : old.delta,
+      gamma: n.gamma !== 0 ? n.gamma : old.gamma,
+      theta: n.theta !== 0 ? n.theta : old.theta,
+      vega: n.vega !== 0 ? n.vega : old.vega,
+      impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
+    })
+
+    const pollCache = async (): Promise<void> => {
+      // Refresh stock price
       try {
-        const promises: Promise<void>[] = []
-        // Refresh current position greeks
-        currentExpiries.forEach((exp) => {
-          const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
-          promises.push(
-            window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
-              if (cancelled || greeks.length === 0) return
-              setCurrentGreeks((prev) => {
-                const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
-                  ...old,
-                  bid: n.bid > 0 ? n.bid : old.bid,
-                  ask: n.ask > 0 ? n.ask : old.ask,
-                  last: n.last > 0 ? n.last : old.last,
-                  delta: n.delta !== 0 ? n.delta : old.delta,
-                  gamma: n.gamma !== 0 ? n.gamma : old.gamma,
-                  theta: n.theta !== 0 ? n.theta : old.theta,
-                  vega: n.vega !== 0 ? n.vega : old.vega,
-                  impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
-                })
-                const incoming = new Map<string, OptionGreek>(
-                  greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
-                )
-                const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-                const updated = prev.map((g) => {
-                  const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
-                  return n ? mergeGreek(g, n) : g
-                })
-                const newEntries = greeks.filter(
-                  (g) =>
-                    !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`) &&
-                    (g.bid > 0 || g.ask > 0 || g.delta !== 0)
-                )
-                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
-              })
-            })
-          )
+        const q = await window.ibApi.getStockQuote(symbol)
+        const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+        if (price && !cancelled) setStockPrice(price)
+      } catch { /* non-fatal */ }
+
+      // Refresh current position greeks from cache
+      for (const exp of currentExpiries) {
+        if (cancelled) return
+        const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
+        const greeks = await window.ibApi.getCachedGreeks(symbol, exp).catch(() => [] as OptionGreek[])
+        const filtered = greeks.filter((g) => strikesForExp.includes(g.strike))
+        if (cancelled || filtered.length === 0) continue
+        setCurrentGreeks((prev) => {
+          const incoming = new Map<string, OptionGreek>(filtered.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+          const newEntries = filtered.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
         })
-        // Refresh stock price
-        promises.push(
-          window.ibApi.getStockQuote(symbol).then((q) => {
-            if (cancelled) return
-            const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-            if (price) setStockPrice(price)
-          })
-        )
-        // Refresh target greeks
-        displayExpirations.forEach((exp) => {
-          promises.push(
-            window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
-              if (cancelled || greeks.length === 0) return
-              setAllTargetGreeks((prev) => {
-                const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
-                  ...old,
-                  bid: n.bid > 0 ? n.bid : old.bid,
-                  ask: n.ask > 0 ? n.ask : old.ask,
-                  last: n.last > 0 ? n.last : old.last,
-                  delta: n.delta !== 0 ? n.delta : old.delta,
-                  gamma: n.gamma !== 0 ? n.gamma : old.gamma,
-                  theta: n.theta !== 0 ? n.theta : old.theta,
-                  vega: n.vega !== 0 ? n.vega : old.vega,
-                  impliedVol: n.impliedVol > 0 ? n.impliedVol : old.impliedVol
-                })
-                const incoming = new Map<string, OptionGreek>(
-                  greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
-                )
-                const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-                const updated = prev.map((g) => {
-                  const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
-                  return n ? mergeGreek(g, n) : g
-                })
-                const newEntries = greeks.filter(
-                  (g) =>
-                    !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`) &&
-                    (g.bid > 0 || g.ask > 0 || g.delta !== 0)
-                )
-                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
-              })
-            })
-          )
+      }
+
+      // Refresh target greeks from cache
+      for (const exp of displayExpirations) {
+        if (cancelled) return
+        const greeks = await window.ibApi.getCachedGreeks(symbol, exp).catch(() => [] as OptionGreek[])
+        if (cancelled || greeks.length === 0) continue
+        setAllTargetGreeks((prev) => {
+          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
+          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
+          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
+          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
         })
-        await Promise.all(promises)
-      } catch {
-        // ignore refresh errors
-      } finally {
-        refreshingRef.current = false
       }
     }
 
-    const interval = setInterval(refreshGreeks, 3000)
+    void pollCache()
+    const interval = setInterval(() => { void pollCache() }, 2000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [symbol, currentCombos, displayExpirations, displayStrikes])
+  }, [symbol, currentCombos, displayExpirations])
+
+
 
   // Group target greeks by expiry
   const greeksByExpiry = useMemo(() => {
@@ -540,56 +445,35 @@ export default function RollOptionDialog({
     }
   }, [spreadPrices])
 
-  // Scroll dropdown to mid-price when it opens
+  // Auto-select best target contract once greeks load (same right, closest strike in selected expiry)
   useEffect(() => {
-    if (limitDropdownOpen && limitDropdownRef.current && spreadPrices) {
-      const midVal = spreadPrices.mid.toFixed(2)
-      const midEl = limitDropdownRef.current.querySelector(
-        `[data-price="${midVal}"]`
-      ) as HTMLElement | null
-      if (midEl) {
-        midEl.scrollIntoView({ block: 'center' })
-      }
-    }
-  }, [limitDropdownOpen, spreadPrices])
+    if (allTargetGreeks.length === 0 || targetExpiry || targetStrike !== null) return
+    const pos0 = positions[0]
+    if (!pos0) return
+    const right = pos0.right === 'C' || pos0.right === 'CALL' ? 'C' : 'P'
+    const expiry = displayExpirations[0]
+    if (!expiry) return
+    const candidates = allTargetGreeks.filter((g) => g.expiry === expiry && g.right === right)
+    if (candidates.length === 0) return
+    // Pick closest strike to current position's strike
+    const currentStrike = pos0.strike ?? 0
+    const best = candidates.reduce((a, b) =>
+      Math.abs(a.strike - currentStrike) <= Math.abs(b.strike - currentStrike) ? a : b
+    )
+    setTargetExpiry(best.expiry)
+    setTargetStrike(best.strike)
+    setTargetRight(best.right as 'C' | 'P')
+  }, [allTargetGreeks, targetExpiry, targetStrike, positions, displayExpirations])
 
-  // Generate price options for the limit price dropdown (extended range around BID/ASK)
-  const priceOptions = useMemo(() => {
-    if (!spreadPrices) return []
-    const options: string[] = []
-    const lo = Math.min(spreadPrices.bid, spreadPrices.ask)
-    const hi = Math.max(spreadPrices.bid, spreadPrices.ask)
-    // Extend range by 0.30 on each side to show more price options
-    const extLo = lo - 0.3
-    const extHi = hi + 0.3
-    const steps = Math.min(Math.round((extHi - extLo) / 0.01) + 1, 200)
-    for (let i = 0; i < steps; i++) {
-      const price = extHi - i * 0.01
-      options.push(price.toFixed(2))
-    }
-    return options
-  }, [spreadPrices])
 
-  // Close limit dropdown on click outside
-  useEffect(() => {
-    if (!limitDropdownOpen) return
-    const handler = (e: MouseEvent) => {
-      if (limitInputRef.current && !limitInputRef.current.contains(e.target as Node)) {
-        setLimitDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [limitDropdownOpen])
+
 
   if (!open) return null
 
   const targetMid = midPrice(targetGreek)
   const dataReady =
-    !loadingChain &&
     displayExpirations.length > 0 &&
-    displayStrikes.length > 0 &&
-    allTargetGreeks.length > 0
+    displayStrikes.length > 0
 
   return (
     <div className="roll-dialog-overlay" onClick={onClose}>
@@ -603,94 +487,7 @@ export default function RollOptionDialog({
 
         <div className="roll-dialog-body">
           {errorMsg && <div className="roll-dialog-error">{errorMsg}</div>}
-          {!dataReady && (
-            <>
-              <div className="roll-selectors-row">
-                <div className="roll-expiry-selector">
-                  <button className="roll-expiry-dropdown-btn" disabled style={{ opacity: 0.5 }}>
-                    最後交易日 ▾ <span className="roll-expiry-count">-</span>
-                  </button>
-                </div>
-                <div className="roll-expiry-selector">
-                  <button className="roll-expiry-dropdown-btn" disabled style={{ opacity: 0.5 }}>
-                    行使價 ▾ <span className="roll-expiry-count">-</span>
-                  </button>
-                </div>
-              </div>
-              <div className="roll-chain-multi">
-                <table className="roll-chain-table">
-                  <thead>
-                    <tr>
-                      <th colSpan={4} className="roll-chain-side-header roll-chain-call-header">
-                        CALL
-                      </th>
-                      <th className="roll-chain-desc-header"></th>
-                      <th colSpan={4} className="roll-chain-side-header roll-chain-put-header">
-                        PUT
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="roll-chain-expiry-row">
-                      <td>買價</td>
-                      <td>賣價</td>
-                      <td>最後價</td>
-                      <td>Delta</td>
-                      <td className="roll-chain-expiry-label">載入中...</td>
-                      <td>買價</td>
-                      <td>賣價</td>
-                      <td>最後價</td>
-                      <td>Delta</td>
-                    </tr>
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <tr key={`skel-${i}`}>
-                        <td className="roll-chain-cell roll-chain-call">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-call">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-call">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-call">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-strike">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-put">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-put">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-put">
-                          <span className="skeleton-bar" />
-                        </td>
-                        <td className="roll-chain-cell roll-chain-put">
-                          <span className="skeleton-bar" />
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="roll-chain-expiry-row">
-                      <td>買價</td>
-                      <td>賣價</td>
-                      <td>最後價</td>
-                      <td>Delta</td>
-                      <td className="roll-chain-expiry-label">
-                        <span className="skeleton-bar" style={{ width: 60 }} />
-                      </td>
-                      <td>買價</td>
-                      <td>賣價</td>
-                      <td>最後價</td>
-                      <td>Delta</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+
 
           {/* Selectors row */}
           {dataReady && (availableExpirations.length > 0 || availableStrikes.length > 0) && (
@@ -702,8 +499,7 @@ export default function RollOptionDialog({
                     className="roll-expiry-dropdown-btn"
                     onClick={() => setExpiryDropdownOpen((v) => !v)}
                   >
-                    最後交易日 ▾{' '}
-                    <span className="roll-expiry-count">{selectedExpirations.length}</span>
+                    {selectedExpirations.length > 0 ? formatExpiry(selectedExpirations[0]) : '最後交易日'} ▾
                   </button>
                   {expiryDropdownOpen && (
                     <>
@@ -713,17 +509,13 @@ export default function RollOptionDialog({
                       />
                       <div className="roll-expiry-dropdown">
                         {availableExpirations.map((exp) => (
-                          <label
+                          <div
                             key={exp}
                             className={`roll-expiry-option ${selectedExpirations.includes(exp) ? 'checked' : ''}`}
+                            onClick={() => { toggleExpiry(exp); setExpiryDropdownOpen(false) }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={selectedExpirations.includes(exp)}
-                              onChange={() => toggleExpiry(exp)}
-                            />
                             {formatExpiry(exp)}
-                          </label>
+                          </div>
                         ))}
                       </div>
                     </>
@@ -738,7 +530,7 @@ export default function RollOptionDialog({
                     className="roll-expiry-dropdown-btn"
                     onClick={() => setStrikeDropdownOpen((v) => !v)}
                   >
-                    行使價 ▾ <span className="roll-expiry-count">{selectedStrikes.length}</span>
+                    行使價 ▾
                   </button>
                   {strikeDropdownOpen && (
                     <>
@@ -799,15 +591,15 @@ export default function RollOptionDialog({
                     const greeksMap = greeksByExpiry.get(expiry)
                     return [
                       <tr key={`header-${expiry}`} className="roll-chain-expiry-row">
+                        <td>DELTA</td>
                         <td>買價</td>
                         <td>賣價</td>
                         <td>最後價</td>
-                        <td>Delta</td>
                         <td className="roll-chain-expiry-label">{formatExpiry(expiry)}</td>
                         <td>買價</td>
                         <td>賣價</td>
                         <td>最後價</td>
-                        <td>Delta</td>
+                        <td>DELTA</td>
                       </tr>,
                       ...displayStrikes.map((strike) => {
                         const callGreek = greeksMap?.get(`${strike}_C`)
@@ -819,14 +611,21 @@ export default function RollOptionDialog({
 
                         return (
                           <tr key={`${expiry}-${strike}`}>
+                            {/* Call side: Delta | Bid | Ask | Last */}
                             <td
                               className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
+                              onClick={() => handleSelect(expiry, strike, 'C')}
+                            >
+                              {callGreek ? formatGreek(callGreek.delta) : '-'}
+                            </td>
+                            <td
+                              className={`roll-chain-cell roll-chain-call chain-bid ${callSelected ? 'roll-chain-selected' : ''}`}
                               onClick={() => handleSelect(expiry, strike, 'C')}
                             >
                               {callGreek ? formatPrice(callGreek.bid) : '-'}
                             </td>
                             <td
-                              className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
+                              className={`roll-chain-cell roll-chain-call chain-ask ${callSelected ? 'roll-chain-selected' : ''}`}
                               onClick={() => handleSelect(expiry, strike, 'C')}
                             >
                               {callGreek ? formatPrice(callGreek.ask) : '-'}
@@ -837,21 +636,16 @@ export default function RollOptionDialog({
                             >
                               {callGreek ? formatPrice(callGreek.last) : '-'}
                             </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'C')}
-                            >
-                              {callGreek ? formatDelta(callGreek.delta) : '-'}
-                            </td>
                             <td className="roll-chain-strike">{strike}</td>
+                            {/* Put side: Bid | Ask | Last | Theta | Delta | IV */}
                             <td
-                              className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
+                              className={`roll-chain-cell roll-chain-put chain-bid ${putSelected ? 'roll-chain-selected' : ''}`}
                               onClick={() => handleSelect(expiry, strike, 'P')}
                             >
                               {putGreek ? formatPrice(putGreek.bid) : '-'}
                             </td>
                             <td
-                              className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
+                              className={`roll-chain-cell roll-chain-put chain-ask ${putSelected ? 'roll-chain-selected' : ''}`}
                               onClick={() => handleSelect(expiry, strike, 'P')}
                             >
                               {putGreek ? formatPrice(putGreek.ask) : '-'}
@@ -866,7 +660,7 @@ export default function RollOptionDialog({
                               className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
                               onClick={() => handleSelect(expiry, strike, 'P')}
                             >
-                              {putGreek ? formatDelta(putGreek.delta) : '-'}
+                              {putGreek ? formatGreek(putGreek.delta) : '-'}
                             </td>
                           </tr>
                         )
@@ -881,21 +675,17 @@ export default function RollOptionDialog({
           {/* Order entry section */}
           <div className="roll-order-section">
             <span className="roll-order-label">買價</span>
-            <button
-              className="roll-order-price-btn roll-order-bid"
-              disabled={!spreadPrices}
-              onClick={() => spreadPrices && setLimitPrice(spreadPrices.bid.toFixed(2))}
-            >
+            <span className="roll-order-value roll-order-bid">
               {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
-            </button>
+            </span>
             <span className="roll-order-label">賣價</span>
-            <button
-              className="roll-order-price-btn roll-order-ask"
-              disabled={!spreadPrices}
-              onClick={() => spreadPrices && setLimitPrice(spreadPrices.ask.toFixed(2))}
-            >
+            <span className="roll-order-value roll-order-ask">
               {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
-            </button>
+            </span>
+            <span className="roll-order-label">中間價</span>
+            <span className="roll-order-value roll-order-mid">
+              {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
+            </span>
             <span className="roll-order-label">限價</span>
             <div className="roll-limit-wrapper" ref={limitInputRef}>
               <input
@@ -903,8 +693,6 @@ export default function RollOptionDialog({
                 className="roll-order-input"
                 value={limitPrice}
                 onChange={(e) => setLimitPrice(e.target.value)}
-                onFocus={() => priceOptions.length > 0 && setLimitDropdownOpen(true)}
-                onClick={() => priceOptions.length > 0 && setLimitDropdownOpen(true)}
                 placeholder="0.00"
                 style={
                   spreadPrices
@@ -912,67 +700,25 @@ export default function RollOptionDialog({
                       ? { borderColor: '#22c55e', color: '#15803d' }
                       : limitPrice === spreadPrices.ask.toFixed(2)
                         ? { borderColor: '#ef4444', color: '#b91c1c' }
-                        : {}
+                        : limitPrice === spreadPrices.mid.toFixed(2)
+                          ? { borderColor: '#f59e0b', color: '#b45309' }
+                          : {}
                     : {}
                 }
               />
-              <span
-                className="roll-limit-arrow"
-                onClick={() => priceOptions.length > 0 && setLimitDropdownOpen((v) => !v)}
-              >
-                ▾
-              </span>
-              {limitDropdownOpen &&
-                priceOptions.length > 0 &&
-                createPortal(
-                  <div
-                    className="roll-limit-dropdown"
-                    ref={limitDropdownRef}
-                    style={{
-                      position: 'fixed',
-                      bottom:
-                        window.innerHeight -
-                        (limitInputRef.current?.getBoundingClientRect().top ?? 0) +
-                        2,
-                      left: limitInputRef.current?.getBoundingClientRect().left ?? 0,
-                      minWidth: limitInputRef.current?.getBoundingClientRect().width ?? 120
-                    }}
-                  >
-                    {priceOptions.map((opt) => {
-                      const askVal = spreadPrices
-                        ? Math.max(spreadPrices.bid, spreadPrices.ask).toFixed(2)
-                        : ''
-                      const bidVal = spreadPrices
-                        ? Math.min(spreadPrices.bid, spreadPrices.ask).toFixed(2)
-                        : ''
-                      const midVal = spreadPrices ? spreadPrices.mid.toFixed(2) : ''
-                      return (
-                        <div
-                          key={opt}
-                          data-price={opt}
-                          className={`roll-limit-option ${opt === limitPrice ? 'selected' : ''}`}
-                          onMouseDown={() => {
-                            setLimitPrice(opt)
-                            setLimitDropdownOpen(false)
-                          }}
-                        >
-                          {opt}
-                          {opt === bidVal && (
-                            <span className="roll-limit-tag roll-limit-tag-bid"> (買價)</span>
-                          )}
-                          {opt === midVal && opt !== bidVal && opt !== askVal && (
-                            <span className="roll-limit-tag roll-limit-tag-mid"> (中間價)</span>
-                          )}
-                          {opt === askVal && (
-                            <span className="roll-limit-tag roll-limit-tag-ask"> (賣價)</span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>,
-                  document.body
-                )}
             </div>
+
+            {/* Selected contract summary */}
+            {targetExpiry && targetStrike !== null && targetRight !== null && (
+              <span style={{ marginLeft: 'auto', fontSize: 13, color: '#333', fontWeight: 500 }}>
+                {positions.length > 0 && positions[0].quantity < 0 ? (
+                  <span style={{ color: '#b91c1c', marginRight: 6 }}>賣出</span>
+                ) : (
+                  <span style={{ color: '#15803d', marginRight: 6 }}>買入</span>
+                )}{' '}
+                {symbol} {formatExpiry(targetExpiry)} {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)} {targetRight === 'C' ? 'CALL' : 'PUT'}
+              </span>
+            )}
           </div>
 
           {/* Positions table */}
