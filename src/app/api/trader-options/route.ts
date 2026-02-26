@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,8 @@ async function checkApiKey(req: NextRequest): Promise<boolean> {
     const key = qKey || headerKey;
     if (!key) return false;
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     const row = await db.prepare("SELECT id FROM USERS WHERE api_key = ? LIMIT 1").bind(key).first();
     return !!row;
 }
@@ -32,7 +34,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Missing alias parameter' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Find user by user_id (alias) — get the latest year entry
         const user = await db.prepare(

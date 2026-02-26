@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,8 @@ export async function GET(req: NextRequest) {
     try {
         console.log('[Auto Update] Starting scheduled market data update...');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Get current time in HH:MM format (Hong Kong Time, UTC+8)
         const now = new Date();

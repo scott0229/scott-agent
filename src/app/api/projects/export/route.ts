@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Export all projects
         const projectsResult = await db.prepare(`

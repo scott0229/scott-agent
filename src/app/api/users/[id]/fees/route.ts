@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // Helper to check for admin or manager role
@@ -35,7 +36,8 @@ export async function GET(
             return NextResponse.json({ error: '缺少年份參數' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Fetch fees data for all 12 months
         const { results } = await db.prepare(
@@ -80,7 +82,8 @@ export async function PUT(
             return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Use UPSERT (INSERT OR REPLACE) for each month
         for (const { month, amount } of fees) {

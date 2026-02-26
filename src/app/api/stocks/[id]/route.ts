@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 export async function PUT(req: NextRequest) {
@@ -29,7 +30,8 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         await db.prepare(`
             UPDATE STOCK_TRADES SET
@@ -72,7 +74,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
             return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         await db.prepare('DELETE FROM STOCK_TRADES WHERE id = ?').bind(id).run();
 
         return NextResponse.json({ success: true });

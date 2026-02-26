@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
 import { calculateBenchmarkStats, calculateUserTwr } from '@/lib/twr';
@@ -22,7 +23,8 @@ async function checkAdmin(req: NextRequest) {
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
 async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true, includeStrategies: boolean = true) {
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months
             FROM USERS 

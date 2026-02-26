@@ -5,13 +5,13 @@ import { verifyPassword } from '@/lib/password';
 
 export async function POST(req: NextRequest) {
   try {
-    const { account, password } = await req.json() as { account?: string; password?: string };
+    const { account, password, group } = await req.json() as { account?: string; password?: string; group?: string };
 
     if (!account || !password) {
       return NextResponse.json({ error: '請輸入帳號和密碼' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const db = await getDb(group);
 
     // Prioritize user_id match first, then fall back to email
     let user: any = await db.prepare('SELECT * FROM USERS WHERE user_id = ?').bind(account).first();
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       id: user.id,
       email: user.email,
       role: user.role,
+      group: group || 'advisor',
     });
 
     // Create response

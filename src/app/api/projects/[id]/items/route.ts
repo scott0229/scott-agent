@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: List items for project with search and filters
@@ -27,7 +28,8 @@ export async function GET(
     const sort = searchParams.get('sort');
     const order = searchParams.get('order');
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check if user can view items (admin, manager, project owner, or assigned user)
     let project;
@@ -143,7 +145,8 @@ export async function POST(
       return NextResponse.json({ error: 'Item title is required' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check if user can create items (admin, manager, project owner, or assigned user)
     let project;

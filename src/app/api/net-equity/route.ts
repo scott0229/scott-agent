@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { getMarketData } from '@/lib/market-data';
 import { calculateBenchmarkStats, calculateUserTwr, findPrice } from '@/lib/twr';
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
         const userIdParam = searchParams.get('userId');
         const yearParam = searchParams.get('year');
         const year = yearParam ? parseInt(yearParam) : new Date().getFullYear();
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
 
         // Authorization: Admin/Manager can see any, Customer can only see self
         let targetUserId: number | null = user.id;
@@ -420,7 +422,8 @@ export async function POST(request: NextRequest) {
         const interestVal = interest || 0;
         const exposureVal = exposure_adjustment || 'none';
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const result = await db.prepare(`
         INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, year, exposure_adjustment, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
@@ -464,7 +467,8 @@ export async function PUT(request: NextRequest) {
         const interestVal = interest ?? 0;
         const exposureVal = exposure_adjustment ?? 'none';
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
 
         const result = await db.prepare(`
         UPDATE DAILY_NET_EQUITY 
@@ -499,7 +503,8 @@ export async function DELETE(request: NextRequest) {
         // Mode: 'single' (default) or 'all'
         const isBulk = mode === 'all';
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
 
         if (isBulk) {
             if (!user_id || !year) {

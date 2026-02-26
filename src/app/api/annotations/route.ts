@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
         const year = searchParams.get('year');
         const userId = searchParams.get('userId');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         let query = 'SELECT DISTINCT a.* FROM ANNOTATIONS a';
         const params: any[] = [];
@@ -84,7 +86,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         let annotationId: number;
 
         if (existingId) {
@@ -150,7 +153,8 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: '缺少 annotation ID' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const result = await db.prepare('DELETE FROM ANNOTATIONS WHERE id = ?')
             .bind(id)
             .run();

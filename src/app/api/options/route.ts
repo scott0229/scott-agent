@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { customAlphabet } from 'nanoid';
 
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
         const ownerId = searchParams.get('ownerId');
         const year = searchParams.get('year');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         let query = 'SELECT * FROM OPTIONS';
         const params: any[] = [];
         let whereAdded = false;
@@ -96,7 +98,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const optionYear = year || new Date().getFullYear();
 
         // Generate unique code that doesn't conflict with stock trade codes
@@ -194,7 +197,8 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         await db.prepare(`
             UPDATE OPTIONS SET
@@ -249,7 +253,8 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'Missing userId/ownerId or year' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         let query = 'DELETE FROM OPTIONS WHERE ';
         const params: any[] = [];
 

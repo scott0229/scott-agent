@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic'; // Ensure no caching
@@ -18,7 +19,8 @@ export async function GET(req: NextRequest) {
         const ownerId = searchParams.get('ownerId');
         const year = searchParams.get('year');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         let query = 'SELECT * FROM STRATEGIES';
         const params: any[] = [];
         let whereAdded = false;
@@ -114,7 +116,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '策略名稱為必填' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const strategyYear = year || new Date().getFullYear();
         const strategyStatus = status || '進行中';
 
@@ -196,7 +199,8 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'Missing userId or year' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const result = await db.prepare('DELETE FROM STRATEGIES WHERE user_id = ? AND year = ?')
             .bind(userId, parseInt(year))
             .run();

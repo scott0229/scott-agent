@@ -15,7 +15,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+const GROUPS = [
+  { value: 'advisor', label: '顧問帳戶群' },
+  { value: 'scott', label: 'SCOTT帳戶群' },
+] as const;
+
 export default function LoginPage() {
+  const [group, setGroup] = useState<string>('advisor');
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,7 +39,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ account, password }),
+        body: JSON.stringify({ account, password, group }),
       });
 
       const data = await res.json() as {
@@ -72,6 +78,24 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <CardContent className="grid gap-4">
+            {/* Account Group Selector */}
+            <div className="grid gap-2">
+              <div className="flex rounded-lg border border-input overflow-hidden">
+                {GROUPS.map((g) => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => setGroup(g.value)}
+                    className={`flex-1 py-2 px-3 text-sm font-medium transition-colors ${group === g.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-white/50 text-muted-foreground hover:bg-white/80'
+                      }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="account">帳號</Label>
               <Input

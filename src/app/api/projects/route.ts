@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: List user's projects
@@ -15,7 +16,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     let projects;
 
     // Admin and manager see all projects
@@ -72,7 +74,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Create project
     const result = await db.prepare(

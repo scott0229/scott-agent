@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,8 @@ async function checkApiKey(req: NextRequest): Promise<boolean> {
     const key = qKey || headerKey;
     if (!key) return false;
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     const row = await db.prepare("SELECT id FROM USERS WHERE api_key = ? LIMIT 1").bind(key).first();
     return !!row;
 }
@@ -20,7 +22,8 @@ async function checkApiKey(req: NextRequest): Promise<boolean> {
 // GET /api/trader-settings  — no auth required (non-sensitive config)
 export async function GET(_req: NextRequest) {
     try {
-        const db = await getDb();
+        const group = await getGroupFromRequest(_req);
+        const db = await getDb(group);
         const { results } = await db.prepare('SELECT key, value FROM TRADER_SETTINGS').all();
 
         const settings: Record<string, unknown> = {};
@@ -53,7 +56,8 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '缺少 key' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         await db.prepare(
             'INSERT INTO TRADER_SETTINGS (key, value, updated_at) VALUES (?, ?, unixepoch()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = unixepoch()'
         ).bind(key, JSON.stringify(value)).run();

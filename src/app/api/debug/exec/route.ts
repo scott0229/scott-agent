@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export async function POST(req: NextRequest) {
     try {
         const { sql, params } = await req.json();
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         if (!sql) {
             return NextResponse.json({ error: 'SQL is required' }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { clearMarketDataCache } from '@/lib/market-data';
 import { clearCache, clearCacheByPattern } from '@/lib/response-cache';
 

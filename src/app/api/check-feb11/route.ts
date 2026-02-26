@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,7 +8,8 @@ const FEB_11_2026 = 1770768000; // 2026-02-11 00:00:00 UTC
 
 export async function GET(request: NextRequest) {
     try {
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const results: any = {
             summary: {},
             details: {}

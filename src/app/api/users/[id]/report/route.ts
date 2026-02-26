@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { calculateUserTwr } from '@/lib/twr';
 import { getMarketData } from '@/lib/market-data';
@@ -26,7 +27,8 @@ export async function GET(
         const { id } = await params;
         const userId = parseInt(id);
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // 1. Get user profile
         const user = await db.prepare(`

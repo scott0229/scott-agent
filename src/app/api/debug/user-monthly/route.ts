@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const url = new URL(request.url);
         const userId = url.searchParams.get('userId');
         const year = url.searchParams.get('year') || '2025';

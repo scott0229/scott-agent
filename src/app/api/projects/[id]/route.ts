@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: Get project details
@@ -19,7 +20,8 @@ export async function GET(
     }
 
     const { id } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check if user has access (owner, admin, manager, or assigned user)
     let project;
@@ -71,7 +73,8 @@ export async function PUT(
       userIds?: number[];
     };
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check if user can edit (admin, manager, or project owner)
     let existing;
@@ -140,7 +143,8 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check if user can delete (admin, manager, or project owner)
     let existing;

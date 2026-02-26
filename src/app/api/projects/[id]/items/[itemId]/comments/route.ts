@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: List comments for an item
@@ -8,7 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   const { id, itemId } = await params;
-  const db = await getDb();
+  const group = await getGroupFromRequest(req);
+  const db = await getDb(group);
 
   try {
     const comments = await db.prepare(`
@@ -52,7 +54,8 @@ export async function POST(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     
     // Verify item exists and belongs to project
     const item = await db.prepare(

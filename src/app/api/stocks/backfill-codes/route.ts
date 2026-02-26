@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { customAlphabet } from 'nanoid';
 
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 401 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Get all stock trades without a code
         const { results: tradesWithoutCode } = await db.prepare(

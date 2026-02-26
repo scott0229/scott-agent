@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { customAlphabet } from 'nanoid';
 
@@ -197,7 +198,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Look up user
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const userResult = await db.prepare(
             'SELECT id, user_id FROM USERS WHERE user_id = ? AND year = ?'
         ).bind(userAlias, year).first<{ id: number; user_id: string }>();

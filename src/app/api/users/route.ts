@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { hashPassword } from '@/lib/password';
 import { cacheResponse, clearCache } from '@/lib/response-cache';
@@ -40,7 +41,8 @@ export async function GET(req: NextRequest) {
 
             // Wrap expensive query in cache
             const responseData = await getCachedUserSelection(req, async () => {
-                const db = await getDb();
+                const group = await getGroupFromRequest(req);
+                const db = await getDb(group);
 
                 const roles = searchParams.get('roles')?.split(',');
                 const year = searchParams.get('year');
@@ -336,7 +338,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const year = searchParams.get('year');
 
         const params: any[] = [];
@@ -482,7 +485,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '無效的角色' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         const userYear = year || new Date().getFullYear();
 
@@ -528,7 +532,8 @@ export async function DELETE(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const mode = searchParams.get('mode');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         if (mode === 'all') {
             const year = searchParams.get('year');
@@ -649,7 +654,8 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '缺少使用者 ID' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Get current user to check if exists
         const currentUser = await db.prepare('SELECT * FROM USERS WHERE id = ?').bind(id).first();

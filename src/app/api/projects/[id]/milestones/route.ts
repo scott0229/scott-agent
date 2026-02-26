@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: List milestones for project
@@ -19,7 +20,8 @@ export async function GET(
     }
 
     const { id } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     
     // Check project ownership
     const project = await db.prepare(
@@ -69,7 +71,8 @@ export async function POST(
       return NextResponse.json({ error: 'Milestone title is required' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
     
     // Check project ownership
     const project = await db.prepare(

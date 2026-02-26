@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // PUT: Update a comment
@@ -25,7 +26,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Verify comment exists and user is owner
     const existing = await db.prepare(
@@ -79,7 +81,8 @@ export async function DELETE(
     }
 
     const { id, itemId, commentId } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Verify comment exists and user is owner
     const existing = await db.prepare(

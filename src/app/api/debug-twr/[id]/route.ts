@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { calculateUserTwr } from '@/lib/twr';
 import { getMarketData } from '@/lib/market-data';
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         }
 
         const userId = parseInt(params.id);
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const currentYear = new Date().getFullYear();
 
         // Get equity records

@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketData } from '@/lib/market-data';
 import { cacheResponse } from '@/lib/response-cache';

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
         const stmt = db.prepare(`
             INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, interest, year, updated_at)
             VALUES (?, ?, ?, ?, ?, unixepoch())

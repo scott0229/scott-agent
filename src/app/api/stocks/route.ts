@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 import { customAlphabet } from 'nanoid';
 
@@ -22,7 +23,8 @@ export async function GET(req: NextRequest) {
         const year = searchParams.get('year');
         const symbol = searchParams.get('symbol');
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Get today's date at midnight UTC for market price lookup
         const today = new Date();
@@ -119,7 +121,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const tradeYear = year || new Date().getFullYear();
 
         // Generate unique code

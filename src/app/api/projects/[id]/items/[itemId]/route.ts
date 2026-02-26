@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: Get item details
@@ -9,7 +10,8 @@ export async function GET(
 ) {
   try {
     const { id, itemId } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check project ownership (optional but good for security)
     // const project = ... 
@@ -67,7 +69,8 @@ export async function PUT(
       assigneeId?: number;
     };
 
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check project ownership
     const project = await db.prepare(
@@ -124,7 +127,8 @@ export async function DELETE(
     }
 
     const { id, itemId } = await params;
-    const db = await getDb();
+    const group = await getGroupFromRequest(req);
+    const db = await getDb(group);
 
     // Check project ownership
     const project = await db.prepare(

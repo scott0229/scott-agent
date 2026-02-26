@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // Helper to check for admin or manager role (trader excluded from modifications)
@@ -47,7 +48,8 @@ export async function GET(
             return NextResponse.json({ error: '缺少使用者 ID' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const user = await db.prepare('SELECT id, user_id, email, role, initial_cost FROM USERS WHERE id = ?').bind(id).first();
 
         if (!user) {
@@ -87,7 +89,8 @@ export async function DELETE(
         const { searchParams } = new URL(req.url);
         const mode = searchParams.get('mode'); // 'clear_records' or null
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Delete trading/financial records — each wrapped to avoid one failure blocking all
         const tradingDeletes = [
@@ -157,7 +160,8 @@ export async function PUT(
         const body = await req.json();
         const { initial_cost } = body;
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // Update initial_cost if provided
         if (initial_cost !== undefined) {

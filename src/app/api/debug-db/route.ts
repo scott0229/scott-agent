@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
     try {
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         // 1. Create a dummy user
         const { meta: userMeta } = await db.prepare("INSERT INTO USERS (email, password, role, year) VALUES ('test_cascade@example.com', 'pass', 'customer', 9999)").run();

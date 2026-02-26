@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
-    const db = await getDb();
+    const group = payload.group || 'advisor';
+    const db = await getDb(group);
     const user = await db.prepare(
       // Temporarily using SELECT * to handle incomplete migrations
       'SELECT * FROM USERS WHERE id = ?'
@@ -28,8 +29,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '找不到使用者' }, { status: 404 });
     }
 
-    console.log('API Auth Me: Returning user:', { id: user.id, role: user.role, userId: user.user_id });
-    return NextResponse.json({ success: true, user });
+    console.log('API Auth Me: Returning user:', { id: user.id, role: user.role, userId: user.user_id, group });
+    return NextResponse.json({ success: true, user, group });
 
   } catch (error) {
     console.error('Get user error:', error);
@@ -58,7 +59,8 @@ export async function PUT(req: NextRequest) {
       autoUpdateTime?: string;
     };
 
-    const db = await getDb();
+    const group = payload.group || 'advisor';
+    const db = await getDb(group);
 
     // If changing password, verify current password first
     if (currentPassword && newPassword) {

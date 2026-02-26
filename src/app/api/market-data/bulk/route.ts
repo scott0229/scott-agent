@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 
 // POST /api/market-data/bulk
 // Body: { rows: Array<{ symbol: string, date: number, price: number }> }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 // GET: List users assigned to a project
@@ -18,7 +19,8 @@ export async function GET(
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const projectId = parseInt(params.id);
 
         // Get assigned users
@@ -58,7 +60,8 @@ export async function PUT(
         }
 
         const { userIds } = await req.json() as { userIds: number[] };
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
         const projectId = parseInt(params.id);
 
         // Delete all existing assignments

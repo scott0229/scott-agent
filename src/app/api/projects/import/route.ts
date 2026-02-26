@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
 
 interface ImportTask {
@@ -47,7 +48,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '無效的資料格式' }, { status: 400 });
         }
 
-        const db = await getDb();
+        const group = await getGroupFromRequest(req);
+        const db = await getDb(group);
 
         let importedProjects = 0;
         let skippedProjects = 0;

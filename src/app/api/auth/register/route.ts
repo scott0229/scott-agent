@@ -5,13 +5,13 @@ import { hashPassword } from '@/lib/password';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, userId } = await req.json() as { email?: string; password?: string; userId?: string };
+    const { email, password, userId, group } = await req.json() as { email?: string; password?: string; userId?: string; group?: string };
 
     if (!email || !password || !userId) {
       return NextResponse.json({ error: '請輸入電子郵件、使用者 ID 及密碼' }, { status: 400 });
     }
 
-    const db = await getDb();
+    const db = await getDb(group);
 
     // Check if user_id already exists (email can be shared across accounts)
     const existing = await db.prepare('SELECT * FROM USERS WHERE user_id = ?')
