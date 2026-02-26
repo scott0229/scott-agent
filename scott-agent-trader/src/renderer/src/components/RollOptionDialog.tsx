@@ -583,17 +583,17 @@ export default function RollOptionDialog({
                   )}
                 </div>
               )}
+              {stockPrice !== null && (
+                <span className="roll-stock-price" style={{ marginLeft: 'auto', marginRight: 8 }}>
+                  {symbol} 股價 {stockPrice.toFixed(2)}
+                </span>
+              )}
               <button
                 className="roll-expiry-dropdown-btn"
                 onClick={() => setChainHidden((v) => !v)}
               >
                 {chainHidden ? '顯示期權鏈 ▼' : '隱藏期權鏈 ▲'}
               </button>
-              {stockPrice !== null && (
-                <span className="roll-stock-price">
-                  {symbol} 股價 {stockPrice.toFixed(2)}
-                </span>
-              )}
             </div>
           )}
 

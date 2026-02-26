@@ -425,27 +425,42 @@ export default function CloseOptionDialog({
                 <div
                   style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}
                 >
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      color: actionColor,
-                      flex: '0 0 auto'
-                    }}
-                  >
-                    {action}
-                  </span>
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      flex: '0 0 auto',
-                      minWidth: '140px'
-                    }}
-                  >
-                    {c.label}
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {/* Quotes on the left */}
+                  {quote && (
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13, flex: '0 0 auto' }}>
+                      <span className="roll-order-label">買價</span>
+                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
+                      <span className="roll-order-label">賣價</span>
+                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="roll-order-label">中間價</span>
+                      <span className="roll-order-value roll-order-mid">
+                        {quote.bid > 0 && quote.ask > 0
+                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                          : quote.last.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Action + contract label + limit price + TIF pushed to right */}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: actionColor
+                      }}
+                    >
+                      {action}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '13px'
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                    <span className="roll-order-label">限價</span>
                     <input
                       type="number"
                       value={prices[key] || ''}
@@ -458,7 +473,7 @@ export default function CloseOptionDialog({
                       className="input-field"
                       style={{ width: '90px' }}
                       step="0.01"
-                      placeholder="限價"
+                      placeholder="0.00"
                     />
                     {renderTifDropdown(
                       key,
@@ -470,18 +485,6 @@ export default function CloseOptionDialog({
                       (v) => setTifOpen(v ? key : null)
                     )}
                   </div>
-                  {quote && (
-                    <div className="quote-display" style={{ flex: '0 0 auto', fontSize: 13 }}>
-                      <span className="quote-bid">{quote.bid.toFixed(2)}</span>
-                      <span className="quote-separator">|</span>
-                      <span className="quote-ask">{quote.ask.toFixed(2)}</span>
-                      <span className="quote-separator">|</span>
-                      <span className="quote-label">Last</span>
-                      <span className="quote-last" style={{ color: '#1a3a6b' }}>
-                        {quote.last.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             )

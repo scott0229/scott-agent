@@ -590,9 +590,7 @@ export default function OptionOrderDialog({
               )}
             </div>
 
-            {stockPrice !== null && (
-              <span className="roll-stock-price">股價 {stockPrice.toFixed(2)}</span>
-            )}
+
             {/* Filter buttons pushed to the right */}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               {dataReady && availableExpirations.length > 0 && (
@@ -682,6 +680,9 @@ export default function OptionOrderDialog({
                     </>
                   )}
                 </div>
+              )}
+              {stockPrice !== null && (
+                <span className="roll-stock-price" style={{ marginRight: 8 }}>股價 {stockPrice.toFixed(2)}</span>
               )}
               {dataReady && (
                 <button
@@ -837,26 +838,26 @@ export default function OptionOrderDialog({
             <span className="roll-order-value roll-order-mid">
               {selGreek && selGreek.bid > 0 && selGreek.ask > 0 ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2) : '-'}
             </span>
-            <span className="roll-order-label">限價</span>
-            <div className="roll-limit-wrapper" ref={limitInputRef}>
-              <input
-                type="text"
-                className="roll-order-input"
-                value={limitPrice}
-                onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
-                placeholder="0.00"
-              />
-            </div>
 
-            {/* Selected contract summary */}
+            {/* Selected contract summary + limit price pushed to right */}
             {selExpiry && selStrike !== null && selRight !== null && (
-              <span style={{ marginLeft: 'auto', fontSize: 13, color: '#333', fontWeight: 500 }}>
+              <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#333', fontWeight: 500 }}>
                 {action === 'BUY' ? (
-                  <span style={{ color: '#15803d', marginRight: 6 }}>買入</span>
+                  <span style={{ color: '#15803d', fontWeight: 600 }}>買入</span>
                 ) : (
-                  <span style={{ color: '#b91c1c', marginRight: 6 }}>賣出</span>
-                )}{' '}
-                {symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}
+                  <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣出</span>
+                )}
+                <span>{symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}</span>
+                <span className="roll-order-label">限價</span>
+                <div className="roll-limit-wrapper" ref={limitInputRef}>
+                  <input
+                    type="text"
+                    className="roll-order-input"
+                    value={limitPrice}
+                    onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
+                    placeholder="0.00"
+                  />
+                </div>
               </span>
             )}
           </div>
