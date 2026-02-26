@@ -830,10 +830,12 @@ export default function OptionOrderDialog({
             <span className="roll-order-value roll-order-bid">
               {selGreek ? formatPrice(selGreek.bid) : '-'}
             </span>
+            <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
             <span className="roll-order-label">賣價</span>
             <span className="roll-order-value roll-order-ask">
               {selGreek ? formatPrice(selGreek.ask) : '-'}
             </span>
+            <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
             <span className="roll-order-label">中間價</span>
             <span className="roll-order-value roll-order-mid">
               {selGreek && selGreek.bid > 0 && selGreek.ask > 0 ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2) : '-'}
@@ -848,6 +850,7 @@ export default function OptionOrderDialog({
                   <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣出</span>
                 )}
                 <span>{symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}</span>
+                <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
                 <span className="roll-order-label">限價</span>
                 <div className="roll-limit-wrapper" ref={limitInputRef}>
                   <input

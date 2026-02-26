@@ -706,29 +706,20 @@ export default function RollOptionDialog({
               <span className="roll-order-value roll-order-bid">
                 {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
               </span>
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
               <span className="roll-order-label">賣價</span>
               <span className="roll-order-value roll-order-ask">
                 {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
               </span>
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
               <span className="roll-order-label">中間價</span>
               <span className="roll-order-value roll-order-mid">
                 {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
               </span>
             </div>
 
-            {/* Limit price + contract summary pushed to right */}
+            {/* Contract summary + limit price pushed to right */}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="roll-order-label">限價</span>
-              <div className="roll-limit-wrapper" ref={limitInputRef}>
-                <input
-                  type="text"
-                  className="roll-order-input"
-                  value={limitPrice}
-                  onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
-                  placeholder="0.00"
-                />
-              </div>
-
               {/* Selected contract summary */}
               {targetExpiry && targetStrike !== null && targetRight !== null && (
                 <span style={{ fontSize: 13, color: '#333', fontWeight: 500 }}>
@@ -740,6 +731,17 @@ export default function RollOptionDialog({
                   {symbol} {formatExpiry(targetExpiry)} {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)} {targetRight === 'C' ? 'CALL' : 'PUT'}
                 </span>
               )}
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+              <span className="roll-order-label">限價</span>
+              <div className="roll-limit-wrapper" ref={limitInputRef}>
+                <input
+                  type="text"
+                  className="roll-order-input"
+                  value={limitPrice}
+                  onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
+                  placeholder="0.00"
+                />
+              </div>
             </div>
           </div>
 
