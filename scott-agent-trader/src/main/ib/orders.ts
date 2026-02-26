@@ -785,9 +785,8 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
     api.on(EventName.execDetails, onExecDetails)
     api.on(EventName.execDetailsEnd, onExecDetailsEnd)
 
-    // Use US Eastern time, go back 1 day to capture the previous trading session
+    // Use US Eastern time for today's date
     const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    etNow.setDate(etNow.getDate() - 1)
     const todayStr = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')}-00:00:00`
     const filter: ExecutionFilter = { time: todayStr }
     api.reqExecutions(reqId, filter)
