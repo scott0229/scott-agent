@@ -14,6 +14,7 @@ asarUnpack:
 win:
   executableName: scott-agent-trader
   forceCodeSigning: false
+  signAndEditExecutable: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
