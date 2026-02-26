@@ -962,143 +962,160 @@ export default function AccountOverview({
                           </tr>
                         </thead>
                         <tbody>
-                          {executions
-                            .filter((e) => e.account === account.accountId)
-                            .filter((e) => {
-                              // Hide OPT legs that belong to a combo (BAG) order
-                              if (e.secType === 'OPT') {
-                                const hasCombo = executions.some(
-                                  (b) =>
-                                    b.account === account.accountId &&
-                                    b.orderId === e.orderId &&
-                                    b.secType === 'BAG'
-                                )
-                                if (hasCombo) return false
-                              }
-                              return true
-                            })
-                            .sort((a, b) => b.time.localeCompare(a.time))
-                            .map((exec) => {
-                              const acctExecs = executions.filter(
-                                (e) => e.account === account.accountId
-                              )
-                              let desc: React.ReactNode
-                              if (exec.secType === 'OPT') {
-                                desc = formatOptionLabel(
-                                  exec.symbol,
-                                  exec.expiry,
-                                  exec.strike,
-                                  exec.right
-                                )
-                              } else if (exec.secType === 'BAG') {
-                                // Build description from sibling OPT legs with the same orderId
-                                const legs = acctExecs.filter(
-                                  (e) =>
-                                    e.orderId === exec.orderId &&
-                                    e.secType === 'OPT' &&
-                                    e.symbol === exec.symbol
-                                )
-                                if (legs.length > 0) {
-                                  const seen = new Set<string>()
-                                  const legDescs: string[] = []
-                                  for (const l of legs) {
-                                    const exp = l.expiry
-                                      ? (() => {
-                                        const yy = l.expiry.slice(2, 4)
-                                        const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                        const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                        return `${MONTHS[mm]}${dd}'${yy}`
-                                      })()
-                                      : ''
-                                    const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
-                                    const sign = l.side === 'BOT' ? '+' : '-'
-                                    const key = `${sign}${exp} ${l.strike}${r}`
-                                    if (!seen.has(key)) {
-                                      seen.add(key)
-                                      legDescs.push(key)
-                                    }
-                                  }
-                                  legDescs.sort(
-                                    (a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1)
+                          {(() => {
+                            // Filter then aggregate partial fills of the same order
+                            const filtered = executions
+                              .filter((e) => e.account === account.accountId)
+                              .filter((e) => {
+                                // Hide OPT legs that belong to a combo (BAG) order
+                                if (e.secType === 'OPT') {
+                                  const hasCombo = executions.some(
+                                    (b) =>
+                                      b.account === account.accountId &&
+                                      b.orderId === e.orderId &&
+                                      b.secType === 'BAG'
                                   )
-                                  const arrow = (
-                                    <span
-                                      style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}
-                                    >
-                                      →
-                                    </span>
-                                  )
-                                  desc = (
-                                    <>
-                                      {exec.symbol}{' '}
-                                      {legDescs.map((l, i) => (
-                                        <React.Fragment key={i}>
-                                          {i > 0 && arrow}
-                                          {l}
-                                        </React.Fragment>
-                                      ))}
-                                    </>
-                                  )
-                                } else {
-                                  desc = `${exec.symbol} COMBO`
+                                  if (hasCombo) return false
                                 }
+                                return true
+                              })
+                            // Aggregate partial fills: group by orderId+secType
+                            const grouped = new Map<string, typeof filtered[0]>()
+                            for (const e of filtered) {
+                              const key = `${e.orderId}|${e.secType}`
+                              const existing = grouped.get(key)
+                              if (existing) {
+                                existing.quantity += e.quantity
+                                // Keep the latest time
+                                if (e.time > existing.time) existing.time = e.time
                               } else {
-                                desc = exec.symbol
+                                grouped.set(key, { ...e })
                               }
-                              const isAssignment =
-                                exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
-                              // Convert IB time (e.g. "20260218 18:14:12 Asia/Taipei") → US Eastern "05:14"
-                              const fmtTime = (() => {
-                                const m = exec.time.match(
-                                  /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(.+)$/
+                            }
+                            return Array.from(grouped.values())
+                              .sort((a, b) => b.time.localeCompare(a.time))
+                              .map((exec) => {
+                                const acctExecs = executions.filter(
+                                  (e) => e.account === account.accountId
                                 )
-                                if (!m)
-                                  return exec.time.replace(
-                                    /^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/,
-                                    '$1'
+                                let desc: React.ReactNode
+                                if (exec.secType === 'OPT') {
+                                  desc = formatOptionLabel(
+                                    exec.symbol,
+                                    exec.expiry,
+                                    exec.strike,
+                                    exec.right
                                   )
-                                const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
-                                const d = new Date(
-                                  new Date(iso).toLocaleString('en-US', { timeZone: m[7] })
-                                )
-                                return d.toLocaleTimeString('en-US', {
-                                  timeZone: 'America/New_York',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: false
-                                })
-                              })()
-                              return (
-                                <tr key={exec.execId}>
-                                  <td className="pos-symbol">
-                                    {desc}
-                                    {isAssignment && (
+                                } else if (exec.secType === 'BAG') {
+                                  // Build description from sibling OPT legs with the same orderId
+                                  const legs = acctExecs.filter(
+                                    (e) =>
+                                      e.orderId === exec.orderId &&
+                                      e.secType === 'OPT' &&
+                                      e.symbol === exec.symbol
+                                  )
+                                  if (legs.length > 0) {
+                                    const seen = new Set<string>()
+                                    const legDescs: string[] = []
+                                    for (const l of legs) {
+                                      const exp = l.expiry
+                                        ? (() => {
+                                          const yy = l.expiry.slice(2, 4)
+                                          const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                          const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                          return `${MONTHS[mm]}${dd}'${yy}`
+                                        })()
+                                        : ''
+                                      const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
+                                      const sign = l.side === 'BOT' ? '+' : '-'
+                                      const key = `${sign}${exp} ${l.strike}${r}`
+                                      if (!seen.has(key)) {
+                                        seen.add(key)
+                                        legDescs.push(key)
+                                      }
+                                    }
+                                    legDescs.sort(
+                                      (a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1)
+                                    )
+                                    const arrow = (
                                       <span
-                                        style={{
-                                          color: '#1a6baa',
-                                          fontWeight: 600,
-                                          marginLeft: 6,
-                                          fontSize: '0.92em'
-                                        }}
+                                        style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}
                                       >
-                                        (到期)
+                                        →
                                       </span>
-                                    )}
-                                  </td>
-                                  <td
-                                    style={{
-                                      color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    {exec.side === 'BOT' ? '買' : '賣'}
-                                  </td>
-                                  <td>{exec.quantity}</td>
-                                  <td>{exec.avgPrice.toFixed(2)}</td>
-                                  <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
-                                </tr>
-                              )
-                            })}
+                                    )
+                                    desc = (
+                                      <>
+                                        {exec.symbol}{' '}
+                                        {legDescs.map((l, i) => (
+                                          <React.Fragment key={i}>
+                                            {i > 0 && arrow}
+                                            {l}
+                                          </React.Fragment>
+                                        ))}
+                                      </>
+                                    )
+                                  } else {
+                                    desc = `${exec.symbol} COMBO`
+                                  }
+                                } else {
+                                  desc = exec.symbol
+                                }
+                                const isAssignment =
+                                  exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
+                                // Convert IB time (e.g. "20260218 18:14:12 Asia/Taipei") → US Eastern "05:14"
+                                const fmtTime = (() => {
+                                  const m = exec.time.match(
+                                    /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(.+)$/
+                                  )
+                                  if (!m)
+                                    return exec.time.replace(
+                                      /^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/,
+                                      '$1'
+                                    )
+                                  const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
+                                  const d = new Date(
+                                    new Date(iso).toLocaleString('en-US', { timeZone: m[7] })
+                                  )
+                                  return d.toLocaleTimeString('en-US', {
+                                    timeZone: 'America/New_York',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                  })
+                                })()
+                                return (
+                                  <tr key={exec.execId}>
+                                    <td className="pos-symbol">
+                                      {desc}
+                                      {isAssignment && (
+                                        <span
+                                          style={{
+                                            color: '#1a6baa',
+                                            fontWeight: 600,
+                                            marginLeft: 6,
+                                            fontSize: '0.92em'
+                                          }}
+                                        >
+                                          (到期)
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td
+                                      style={{
+                                        color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      {exec.side === 'BOT' ? '買' : '賣'}
+                                    </td>
+                                    <td>{exec.quantity}</td>
+                                    <td>{exec.avgPrice.toFixed(2)}</td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
+                                  </tr>
+                                )
+                              })
+                          })()}
                         </tbody>
                       </table>
                     </div>
