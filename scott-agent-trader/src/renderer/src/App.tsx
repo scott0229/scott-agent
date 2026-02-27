@@ -32,6 +32,7 @@ function App(): React.JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [showUpload, setShowUpload] = useState(false)
+  const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const {
     marginLimit,
     setMarginLimit,
@@ -69,6 +70,23 @@ function App(): React.JSX.Element {
 
   const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } =
     useAccountStore(connected, connectedPort, mergeAccountAliases)
+
+  // Auto-detect account group when accounts are loaded
+  useEffect(() => {
+    if (accounts.length === 0) {
+      setAccountGroupLabel(null)
+      return
+    }
+    const accountIds = accounts.map((a) => a.accountId)
+    window.ibApi
+      .detectGroup(accountIds)
+      .then((result) => {
+        setAccountGroupLabel(result.label || null)
+      })
+      .catch(() => {
+        setAccountGroupLabel(null)
+      })
+  }, [accounts])
 
   const toggleHiddenAccount = useCallback(
     (accountId: string) => {
@@ -130,6 +148,9 @@ function App(): React.JSX.Element {
           >
             ☁ 上傳股價
           </button>
+          {accountGroupLabel && (
+            <span className="account-group-badge">{accountGroupLabel}</span>
+          )}
         </div>
         <nav className="tab-nav-inline">
           <button

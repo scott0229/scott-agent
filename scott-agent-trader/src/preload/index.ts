@@ -75,6 +75,8 @@ const ibApi = {
   getSettings: (): Promise<any> => ipcRenderer.invoke('settings:get'),
   putSettings: (key: string, value: unknown): Promise<any> =>
     ipcRenderer.invoke('settings:put', key, value),
+  detectGroup: (accountIds: string[]): Promise<{ group: string; label: string }> =>
+    ipcRenderer.invoke('settings:detectGroup', accountIds),
 
   // Price Upload (per-symbol)
   uploadSymbol: (

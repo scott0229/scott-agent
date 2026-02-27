@@ -223,6 +223,21 @@ function setupIpcHandlers(): void {
     }
   })
 
+  // Detect account group from IB account IDs
+  const GROUP_URL = 'https://scott-agent.com/api/trader-group'
+
+  ipcMain.handle('settings:detectGroup', async (_event, accountIds: string[]) => {
+    try {
+      const params = new URLSearchParams({ accounts: accountIds.join(',') })
+      const res = await fetch(`${GROUP_URL}?${params}`, {
+        headers: { Authorization: `Bearer ${SETTINGS_API_KEY}` }
+      })
+      return await res.json()
+    } catch {
+      return { group: 'unknown', label: '未知群組' }
+    }
+  })
+
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
     {
