@@ -36,7 +36,6 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
     const [formData, setFormData] = useState({
         email: '',
         userId: '',
-        password: '',
         role: 'customer',
         managementFee: '4.0',
         feeExemptMonths: '0',
@@ -51,7 +50,6 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             setFormData({
                 email: userToEdit.email,
                 userId: userToEdit.user_id || '',
-                password: '',
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
                 feeExemptMonths: userToEdit.fee_exempt_months?.toString() || '0',
@@ -70,7 +68,6 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             setFormData({
                 email: userToEdit.email,
                 userId: userToEdit.user_id || '',
-                password: '',
                 role: userToEdit.role || 'customer',
                 managementFee: userToEdit.management_fee?.toString() || '',
                 feeExemptMonths: userToEdit.fee_exempt_months?.toString() || '0',
@@ -79,7 +76,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 startDate: userToEdit.start_date || '',
             });
         } else {
-            setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
+            setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
         }
     }
 
@@ -112,7 +109,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', password: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
+                setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
             }
         } catch (error: any) {
             toast({
@@ -129,7 +126,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[440px]">
                 <DialogHeader>
-                    <DialogTitle>{userToEdit ? '編輯用戶' : '新增使用者'}</DialogTitle>
+                    <DialogTitle>{userToEdit ? '編輯帳戶' : '新增帳戶'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4" autoComplete="off">
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -159,23 +156,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             autoComplete="off"
                         />
                     </div>
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <Label htmlFor="password" className="text-right">
-                            密碼
-                        </Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            autoComplete="off"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="col-span-2"
-                            // Password only required when creating new user
-                            required={!userToEdit}
-                            minLength={6}
-                            placeholder={userToEdit ? '若不修改請留空' : ''}
-                        />
-                    </div>
+
                     <div className="grid grid-cols-3 items-center gap-4">
                         <Label htmlFor="email" className="text-right">
                             郵件地址
@@ -201,7 +182,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             className="col-span-2"
                             autoComplete="off"
-                            placeholder="0912345678"
+
                         />
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -287,7 +268,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     onChange={(e) => setFormData({ ...formData, ibAccount: e.target.value })}
                                     className="col-span-2"
                                     autoComplete="off"
-                                    placeholder="U12345678"
+
                                 />
                             </div>
 
@@ -296,7 +277,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
 
                     <DialogFooter>
                         <Button type="submit" disabled={loading}>
-                            {loading ? '處理中...' : (userToEdit ? '儲存變更' : '建立使用者')}
+                            {loading ? '處理中...' : (userToEdit ? '儲存變更' : '建立帳戶')}
                         </Button>
                     </DialogFooter>
                 </form>

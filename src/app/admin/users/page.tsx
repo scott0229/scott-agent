@@ -1137,7 +1137,7 @@ export default function AdminUsersPage() {
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">
-                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 用戶設定
+                        {mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 帳戶設定
                     </h1>
                     <div className="flex gap-2">
                         {/* Only show actions for admin/manager/trader, NOT customer */}

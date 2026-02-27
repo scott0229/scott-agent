@@ -101,7 +101,7 @@ export function Navbar() {
                             className="gap-2"
                         >
                             <Users className="h-4 w-4" />
-                            用戶設定
+                            帳戶設定
                         </Button>
                     </Link>
                 )}

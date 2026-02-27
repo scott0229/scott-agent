@@ -477,7 +477,7 @@ export async function POST(req: NextRequest) {
             feeExemptMonths?: number;
         };
 
-        if (!email || !userId || !password || !role) {
+        if (!email || !userId || !role) {
             return NextResponse.json({ error: '請填寫所有欄位' }, { status: 400 });
         }
 
@@ -487,28 +487,22 @@ export async function POST(req: NextRequest) {
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
-
         const userYear = year || new Date().getFullYear();
 
-        // Check existing email or user_id in the same year
-        const existing = await db.prepare('SELECT * FROM USERS WHERE (email = ? OR user_id = ?) AND year = ?')
-            .bind(email, userId, userYear)
+        // Check existing user_id in the same year (email can be shared across accounts)
+        const existing = await db.prepare('SELECT * FROM USERS WHERE user_id = ? AND year = ?')
+            .bind(userId, userYear)
             .first();
         if (existing) {
-            if (existing.email === email) {
-                return NextResponse.json({ error: '此 Email 已在該年度被註冊' }, { status: 409 });
-            }
-            if (existing.user_id === userId) {
-                return NextResponse.json({ error: '此 User ID 已在該年度被使用' }, { status: 409 });
-            }
+            return NextResponse.json({ error: '此 User ID 已在該年度被使用' }, { status: 409 });
         }
 
-        const hashedPassword = await hashPassword(password);
+        // Auto-generate a random password (accounts don't login via website)
+        const randomPassword = password || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const hashedPassword = await hashPassword(randomPassword);
         const fee = role === 'customer' ? (managementFee || 0) : 0;
-        const ib = role === 'customer' ? (ibAccount || '') : '';
+        const ib = role === 'customer' ? (ibAccount || null) : null;
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
-        // userYear is already defined above
-
         const exemptMonths = role === 'customer' ? (feeExemptMonths || 0) : 0;
 
         await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, unixepoch(), unixepoch())')
@@ -668,16 +662,14 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '無效的角色' }, { status: 400 });
         }
 
-        // Check for duplicates if email/userId changed
-        if ((email && email !== currentUser.email) || (userId && userId !== currentUser.user_id)) {
-            // Check only within the same year
-            const existing = await db.prepare('SELECT * FROM USERS WHERE (email = ? OR user_id = ?) AND year = ? AND id != ?')
-                .bind(email || currentUser.email, userId || currentUser.user_id, currentUser.year, id)
+        // Check for duplicates if userId changed (email can be shared across accounts)
+        if (userId && userId !== currentUser.user_id) {
+            const existing = await db.prepare('SELECT * FROM USERS WHERE user_id = ? AND year = ? AND id != ?')
+                .bind(userId, currentUser.year, id)
                 .first();
 
             if (existing) {
-                if (existing.email === email) return NextResponse.json({ error: 'Email 已在該年度被使用' }, { status: 409 });
-                if (existing.user_id === userId) return NextResponse.json({ error: 'User ID 已在該年度被使用' }, { status: 409 });
+                return NextResponse.json({ error: 'User ID 已在該年度被使用' }, { status: 409 });
             }
         }
 
