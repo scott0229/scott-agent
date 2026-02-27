@@ -16,6 +16,8 @@ interface SettingsPanelProps {
   onSetWatchSymbol: (index: number, value: string) => void
   symbolOptionTypes: Record<string, { cc: boolean; pp: boolean }>
   onSetSymbolOptionType: (symbol: string, type: 'cc' | 'pp', enabled: boolean) => void
+  d1Target: 'staging' | 'production'
+  onSetD1Target: (target: 'staging' | 'production') => void
 }
 
 function SectionHeader({
@@ -49,12 +51,15 @@ export default function SettingsPanel({
   watchSymbols,
   onSetWatchSymbol,
   symbolOptionTypes,
-  onSetSymbolOptionType
+  onSetSymbolOptionType,
+  d1Target,
+  onSetD1Target
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
   const [showRisk, setShowRisk] = useState(true)
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
+  const [showD1, setShowD1] = useState(true)
 
   if (!open) return null
 
@@ -125,7 +130,7 @@ export default function SettingsPanel({
               const sym = watchSymbols[i] || ''
               const opts = sym
                 ? symbolOptionTypes[sym] || { cc: true, pp: true }
-                : { cc: true, pp: true }
+                : { cc: false, pp: false }
               return (
                 <div
                   key={i}
@@ -156,46 +161,46 @@ export default function SettingsPanel({
                       marginLeft: 'auto'
                     }}
                   />
-                  {sym && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 3,
-                          fontSize: '0.9em',
-                          color: '#555',
-                          cursor: 'pointer',
-                          userSelect: 'none'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={opts.cc}
-                          onChange={(e) => onSetSymbolOptionType(sym, 'cc', e.target.checked)}
-                        />
-                        CC
-                      </label>
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 3,
-                          fontSize: '0.9em',
-                          color: '#555',
-                          cursor: 'pointer',
-                          userSelect: 'none'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={opts.pp}
-                          onChange={(e) => onSetSymbolOptionType(sym, 'pp', e.target.checked)}
-                        />
-                        PP
-                      </label>
-                    </span>
-                  )}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: '0.9em',
+                        color: sym ? '#555' : '#bbb',
+                        cursor: sym ? 'pointer' : 'default',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={opts.cc}
+                        disabled={!sym}
+                        onChange={(e) => sym && onSetSymbolOptionType(sym, 'cc', e.target.checked)}
+                      />
+                      CC
+                    </label>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: '0.9em',
+                        color: sym ? '#555' : '#bbb',
+                        cursor: sym ? 'pointer' : 'default',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={opts.pp}
+                        disabled={!sym}
+                        onChange={(e) => sym && onSetSymbolOptionType(sym, 'pp', e.target.checked)}
+                      />
+                      PP
+                    </label>
+                  </span>
                 </div>
               )
             })}
@@ -220,6 +225,49 @@ export default function SettingsPanel({
                   </label>
                 )
               })}
+            </div>
+          )}
+
+          <SectionHeader
+            title="D1 資料庫"
+            expanded={showD1}
+            onToggle={() => setShowD1((v) => !v)}
+          />
+          {showD1 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                padding: '0 8px',
+                marginBottom: 12
+              }}
+            >
+              {[
+                { value: 'staging' as const, label: 'Staging' },
+                { value: 'production' as const, label: 'Production' }
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: '0.95em',
+                    color: '#555',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="d1-target"
+                    checked={d1Target === opt.value}
+                    onChange={() => onSetD1Target(opt.value)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
             </div>
           )}
         </div>

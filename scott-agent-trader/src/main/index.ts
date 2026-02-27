@@ -255,7 +255,11 @@ function setupIpcHandlers(): void {
     }
   ]
 
-  ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string) => {
+  ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string, target?: 'staging' | 'production') => {
+    const effectiveTarget = target || 'staging'
+    const targets = UPLOAD_TARGETS.filter((t) =>
+      t.label === effectiveTarget
+    )
     try {
       const bars = await getHistoricalData({
         symbol,
@@ -283,9 +287,9 @@ function setupIpcHandlers(): void {
 
       const body = JSON.stringify({ rows })
 
-      // Upload to both staging & production in parallel
+      // Upload to selected target(s) in parallel
       const results = await Promise.allSettled(
-        UPLOAD_TARGETS.map(async (t) => {
+        targets.map(async (t) => {
           const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
           const res = await fetch(t.bulk, { method: 'POST', headers: hdrs, body })
           if (!res.ok) throw new Error(`${t.label}: ${await res.text().catch(() => res.statusText)}`)
@@ -294,7 +298,7 @@ function setupIpcHandlers(): void {
       )
 
       const failures = results.filter((r) => r.status === 'rejected')
-      if (failures.length === UPLOAD_TARGETS.length) {
+      if (failures.length === targets.length) {
         const msgs = failures.map((r) => (r as PromiseRejectedResult).reason?.message).join('; ')
         return { success: false, error: `Upload failed: ${msgs}` }
       }
@@ -302,8 +306,8 @@ function setupIpcHandlers(): void {
         failures.forEach((r) => console.warn('[upload] partial fail:', (r as PromiseRejectedResult).reason?.message))
       }
 
-      // Clear cache on both environments
-      for (const t of UPLOAD_TARGETS) {
+      // Clear cache on selected environments
+      for (const t of targets) {
         const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
         fetch(t.clearCache, { method: 'POST', headers: hdrs, body: JSON.stringify({ symbols: [symbol] }) })
           .catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))

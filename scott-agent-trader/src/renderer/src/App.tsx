@@ -43,6 +43,8 @@ function App(): React.JSX.Element {
     setAccountType,
     symbolOptionTypes,
     setSymbolOptionType,
+    d1Target,
+    setD1Target,
     saveAllSettings
   } = useTraderSettings()
 
@@ -81,7 +83,8 @@ function App(): React.JSX.Element {
     window.ibApi
       .detectGroup(accountIds)
       .then((result) => {
-        setAccountGroupLabel(result.label || null)
+        const yearSuffix = result.year ? ` (${result.year})` : ''
+        setAccountGroupLabel(result.label ? result.label + yearSuffix : null)
       })
       .catch(() => {
         setAccountGroupLabel(null)
@@ -203,10 +206,13 @@ function App(): React.JSX.Element {
         onSetWatchSymbol={setWatchSymbol}
         symbolOptionTypes={symbolOptionTypes}
         onSetSymbolOptionType={setSymbolOptionType}
+        d1Target={d1Target}
+        onSetD1Target={setD1Target}
       />
       {showUpload && (
         <UploadProgressDialog
           symbols={watchSymbols.filter(Boolean)}
+          d1Target={d1Target}
           onClose={() => setShowUpload(false)}
         />
       )}

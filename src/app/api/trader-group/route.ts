@@ -43,26 +43,31 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'No valid accounts provided' }, { status: 400 });
         }
 
-        // Build placeholders for IN clause
-        const placeholders = accountIds.map(() => '?').join(',');
-        const countQuery = `SELECT COUNT(DISTINCT ib_account) as cnt FROM USERS WHERE ib_account IN (${placeholders})`;
-        const total = accountIds.length;
 
-        // Check advisor DB: ALL accounts must be found
-        const dbAdvisor = await getDb('advisor');
-        const advisorResult = await dbAdvisor.prepare(countQuery).bind(...accountIds).first() as { cnt: number } | null;
-        if (advisorResult && advisorResult.cnt >= total) {
-            return NextResponse.json({ group: 'advisor', label: '顧問帳戶群' });
+        // Reverse logic: check if ALL DB accounts (for a given year) are found in the APP's account list.
+        // Try current year first, then previous year as fallback.
+        const currentYear = new Date().getFullYear();
+        const yearsToTry = [currentYear, currentYear - 1];
+
+        const allAccountsQuery = `SELECT DISTINCT ib_account FROM USERS WHERE ib_account IS NOT NULL AND ib_account != '' AND year = ?`;
+
+        const groups: { dbName: string; group: string; label: string }[] = [
+            { dbName: 'advisor', group: 'advisor', label: '顧問帳戶群' },
+            { dbName: 'scott', group: 'scott', label: 'SCOTT帳戶群' },
+        ];
+
+        for (const year of yearsToTry) {
+            for (const g of groups) {
+                const db = await getDb(g.dbName);
+                const rows = await db.prepare(allAccountsQuery).bind(year).all() as { results: { ib_account: string }[] };
+                const dbAccounts = (rows.results || []).map(r => r.ib_account);
+                if (dbAccounts.length > 0 && dbAccounts.every(a => accountIds.includes(a))) {
+                    return NextResponse.json({ group: g.group, label: g.label, year });
+                }
+            }
         }
 
-        // Check scott DB: ALL accounts must be found
-        const dbScott = await getDb('scott');
-        const scottResult = await dbScott.prepare(countQuery).bind(...accountIds).first() as { cnt: number } | null;
-        if (scottResult && scottResult.cnt >= total) {
-            return NextResponse.json({ group: 'scott', label: 'SCOTT帳戶群' });
-        }
-
-        return NextResponse.json({ group: 'unknown', label: '未知群組' });
+        return NextResponse.json({ group: 'unknown', label: '未知群組', year: currentYear });
     } catch (error) {
         console.error('GET trader-group error:', error);
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });

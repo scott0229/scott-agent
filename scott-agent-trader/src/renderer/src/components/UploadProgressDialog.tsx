@@ -11,11 +11,13 @@ export interface SymbolUploadState {
 
 interface UploadProgressDialogProps {
     symbols: string[]
+    d1Target: 'staging' | 'production'
     onClose: () => void
 }
 
 export default function UploadProgressDialog({
     symbols,
+    d1Target,
     onClose
 }: UploadProgressDialogProps): React.JSX.Element {
     const [items, setItems] = useState<SymbolUploadState[]>(
@@ -39,7 +41,7 @@ export default function UploadProgressDialog({
             )
 
             try {
-                const result = await window.ibApi.uploadSymbol(sym)
+                const result = await window.ibApi.uploadSymbol(sym, d1Target)
                 if (cancelledRef.current) return
                 setItems((prev) =>
                     prev.map((it, idx) =>

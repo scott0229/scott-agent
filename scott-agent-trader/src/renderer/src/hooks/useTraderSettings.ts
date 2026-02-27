@@ -18,6 +18,7 @@ export function useTraderSettings() {
   const [symbolOptionTypes, setSymbolOptionTypesState] = useState<
     Record<string, { cc: boolean; pp: boolean }>
   >({})
+  const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
 
   // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
   useEffect(() => {
@@ -54,6 +55,12 @@ export function useTraderSettings() {
             data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>
           )
         }
+        if (
+          data.settings.d1_target === 'staging' ||
+          data.settings.d1_target === 'production'
+        ) {
+          setD1TargetState(data.settings.d1_target)
+        }
       })
       .catch(() => {
         /* offline — use defaults */
@@ -67,7 +74,8 @@ export function useTraderSettings() {
     window.ibApi.putSettings('account_aliases', accountAliases).catch(() => {})
     window.ibApi.putSettings('account_types', accountTypes).catch(() => {})
     window.ibApi.putSettings('symbol_option_types', symbolOptionTypes).catch(() => {})
-  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes])
+    window.ibApi.putSettings('d1_target', d1Target).catch(() => {})
+  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes, d1Target])
 
   const setMarginLimit = useCallback((v: number) => {
     setMarginLimitState(v)
@@ -113,6 +121,11 @@ export function useTraderSettings() {
     })
   }, [])
 
+  const setD1Target = useCallback((v: 'staging' | 'production') => {
+    setD1TargetState(v)
+    window.ibApi.putSettings('d1_target', v).catch(() => {})
+  }, [])
+
   return {
     marginLimit,
     setMarginLimit,
@@ -124,6 +137,8 @@ export function useTraderSettings() {
     setAccountType,
     symbolOptionTypes,
     setSymbolOptionType,
+    d1Target,
+    setD1Target,
 
     saveAllSettings
   }

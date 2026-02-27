@@ -75,14 +75,15 @@ const ibApi = {
   getSettings: (): Promise<any> => ipcRenderer.invoke('settings:get'),
   putSettings: (key: string, value: unknown): Promise<any> =>
     ipcRenderer.invoke('settings:put', key, value),
-  detectGroup: (accountIds: string[]): Promise<{ group: string; label: string }> =>
+  detectGroup: (accountIds: string[]): Promise<{ group: string; label: string; year?: number }> =>
     ipcRenderer.invoke('settings:detectGroup', accountIds),
 
   // Price Upload (per-symbol)
   uploadSymbol: (
-    symbol: string
+    symbol: string,
+    target?: 'staging' | 'production'
   ): Promise<{ success: boolean; count?: number; error?: string }> =>
-    ipcRenderer.invoke('prices:uploadSymbol', symbol),
+    ipcRenderer.invoke('prices:uploadSymbol', symbol, target),
 
   // Cleanup
   removeAllListeners: (): void => {
