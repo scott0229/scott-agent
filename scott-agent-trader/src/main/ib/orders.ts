@@ -567,7 +567,7 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         }
       }
 
-      orders.push({
+      const orderEntry: OpenOrder = {
         orderId,
         account: order.account || '',
         symbol: contract.symbol || '',
@@ -585,7 +585,15 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         right: contract.right || undefined,
         comboDescription:
           contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined
-      })
+      }
+
+      // Deduplicate: IB may fire onOpenOrder multiple times for the same orderId
+      const existingIdx = orders.findIndex((o) => o.orderId === orderId)
+      if (existingIdx >= 0) {
+        orders[existingIdx] = orderEntry
+      } else {
+        orders.push(orderEntry)
+      }
       console.log(
         `[IB] Open order received: orderId=${orderId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`
       )

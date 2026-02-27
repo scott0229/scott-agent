@@ -464,10 +464,12 @@ export default function RollOptionDialog({
   }, [targetGreek, positions, findCurrentGreek])
 
   // Auto-populate limit price with mid price whenever target selection changes
+  // Once set, stop updating so live quote fluctuations don't overwrite the value
   useEffect(() => {
     if (userEditedPriceRef.current) return
     if (spreadPrices) {
       setLimitPrice(spreadPrices.mid.toFixed(2))
+      userEditedPriceRef.current = true
     }
   }, [spreadPrices])
 

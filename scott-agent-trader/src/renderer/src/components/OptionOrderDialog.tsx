@@ -389,12 +389,14 @@ export default function OptionOrderDialog({
   */
 
   // ── Auto-fill mid price when selection changes ────────────────────────────
+  // Once set, stop updating so live quote fluctuations don't overwrite the value
   useEffect(() => {
     if (userEditedPriceRef.current) return
     if (selGreek && selGreek.bid > 0 && selGreek.ask > 0) {
       setLimitPrice(((selGreek.bid + selGreek.ask) / 2).toFixed(2))
+      userEditedPriceRef.current = true
     }
-  }, [selExpiry, selStrike, selRight])
+  }, [selExpiry, selStrike, selRight, selGreek])
 
   // ── Scroll limit dropdown to mid on open ─────────────────────────────────
   useEffect(() => {
