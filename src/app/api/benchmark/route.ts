@@ -16,10 +16,13 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Missing userId or symbol' }, { status: 400 });
     }
 
+    // Resolve database group from request
+    const group = await getGroupFromRequest(req);
+
     // Add cache wrapper for expensive benchmark calculations
-    const cacheKey = `benchmark-${userId}-${symbol}-${year || 'all'}`;
+    const cacheKey = `benchmark-${userId}-${symbol}-${year || 'all'}-${group || 'default'}`;
     const result = await cacheResponse(cacheKey, async () => {
-        const DB = await getDb();
+        const DB = await getDb(group);
 
         try {
             // 1. Get User Records
