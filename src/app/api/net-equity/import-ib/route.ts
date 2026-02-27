@@ -34,8 +34,8 @@ function parseNumber(str: string): number {
 
 function parseIBStatement(html: string) {
     // 1. Extract date from <title>
-    // Format: "U18607756 活動賬單 二月 2, 2026 - Interactive Brokers"
-    const titleMatch = html.match(/<title>.*?活動賬單\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
+    // Format: "U18607756 活動賬單 二月 2, 2026 - Interactive Brokers" or "U3156568 活動總結 一月 1, 2026 - Interactive Brokers"
+    const titleMatch = html.match(/<title>.*?(?:活動賬單|活動總結)\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
     if (!titleMatch) {
         throw new Error('無法從報表標題解析日期');
     }
@@ -83,7 +83,8 @@ function parseIBStatement(html: string) {
 
         if (label === '現金') {
             cashBalance = parseNumber(currentTotal);
-        } else if (label === '總數') {
+        } else if (label === '總數' && netEquity === 0) {
+            // Only take the FIRST 總數 row — 活動總結 reports have a second 總數 row with 0.00
             netEquity = parseNumber(currentTotal);
         }
     }
@@ -250,21 +251,23 @@ function parseIBStatement(html: string) {
                     cols.push(colMatch[1].replace(/&nbsp;/g, '').trim());
                 }
 
-                // We need exactly 11 columns for a valid trade row
-                // Columns: Symbol | Date/Time | Quantity | Price | Close Price | Proceeds | Comm/Tax | Basis | Realized P/L | Mtm P/L | Code
+                // 活動賬單 format: 11 columns — Symbol | Date/Time | Quantity | Price | Close Price | Proceeds | Comm/Tax | Basis | Realized P/L | Mtm P/L | Code
+                // 活動總結 format: 12 columns — Account ID | Symbol | Date/Time | Quantity | Price | Close Price | Proceeds | Comm/Tax | Basis | Realized P/L | Mtm P/L | Code
                 if (cols.length < 11) continue;
 
-                const codeStr = cols[0];
-                const dateTimeStr = cols[1];
-                const qtyStr = cols[2];
-                // index 3: Trade Price
-                // index 4: Close Price
-                // index 5: Proceeds
-                // index 6: Comm/Tax
-                const basisStr = cols[7]; // 基礎 = 權利金（含佣金）
-                const realizedStr = cols[8];
-                // index 9: Mtm P/L
-                const actionCode = cols[10];
+                // Detect offset: 活動總結 has an extra account ID column at index 0
+                const off = cols.length >= 12 ? 1 : 0;
+                const codeStr = cols[off];
+                const dateTimeStr = cols[off + 1];
+                const qtyStr = cols[off + 2];
+                // off+3: Trade Price
+                // off+4: Close Price
+                // off+5: Proceeds
+                // off+6: Comm/Tax
+                const basisStr = cols[off + 7]; // 基礎 = 權利金（含佣金）
+                const realizedStr = cols[off + 8];
+                // off+9: Mtm P/L
+                const actionCode = cols[off + 10];
 
                 // Skip Header, Subtotal rows (總數), and empty rows
                 if (codeStr === '代碼' || codeStr.includes('Symbol') || codeStr.startsWith('總數') || !dateTimeStr) continue;

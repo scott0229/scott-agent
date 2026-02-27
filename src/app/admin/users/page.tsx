@@ -753,7 +753,7 @@ export default function AdminUsersPage() {
     };
 
     const extractDateFromHtml = (html: string): { date: Date; dateStr: string; userAlias: string } | null => {
-        const titleMatch = html.match(/<title>.*?活動賬單\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
+        const titleMatch = html.match(/<title>.*?(?:活動賬單|活動總結)\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
         if (!titleMatch) return null;
         const month = BATCH_MONTH_MAP[titleMatch[1]];
         if (!month) return null;
@@ -1799,7 +1799,7 @@ export default function AdminUsersPage() {
                                                         <td className="text-right p-1.5 font-mono">{opt.strikePrice}</td>
                                                         <td className="text-right p-1.5 font-mono">{opt.toDateStr}</td>
                                                         <td className="text-right p-1.5 font-mono">{opt.quantity}</td>
-                                                        <td className="text-right p-1.5 font-mono">${opt.premium.toFixed(0)}</td>
+                                                        <td className="text-right p-1.5 font-mono">${Math.round(opt.premium).toLocaleString()}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

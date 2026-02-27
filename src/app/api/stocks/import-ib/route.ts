@@ -59,7 +59,7 @@ function parseIBStockTrades(html: string): {
     userAlias: string;
 } {
     // 1. Extract date from <title>
-    const titleMatch = html.match(/<title>.*?活動賬單\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
+    const titleMatch = html.match(/<title>.*?(?:活動賬單|活動總結)\s+([\u4e00-\u9fff]+)\s+(\d+),\s+(\d{4})/);
     if (!titleMatch) {
         throw new Error('無法從報表標題解析日期');
     }
@@ -82,14 +82,13 @@ function parseIBStockTrades(html: string): {
     const userAlias = aliasMatch[1].trim();
 
     // 3. Find the Transactions section
-    const txnSectionMatch = html.match(/id="tblTransactions_[^"]*Body"[^>]*>([\s\S]*?)<\/table>/);
+    // Use </div> end boundary for compatibility with both 活動賬單 and 活動總結 formats
+    const txnSectionMatch = html.match(/id="tblTransactions_[^"]*Body"[^>]*>([\s\S]*?)<\/div>/);
     if (!txnSectionMatch) {
         return { trades: [], date: dateUnix, dateStr, year, userAlias };
     }
 
     // 4. Find the FIRST stock section (before 股票和指數期權)
-    // The section starts with <td class="header-asset"...>股票</td>
-    // and ends at the next header-asset or the end of the table
     const txnHtml = txnSectionMatch[1];
 
     // Find stock trades: between "股票" header and next header (股票和指數期權 or end)
@@ -102,22 +101,34 @@ function parseIBStockTrades(html: string): {
     }
     const stockHtml = stockSectionMatch[1];
 
-    // 5. Parse individual trade rows (skip subtotal/total rows and currency headers)
+    // 5. Parse individual trade rows using flexible column extraction
+    // 活動賬單 format: 11 columns — Symbol | Date/Time | Quantity | Price | Close Price | Proceeds | Comm/Tax | Basis | Realized P/L | Mtm P/L | Code
+    // 活動總結 format: 12 columns — Account ID | Symbol | Date/Time | Quantity | Price | Close Price | Proceeds | Comm/Tax | Basis | Realized P/L | Mtm P/L | Code
     const trades: ParsedStockTrade[] = [];
-    const tradeRowRegex = /<tbody>\s*<tr>\s*<td>(.*?)<\/td>\s*<td>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<\/tr>\s*<\/tbody>/g;
+    const rows = stockHtml.split(/<\/tr>/i);
 
-    let tradeMatch;
-    while ((tradeMatch = tradeRowRegex.exec(stockHtml)) !== null) {
-        const symbol = tradeMatch[1].trim();
-        const dateTime = tradeMatch[2].trim();
-        const quantity = parseNumber(tradeMatch[3]);
-        const tradePrice = parseNumber(tradeMatch[4]);
-        const closePrice = parseNumber(tradeMatch[5]);
-        const realizedPnL = parseNumber(tradeMatch[9]);
-        const tradeCode = tradeMatch[11].replace(/&nbsp;/g, '').trim();
+    for (const row of rows) {
+        const cols: string[] = [];
+        const colRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        let colMatch;
+        while ((colMatch = colRegex.exec(row)) !== null) {
+            cols.push(colMatch[1].replace(/&nbsp;/g, '').trim());
+        }
 
-        // Skip header/currency rows
-        if (!symbol || !dateTime || symbol === 'USD') continue;
+        if (cols.length < 11) continue;
+
+        // Detect offset: 活動總結 has an extra account ID column at index 0
+        const off = cols.length >= 12 ? 1 : 0;
+        const symbol = cols[off].trim();
+        const dateTime = cols[off + 1].trim();
+        const quantity = parseNumber(cols[off + 2]);
+        const tradePrice = parseNumber(cols[off + 3]);
+        const closePrice = parseNumber(cols[off + 4]);
+        const realizedPnL = parseNumber(cols[off + 8]);
+        const tradeCode = cols[off + 10].trim();
+
+        // Skip header/currency/subtotal rows
+        if (!symbol || !dateTime || symbol === 'USD' || symbol.startsWith('總數') || symbol === '代碼') continue;
 
         trades.push({
             symbol,
@@ -234,6 +245,7 @@ export async function POST(request: NextRequest) {
         for (const trade of trades) {
             if (trade.isOpen && !trade.isClose) {
                 // Pure open trade
+                const virtualId = -(positionPool.length + 1); // negative virtual ID for intra-day matching
                 actions.push({
                     type: 'open',
                     symbol: trade.symbol,
@@ -241,6 +253,17 @@ export async function POST(request: NextRequest) {
                     price: trade.tradePrice,
                     date,
                     isAssignment: trade.isAssignment,
+                    existingTradeId: virtualId, // carry virtual ID so execution can map to real DB ID
+                });
+                // Add to positionPool so subsequent same-day close trades can match against it
+                positionPool.push({
+                    id: virtualId,
+                    symbol: trade.symbol,
+                    quantity: Math.abs(trade.quantity),
+                    open_date: date,
+                    open_price: trade.tradePrice,
+                    code: 'PENDING',
+                    remainingQty: Math.abs(trade.quantity),
                 });
             } else if (trade.isClose) {
                 // Close trade - FIFO match
@@ -322,19 +345,21 @@ export async function POST(request: NextRequest) {
         let closed = 0;
         let split = 0;
 
-        // Track split redirects: when a position is split, subsequent actions
-        // targeting the same original trade ID should operate on the newly created remainder record
-        const splitRedirectMap = new Map<number, number>();
+        // Track ID redirects:
+        // 1. When a position is split, subsequent actions targeting the original trade ID should use the new remainder record
+        // 2. When a virtual intra-day open (negative ID) is created during planning, map it to the real DB ID after INSERT
+        const idRedirectMap = new Map<number, number>();
 
         for (const action of actions) {
             if (action.type === 'open') {
                 const code = await generateUniqueCode(db);
                 const source = action.isAssignment ? 'assigned' : null;
-                await db.prepare(`
+                const openResult = await db.prepare(`
                     INSERT INTO STOCK_TRADES (
                         symbol, status, open_date, open_price, quantity,
                         user_id, owner_id, year, code, source, updated_at
                     ) VALUES (?, 'Open', ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                    RETURNING id
                 `).bind(
                     action.symbol,
                     action.date,
@@ -345,12 +370,16 @@ export async function POST(request: NextRequest) {
                     year,
                     code,
                     source,
-                ).run();
+                ).first<{ id: number }>();
+                // Map virtual intra-day IDs (negative) to the real DB ID
+                if (openResult && action.existingTradeId && action.existingTradeId < 0) {
+                    idRedirectMap.set(action.existingTradeId, openResult.id);
+                }
                 created++;
 
             } else if (action.type === 'close_full') {
                 // Resolve actual target: if this trade was previously split, target the remainder record
-                const targetId = splitRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
+                const targetId = idRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
                 const closeSource = action.isAssignment ? 'assigned' : null;
                 await db.prepare(`
                     UPDATE STOCK_TRADES SET
@@ -361,7 +390,7 @@ export async function POST(request: NextRequest) {
 
             } else if (action.type === 'close_split') {
                 // Resolve actual target: if this trade was previously split, target the remainder record
-                const targetId = splitRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
+                const targetId = idRedirectMap.get(action.existingTradeId!) ?? action.existingTradeId;
 
                 // 1. Update target record: reduce quantity and close it
                 const splitCloseSource = action.isAssignment ? 'assigned' : null;
@@ -393,7 +422,7 @@ export async function POST(request: NextRequest) {
 
                 // Redirect future actions on the original trade to the new remainder record
                 if (insertResult) {
-                    splitRedirectMap.set(action.existingTradeId!, insertResult.id);
+                    idRedirectMap.set(action.existingTradeId!, insertResult.id);
                 }
                 split++;
             }

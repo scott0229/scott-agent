@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearCache } from '@/lib/response-cache';
 
 // Helper to check for admin or manager role (trader excluded from modifications)
 async function checkAdmin(req: NextRequest) {
@@ -123,6 +124,7 @@ export async function DELETE(
         if (mode === 'clear_records') {
             // Also reset account initial values
             await db.prepare('UPDATE USERS SET initial_cost = 0, initial_cash = 0, initial_management_fee = 0, initial_deposit = 0 WHERE id = ?').bind(id).run();
+            clearCache();
             return NextResponse.json({ success: true, mode: 'clear_records' });
         }
 
@@ -135,6 +137,7 @@ export async function DELETE(
         await db.prepare('DELETE FROM PROJECT_USERS WHERE user_id = ?').bind(id).run();
         await db.prepare('DELETE FROM USERS WHERE id = ?').bind(id).run();
 
+        clearCache();
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Delete user error:', error);
