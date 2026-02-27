@@ -45,19 +45,20 @@ export async function GET(req: NextRequest) {
 
         // Build placeholders for IN clause
         const placeholders = accountIds.map(() => '?').join(',');
-        const query = `SELECT ib_account FROM USERS WHERE ib_account IN (${placeholders}) LIMIT 1`;
+        const countQuery = `SELECT COUNT(DISTINCT ib_account) as cnt FROM USERS WHERE ib_account IN (${placeholders})`;
+        const total = accountIds.length;
 
-        // Check advisor DB first
+        // Check advisor DB: ALL accounts must be found
         const dbAdvisor = await getDb('advisor');
-        const advisorRow = await dbAdvisor.prepare(query).bind(...accountIds).first();
-        if (advisorRow) {
+        const advisorResult = await dbAdvisor.prepare(countQuery).bind(...accountIds).first() as { cnt: number } | null;
+        if (advisorResult && advisorResult.cnt >= total) {
             return NextResponse.json({ group: 'advisor', label: '顧問帳戶群' });
         }
 
-        // Check scott DB
+        // Check scott DB: ALL accounts must be found
         const dbScott = await getDb('scott');
-        const scottRow = await dbScott.prepare(query).bind(...accountIds).first();
-        if (scottRow) {
+        const scottResult = await dbScott.prepare(countQuery).bind(...accountIds).first() as { cnt: number } | null;
+        if (scottResult && scottResult.cnt >= total) {
             return NextResponse.json({ group: 'scott', label: 'SCOTT帳戶群' });
         }
 

@@ -224,13 +224,14 @@ function setupIpcHandlers(): void {
   })
 
   // Detect account group from IB account IDs
-  const GROUP_URL = 'https://scott-agent.com/api/trader-group'
+  const GROUP_URL = 'https://staging.scott-agent.com/api/trader-group'
+  const GROUP_API_KEY = 'MZ12MUOIJXFNK7LZ'
 
   ipcMain.handle('settings:detectGroup', async (_event, accountIds: string[]) => {
     try {
       const params = new URLSearchParams({ accounts: accountIds.join(',') })
       const res = await fetch(`${GROUP_URL}?${params}`, {
-        headers: { Authorization: `Bearer ${SETTINGS_API_KEY}` }
+        headers: { Authorization: `Bearer ${GROUP_API_KEY}` }
       })
       return await res.json()
     } catch {
