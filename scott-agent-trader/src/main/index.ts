@@ -198,9 +198,16 @@ function setupIpcHandlers(): void {
   const SETTINGS_URL = 'https://scott-agent.com/api/trader-settings'
   const SETTINGS_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
 
+  // Track detected group so settings are per-group
+  let detectedGroup: string = 'advisor'
+
+  function settingsUrlWithGroup(): string {
+    return `${SETTINGS_URL}?group=${encodeURIComponent(detectedGroup)}`
+  }
+
   ipcMain.handle('settings:get', async () => {
     try {
-      const res = await fetch(SETTINGS_URL)
+      const res = await fetch(settingsUrlWithGroup())
       return await res.json()
     } catch {
       return { settings: null }
@@ -209,7 +216,7 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('settings:put', async (_event, key: string, value: unknown) => {
     try {
-      const res = await fetch(SETTINGS_URL, {
+      const res = await fetch(settingsUrlWithGroup(), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -233,7 +240,12 @@ function setupIpcHandlers(): void {
       const res = await fetch(`${GROUP_URL}?${params}`, {
         headers: { Authorization: `Bearer ${GROUP_API_KEY}` }
       })
-      return await res.json()
+      const result = await res.json()
+      // Store detected group for settings API calls
+      if (result.group && result.group !== 'unknown') {
+        detectedGroup = result.group
+      }
+      return result
     } catch {
       return { group: 'unknown', label: '未知群組' }
     }

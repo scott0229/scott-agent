@@ -45,6 +45,7 @@ function App(): React.JSX.Element {
     setSymbolOptionType,
     d1Target,
     setD1Target,
+    refetchSettings,
     saveAllSettings
   } = useTraderSettings()
 
@@ -73,23 +74,31 @@ function App(): React.JSX.Element {
   const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } =
     useAccountStore(connected, connectedPort, mergeAccountAliases)
 
+  // Stable key that only changes when the set of account IDs changes (not on every poll)
+  const accountIdsKey = useMemo(
+    () => accounts.map((a) => a.accountId).sort().join(','),
+    [accounts]
+  )
+
   // Auto-detect account group when accounts are loaded
   useEffect(() => {
-    if (accounts.length === 0) {
+    if (!accountIdsKey) {
       setAccountGroupLabel(null)
       return
     }
-    const accountIds = accounts.map((a) => a.accountId)
+    const accountIds = accountIdsKey.split(',')
     window.ibApi
       .detectGroup(accountIds)
       .then((result) => {
         const yearSuffix = result.year ? ` (${result.year})` : ''
         setAccountGroupLabel(result.label ? result.label + yearSuffix : null)
+        // Re-fetch settings for the detected group
+        refetchSettings()
       })
       .catch(() => {
         setAccountGroupLabel(null)
       })
-  }, [accounts])
+  }, [accountIdsKey, refetchSettings])
 
   const toggleHiddenAccount = useCallback(
     (accountId: string) => {

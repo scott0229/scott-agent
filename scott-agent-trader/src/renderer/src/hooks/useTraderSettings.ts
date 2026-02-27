@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
@@ -19,53 +19,66 @@ export function useTraderSettings() {
     Record<string, { cc: boolean; pp: boolean }>
   >({})
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
+  const fetchedRef = useRef(false)
+
+  const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
+    if (!data.settings) return
+    if (typeof data.settings.margin_limit === 'number') {
+      setMarginLimitState(data.settings.margin_limit)
+    }
+    if (Array.isArray(data.settings.watch_symbols)) {
+      setWatchSymbolsState(data.settings.watch_symbols as string[])
+    }
+    if (
+      data.settings.account_aliases &&
+      typeof data.settings.account_aliases === 'object' &&
+      !Array.isArray(data.settings.account_aliases)
+    ) {
+      setAccountAliasesState(data.settings.account_aliases as Record<string, string>)
+    }
+    if (
+      data.settings.account_types &&
+      typeof data.settings.account_types === 'object' &&
+      !Array.isArray(data.settings.account_types)
+    ) {
+      setAccountTypesState(data.settings.account_types as Record<string, string>)
+    }
+    if (
+      data.settings.symbol_option_types &&
+      typeof data.settings.symbol_option_types === 'object' &&
+      !Array.isArray(data.settings.symbol_option_types)
+    ) {
+      setSymbolOptionTypesState(
+        data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>
+      )
+    }
+    if (
+      data.settings.d1_target === 'staging' ||
+      data.settings.d1_target === 'production'
+    ) {
+      setD1TargetState(data.settings.d1_target)
+    }
+  }, [])
 
   // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
   useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
     window.ibApi
       .getSettings()
-      .then((data: { settings?: Record<string, unknown> }) => {
-        if (!data.settings) return
-        if (typeof data.settings.margin_limit === 'number') {
-          setMarginLimitState(data.settings.margin_limit)
-        }
-        if (Array.isArray(data.settings.watch_symbols)) {
-          setWatchSymbolsState(data.settings.watch_symbols as string[])
-        }
-        if (
-          data.settings.account_aliases &&
-          typeof data.settings.account_aliases === 'object' &&
-          !Array.isArray(data.settings.account_aliases)
-        ) {
-          setAccountAliasesState(data.settings.account_aliases as Record<string, string>)
-        }
-        if (
-          data.settings.account_types &&
-          typeof data.settings.account_types === 'object' &&
-          !Array.isArray(data.settings.account_types)
-        ) {
-          setAccountTypesState(data.settings.account_types as Record<string, string>)
-        }
-        if (
-          data.settings.symbol_option_types &&
-          typeof data.settings.symbol_option_types === 'object' &&
-          !Array.isArray(data.settings.symbol_option_types)
-        ) {
-          setSymbolOptionTypesState(
-            data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>
-          )
-        }
-        if (
-          data.settings.d1_target === 'staging' ||
-          data.settings.d1_target === 'production'
-        ) {
-          setD1TargetState(data.settings.d1_target)
-        }
-      })
+      .then(applySettings)
       .catch(() => {
         /* offline — use defaults */
       })
-  }, [])
+  }, [applySettings])
+
+  // Re-fetch settings (called after group detection so we load the correct group's settings)
+  const refetchSettings = useCallback(() => {
+    window.ibApi
+      .getSettings()
+      .then(applySettings)
+      .catch(() => {})
+  }, [applySettings])
 
   // Save ALL settings to cloud at once (called when settings panel closes)
   const saveAllSettings = useCallback(() => {
@@ -140,6 +153,8 @@ export function useTraderSettings() {
     d1Target,
     setD1Target,
 
+    refetchSettings,
     saveAllSettings
   }
 }
+

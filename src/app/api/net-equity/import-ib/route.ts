@@ -625,7 +625,7 @@ export async function POST(request: NextRequest) {
                     console.warn('Failed to fetch FRED rates for IB import, using fallback:', err);
                     const loanAmount = Math.abs(parsed.cashBalance);
                     const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
-                    dailyInterest = -(loanAmount * (4.33 + spread) / 100 / 360);
+                    dailyInterest = -(loanAmount * (3.64 + spread) / 100 / 360);
                 }
             }
 

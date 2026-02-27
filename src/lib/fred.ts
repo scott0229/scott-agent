@@ -72,7 +72,7 @@ export async function getFedFundsRate(dateUnix: number): Promise<number> {
     }
 
     // Default fallback
-    return 4.33;
+    return 3.64;
 }
 
 /**
@@ -105,7 +105,7 @@ export function calculateDailyInterest(
 
     // Get the matching month key
     const date = new Date(dateUnix * 1000);
-    let fedRate = 4.33; // fallback
+    let fedRate = 3.64; // fallback
 
     // Walk backwards up to 6 months to find a rate
     for (let i = 0; i <= 6; i++) {

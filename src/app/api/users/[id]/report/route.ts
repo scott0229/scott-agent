@@ -232,10 +232,10 @@ export async function GET(
                 dailyInterest = calculateDailyInterest(cashNum, dateNum, fredRateMap);
             } catch (err) {
                 console.warn('Failed to fetch FRED rates for report, using fallback:', err);
-                // Fallback: use hardcoded rate (4.33% + 1.5% spread) / 360
+                // Fallback: use hardcoded rate (3.64% + spread) / 360
                 const loanAmount = Math.abs(cashNum);
                 const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
-                dailyInterest = -(loanAmount * (4.33 + spread) / 100 / 360);
+                dailyInterest = -(loanAmount * (3.64 + spread) / 100 / 360);
             }
         }
 
