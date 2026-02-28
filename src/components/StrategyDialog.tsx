@@ -90,11 +90,13 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
     });
     const [stockFilter, setStockFilter] = useState('all');
     const [optionFilter, setOptionFilter] = useState('all');
+    const [optionTypeFilter, setOptionTypeFilter] = useState<'all' | 'CALL' | 'PUT'>('all');
 
     useEffect(() => {
         if (open) {
             setStockFilter('all');
             setOptionFilter('all');
+            setOptionTypeFilter('all');
             fetchUsers();
             if (strategy) {
                 // Edit mode
@@ -478,12 +480,21 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                             </select>
                                         );
                                     })()}
+                                    <select
+                                        className="text-xs border rounded px-1.5 py-0.5"
+                                        value={optionTypeFilter}
+                                        onChange={e => setOptionTypeFilter(e.target.value as 'all' | 'CALL' | 'PUT')}
+                                    >
+                                        <option value="all">全部</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="CALL">CALL</option>
+                                    </select>
                                 </div>
                                 <div className="border rounded-md p-3 h-96 overflow-y-auto space-y-2">
                                     {options.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">該用戶沒有期權交易記錄</p>
                                     ) : (
-                                        options.filter(o => optionFilter === 'all' || o.underlying === optionFilter).map(option => {
+                                        options.filter(o => (optionFilter === 'all' || o.underlying === optionFilter) && (optionTypeFilter === 'all' || ((o as any).type || 'CALL') === optionTypeFilter)).map(option => {
                                             // Format expiration date as MM-DD
                                             const toDate = (option as any).to_date ? new Date((option as any).to_date * 1000) : null;
                                             const formattedExpiry = toDate
