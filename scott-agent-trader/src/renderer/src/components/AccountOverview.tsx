@@ -602,7 +602,10 @@ export default function AccountOverview({
             <div className="accounts-grid">
               {symbolGroups.map((g) => {
                 const groupPosKeys = new Set(g.posKeys)
-                const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p)))
+                const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p))).sort((a, b) => {
+                  if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
+                  return 0
+                })
                 return (
                   <div key={g.id} className="account-card">
                     <div className="account-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -672,6 +675,28 @@ export default function AccountOverview({
                           )
                         })()}
                       </div>
+                      {(() => {
+                        const totalPnl = groupPositions.reduce((sum, pos) => {
+                          const isOpt = pos.secType === 'OPT'
+                          const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                          const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                          const pnl = isOpt
+                            ? (lp - pos.avgCost / 100) * pos.quantity * 100
+                            : (lp - pos.avgCost) * pos.quantity
+                          return sum + pnl
+                        }, 0)
+                        return (
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            marginLeft: 'auto',
+                            marginRight: '12px',
+                            color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                          }}>
+                            {totalPnl >= 0 ? '+' : ''}{Math.round(totalPnl).toLocaleString()}
+                          </span>
+                        )
+                      })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <svg
                           xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"

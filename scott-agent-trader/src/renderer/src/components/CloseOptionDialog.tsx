@@ -420,45 +420,15 @@ export default function CloseOptionDialog({
               <div
                 key={key}
                 className="order-form"
-                style={key !== uniqueContracts[0][0] ? { marginTop: '8px' } : undefined}
+                style={{ marginBottom: '20px' }}
               >
                 <div
                   style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}
                 >
-                  {/* Quotes on the left */}
-                  {quote && (
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13, flex: '0 0 auto' }}>
-                      <span className="roll-order-label">買價</span>
-                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
-                      <span className="roll-order-label">賣價</span>
-                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
-                      <span className="roll-order-label">中間價</span>
-                      <span className="roll-order-value roll-order-mid">
-                        {quote.bid > 0 && quote.ask > 0
-                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
-                          : quote.last.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Action + contract label + limit price + TIF pushed to right */}
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: actionColor
-                      }}
-                    >
-                      {action}
-                    </span>
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '13px'
-                      }}
-                    >
-                      {c.label}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', width: '220px' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: actionColor }}>{action}</span>
+                      <span style={{ fontWeight: 600, fontSize: '13px' }}>{c.label}</span>
                     </span>
                     <span className="roll-order-label">限價</span>
                     <input
@@ -485,6 +455,20 @@ export default function CloseOptionDialog({
                       (v) => setTifOpen(v ? key : null)
                     )}
                   </div>
+                  {quote && (
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13, flex: '0 0 auto' }}>
+                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
+                      <span className="quote-separator">|</span>
+                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="quote-separator">|</span>
+                      <span className="roll-order-label">中間價</span>
+                      <span className="roll-order-value roll-order-mid">
+                        {quote.bid > 0 && quote.ask > 0
+                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                          : quote.last.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )
