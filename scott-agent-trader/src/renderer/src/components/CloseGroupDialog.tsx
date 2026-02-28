@@ -381,7 +381,7 @@ export default function CloseGroupDialog({
     }, [onClose])
 
     const renderTifDropdown = (
-        id: string,
+        _id: string,
         tif: 'DAY' | 'GTC',
         outsideRth: boolean,
         isOpen: boolean,
