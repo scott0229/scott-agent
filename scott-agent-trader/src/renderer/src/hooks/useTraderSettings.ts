@@ -1,5 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 
+export interface SymbolGroup {
+  id: string
+  name: string
+  symbol: string
+  posKeys: string[]
+  createdAt: number
+}
+
 declare global {
   interface Window {
     ibApi: {
@@ -19,6 +27,7 @@ export function useTraderSettings() {
     Record<string, { cc: boolean; pp: boolean }>
   >({})
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
+  const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const fetchedRef = useRef(false)
 
   const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
@@ -57,6 +66,9 @@ export function useTraderSettings() {
       data.settings.d1_target === 'production'
     ) {
       setD1TargetState(data.settings.d1_target)
+    }
+    if (Array.isArray(data.settings.symbol_groups)) {
+      setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
     }
   }, [])
 
@@ -139,6 +151,30 @@ export function useTraderSettings() {
     window.ibApi.putSettings('d1_target', v).catch(() => {})
   }, [])
 
+  const addSymbolGroup = useCallback((group: SymbolGroup) => {
+    setSymbolGroupsState((prev) => {
+      const next = [...prev, group]
+      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      return next
+    })
+  }, [])
+
+  const deleteSymbolGroup = useCallback((groupId: string) => {
+    setSymbolGroupsState((prev) => {
+      const next = prev.filter((g) => g.id !== groupId)
+      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      return next
+    })
+  }, [])
+
+  const updateSymbolGroup = useCallback((updated: SymbolGroup) => {
+    setSymbolGroupsState((prev) => {
+      const next = prev.map((g) => (g.id === updated.id ? updated : g))
+      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      return next
+    })
+  }, [])
+
   return {
     marginLimit,
     setMarginLimit,
@@ -152,6 +188,10 @@ export function useTraderSettings() {
     setSymbolOptionType,
     d1Target,
     setD1Target,
+    symbolGroups,
+    addSymbolGroup,
+    deleteSymbolGroup,
+    updateSymbolGroup,
 
     refetchSettings,
     saveAllSettings

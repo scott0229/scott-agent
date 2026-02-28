@@ -255,7 +255,7 @@ body {
 /* === Tab Navigation (Inline in Header) === */
 .tab-nav-inline {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   -webkit-app-region: no-drag;
 }
 
@@ -269,7 +269,9 @@ body {
   cursor: pointer;
   border-radius: var(--radius);
   transition: all 0.2s;
-  gap: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .tab-btn:hover {

@@ -28,7 +28,7 @@ function loadHiddenAccounts(port: number): Set<string> {
 function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
-  const [activeTab, setActiveTab] = useState<'overview' | 'option'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [showUpload, setShowUpload] = useState(false)
@@ -45,6 +45,10 @@ function App(): React.JSX.Element {
     setSymbolOptionType,
     d1Target,
     setD1Target,
+    symbolGroups,
+    addSymbolGroup,
+    deleteSymbolGroup,
+    updateSymbolGroup,
     refetchSettings,
     saveAllSettings
   } = useTraderSettings()
@@ -169,7 +173,15 @@ function App(): React.JSX.Element {
             className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /><path d="M2 10h20" /></svg>
             帳戶總覽
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`}
+            onClick={() => setActiveTab('groups')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 2 4 4-4 4" /><path d="m12 14 4 4-4 4" /><path d="M2 6h14" /><path d="M2 18h14" /></svg>
+            交易群組{symbolGroups.length > 0 ? ` (${symbolGroups.length})` : ''}
           </button>
         </nav>
         <div className="header-actions">
@@ -179,7 +191,7 @@ function App(): React.JSX.Element {
 
       <main className="app-main">
         <div className="app-main-inner">
-          {activeTab === 'overview' && (
+          {(activeTab === 'overview' || activeTab === 'groups') && (
             <AccountOverview
               connected={connected}
               accounts={visibleAccounts}
@@ -193,6 +205,11 @@ function App(): React.JSX.Element {
               accountTypes={accountTypes}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
+              symbolGroups={symbolGroups}
+              onAddSymbolGroup={addSymbolGroup}
+              onDeleteSymbolGroup={deleteSymbolGroup}
+              onUpdateSymbolGroup={updateSymbolGroup}
+              groupViewMode={activeTab === 'groups'}
             />
           )}
           {activeTab === 'option' && (

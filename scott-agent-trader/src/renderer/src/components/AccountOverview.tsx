@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import type { SymbolGroup } from '../hooks/useTraderSettings'
 import type {
   AccountData,
   PositionData,
@@ -12,6 +13,7 @@ import TransferStockDialog from './TransferStockDialog'
 import ClosePositionDialog from './ClosePositionDialog'
 import OptionOrderDialog from './OptionOrderDialog'
 import CloseOptionDialog from './CloseOptionDialog'
+import AddGroupDialog from './AddGroupDialog'
 import AiAdvisorDialog from './AiAdvisorDialog'
 
 const TRADING_TYPE_OPTIONS = [
@@ -52,6 +54,11 @@ interface AccountOverviewProps {
   accountTypes?: Record<string, string>
   onSetAccountType?: (accountId: string, type: string) => void
   marginLimit?: number
+  symbolGroups?: SymbolGroup[]
+  onAddSymbolGroup?: (group: SymbolGroup) => void
+  onDeleteSymbolGroup?: (groupId: string) => void
+  onUpdateSymbolGroup?: (group: SymbolGroup) => void
+  groupViewMode?: boolean
 }
 
 export default function AccountOverview({
@@ -66,7 +73,12 @@ export default function AccountOverview({
   refresh,
   accountTypes,
   onSetAccountType,
-  marginLimit = 1.3
+  marginLimit = 1.3,
+  symbolGroups = [],
+  onAddSymbolGroup,
+  onDeleteSymbolGroup,
+  onUpdateSymbolGroup,
+  groupViewMode = false
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
   const [filterSymbol, setFilterSymbol] = useState('')
@@ -81,6 +93,10 @@ export default function AccountOverview({
   const [showCloseOptionDialog, setShowCloseOptionDialog] = useState(false)
   const [showAiAdvisor, setShowAiAdvisor] = useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
+  const [showAddGroup, setShowAddGroup] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
+  const [showGroupNameInput, setShowGroupNameInput] = useState(false)
+  const [groupNameInput, setGroupNameInput] = useState('')
   // Inline editing state: tracks which cell is being edited
   const [editingCell, setEditingCell] = useState<{
     orderId: number
@@ -227,6 +243,15 @@ export default function AccountOverview({
     })
   }, [selectedPositions, positions])
 
+  const canCreateGroup = useMemo(() => {
+    if (selectMode !== 'OPT' || selectedPositions.size === 0) return false
+    const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
+    if (selected.length === 0) return false
+    if (!selected.every((p) => p.secType === 'OPT')) return false
+    const symbol = selected[0].symbol
+    return selected.every((p) => p.symbol === symbol)
+  }, [selectMode, selectedPositions, positions])
+
   const canCloseOptions = useMemo(() => {
     if (selectedPositions.size === 0) return false
     const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
@@ -356,126 +381,348 @@ export default function AccountOverview({
     <>
       <div>
         <div className="sort-bar">
-          <div className="select-actions">
-            <button
-              className="select-toggle-btn"
-              style={{ padding: '7px 9px' }}
-              title="重置篩選"
-              onClick={() => {
-                setFilterSymbol('')
-                setSelectMode(false)
-                setSelectedPositions(new Set())
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473" />
-                <path d="m16.5 3.5 5 5" />
-                <path d="m21.5 3.5-5 5" />
-              </svg>
-            </button>
-            <button
-              className={`select-toggle-btn${selectMode === 'STK' ? ' active' : ''}`}
-              onClick={() => toggleSelectMode('STK')}
-            >
-              選取股票
-              {selectMode === 'STK' && selectedPositions.size > 0
-                ? ` (${selectedPositions.size})`
-                : ''}
-            </button>
-            <button
-              className={`select-toggle-btn${selectMode === 'OPT' ? ' active' : ''}`}
-              onClick={() => toggleSelectMode('OPT')}
-            >
-              選取期權
-              {selectMode === 'OPT' && selectedPositions.size > 0
-                ? ` (${selectedPositions.size})`
-                : ''}
-            </button>
-            <CustomSelect
-              value={filterSymbol}
-              onChange={(v) => {
-                setFilterSymbol(v)
-                setSelectedPositions(new Set())
-              }}
-              options={[
-                { value: '', label: '全部標的' },
-                ...uniqueSymbols.map((s) => ({ value: s, label: s }))
-              ]}
-            />
-            {selectMode && (
+          {groupViewMode ? (
+            <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-end' }}>
               <button
                 className="select-toggle-btn"
-                onClick={() => {
-                  const allKeys = new Set<string>()
-                  displayAccounts.forEach((acct) => {
-                    getPositionsForAccount(acct.accountId)
-                      .filter((p) =>
-                        selectMode === 'OPT' ? p.secType === 'OPT' : p.secType !== 'OPT'
-                      )
-                      .forEach((p) => allKeys.add(posKey(p)))
-                  })
-                  setSelectedPositions((prev) => (prev.size === allKeys.size ? new Set() : allKeys))
-                }}
+                onClick={() => setShowAddGroup(true)}
               >
-                全選
+                ＋ 新增
               </button>
-            )}
-            {selectMode && canRollOptions && (
-              <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
-                展期
-              </button>
-            )}
-            {selectMode === 'OPT' && canCloseOptions && (
-              <button className="select-toggle-btn" onClick={() => setShowCloseOptionDialog(true)}>
-                期權平倉
-              </button>
-            )}
-            {selectMode === 'STK' && canTransferStocks && (
-              <button className="select-toggle-btn" onClick={() => setShowTransferDialog(true)}>
-                轉倉
-              </button>
-            )}
-            {selectMode === 'STK' && canTransferStocks && (
-              <button className="select-toggle-btn" onClick={() => setShowCloseDialog(true)}>
-                平倉
-              </button>
-            )}
-          </div>
-          {!selectMode && (
+            </div>
+          ) : (
             <>
-              <button
-                className="select-toggle-btn"
-                onClick={() => setShowBatchOrder(true)}
-                style={{ marginLeft: 'auto' }}
-              >
-                股票下單
-              </button>
-              <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
-                期權下單
-              </button>
+              <div className="select-actions">
+                <button
+                  className="select-toggle-btn"
+                  style={{ padding: '7px 9px' }}
+                  title="重置篩選"
+                  onClick={() => {
+                    setFilterSymbol('')
+                    setSelectMode(false)
+                    setSelectedPositions(new Set())
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473" />
+                    <path d="m16.5 3.5 5 5" />
+                    <path d="m21.5 3.5-5 5" />
+                  </svg>
+                </button>
+                <button
+                  className={`select-toggle-btn${selectMode === 'STK' ? ' active' : ''}`}
+                  onClick={() => toggleSelectMode('STK')}
+                >
+                  選取股票
+                  {selectMode === 'STK' && selectedPositions.size > 0
+                    ? ` (${selectedPositions.size})`
+                    : ''}
+                </button>
+                <button
+                  className={`select-toggle-btn${selectMode === 'OPT' ? ' active' : ''}`}
+                  onClick={() => toggleSelectMode('OPT')}
+                >
+                  選取期權
+                  {selectMode === 'OPT' && selectedPositions.size > 0
+                    ? ` (${selectedPositions.size})`
+                    : ''}
+                </button>
+                <CustomSelect
+                  value={filterSymbol}
+                  onChange={(v) => {
+                    setFilterSymbol(v)
+                    setSelectedPositions(new Set())
+                  }}
+                  options={[
+                    { value: '', label: '全部標的' },
+                    ...uniqueSymbols.map((s) => ({ value: s, label: s }))
+                  ]}
+                />
+                {selectMode && (
+                  <button
+                    className="select-toggle-btn"
+                    onClick={() => {
+                      const allKeys = new Set<string>()
+                      displayAccounts.forEach((acct) => {
+                        getPositionsForAccount(acct.accountId)
+                          .filter((p) =>
+                            selectMode === 'OPT' ? p.secType === 'OPT' : p.secType !== 'OPT'
+                          )
+                          .forEach((p) => allKeys.add(posKey(p)))
+                      })
+                      setSelectedPositions((prev) => (prev.size === allKeys.size ? new Set() : allKeys))
+                    }}
+                  >
+                    全選
+                  </button>
+                )}
+                {selectMode && canRollOptions && (
+                  <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
+                    展期
+                  </button>
+                )}
+                {selectMode === 'OPT' && canCloseOptions && (
+                  <button className="select-toggle-btn" onClick={() => setShowCloseOptionDialog(true)}>
+                    期權平倉
+                  </button>
+                )}
+                {selectMode === 'STK' && canTransferStocks && (
+                  <button className="select-toggle-btn" onClick={() => setShowTransferDialog(true)}>
+                    轉倉
+                  </button>
+                )}
+                {selectMode === 'OPT' && canCreateGroup && !showGroupNameInput && (
+                  <button
+                    className="select-toggle-btn"
+                    onClick={() => {
+                      setShowGroupNameInput(true)
+                      setGroupNameInput('')
+                    }}
+                  >
+                    建立群組
+                  </button>
+                )}
+                {showGroupNameInput && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <input
+                      type="text"
+                      value={groupNameInput}
+                      onChange={(e) => setGroupNameInput(e.target.value)}
+                      placeholder="輸入群組名稱"
+                      autoFocus
+                      style={{
+                        padding: '4px 8px',
+                        fontSize: '12px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        width: '120px'
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && groupNameInput.trim()) {
+                          const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
+                          const symbol = selected[0]?.symbol || ''
+                          const group: SymbolGroup = {
+                            id: crypto.randomUUID(),
+                            name: groupNameInput.trim(),
+                            symbol,
+                            posKeys: selected.map((p) => posKey(p)),
+                            createdAt: Date.now()
+                          }
+                          onAddSymbolGroup?.(group)
+                          setSelectedPositions(new Set())
+                          setShowGroupNameInput(false)
+                          setGroupNameInput('')
+                        } else if (e.key === 'Escape') {
+                          setShowGroupNameInput(false)
+                          setGroupNameInput('')
+                        }
+                      }}
+                    />
+                    <button
+                      className="select-toggle-btn"
+                      onClick={() => {
+                        if (!groupNameInput.trim()) return
+                        const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
+                        const symbol = selected[0]?.symbol || ''
+                        const group: SymbolGroup = {
+                          id: crypto.randomUUID(),
+                          name: groupNameInput.trim(),
+                          symbol,
+                          posKeys: selected.map((p) => posKey(p)),
+                          createdAt: Date.now()
+                        }
+                        onAddSymbolGroup?.(group)
+                        setSelectedPositions(new Set())
+                        setShowGroupNameInput(false)
+                        setGroupNameInput('')
+                      }}
+                    >
+                      確認
+                    </button>
+                    <button
+                      className="select-toggle-btn"
+                      onClick={() => {
+                        setShowGroupNameInput(false)
+                        setGroupNameInput('')
+                      }}
+                    >
+                      取消
+                    </button>
+                  </div>
+                )}
+                {selectMode === 'STK' && canTransferStocks && (
+                  <button className="select-toggle-btn" onClick={() => setShowCloseDialog(true)}>
+                    平倉
+                  </button>
+                )}
+              </div>
+              {!selectMode && (
+                <>
+                  <button
+                    className="select-toggle-btn"
+                    onClick={() => setShowBatchOrder(true)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    股票下單
+                  </button>
+                  <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
+                    期權下單
+                  </button>
+                </>
+              )}
+              <CustomSelect
+                value={sortBy}
+                onChange={setSortBy}
+                options={[
+                  { value: 'netLiquidation', label: '淨值-從高到低' },
+                  { value: 'margin', label: '潛在融資-從高到低' },
+                  { value: 'cash', label: '現金-從多到少' }
+                ]}
+              />
             </>
           )}
-          <CustomSelect
-            value={sortBy}
-            onChange={setSortBy}
-            options={[
-              { value: 'netLiquidation', label: '淨值-從高到低' },
-              { value: 'margin', label: '潛在融資-從高到低' },
-              { value: 'cash', label: '現金-從多到少' }
-            ]}
-          />
         </div>
 
-        {accounts.length === 0 ? (
+        {groupViewMode ? (
+          /* Group Cards View */
+          symbolGroups.length === 0 ? (
+            <div className="empty-state">尚無群組，請選取期權後建立</div>
+          ) : (
+            <div className="accounts-grid">
+              {symbolGroups.map((g) => {
+                const groupPosKeys = new Set(g.posKeys)
+                const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p)))
+                return (
+                  <div key={g.id} className="account-card">
+                    <div className="account-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="account-id">{g.name}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ cursor: 'pointer', opacity: 0.7 }}
+                          onClick={() => {
+                            setEditingGroup(g)
+                            setShowAddGroup(true)
+                          }}
+                        >
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          <path d="m15 5 4 4" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ cursor: 'pointer', opacity: 0.7 }}
+                          onClick={() => {
+                            if (confirm('確定刪除群組「' + g.name + '」？')) {
+                              onDeleteSymbolGroup?.(g.id)
+                            }
+                          }}
+                        >
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                      </div>
+                    </div>
+                    {groupPositions.length === 0 ? (
+                      <div style={{ padding: '12px', fontSize: '12px', color: '#999' }}>
+                        無匹配持倉
+                      </div>
+                    ) : (
+                      <div className="positions-section">
+                        <table className="positions-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                              <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                              <th style={{ width: '8%' }}>天數</th>
+                              <th style={{ width: '8%' }}>數量</th>
+                              <th style={{ width: '11%' }}>均價</th>
+                              <th style={{ width: '11%' }}>最後價</th>
+                              <th style={{ width: '11%' }}>盈虧</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groupPositions.map((pos, idx) => {
+                              const isOption = pos.secType === 'OPT'
+                              const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                              const lastPrice = isOption ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                              const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                              const pnl = isOption
+                                ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
+                                : (lastPrice - pos.avgCost) * pos.quantity
+                              const days = pos.expiry
+                                ? Math.max(
+                                  0,
+                                  Math.ceil(
+                                    (new Date(
+                                      pos.expiry.substring(0, 4) +
+                                      '-' +
+                                      pos.expiry.substring(4, 6) +
+                                      '-' +
+                                      pos.expiry.substring(6, 8) +
+                                      'T00:00:00'
+                                    ).getTime() -
+                                      new Date().setHours(0, 0, 0, 0)) /
+                                    (1000 * 60 * 60 * 24)
+                                  )
+                                )
+                                : null
+                              return (
+                                <tr key={idx}>
+                                  <td style={{ fontSize: '11px', color: '#8b7e74' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
+                                  <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                                  <td
+                                    style={
+                                      days === 0
+                                        ? { backgroundColor: '#fff0f0' }
+                                        : days === 1
+                                          ? { backgroundColor: '#e8f4fd' }
+                                          : undefined
+                                    }
+                                  >
+                                    {days !== null ? days : '-'}
+                                  </td>
+                                  <td style={{ color: pos.quantity >= 0 ? '#16a34a' : '#dc2626' }}>
+                                    {pos.quantity.toLocaleString()}
+                                  </td>
+                                  <td>{displayAvg.toFixed(2)}</td>
+                                  <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                                  <td
+                                    style={{
+                                      color: pnl >= 0 ? '#16a34a' : '#dc2626',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    {pnl >= 0 ? '+' : ''}
+                                    {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        ) : accounts.length === 0 ? (
           <div className="empty-state">{loading ? '正在載入帳戶資料...' : '未找到帳戶資料'}</div>
         ) : (
           <div className="accounts-grid">
@@ -1221,6 +1468,17 @@ export default function AccountOverview({
             />
           ) : null
         })()}
+
+      {/* Add/Edit Group Dialog */}
+      <AddGroupDialog
+        open={showAddGroup}
+        onClose={() => { setShowAddGroup(false); setEditingGroup(null) }}
+        positions={positions}
+        accounts={accounts}
+        onAddGroup={onAddSymbolGroup!}
+        editGroup={editingGroup}
+        onUpdateGroup={onUpdateSymbolGroup}
+      />
     </>
   )
 }
