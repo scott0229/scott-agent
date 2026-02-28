@@ -214,10 +214,7 @@ export default function AddGroupDialog({
                         </button>
                         <CustomSelect
                             value={filterSymbol}
-                            onChange={(v) => {
-                                setFilterSymbol(v)
-                                setSelected(new Set())
-                            }}
+                            onChange={(v) => setFilterSymbol(v)}
                             options={[
                                 { value: '', label: '全部標的' },
                                 ...uniqueSymbols.map((s) => ({ value: s, label: s }))

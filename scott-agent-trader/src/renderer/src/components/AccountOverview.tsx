@@ -606,6 +606,61 @@ export default function AccountOverview({
                     <div className="account-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="account-id">{g.name}</span>
+                        {(() => {
+                          if (groupPositions.length === 0) return null
+                          const setGroupKeys = (): void => {
+                            const keys = new Set(groupPositions.map(p => posKey(p)))
+                            setSelectedPositions(keys)
+                          }
+                          const allOpt = groupPositions.every(p => p.secType === 'OPT')
+                          const allStk = groupPositions.every(p => p.secType === 'STK')
+                          if (allOpt) {
+                            const rights = new Set(groupPositions.map(p => (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')))
+                            const symbols = new Set(groupPositions.map(p => p.symbol))
+                            const canRoll = rights.size === 1 && symbols.size === 1
+                            return (
+                              <>
+                                {canRoll && (
+                                  <button
+                                    className="select-toggle-btn"
+                                    style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                    onClick={() => { setGroupKeys(); setShowRollDialog(true) }}
+                                  >
+                                    展期
+                                  </button>
+                                )}
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setGroupKeys(); setShowCloseOptionDialog(true) }}
+                                >
+                                  平倉
+                                </button>
+                              </>
+                            )
+                          }
+                          if (allStk) {
+                            return (
+                              <>
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setGroupKeys(); setShowTransferDialog(true) }}
+                                >
+                                  轉倉
+                                </button>
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setGroupKeys(); setShowCloseDialog(true) }}
+                                >
+                                  平倉
+                                </button>
+                              </>
+                            )
+                          }
+                          return null
+                        })()}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <svg
@@ -683,7 +738,7 @@ export default function AccountOverview({
                                 : null
                               return (
                                 <tr key={idx}>
-                                  <td style={{ fontSize: '11px', color: '#8b7e74' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
+                                  <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
                                   <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
                                   <td
                                     style={
