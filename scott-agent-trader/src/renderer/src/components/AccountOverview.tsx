@@ -14,6 +14,7 @@ import ClosePositionDialog from './ClosePositionDialog'
 import OptionOrderDialog from './OptionOrderDialog'
 import CloseOptionDialog from './CloseOptionDialog'
 import AddGroupDialog from './AddGroupDialog'
+import CloseGroupDialog from './CloseGroupDialog'
 import AiAdvisorDialog from './AiAdvisorDialog'
 
 const TRADING_TYPE_OPTIONS = [
@@ -91,6 +92,7 @@ export default function AccountOverview({
   const [showCloseDialog, setShowCloseDialog] = useState(false)
   const [showOptionOrder, setShowOptionOrder] = useState(false)
   const [showCloseOptionDialog, setShowCloseOptionDialog] = useState(false)
+  const [showCloseGroupDialog, setShowCloseGroupDialog] = useState(false)
   const [showAiAdvisor, setShowAiAdvisor] = useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
@@ -659,7 +661,15 @@ export default function AccountOverview({
                               </>
                             )
                           }
-                          return null
+                          return (
+                            <button
+                              className="select-toggle-btn"
+                              style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                              onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
+                            >
+                              平倉
+                            </button>
+                          )
                         })()}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1475,6 +1485,14 @@ export default function AccountOverview({
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
         positions={positions}
+      />
+      <CloseGroupDialog
+        open={showCloseGroupDialog}
+        onClose={() => setShowCloseGroupDialog(false)}
+        selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
+        accounts={accounts}
+        positions={positions}
+        quotes={quotes}
       />
 
       {/* Context menu for order cancellation */}

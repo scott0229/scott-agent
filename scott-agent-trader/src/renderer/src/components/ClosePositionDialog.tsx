@@ -375,8 +375,8 @@ export default function ClosePositionDialog({
                       <span className="quote-separator">|</span>
                       <span className="quote-ask">{quote.ask.toFixed(2)}</span>
                       <span className="quote-separator">|</span>
-                      <span className="quote-label">Last</span>
-                      <span className="quote-last" style={{ color: '#1a3a6b' }}>
+                      <span className="quote-label" style={{ fontWeight: 400 }}>最後價</span>
+                      <span className="quote-last" style={{ color: '#1d4ed8' }}>
                         {quote.last.toFixed(2)}
                       </span>
                     </div>
