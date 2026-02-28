@@ -1237,13 +1237,12 @@ export default function AdminUsersPage() {
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
+                                <TableHead className="text-center">IB 帳戶</TableHead>
                                 <TableHead className="text-center">起始日期</TableHead>
                                 <TableHead className="text-center">管理費率</TableHead>
                                 <TableHead className="text-center">費用免除</TableHead>
                                 <TableHead className="text-center">管理費預估</TableHead>
-
                                 <TableHead className="text-center">當前淨值</TableHead>
-                                <TableHead className="text-center">IB 帳號</TableHead>
                                 {settings.showPhone && <TableHead className="text-center">手機號碼</TableHead>}
                                 {settings.showEmail && <TableHead>郵件地址</TableHead>}
                                 <TableHead className="text-right"></TableHead>
@@ -1322,6 +1321,7 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
+                                                <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);
@@ -1341,9 +1341,7 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center py-1">
                                                     {user.role === 'customer' ? formatMoney(estimatedFee) : '-'}
                                                 </TableCell>
-
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
-                                                <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
                                                 {settings.showEmail && <TableCell className="py-1">{user.email}</TableCell>}
                                                 <TableCell className="text-right py-1">
@@ -1414,10 +1412,10 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={5} className="text-center py-1"></TableCell>
+                                        <TableCell colSpan={6} className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
-                                        <TableCell colSpan={4} className="py-1"></TableCell>
+                                        <TableCell colSpan={3} className="py-1"></TableCell>
                                     </TableRow>
                                 ];
                             })()}

@@ -259,7 +259,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                             </div>
                             <div className="grid grid-cols-3 items-center gap-4">
                                 <Label htmlFor="ibAccount" className="text-right">
-                                    證券帳號
+                                    IB 帳戶
                                 </Label>
                                 <Input
                                     id="ibAccount"
