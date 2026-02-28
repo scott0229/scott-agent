@@ -535,9 +535,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {(opt.operation === 'Open' || !opt.settlement_date) ? '-' : getDaysHeld(opt)}
+                                            {(opt.operation === 'Open' || !opt.settlement_date)
+                                                ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
+                                                : getDaysHeld(opt)}
                                         </TableCell>
-                                        <TableCell>{opt.quantity}</TableCell>
+                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : ''}>
+                                            {opt.quantity}
+                                        </TableCell>
                                         <TableCell>
                                             <span
                                                 className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
@@ -562,9 +566,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         <TableCell>{opt.strike_price}</TableCell>
 
-                                        <TableCell>{opt.premium?.toLocaleString() || '-'}</TableCell>
+                                        <TableCell>{opt.premium != null ? opt.premium.toLocaleString() : '-'}</TableCell>
                                         <TableCell className={opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
-                                            {opt.final_profit ? opt.final_profit.toLocaleString('en-US') : '-'}
+                                            {opt.final_profit != null ? opt.final_profit.toLocaleString('en-US') : '-'}
                                         </TableCell>
 
 

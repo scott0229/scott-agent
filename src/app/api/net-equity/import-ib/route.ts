@@ -193,12 +193,12 @@ function parseIBStatement(html: string) {
                 const toDate = Math.floor(new Date(Date.UTC(exYear, exMonth - 1, exDay)).getTime() / 1000);
                 const toDateStr = `${String(exYear).slice(2)}-${String(exMonth).padStart(2, '0')}-${String(exDay).padStart(2, '0')}`;
 
-                const quantity = Math.abs(parseNumber(qtyStr));
+                const quantity = parseNumber(qtyStr);
                 const costPrice = parseNumber(costPriceStr);
-                const premium = Math.abs(parseNumber(costBasisStr));
+                const premium = quantity > 0 ? 0 : Math.abs(parseNumber(costBasisStr)); // BUY: premium=0, only track SELL premium
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
-                if (quantity > 0) {
+                if (quantity !== 0) {
                     openOptionPositions.push({
                         underlying,
                         toDate,
@@ -307,8 +307,8 @@ function parseIBStatement(html: string) {
                     dateTimeMatch[6] ? parseInt(dateTimeMatch[6]) : 0
                 )).getTime() / 1000);
 
-                const quantity = Math.abs(parseNumber(qtyStr));
-                const premium = Math.abs(parseNumber(basisStr));
+                const quantity = parseNumber(qtyStr);
+                const premium = quantity > 0 ? 0 : Math.abs(parseNumber(basisStr)); // BUY: premium=0, only track SELL premium
                 const realizedPnl = parseNumber(realizedStr);
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
@@ -464,7 +464,7 @@ export async function POST(request: NextRequest) {
                         `SELECT id, quantity, open_date FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open' ORDER BY open_date ASC`
                     ).bind(userResult.id, opt.underlying, opt.strikePrice, opt.toDate, opt.type).all<{ id: number; quantity: number; open_date: number }>();
 
-                    const dbMatches = existingOpenTrades.results.map((t: { id: number; quantity: number; open_date: number }) => ({ ...t, source: 'db', remainingQty: t.quantity }));
+                    const dbMatches = existingOpenTrades.results.map((t: { id: number; quantity: number; open_date: number }) => ({ ...t, source: 'db', remainingQty: Math.abs(t.quantity) }));
 
                     // Filter matching local trades
                     const localMatches = localOpenTrades
@@ -485,7 +485,7 @@ export async function POST(request: NextRequest) {
                         if (opt.tradeAction === 'EXPIRE') matchStatus = 'expire';
 
                         // Simulate FIFO matching
-                        let currentQty = opt.quantity;
+                        let currentQty = Math.abs(opt.quantity);
 
                         // 1. Consume DB trades
                         for (const dbMatch of dbMatches) {
@@ -534,7 +534,7 @@ export async function POST(request: NextRequest) {
                         toDate: opt.toDate,
                         type: opt.type,
                         quantity: opt.quantity,
-                        remainingQty: opt.quantity
+                        remainingQty: Math.abs(opt.quantity)
                     });
                 }
 
@@ -738,7 +738,7 @@ export async function POST(request: NextRequest) {
                         pos.type,
                         pos.strikePrice,
                         pos.premium,
-                        pos.premium, // final_profit defaults to premium
+                        pos.quantity > 0 ? 0 : pos.premium, // BUY Open: final_profit=0
                         parsed.userAlias,
                         userResult.id,
                         parsed.year,
@@ -761,12 +761,12 @@ export async function POST(request: NextRequest) {
                         `SELECT * FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open' ORDER BY open_date ASC`
                     ).bind(userResult.id, opt.underlying, opt.strikePrice, opt.toDate, opt.type).all<any>();
 
-                    let remainingCloseQty = opt.quantity;
+                    let remainingCloseQty = Math.abs(opt.quantity);
                     let totalRealizedPnl = opt.realizedPnl; // Total P/L from IB for this close transaction
 
                     // Distribute P/L proportionally if closing multiple trades?
                     // Simplified approach: Assign P/L to the trades we close based on their portion of the total closed quantity.
-                    const closeTotalQty = opt.quantity; // Total quantity being closed in this transaction
+                    const closeTotalQty = Math.abs(opt.quantity); // Total quantity being closed in this transaction
                     const isAssignment = opt.tradeAction === 'ASSIGN';
                     const isExpiration = opt.tradeAction === 'EXPIRE';
 
@@ -782,8 +782,9 @@ export async function POST(request: NextRequest) {
                     for (const trade of openTrades.results) {
                         if (remainingCloseQty <= 0) break;
 
-                        const closeQty = Math.min(trade.quantity, remainingCloseQty);
-                        const isPartialClose = closeQty < trade.quantity;
+                        const absTradeQty = Math.abs(trade.quantity);
+                        const closeQty = Math.min(absTradeQty, remainingCloseQty);
+                        const isPartialClose = closeQty < absTradeQty;
 
                         // Calculate P/L portion for this specific trade close
                         // If we are closing 3 options total with $300 profit, and this trade is 1 option, it gets $100 profit.
@@ -794,7 +795,7 @@ export async function POST(request: NextRequest) {
                         if (isAssignment && totalRealizedPnl === 0) {
                             // Calculates the premium portion for this specific closed quantity
                             // trade.premium is the total premium for the original trade.quantity
-                            const portionPremium = (closeQty / trade.quantity) * trade.premium;
+                            const portionPremium = (closeQty / absTradeQty) * trade.premium;
                             tradePnl = portionPremium;
                         }
 
@@ -826,13 +827,13 @@ export async function POST(request: NextRequest) {
                                 trade.to_date,
                                 parsed.date, // Settlement date is the close date
                                 Math.round((parsed.date - trade.open_date) / 86400), // days held
-                                closeQty,
+                                trade.quantity < 0 ? -closeQty : closeQty, // Preserve sign from original trade
                                 trade.underlying,
                                 trade.type,
                                 trade.strike_price,
-                                (closeQty / trade.quantity) * trade.premium, // Pro-rated premium
+                                (closeQty / absTradeQty) * trade.premium, // Pro-rated premium
                                 tradePnl, // Allocated Realized P/L
-                                tradePnl / ((closeQty / trade.quantity) * trade.premium), // Profit Percent
+                                tradePnl / ((closeQty / absTradeQty) * trade.premium), // Profit Percent
                                 trade.user_id,
                                 trade.owner_id, // Keep original owner_id
                                 trade.year,     // Keep original year
@@ -847,8 +848,8 @@ export async function POST(request: NextRequest) {
                                     updated_at = unixepoch()
                                 WHERE id = ?
                             `).bind(
-                                closeQty,
-                                (closeQty / trade.quantity) * trade.premium, // Reduce premium proportionally
+                                trade.quantity < 0 ? -closeQty : closeQty, // Sign-aware: -5 - (-2) = -3 ✅
+                                (closeQty / absTradeQty) * trade.premium, // Reduce premium proportionally
                                 trade.id
                             ).run();
 
@@ -919,7 +920,7 @@ export async function POST(request: NextRequest) {
                     opt.type,
                     opt.strikePrice,
                     opt.premium,
-                    opt.premium, // final_profit defaults to premium for new open trades
+                    opt.quantity > 0 ? 0 : opt.premium, // BUY Open: final_profit=0
                     parsed.userAlias,
                     userResult.id,
                     parsed.year,

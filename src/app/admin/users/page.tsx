@@ -1874,7 +1874,7 @@ export default function AdminUsersPage() {
                                     {/* Progress */}
                                     {(batchImporting || batchResults.length > 0) && (
                                         <>
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 mt-2">
                                                 <div className="flex justify-between text-xs text-muted-foreground">
                                                     <span>{batchMessage}</span>
                                                     <span>{batchProgress}%</span>
