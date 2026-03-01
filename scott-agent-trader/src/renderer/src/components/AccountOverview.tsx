@@ -62,6 +62,9 @@ interface AccountOverviewProps {
   groupViewMode?: boolean
 }
 
+const posKey = (pos: PositionData): string =>
+  `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+
 export default function AccountOverview({
   connected,
   accounts,
@@ -98,6 +101,16 @@ export default function AccountOverview({
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [showGroupNameInput, setShowGroupNameInput] = useState(false)
+  // Pending roll update: wait for IB to confirm fill before updating group posKeys
+  const [pendingRollUpdate, setPendingRollUpdate] = useState<{
+    rolledPositions: PositionData[]
+    target: { expiry: string; strike: number; right: 'C' | 'P' }
+  } | null>(null)
+  // Pending transfer update: wait for IB to confirm fill before updating group posKeys
+  const [pendingTransferUpdate, setPendingTransferUpdate] = useState<{
+    ops: { account: string; sourceSymbol: string; soldShares: number; targetShares: number; originalSourceQty: number; originalTargetQty: number }[]
+    targetSymbol: string
+  } | null>(null)
   const [groupNameInput, setGroupNameInput] = useState('')
   // Inline editing state: tracks which cell is being edited
   const [editingCell, setEditingCell] = useState<{
@@ -126,6 +139,100 @@ export default function AccountOverview({
     setShowOptionOrder(false)
     setShowCloseOptionDialog(false)
   }, [connected])
+
+  // Watch positions: when pending roll's old positions disappear and new ones appear,
+  // update group posKeys using the actual new posKey reported by IB
+  useEffect(() => {
+    if (!pendingRollUpdate) return
+    const { rolledPositions, target } = pendingRollUpdate
+    // All old positions must be gone AND all new positions must have appeared
+    for (const oldPos of rolledPositions) {
+      const oldKey = posKey(oldPos)
+      if (positions.some((p) => posKey(p) === oldKey)) return // old still present
+      const appeared = positions.some(
+        (p) =>
+          p.account === oldPos.account &&
+          p.symbol === oldPos.symbol &&
+          p.secType === 'OPT' &&
+          p.expiry === target.expiry &&
+          p.strike === target.strike &&
+          (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
+      )
+      if (!appeared) return // new not yet arrived
+    }
+    // All conditions met → update groups with actual new posKeys from IB
+    const oldKeys = new Set(rolledPositions.map((p) => posKey(p)))
+    for (const g of symbolGroups) {
+      if (!g.posKeys.some((k) => oldKeys.has(k))) continue
+      const newPosKeys = g.posKeys.map((k) => {
+        if (!oldKeys.has(k)) return k
+        const oldPos = rolledPositions.find((p) => posKey(p) === k)
+        if (!oldPos) return k
+        const newPos = positions.find(
+          (p) =>
+            p.account === oldPos.account &&
+            p.symbol === oldPos.symbol &&
+            p.secType === 'OPT' &&
+            p.expiry === target.expiry &&
+            p.strike === target.strike &&
+            (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
+        )
+        return newPos ? posKey(newPos) : k
+      })
+      const finalPosKeys = Array.from(new Set(newPosKeys))
+      // Only update if there's an actual change in the keys
+      if (finalPosKeys.length !== g.posKeys.length || finalPosKeys.some((k, i) => k !== g.posKeys[i])) {
+        onUpdateSymbolGroup?.({ ...g, posKeys: finalPosKeys })
+      }
+    }
+    setPendingRollUpdate(null)
+  }, [positions, pendingRollUpdate, symbolGroups, onUpdateSymbolGroup])
+
+  // Watch positions: when pending transfer changes are confirmed, update group posKeys
+  useEffect(() => {
+    if (!pendingTransferUpdate) return
+    const { ops, targetSymbol } = pendingTransferUpdate
+
+    // 1. Wait for IB positions to reflect the expected quantity changes
+    for (const op of ops) {
+      const currentSrc = positions.find((p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK')?.quantity ?? 0
+      const currentTgt = positions.find((p) => p.account === op.account && p.symbol === targetSymbol && p.secType === 'STK')?.quantity ?? 0
+
+      // Source quantity should decrease by at least soldShares
+      if (currentSrc > op.originalSourceQty - op.soldShares) return
+
+      // Target quantity should increase by exactly targetShares
+      if (op.targetShares > 0 && currentTgt < op.originalTargetQty + op.targetShares) return
+    }
+
+    // 2. Conditions met. Apply group updates.
+    // Build vanished keys (where stock went to 0)
+    const vanishedKeys = new Set<string>()
+    for (const op of ops) {
+      const currentSrc = positions.find((p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK')?.quantity ?? 0
+      if (currentSrc === 0) {
+        vanishedKeys.add(`${op.account}|${op.sourceSymbol}|STK|||`)
+      }
+    }
+
+    for (const g of symbolGroups) {
+      // Find ops that apply to this group (i.e. group holds the source stock limit)
+      const opsInGroup = ops.filter((op) => g.posKeys.includes(`${op.account}|${op.sourceSymbol}|STK|||`))
+      if (opsInGroup.length === 0) continue
+
+      let newKeys = g.posKeys.filter((k) => !vanishedKeys.has(k))
+      for (const op of opsInGroup) {
+        if (op.targetShares > 0) {
+          newKeys.push(`${op.account}|${targetSymbol}|STK|||`)
+        }
+      }
+      const uniqueKeys = Array.from(new Set(newKeys))
+      if (uniqueKeys.length !== g.posKeys.length || uniqueKeys.some((k, i) => k !== g.posKeys[i])) {
+        onUpdateSymbolGroup?.({ ...g, posKeys: uniqueKeys })
+      }
+    }
+    setPendingTransferUpdate(null)
+  }, [positions, pendingTransferUpdate, symbolGroups, onUpdateSymbolGroup])
 
   // Fetch Fed Funds Rate from FRED on mount
   const [fedRate, setFedRate] = useState<number | null>(null)
@@ -209,8 +316,6 @@ export default function AccountOverview({
     [cancelEdit, refresh]
   )
 
-  const posKey = (pos: PositionData): string =>
-    `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
 
   const togglePosition = (key: string): void => {
     setSelectedPositions((prev) => {
@@ -1467,6 +1572,10 @@ export default function AccountOverview({
         onClose={() => setShowRollDialog(false)}
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
+        onRollComplete={(rolledPositions, target) => {
+          // Store intent: will be applied once IB confirms the fill via position updates
+          setPendingRollUpdate({ rolledPositions, target })
+        }}
       />
       {showBatchOrder && (
         <div className="stock-order-dialog-overlay" onClick={() => setShowBatchOrder(false)}>
@@ -1489,6 +1598,21 @@ export default function AccountOverview({
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
         quotes={quotes}
+        onTransferComplete={(soldPositions, targetSymbol) => {
+          const ops = soldPositions.map((sp) => {
+            const currentSrc = positions.find((p) => p.account === sp.account && p.symbol === sp.symbol && p.secType === 'STK')?.quantity ?? 0
+            const currentTgt = positions.find((p) => p.account === sp.account && p.symbol === targetSymbol && p.secType === 'STK')?.quantity ?? 0
+            return {
+              account: sp.account,
+              sourceSymbol: sp.symbol,
+              soldShares: sp.shares,
+              targetShares: sp.targetShares,
+              originalSourceQty: currentSrc,
+              originalTargetQty: currentTgt
+            }
+          })
+          setPendingTransferUpdate({ ops, targetSymbol })
+        }}
       />
       <ClosePositionDialog
         open={showCloseDialog}

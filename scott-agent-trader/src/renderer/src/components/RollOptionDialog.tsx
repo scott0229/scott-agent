@@ -32,6 +32,7 @@ interface RollOptionDialogProps {
   onClose: () => void
   selectedPositions: PositionData[]
   accounts: AccountData[]
+  onRollComplete?: (rolledPositions: PositionData[], target: { expiry: string; strike: number; right: 'C' | 'P' }) => void
 }
 
 // Format expiry "20260220" -> "Feb20"
@@ -74,7 +75,8 @@ export default function RollOptionDialog({
   open,
   onClose,
   selectedPositions,
-  accounts
+  accounts,
+  onRollComplete
 }: RollOptionDialogProps): React.JSX.Element | null {
   // Snapshot positions on open so parent re-renders don't cause re-fetches
   const snappedPositions = useRef<PositionData[]>([])
@@ -859,6 +861,7 @@ export default function RollOptionDialog({
                     { [pos.account]: qty }
                   )
                 }
+                onRollComplete?.(positions, { expiry: targetExpiry, strike: targetStrike, right: targetRight })
                 onClose()
               } catch (err: unknown) {
                 alert('展期下單失敗: ' + String(err))

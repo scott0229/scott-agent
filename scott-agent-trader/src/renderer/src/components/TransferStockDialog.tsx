@@ -8,6 +8,10 @@ interface TransferStockDialogProps {
   selectedPositions: PositionData[]
   accounts: AccountData[]
   quotes: Record<string, number>
+  onTransferComplete?: (
+    soldPositions: { account: string; symbol: string; shares: number; targetShares: number }[],
+    targetSymbol: string
+  ) => void
 }
 
 interface TransferPreview {
@@ -33,7 +37,8 @@ export default function TransferStockDialog({
   onClose,
   selectedPositions,
   accounts,
-  quotes
+  quotes,
+  onTransferComplete
 }: TransferStockDialogProps): React.JSX.Element | null {
   const [targetSymbol, setTargetSymbol] = useState('')
   const [buyTif, setBuyTif] = useState<'DAY' | 'GTC'>('DAY')
@@ -287,6 +292,15 @@ export default function TransferStockDialog({
       }
 
       setOrderResults(allResults)
+      const soldPos = confirmedPreviews.flatMap((p) =>
+        p.sells.map((s) => ({
+          account: p.accountId,
+          symbol: s.symbol,
+          shares: s.qty,
+          targetShares: p.buyQty
+        }))
+      )
+      onTransferComplete?.(soldPos, targetSymbol.trim().toUpperCase())
       setStep('done')
     } catch (err) {
       console.error('Transfer order failed:', err)
