@@ -75,31 +75,46 @@ function _fetchOptionQuote(
 ): Promise<number> {
   const reqId = getNextReqId()
   let last = 0
+  let close = 0
+  let bid = 0
+  let ask = 0
 
-  api.reqMarketDataType(1)
+  // Use delayed-frozen (4) to get best available data:
+  // live when available, close/frozen otherwise (matches TWS behavior)
+  api.reqMarketDataType(4)
 
   return new Promise((resolve) => {
     let resolved = false
+
+    const finalize = (): number => {
+      // last (有成交) > bid/ask midpoint (開盤無成交) > close (收盤)
+      if (last > 0) return last
+      if (bid > 0 && ask > 0) return (bid + ask) / 2
+      if (close > 0) return close
+      return bid || ask || 0
+    }
 
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true
         cleanup()
-        console.log(`[IB] Option quote timeout for ${key}: last=${last}`)
-        if (last > 0) optionQuoteCache[key] = { price: last, ts: Date.now() }
-        resolve(last)
+        const price = finalize()
+        console.log(`[IB] Option quote timeout for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`)
+        if (price > 0) optionQuoteCache[key] = { price, ts: Date.now() }
+        resolve(price)
       }
     }, 3000)
 
     const onTickPrice = (id: number, tickType: number, value: number): void => {
       if (id !== reqId || resolved) return
       if (value >= 0) {
-        // tickType 4=last, 70=delayed_last, 9=close, 75=delayed_close
+        // tickType 4=last, 70=delayed_last
         if (tickType === 4 || tickType === 70) last = value
-        else if ((tickType === 9 || tickType === 75) && last === 0) last = value
-        // bid/ask as fallback
-        else if ((tickType === 1 || tickType === 68) && last === 0) last = value
-        else if ((tickType === 2 || tickType === 69) && last === 0) last = value
+        // tickType 9=close, 75=delayed_close
+        else if (tickType === 9 || tickType === 75) close = value
+        // bid/ask
+        else if (tickType === 1 || tickType === 68) bid = value
+        else if (tickType === 2 || tickType === 69) ask = value
       }
     }
 
@@ -108,9 +123,10 @@ function _fetchOptionQuote(
       resolved = true
       clearTimeout(timeout)
       cleanup()
-      console.log(`[IB] Option snapshot end for ${key}: last=${last}`)
-      if (last > 0) optionQuoteCache[key] = { price: last, ts: Date.now() }
-      resolve(last)
+      const price = finalize()
+      console.log(`[IB] Option snapshot end for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`)
+      if (price > 0) optionQuoteCache[key] = { price, ts: Date.now() }
+      resolve(price)
     }
 
     function cleanup(): void {
@@ -202,8 +218,8 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
     last: 0
   }
 
-  // Request frozen/delayed data so we get close prices when market is closed
-  api.reqMarketDataType(1)
+  // Use delayed-frozen (4) to get best available data
+  api.reqMarketDataType(4)
 
   return new Promise((resolve) => {
     let resolved = false
