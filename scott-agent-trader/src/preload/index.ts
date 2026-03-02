@@ -72,9 +72,9 @@ const ibApi = {
   getAiAdvice: (request: any): Promise<any> => ipcRenderer.invoke('ai:getAdvice', request),
 
   // Settings
-  getSettings: (): Promise<any> => ipcRenderer.invoke('settings:get'),
-  putSettings: (key: string, value: unknown): Promise<any> =>
-    ipcRenderer.invoke('settings:put', key, value),
+  getSettings: (d1Target?: string): Promise<any> => ipcRenderer.invoke('settings:get', d1Target),
+  putSettings: (key: string, value: unknown, d1Target?: string): Promise<any> =>
+    ipcRenderer.invoke('settings:put', key, value, d1Target),
   detectGroup: (accountIds: string[]): Promise<{ group: string; label: string; year?: number }> =>
     ipcRenderer.invoke('settings:detectGroup', accountIds),
 

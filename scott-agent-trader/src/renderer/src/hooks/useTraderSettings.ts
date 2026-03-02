@@ -11,8 +11,8 @@ export interface SymbolGroup {
 declare global {
   interface Window {
     ibApi: {
-      getSettings: () => Promise<{ settings?: Record<string, unknown> }>
-      putSettings: (key: string, value: unknown) => Promise<any>
+      getSettings: (d1Target?: string) => Promise<{ settings?: Record<string, unknown> }>
+      putSettings: (key: string, value: unknown, d1Target?: string) => Promise<any>
       [key: string]: any
     }
   }
@@ -29,6 +29,7 @@ export function useTraderSettings() {
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const fetchedRef = useRef(false)
+  const d1TargetRef = useRef(d1Target)
 
   const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
     if (!data.settings) return
@@ -77,29 +78,29 @@ export function useTraderSettings() {
     if (fetchedRef.current) return
     fetchedRef.current = true
     window.ibApi
-      .getSettings()
+      .getSettings(d1Target)
       .then(applySettings)
       .catch(() => {
         /* offline — use defaults */
       })
-  }, [applySettings])
+  }, [applySettings, d1Target])
 
   // Re-fetch settings (called after group detection so we load the correct group's settings)
   const refetchSettings = useCallback(() => {
     window.ibApi
-      .getSettings()
+      .getSettings(d1Target)
       .then(applySettings)
       .catch(() => {})
-  }, [applySettings])
+  }, [applySettings, d1Target])
 
   // Save ALL settings to cloud at once (called when settings panel closes)
   const saveAllSettings = useCallback(() => {
-    window.ibApi.putSettings('margin_limit', marginLimit).catch(() => {})
-    window.ibApi.putSettings('watch_symbols', watchSymbols).catch(() => {})
-    window.ibApi.putSettings('account_aliases', accountAliases).catch(() => {})
-    window.ibApi.putSettings('account_types', accountTypes).catch(() => {})
-    window.ibApi.putSettings('symbol_option_types', symbolOptionTypes).catch(() => {})
-    window.ibApi.putSettings('d1_target', d1Target).catch(() => {})
+    window.ibApi.putSettings('margin_limit', marginLimit, d1Target).catch(() => {})
+    window.ibApi.putSettings('watch_symbols', watchSymbols, d1Target).catch(() => {})
+    window.ibApi.putSettings('account_aliases', accountAliases, d1Target).catch(() => {})
+    window.ibApi.putSettings('account_types', accountTypes, d1Target).catch(() => {})
+    window.ibApi.putSettings('symbol_option_types', symbolOptionTypes, d1Target).catch(() => {})
+    window.ibApi.putSettings('d1_target', d1Target, d1Target).catch(() => {})
   }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes, d1Target])
 
   const setMarginLimit = useCallback((v: number) => {
@@ -119,7 +120,7 @@ export function useTraderSettings() {
     setAccountAliasesState((prev) => {
       const merged = { ...prev, ...incoming }
       // Auto-sync aliases since they come from IB, not from user settings panel
-      window.ibApi.putSettings('account_aliases', merged).catch(() => {})
+      window.ibApi.putSettings('account_aliases', merged, d1TargetRef.current).catch(() => {})
       return merged
     })
   }, [])
@@ -132,7 +133,7 @@ export function useTraderSettings() {
       } else {
         delete next[accountId]
       }
-      window.ibApi.putSettings('account_types', next).catch(() => {})
+      window.ibApi.putSettings('account_types', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])
@@ -141,20 +142,21 @@ export function useTraderSettings() {
     setSymbolOptionTypesState((prev) => {
       const current = prev[symbol] || { cc: true, pp: true }
       const next = { ...prev, [symbol]: { ...current, [type]: enabled } }
-      window.ibApi.putSettings('symbol_option_types', next).catch(() => {})
+      window.ibApi.putSettings('symbol_option_types', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])
 
   const setD1Target = useCallback((v: 'staging' | 'production') => {
     setD1TargetState(v)
-    window.ibApi.putSettings('d1_target', v).catch(() => {})
+    d1TargetRef.current = v
+    window.ibApi.putSettings('d1_target', v, v).catch(() => {})
   }, [])
 
   const addSymbolGroup = useCallback((group: SymbolGroup) => {
     setSymbolGroupsState((prev) => {
       const next = [...prev, group]
-      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])
@@ -162,7 +164,7 @@ export function useTraderSettings() {
   const deleteSymbolGroup = useCallback((groupId: string) => {
     setSymbolGroupsState((prev) => {
       const next = prev.filter((g) => g.id !== groupId)
-      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])
@@ -170,7 +172,7 @@ export function useTraderSettings() {
   const updateSymbolGroup = useCallback((updated: SymbolGroup) => {
     setSymbolGroupsState((prev) => {
       const next = prev.map((g) => (g.id === updated.id ? updated : g))
-      window.ibApi.putSettings('symbol_groups', next).catch(() => {})
+      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])

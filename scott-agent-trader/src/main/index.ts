@@ -195,36 +195,49 @@ function setupIpcHandlers(): void {
   })
 
   // Settings (proxy through main process to bypass CORS)
-  const SETTINGS_URL = 'https://scott-agent.com/api/trader-settings'
-  const SETTINGS_API_KEY = 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
+  const SETTINGS_TARGETS = [
+    { label: 'staging', url: 'https://staging.scott-agent.com/api/trader-settings', apiKey: 'MZ12MUOIJXFNK7LZ' },
+    { label: 'production', url: 'https://scott-agent.com/api/trader-settings', apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07' }
+  ]
 
   // Track detected group so settings are per-group
   let detectedGroup: string = 'advisor'
+  let resolveGroupReady: () => void
+  const groupReady = new Promise<void>((r) => { resolveGroupReady = r })
+  // Auto-resolve after 5s in case group detection never fires
+  setTimeout(() => resolveGroupReady(), 5000)
 
-  function settingsUrlWithGroup(): string {
-    return `${SETTINGS_URL}?group=${encodeURIComponent(detectedGroup)}`
-  }
-
-  ipcMain.handle('settings:get', async () => {
+  ipcMain.handle('settings:get', async (_event, d1Target?: string) => {
     try {
-      const res = await fetch(settingsUrlWithGroup())
-      return await res.json()
+      await groupReady
+      const targetLabel = d1Target || 'staging'
+      const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+      const url = `${t.url}?group=${encodeURIComponent(detectedGroup)}`
+      console.log('[settings:get] url=', url, 'group=', detectedGroup, 'target=', t.label)
+      const res = await fetch(url)
+      const json = await res.json()
+      console.log('[settings:get] response margin_limit=', json?.settings?.margin_limit, 'watch_symbols=', json?.settings?.watch_symbols)
+      return json
     } catch {
       return { settings: null }
     }
   })
 
-  ipcMain.handle('settings:put', async (_event, key: string, value: unknown) => {
+  ipcMain.handle('settings:put', async (_event, key: string, value: unknown, d1Target?: string) => {
     try {
-      const res = await fetch(settingsUrlWithGroup(), {
+      await groupReady
+      const targetLabel = d1Target || 'staging'
+      const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+      console.log('[settings:put] key=', key, 'group=', detectedGroup, 'target=', t.label)
+      const url = `${t.url}?group=${encodeURIComponent(detectedGroup)}`
+      const res = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${SETTINGS_API_KEY}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` },
         body: JSON.stringify({ key, value })
       })
-      return await res.json()
+      const json = await res.json()
+      console.log('[settings:put] response:', res.status, JSON.stringify(json))
+      return json
     } catch {
       return { success: false }
     }
@@ -245,6 +258,7 @@ function setupIpcHandlers(): void {
       if (result.group && result.group !== 'unknown') {
         detectedGroup = result.group
       }
+      resolveGroupReady()
       return result
     } catch {
       return { group: 'unknown', label: '未知群組' }
@@ -261,7 +275,7 @@ function setupIpcHandlers(): void {
     },
     {
       label: 'production',
-      apiKey: SETTINGS_API_KEY,
+      apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07',
       bulk: 'https://scott-agent.com/api/market-data/bulk',
       clearCache: 'https://scott-agent.com/api/market-data/clear-cache'
     }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { AccountData } from '../hooks/useAccountStore'
 
 const LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
@@ -56,6 +56,7 @@ export default function SettingsPanel({
   onSetD1Target
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
+  useEffect(() => { setLimitInput(String(marginLimit)) }, [marginLimit])
   const [showRisk, setShowRisk] = useState(true)
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
