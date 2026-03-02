@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No rows provided' }, { status: 400 })
     }
 
-    const db = await getDb()
+    const group = await getGroupFromRequest(req)
+    const db = await getDb(group)
 
     // Batch upsert in chunks of 100
     const CHUNK = 100

@@ -14,7 +14,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }
 
-        const DB = await getDb();
+        const group = await getGroupFromRequest(request as any);
+        const DB = await getDb(group);
 
         // Ensure date is treated as UTC midnight if passed as a simple timestamp or YYYY-MM-DD
         // Assuming frontend sends a clean UTC midnight timestamp (seconds)
@@ -41,7 +42,8 @@ export async function DELETE(request: Request) {
         const mode = searchParams.get('mode');
         const symbol = searchParams.get('symbol');
 
-        const DB = await getDb();
+        const group = await getGroupFromRequest(request as any);
+        const DB = await getDb(group);
 
         if (mode === 'all') {
             if (!symbol) {

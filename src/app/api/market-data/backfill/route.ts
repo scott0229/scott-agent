@@ -50,7 +50,8 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
         async start(controller) {
             try {
-                const DB = await getDb();
+                const group = await getGroupFromRequest(request as any);
+                const DB = await getDb(group);
 
                 // Fetch admin user's API key from database
                 const adminResult = await DB.prepare(

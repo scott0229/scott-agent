@@ -303,7 +303,8 @@ function setupIpcHandlers(): void {
       const results = await Promise.allSettled(
         targets.map(async (t) => {
           const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
-          const res = await fetch(t.bulk, { method: 'POST', headers: hdrs, body })
+          const bulkUrl = `${t.bulk}?group=${encodeURIComponent(detectedGroup)}`
+          const res = await fetch(bulkUrl, { method: 'POST', headers: hdrs, body })
           if (!res.ok) throw new Error(`${t.label}: ${await res.text().catch(() => res.statusText)}`)
           return t.label
         })
@@ -321,7 +322,8 @@ function setupIpcHandlers(): void {
       // Clear cache on selected environments
       for (const t of targets) {
         const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
-        fetch(t.clearCache, { method: 'POST', headers: hdrs, body: JSON.stringify({ symbols: [symbol] }) })
+        const cacheUrl = `${t.clearCache}?group=${encodeURIComponent(detectedGroup)}`
+        fetch(cacheUrl, { method: 'POST', headers: hdrs, body: JSON.stringify({ symbols: [symbol] }) })
           .catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))
       }
 

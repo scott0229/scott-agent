@@ -50,7 +50,8 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { symbol = 'QQQ', userId } = body;
 
-        const DB = await getDb();
+        const group = await getGroupFromRequest(request as any);
+        const DB = await getDb(group);
 
         // Fetch admin user's API key from database (admin user has id = 1 or user_id = 'admin')
         const adminResult = await DB.prepare(
