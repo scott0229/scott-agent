@@ -282,7 +282,12 @@ export default function AccountOverview({
   const submitEdit = useCallback(
     (order: OpenOrderData, field: 'quantity' | 'price', value: string) => {
       const val = parseFloat(value)
-      if (isNaN(val) || val <= 0) {
+      if (isNaN(val)) {
+        cancelEdit()
+        return
+      }
+      // Quantity must be positive; price can be negative for combo (BAG) orders
+      if (field === 'quantity' && val <= 0) {
         cancelEdit()
         return
       }
@@ -301,7 +306,8 @@ export default function AccountOverview({
           limitPrice: newPrice,
           expiry: order.expiry,
           strike: order.strike,
-          right: order.right
+          right: order.right,
+          comboLegs: order.comboLegs
         })
         .then(() => {
           console.log('[EDIT] modifyOrder succeeded')

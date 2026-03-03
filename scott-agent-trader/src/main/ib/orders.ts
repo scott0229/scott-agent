@@ -459,24 +459,47 @@ export interface ModifyOrderRequest {
   expiry?: string
   strike?: number
   right?: string
+  comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
 }
 
 export function modifyOrder(req: ModifyOrderRequest): void {
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
-  const contract: Contract = {
-    symbol: req.symbol,
-    secType: req.secType === 'OPT' ? SecType.OPT : SecType.STK,
-    exchange: 'SMART',
-    currency: 'USD'
-  }
+  let contract: Contract
 
-  if (req.secType === 'OPT') {
-    contract.lastTradeDateOrContractMonth = req.expiry
-    contract.strike = req.strike
-    contract.right = req.right === 'C' || req.right === 'CALL' ? OptionType.Call : OptionType.Put
-    contract.multiplier = 100
+  if (req.secType === 'BAG' && req.comboLegs && req.comboLegs.length > 0) {
+    // Rebuild the combo (BAG) contract with combo legs
+    contract = {
+      symbol: req.symbol,
+      secType: SecType.BAG,
+      exchange: 'SMART',
+      currency: 'USD',
+      comboLegs: req.comboLegs.map((leg) => ({
+        conId: leg.conId,
+        ratio: leg.ratio,
+        action: leg.action === 'BUY' ? OrderAction.BUY : OrderAction.SELL,
+        exchange: leg.exchange || 'SMART'
+      }))
+    }
+  } else if (req.secType === 'OPT') {
+    contract = {
+      symbol: req.symbol,
+      secType: SecType.OPT,
+      exchange: 'SMART',
+      currency: 'USD',
+      lastTradeDateOrContractMonth: req.expiry,
+      strike: req.strike,
+      right: req.right === 'C' || req.right === 'CALL' ? OptionType.Call : OptionType.Put,
+      multiplier: 100
+    }
+  } else {
+    contract = {
+      symbol: req.symbol,
+      secType: SecType.STK,
+      exchange: 'SMART',
+      currency: 'USD'
+    }
   }
 
   const order: Order = {
@@ -491,9 +514,11 @@ export function modifyOrder(req: ModifyOrderRequest): void {
     order.lmtPrice = req.limitPrice
   }
 
+  console.log(`[IB] modifyOrder called:`, JSON.stringify(req))
+
   api.placeOrder(req.orderId, contract, order)
   console.log(
-    `[IB] Modified order #${req.orderId}: ${req.action} ${req.quantity} ${req.symbol} @ ${req.limitPrice}`
+    `[IB] Modified order #${req.orderId}: ${req.action} ${req.quantity} ${req.symbol} @ ${req.limitPrice} (secType=${req.secType}, comboLegs=${req.comboLegs?.length ?? 0})`
   )
 }
 
@@ -530,6 +555,7 @@ export interface OpenOrder {
   strike?: number
   right?: string
   comboDescription?: string
+  comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
 }
 
 // Fetch all open orders across all FA sub-accounts
@@ -567,6 +593,15 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         }
       }
 
+      const comboLegs = contract.secType === 'BAG'
+        ? ((contract as any).comboLegs as ComboLeg[] | undefined)?.map((leg) => ({
+            conId: leg.conId ?? 0,
+            ratio: leg.ratio ?? 1,
+            action: typeof leg.action === 'string' ? leg.action : (leg.action === 1 ? 'BUY' : 'SELL'),
+            exchange: (leg.exchange as string) || 'SMART'
+          }))
+        : undefined
+
       const orderEntry: OpenOrder = {
         orderId,
         account: order.account || '',
@@ -584,7 +619,8 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         strike: contract.strike || undefined,
         right: contract.right || undefined,
         comboDescription:
-          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined
+          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined,
+        comboLegs
       }
 
       // Deduplicate: IB may fire onOpenOrder multiple times for the same orderId

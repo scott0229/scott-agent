@@ -37,6 +37,8 @@ interface OpenOrder {
   expiry?: string
   strike?: number
   right?: string
+  comboDescription?: string
+  comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
 }
 
 interface ExecutionData {
@@ -182,6 +184,7 @@ interface IBApi {
     expiry?: string
     strike?: number
     right?: string
+    comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
   }) => Promise<void>
   cancelOrder: (orderId: number) => Promise<void>
   getFedFundsRate: () => Promise<number>

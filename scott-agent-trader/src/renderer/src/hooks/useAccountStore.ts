@@ -36,6 +36,7 @@ export interface OpenOrderData {
   strike?: number
   right?: string
   comboDescription?: string
+  comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
 }
 
 export interface ExecutionDataItem {
