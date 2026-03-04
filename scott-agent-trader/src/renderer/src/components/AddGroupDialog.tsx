@@ -50,12 +50,20 @@ export default function AddGroupDialog({
 
     const isEditMode = !!editGroup
 
-    // Initialize state when dialog opens in edit mode
+    // Initialize state when dialog opens (or when editGroup changes)
+    const prevOpenRef = React.useRef(false)
     useEffect(() => {
-        if (open && editGroup) {
-            setGroupName(editGroup.name)
-            setSelected(new Set(editGroup.posKeys))
+        if (open && !prevOpenRef.current) {
+            // Dialog just opened
+            if (editGroup) {
+                setGroupName(editGroup.name)
+                setSelected(new Set(editGroup.posKeys))
+            } else {
+                setGroupName('')
+                setSelected(new Set())
+            }
         }
+        prevOpenRef.current = open
     }, [open, editGroup])
 
     // Get unique underlying symbols

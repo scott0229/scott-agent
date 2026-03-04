@@ -715,7 +715,16 @@ export default function AccountOverview({
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p))).sort((a, b) => {
                   if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
-                  return 0
+                  // Group options by expiry then strike
+                  if (a.secType === 'OPT' && b.secType === 'OPT') {
+                    const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
+                    if (expiryComp !== 0) return expiryComp
+                    const strikeComp = (a.strike || 0) - (b.strike || 0)
+                    if (strikeComp !== 0) return strikeComp
+                  }
+                  const aAlias = (accounts.find(x => x.accountId === a.account)?.alias || a.account).replace(/\s*\(.*?\)/, '')
+                  const bAlias = (accounts.find(x => x.accountId === b.account)?.alias || b.account).replace(/\s*\(.*?\)/, '')
+                  return aAlias.localeCompare(bAlias)
                 })
                 return (
                   <div key={g.id} className="account-card">
@@ -775,14 +784,50 @@ export default function AccountOverview({
                               </>
                             )
                           }
+                          const optPositions = groupPositions.filter(p => p.secType === 'OPT')
+                          const stkPositions = groupPositions.filter(p => p.secType === 'STK')
+                          const setOptKeys = (): void => {
+                            setSelectedPositions(new Set(optPositions.map(p => posKey(p))))
+                          }
+                          const setStkKeys = (): void => {
+                            setSelectedPositions(new Set(stkPositions.map(p => posKey(p))))
+                          }
+                          // Check if options are rollable (same symbol, same right, same side)
+                          const canRollMixed = optPositions.length > 0 && (() => {
+                            const rights = new Set(optPositions.map(p => (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')))
+                            const symbols = new Set(optPositions.map(p => p.symbol))
+                            const sides = new Set(optPositions.map(p => p.quantity < 0 ? 'SELL' : 'BUY'))
+                            return rights.size === 1 && symbols.size === 1 && sides.size === 1
+                          })()
+                          const canTransferMixed = stkPositions.length > 0 && stkPositions.every(p => p.quantity > 0)
                           return (
-                            <button
-                              className="select-toggle-btn"
-                              style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                              onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
-                            >
-                              平倉
-                            </button>
+                            <>
+                              {canRollMixed && (
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setOptKeys(); setShowRollDialog(true) }}
+                                >
+                                  展期
+                                </button>
+                              )}
+                              {canTransferMixed && (
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setStkKeys(); setShowTransferDialog(true) }}
+                                >
+                                  轉倉
+                                </button>
+                              )}
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
+                              >
+                                平倉
+                              </button>
+                            </>
                           )
                         })()}
                       </div>
@@ -842,82 +887,121 @@ export default function AccountOverview({
                       <div style={{ padding: '12px', fontSize: '12px', color: '#999' }}>
                         無匹配持倉
                       </div>
-                    ) : (
-                      <div className="positions-section">
-                        <table className="positions-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                              <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                              <th style={{ width: '8%' }}>天數</th>
-                              <th style={{ width: '8%' }}>數量</th>
-                              <th style={{ width: '11%' }}>均價</th>
-                              <th style={{ width: '11%' }}>最後價</th>
-                              <th style={{ width: '11%' }}>盈虧</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {groupPositions.map((pos, idx) => {
-                              const isOption = pos.secType === 'OPT'
-                              const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                              const lastPrice = isOption ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
-                              const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
-                              const pnl = isOption
-                                ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
-                                : (lastPrice - pos.avgCost) * pos.quantity
-                              const days = pos.expiry
-                                ? Math.max(
-                                  0,
-                                  Math.ceil(
-                                    (new Date(
-                                      pos.expiry.substring(0, 4) +
-                                      '-' +
-                                      pos.expiry.substring(4, 6) +
-                                      '-' +
-                                      pos.expiry.substring(6, 8) +
-                                      'T00:00:00'
-                                    ).getTime() -
-                                      new Date().setHours(0, 0, 0, 0)) /
-                                    (1000 * 60 * 60 * 24)
-                                  )
-                                )
-                                : null
-                              return (
-                                <tr key={idx}>
-                                  <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
-                                  <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
-                                  <td
-                                    style={
-                                      days === 0
-                                        ? { backgroundColor: '#fff0f0' }
-                                        : days === 1
-                                          ? { backgroundColor: '#e8f4fd' }
-                                          : undefined
-                                    }
-                                  >
-                                    {days !== null ? days : '-'}
-                                  </td>
-                                  <td style={{ color: pos.quantity >= 0 ? '#16a34a' : '#dc2626' }}>
-                                    {pos.quantity.toLocaleString()}
-                                  </td>
-                                  <td>{displayAvg.toFixed(2)}</td>
-                                  <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
-                                  <td
-                                    style={{
-                                      color: pnl >= 0 ? '#16a34a' : '#dc2626',
-                                      fontWeight: 500
-                                    }}
-                                  >
-                                    {pnl >= 0 ? '+' : ''}
-                                    {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    ) : (() => {
+                      const stkPos = groupPositions.filter(p => p.secType !== 'OPT')
+                      const optPos = groupPositions.filter(p => p.secType === 'OPT')
+                      const renderRow = (pos: PositionData, idx: number, showDays: boolean): React.ReactNode => {
+                        const isOption = pos.secType === 'OPT'
+                        const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                        const lastPrice = isOption ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                        const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                        const pnl = isOption
+                          ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
+                          : (lastPrice - pos.avgCost) * pos.quantity
+                        const days = pos.expiry
+                          ? Math.max(
+                            0,
+                            Math.ceil(
+                              (new Date(
+                                pos.expiry.substring(0, 4) +
+                                '-' +
+                                pos.expiry.substring(4, 6) +
+                                '-' +
+                                pos.expiry.substring(6, 8) +
+                                'T00:00:00'
+                              ).getTime() -
+                                new Date().setHours(0, 0, 0, 0)) /
+                              (1000 * 60 * 60 * 24)
+                            )
+                          )
+                          : null
+                        return (
+                          <tr key={idx}>
+                            <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
+                            <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                            {showDays && (
+                              <td
+                                style={
+                                  days === 0
+                                    ? { backgroundColor: '#fff0f0' }
+                                    : days === 1
+                                      ? { backgroundColor: '#e8f4fd' }
+                                      : undefined
+                                }
+                              >
+                                {days !== null ? days : '-'}
+                              </td>
+                            )}
+                            <td style={{ color: pos.quantity >= 0 ? '#16a34a' : '#dc2626' }}>
+                              {pos.quantity.toLocaleString()}
+                            </td>
+                            <td>{displayAvg.toFixed(2)}</td>
+                            <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                            <td
+                              style={{
+                                color: pnl >= 0 ? '#16a34a' : '#dc2626',
+                                fontWeight: 500
+                              }}
+                            >
+                              {pnl >= 0 ? '+' : ''}
+                              {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                            </td>
+                          </tr>
+                        )
+                      }
+                      return (
+                        <>
+                          {stkPos.length > 0 && (
+                            <div className="positions-section">
+                              <table className="positions-table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                    <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
+                                    <th style={{ width: '8%' }}>數量</th>
+                                    <th style={{ width: '11%' }}>均價</th>
+                                    <th style={{ width: '11%' }}>現價</th>
+                                    <th style={{ width: '11%' }}>盈虧</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {stkPos.map((pos, idx) => renderRow(pos, idx, false))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          {optPos.length > 0 && (
+                            <div className="positions-section">
+                              <table className="positions-table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                    <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                                    <th style={{ width: '8%' }}>天數</th>
+                                    <th style={{ width: '8%' }}>數量</th>
+                                    <th style={{ width: '11%' }}>均價</th>
+                                    <th style={{ width: '11%' }}>現價</th>
+                                    <th style={{ width: '11%' }}>盈虧</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {optPos.map((pos, idx) => {
+                                    const prevPos = idx > 0 ? optPos[idx - 1] : null
+                                    const needsSep = prevPos && (prevPos.expiry !== pos.expiry || prevPos.strike !== pos.strike)
+                                    return (
+                                      <React.Fragment key={idx}>
+                                        {needsSep && <tr><td colSpan={7} style={{ padding: 0, height: '3px', backgroundColor: '#f5f0eb' }} /></tr>}
+                                        {renderRow(pos, idx, true)}
+                                      </React.Fragment>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )
               })}
@@ -1060,7 +1144,7 @@ export default function AccountOverview({
                             <th style={{ textAlign: 'left' }}>股票</th>
                             <th>數量</th>
                             <th>均價</th>
-                            <th>最後價</th>
+                            <th>現價</th>
                             <th>盈虧</th>
                           </tr>
                         </thead>
@@ -1134,7 +1218,7 @@ export default function AccountOverview({
                             <th style={{ width: '8%' }}>天數</th>
                             <th style={{ width: '8%' }}>數量</th>
                             <th style={{ width: '11%' }}>均價</th>
-                            <th style={{ width: '11%' }}>最後價</th>
+                            <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '11%' }}>盈虧</th>
                           </tr>
                         </thead>
