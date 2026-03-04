@@ -40,6 +40,7 @@ interface Suggestion {
 interface RollSuggestionProps {
   positions: PositionData[]
   connected: boolean
+  onExecute?: (target: { expiry: string; strike: number; right: 'C' | 'P' }) => void
 }
 
 // Format expiry YYYYMMDD to MonDD'YY
@@ -66,7 +67,8 @@ function formatExpiry(expiry: string): string {
 
 export default function RollSuggestion({
   positions,
-  connected
+  connected,
+  onExecute
 }: RollSuggestionProps): React.JSX.Element | null {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -273,11 +275,12 @@ export default function RollSuggestion({
           <thead>
             <tr>
               <th style={{ width: '15%', textAlign: 'left' }}>展期類型</th>
-              <th style={{ width: '25%', textAlign: 'left' }}>目標期權</th>
+              <th style={{ width: '22%', textAlign: 'left' }}>目標期權</th>
               <th style={{ width: '10%' }}>Delta</th>
               <th style={{ width: '11%' }}>中間價</th>
               <th style={{ width: '11%' }}>均價</th>
               <th style={{ width: '11%' }}>價差</th>
+              {onExecute && <th style={{ width: '8%' }}></th>}
             </tr>
           </thead>
           <tbody>
@@ -309,6 +312,29 @@ export default function RollSuggestion({
                     </td>
                   )
                 })()}
+                {onExecute && (
+                  <td>
+                    <button
+                      style={{
+                        fontSize: '12px',
+                        padding: '1px 8px',
+                        cursor: 'pointer',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        background: '#f9fafb',
+                        color: '#374151',
+                        whiteSpace: 'nowrap' as const
+                      }}
+                      onClick={() => onExecute({
+                        expiry: s.expiry,
+                        strike: s.strike,
+                        right: s.right as 'C' | 'P'
+                      })}
+                    >
+                      執行
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -36,6 +36,7 @@ interface RollOptionDialogProps {
     rolledPositions: PositionData[],
     target: { expiry: string; strike: number; right: 'C' | 'P' }
   ) => void
+  initialTarget?: { expiry: string; strike: number; right: 'C' | 'P' }
 }
 
 // Format expiry "20260220" -> "Feb20"
@@ -78,7 +79,8 @@ export default function RollOptionDialog({
   onClose,
   selectedPositions,
   accounts,
-  onRollComplete
+  onRollComplete,
+  initialTarget
 }: RollOptionDialogProps): React.JSX.Element | null {
   // Snapshot positions on open so parent re-renders don't cause re-fetches
   const snappedPositions = useRef<PositionData[]>([])
@@ -173,9 +175,13 @@ export default function RollOptionDialog({
   // Auto-select first expiration when available
   useEffect(() => {
     if (availableExpirations.length > 0 && selectedExpirations.length === 0) {
-      setSelectedExpirations(availableExpirations.slice(0, 1))
+      if (initialTarget && availableExpirations.includes(initialTarget.expiry)) {
+        setSelectedExpirations([initialTarget.expiry])
+      } else {
+        setSelectedExpirations(availableExpirations.slice(0, 1))
+      }
     }
-  }, [availableExpirations])
+  }, [availableExpirations, initialTarget])
 
   // Auto-select nearby strikes (±5 around stock price or current position strike) when available
   const strikeCenteredWithPriceRef = useRef(false)
@@ -259,7 +265,7 @@ export default function RollOptionDialog({
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
         if (price) setStockPrice(price)
       })
-      .catch(() => {})
+      .catch(() => { })
 
     window.ibApi
       .getOptionChain(symbol)
@@ -311,7 +317,7 @@ export default function RollOptionDialog({
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => {})
+        .catch(() => { })
     })
   }, [fetchKey, greeksFetched])
 
@@ -359,7 +365,7 @@ export default function RollOptionDialog({
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => {})
+        .catch(() => { })
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -412,7 +418,7 @@ export default function RollOptionDialog({
                 return newEntries.length > 0 ? [...updated, ...newEntries] : updated
               })
             })
-            .catch(() => {})
+            .catch(() => { })
         )
       }
 
@@ -438,7 +444,7 @@ export default function RollOptionDialog({
                 return newEntries.length > 0 ? [...updated, ...newEntries] : updated
               })
             })
-            .catch(() => {})
+            .catch(() => { })
         )
       }
 
@@ -523,6 +529,15 @@ export default function RollOptionDialog({
     if (allTargetGreeks.length === 0 || targetExpiry || targetStrike !== null) return
     const pos0 = positions[0]
     if (!pos0) return
+
+    // If initialTarget is provided, use it directly
+    if (initialTarget) {
+      setTargetExpiry(initialTarget.expiry)
+      setTargetStrike(initialTarget.strike)
+      setTargetRight(initialTarget.right)
+      return
+    }
+
     const right = pos0.right === 'C' || pos0.right === 'CALL' ? 'C' : 'P'
     const expiry = displayExpirations[0]
     if (!expiry) return
@@ -536,7 +551,7 @@ export default function RollOptionDialog({
     setTargetExpiry(best.expiry)
     setTargetStrike(best.strike)
     setTargetRight(best.right as 'C' | 'P')
-  }, [allTargetGreeks, targetExpiry, targetStrike, positions, displayExpirations])
+  }, [allTargetGreeks, targetExpiry, targetStrike, positions, displayExpirations, initialTarget])
 
   if (!open) return null
 

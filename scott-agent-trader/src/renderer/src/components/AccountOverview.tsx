@@ -33,11 +33,11 @@ function formatOptionLabel(
 ): string {
   const exp = expiry
     ? (() => {
-        const yy = expiry.slice(2, 4)
-        const mm = parseInt(expiry.slice(4, 6), 10) - 1
-        const dd = expiry.slice(6, 8).replace(/^0/, '')
-        return `${MONTHS[mm]}${dd}'${yy}`
-      })()
+      const yy = expiry.slice(2, 4)
+      const mm = parseInt(expiry.slice(4, 6), 10) - 1
+      const dd = expiry.slice(6, 8).replace(/^0/, '')
+      return `${MONTHS[mm]}${dd}'${yy}`
+    })()
     : ''
   const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
   return `${symbol} ${exp} ${strike || ''}${r}`
@@ -93,6 +93,7 @@ export default function AccountOverview({
   const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
+  const [rollInitialTarget, setRollInitialTarget] = useState<{ expiry: string; strike: number; right: 'C' | 'P' } | undefined>(undefined)
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
@@ -754,22 +755,22 @@ export default function AccountOverview({
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
                       e.dataTransfer.setData('text/plain', String(gIdx))
-                      ;(e.currentTarget as HTMLElement).style.opacity = '0.4'
+                        ; (e.currentTarget as HTMLElement).style.opacity = '0.4'
                     }}
                     onDragEnd={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.opacity = '1'
+                      ; (e.currentTarget as HTMLElement).style.opacity = '1'
                     }}
                     onDragOver={(e) => {
                       e.preventDefault()
                       e.dataTransfer.dropEffect = 'move'
-                      ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
+                        ; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
                     }}
                     onDragLeave={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
+                      ; (e.currentTarget as HTMLElement).style.boxShadow = ''
                     }}
                     onDrop={(e) => {
                       e.preventDefault()
-                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
+                        ; (e.currentTarget as HTMLElement).style.boxShadow = ''
                       const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10)
                       if (isNaN(fromIdx) || fromIdx === gIdx) return
                       const next = [...symbolGroups]
@@ -1045,20 +1046,20 @@ export default function AccountOverview({
                             : (lastPrice - pos.avgCost) * pos.quantity
                           const days = pos.expiry
                             ? Math.max(
-                                0,
-                                Math.ceil(
-                                  (new Date(
-                                    pos.expiry.substring(0, 4) +
-                                      '-' +
-                                      pos.expiry.substring(4, 6) +
-                                      '-' +
-                                      pos.expiry.substring(6, 8) +
-                                      'T00:00:00'
-                                  ).getTime() -
-                                    new Date().setHours(0, 0, 0, 0)) /
-                                    (1000 * 60 * 60 * 24)
-                                )
+                              0,
+                              Math.ceil(
+                                (new Date(
+                                  pos.expiry.substring(0, 4) +
+                                  '-' +
+                                  pos.expiry.substring(4, 6) +
+                                  '-' +
+                                  pos.expiry.substring(6, 8) +
+                                  'T00:00:00'
+                                ).getTime() -
+                                  new Date().setHours(0, 0, 0, 0)) /
+                                (1000 * 60 * 60 * 24)
                               )
+                            )
                             : null
                           return (
                             <tr key={idx}>
@@ -1167,7 +1168,16 @@ export default function AccountOverview({
                         )
                       })()
                     )}
-                    <RollSuggestion positions={groupPositions} connected={connected} />
+                    <RollSuggestion
+                      positions={groupPositions}
+                      connected={connected}
+                      onExecute={(target) => {
+                        const optPositions = groupPositions.filter((p) => p.secType === 'OPT')
+                        setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
+                        setRollInitialTarget(target)
+                        setShowRollDialog(true)
+                      }}
+                    />
                   </div>
                 )
               })}
@@ -1266,19 +1276,19 @@ export default function AccountOverview({
                       const potentialMargin =
                         account.netLiquidation > 0
                           ? (account.grossPositionValue +
-                              positions
-                                .filter(
-                                  (p) =>
-                                    p.account === account.accountId &&
-                                    p.secType === 'OPT' &&
-                                    (p.right === 'P' || p.right === 'PUT') &&
-                                    p.quantity < 0
-                                )
-                                .reduce(
-                                  (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                                  0
-                                )) /
-                            account.netLiquidation
+                            positions
+                              .filter(
+                                (p) =>
+                                  p.account === account.accountId &&
+                                  p.secType === 'OPT' &&
+                                  (p.right === 'P' || p.right === 'PUT') &&
+                                  p.quantity < 0
+                              )
+                              .reduce(
+                                (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                                0
+                              )) /
+                          account.netLiquidation
                           : null
                       return (
                         <div
@@ -1360,9 +1370,9 @@ export default function AccountOverview({
                                 >
                                   {quotes[pos.symbol]
                                     ? (
-                                        (quotes[pos.symbol] - pos.avgCost) *
-                                        pos.quantity
-                                      ).toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                      (quotes[pos.symbol] - pos.avgCost) *
+                                      pos.quantity
+                                    ).toLocaleString('en-US', { maximumFractionDigits: 0 })
                                     : '-'}
                                 </td>
                               </tr>
@@ -1421,20 +1431,20 @@ export default function AccountOverview({
                                 {(() => {
                                   const days = pos.expiry
                                     ? Math.max(
-                                        0,
-                                        Math.ceil(
-                                          (new Date(
-                                            pos.expiry.substring(0, 4) +
-                                              '-' +
-                                              pos.expiry.substring(4, 6) +
-                                              '-' +
-                                              pos.expiry.substring(6, 8) +
-                                              'T00:00:00'
-                                          ).getTime() -
-                                            new Date().setHours(0, 0, 0, 0)) /
-                                            (1000 * 60 * 60 * 24)
-                                        )
+                                      0,
+                                      Math.ceil(
+                                        (new Date(
+                                          pos.expiry.substring(0, 4) +
+                                          '-' +
+                                          pos.expiry.substring(4, 6) +
+                                          '-' +
+                                          pos.expiry.substring(6, 8) +
+                                          'T00:00:00'
+                                        ).getTime() -
+                                          new Date().setHours(0, 0, 0, 0)) /
+                                        (1000 * 60 * 60 * 24)
                                       )
+                                    )
                                     : null
                                   return (
                                     <td
@@ -1552,7 +1562,7 @@ export default function AccountOverview({
                                     onDoubleClick={() => startEdit(order, 'quantity')}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'quantity' ? (
+                                      editingCell.field === 'quantity' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -1590,7 +1600,7 @@ export default function AccountOverview({
                                     }}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'price' ? (
+                                      editingCell.field === 'price' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -1718,11 +1728,11 @@ export default function AccountOverview({
                                     for (const l of legs) {
                                       const exp = l.expiry
                                         ? (() => {
-                                            const yy = l.expiry.slice(2, 4)
-                                            const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                            const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                            return `${MONTHS[mm]}${dd}'${yy}`
-                                          })()
+                                          const yy = l.expiry.slice(2, 4)
+                                          const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                          const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                          return `${MONTHS[mm]}${dd}'${yy}`
+                                        })()
                                         : ''
                                       const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                       const sign = l.side === 'BOT' ? '+' : '-'
@@ -1829,9 +1839,13 @@ export default function AccountOverview({
       </div>
       <RollOptionDialog
         open={showRollDialog}
-        onClose={() => setShowRollDialog(false)}
+        onClose={() => {
+          setShowRollDialog(false)
+          setRollInitialTarget(undefined)
+        }}
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
+        initialTarget={rollInitialTarget}
         onRollComplete={(rolledPositions, target) => {
           // Store intent: will be applied once IB confirms the fill via position updates
           setPendingRollUpdate({ rolledPositions, target })
