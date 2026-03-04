@@ -59,6 +59,7 @@ interface AccountOverviewProps {
   onAddSymbolGroup?: (group: SymbolGroup) => void
   onDeleteSymbolGroup?: (groupId: string) => void
   onUpdateSymbolGroup?: (group: SymbolGroup) => void
+  onReorderSymbolGroups?: (groups: SymbolGroup[]) => void
   groupViewMode?: boolean
 }
 
@@ -82,6 +83,7 @@ export default function AccountOverview({
   onAddSymbolGroup,
   onDeleteSymbolGroup,
   onUpdateSymbolGroup,
+  onReorderSymbolGroups,
   groupViewMode = false
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
@@ -711,7 +713,7 @@ export default function AccountOverview({
             <div className="empty-state">尚無群組，請選取期權後建立</div>
           ) : (
             <div className="accounts-grid">
-              {symbolGroups.map((g) => {
+              {symbolGroups.map((g, gIdx) => {
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p))).sort((a, b) => {
                   if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
@@ -727,7 +729,37 @@ export default function AccountOverview({
                   return aAlias.localeCompare(bAlias)
                 })
                 return (
-                  <div key={g.id} className="account-card">
+                  <div
+                    key={g.id}
+                    className="account-card"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', String(gIdx))
+                        ; (e.currentTarget as HTMLElement).style.opacity = '0.4'
+                    }}
+                    onDragEnd={(e) => {
+                      ; (e.currentTarget as HTMLElement).style.opacity = '1'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                        ; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
+                    }}
+                    onDragLeave={(e) => {
+                      ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                        ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10)
+                      if (isNaN(fromIdx) || fromIdx === gIdx) return
+                      const next = [...symbolGroups]
+                      const [moved] = next.splice(fromIdx, 1)
+                      next.splice(gIdx, 0, moved)
+                      onReorderSymbolGroups?.(next)
+                    }}
+                  >
                     <div className="account-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="account-id">{g.name}</span>
@@ -932,7 +964,7 @@ export default function AccountOverview({
                                 {days !== null ? days : '-'}
                               </td>
                             )}
-                            <td style={{ color: pos.quantity >= 0 ? '#16a34a' : '#dc2626' }}>
+                            <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
                               {pos.quantity.toLocaleString()}
                             </td>
                             <td>{displayAvg.toFixed(2)}</td>

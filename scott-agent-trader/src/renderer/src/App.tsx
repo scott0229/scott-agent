@@ -49,6 +49,7 @@ function App(): React.JSX.Element {
     addSymbolGroup,
     deleteSymbolGroup,
     updateSymbolGroup,
+    reorderSymbolGroups,
     refetchSettings,
     saveAllSettings
   } = useTraderSettings()
@@ -209,6 +210,7 @@ function App(): React.JSX.Element {
               onAddSymbolGroup={addSymbolGroup}
               onDeleteSymbolGroup={deleteSymbolGroup}
               onUpdateSymbolGroup={updateSymbolGroup}
+              onReorderSymbolGroups={reorderSymbolGroups}
               groupViewMode={activeTab === 'groups'}
             />
           )}

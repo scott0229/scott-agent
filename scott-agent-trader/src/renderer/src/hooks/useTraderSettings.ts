@@ -177,6 +177,11 @@ export function useTraderSettings() {
     })
   }, [])
 
+  const reorderSymbolGroups = useCallback((reordered: SymbolGroup[]) => {
+    setSymbolGroupsState(reordered)
+    window.ibApi.putSettings('symbol_groups', reordered, d1TargetRef.current).catch(() => {})
+  }, [])
+
   return {
     marginLimit,
     setMarginLimit,
@@ -194,6 +199,7 @@ export function useTraderSettings() {
     addSymbolGroup,
     deleteSymbolGroup,
     updateSymbolGroup,
+    reorderSymbolGroups,
 
     refetchSettings,
     saveAllSettings
