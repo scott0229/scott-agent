@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 
 interface PositionData {
   account: string
@@ -20,6 +20,7 @@ interface OptionGreek {
   ask: number
   last: number
   delta: number
+  modelPrice: number
 }
 
 interface Suggestion {
@@ -67,33 +68,22 @@ export default function RollSuggestion({
   positions,
   connected
 }: RollSuggestionProps): React.JSX.Element | null {
-  window.ibApi.log(
-    '[RollSuggestion] Render started (HMR). positions length:',
-    positions.length,
-    'connected:',
-    connected
-  )
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const fetchedRef = useRef<string>('')
 
   // Extract unique option groups from positions: {symbol, expiry, right, strikes[]}
-  const optPositions = positions.filter(
-    (p) => p.secType === 'OPT' && p.expiry && p.right && p.strike
+  // Memoize to avoid creating a new array reference every render
+  const optPositions = useMemo(
+    () => positions.filter((p) => p.secType === 'OPT' && p.expiry && p.right && p.strike && p.quantity < 0),
+    [positions]
   )
-  window.ibApi.log('[RollSuggestion] optPositions:', optPositions.length)
 
   useEffect(() => {
-    window.ibApi.log(
-      '[RollSuggestion] useEffect triggered, connected:',
-      connected,
-      'optPositions:',
-      optPositions.length
-    )
     if (!connected || optPositions.length === 0) {
-      window.ibApi.log('[RollSuggestion] empty or not connected, returning early')
       setSuggestions([])
+      setLoading(false)
       return
     }
 
@@ -104,11 +94,10 @@ export default function RollSuggestion({
       .join(',')
 
     if (fetchedRef.current === groupKey) {
-      window.ibApi.log('[RollSuggestion] Skipping fetch, same groupKey')
       return
     }
     fetchedRef.current = groupKey
-    window.ibApi.log('[RollSuggestion] New groupKey:', groupKey)
+    window.ibApi.log('[RollSuggestion] Fetching suggestions for:', groupKey)
 
     // Group by symbol + expiry + right
     const groups = new Map<
@@ -128,27 +117,17 @@ export default function RollSuggestion({
       groups.get(key)!.strikes.add(p.strike!)
     }
 
-    window.ibApi.log('[RollSuggestion] Group building complete. groups count:', groups.size)
+
 
     const fetchSuggestions = async (): Promise<void> => {
-      window.ibApi.log('[RollSuggestion] Inside fetchSuggestions()')
       setLoading(true)
       setError(null)
       const results: Suggestion[] = []
 
       try {
         for (const [, g] of groups) {
-          window.ibApi.log(
-            '[RollSuggestion] Fetching chain for',
-            g.symbol,
-            'expiry:',
-            g.expiry,
-            'right:',
-            g.right
-          )
           // 1. Get option chain to find next expiry
           const chain = await window.ibApi.getOptionChain(g.symbol)
-          window.ibApi.log('[RollSuggestion] Chain result:', chain?.length, 'entries')
           if (!chain || chain.length === 0) continue
 
           // Merge all expirations from all exchanges, sorted
@@ -156,18 +135,7 @@ export default function RollSuggestion({
             ...new Set(chain.flatMap((c: any) => c.expirations))
           ].sort() as string[]
           const nextExpiry = allExpiries.find((e) => e > g.expiry) as string
-          window.ibApi.log(
-            '[RollSuggestion] allExpiries sample:',
-            allExpiries.slice(0, 5),
-            'found nextExpiry:',
-            nextExpiry,
-            'looking for >',
-            g.expiry
-          )
-          if (!nextExpiry) {
-            window.ibApi.log('[RollSuggestion] No next expiry found, skipping')
-            continue
-          }
+          if (!nextExpiry) continue
 
           // Get all strikes from chain for this symbol
           const allStrikesRaw = [...new Set(chain.flatMap((c: any) => c.strikes))] as number[]
@@ -194,43 +162,50 @@ export default function RollSuggestion({
             nearbyStrikes
           )
 
-          if (!greeks || greeks.length === 0) continue
+          const safeGreeks = greeks ?? []
 
           // Filter to same direction
-          const sameRight = greeks.filter((gk: OptionGreek) => gk.right === g.right)
-          const hasPrice = (gk: OptionGreek): boolean => gk.bid > 0 || gk.ask > 0 || gk.last > 0
+          const sameRight = safeGreeks.filter((gk: OptionGreek) => gk.right === g.right)
+          const getPrice = (gk: OptionGreek): number => {
+            if (gk.bid > 0 && gk.ask > 0) return (gk.bid + gk.ask) / 2
+            if (gk.last > 0) return gk.last
+            return gk.modelPrice
+          }
+
+          window.ibApi.log(
+            `[RollSuggestion] ${g.symbol} ${g.right}: currentStrikes=${currentStrikes} nextExpiry=${nextExpiry} sameRight=${sameRight.length}`
+          )
 
           // a. Same-strike suggestion for each current strike
+          // Always show these, even without price data — prices update later
           for (const strike of currentStrikes) {
             const match = sameRight.find((gk: OptionGreek) => gk.strike === strike)
-            if (match && hasPrice(match)) {
-              // Average avgCost across all positions at this strike+right
-              // IB avgCost for options = per-share price * 100 (multiplier)
-              const matchingPos = optPositions.filter(
-                (p) => p.strike === strike && p.right === g.right
-              )
-              const avgCostSum = matchingPos.reduce((sum, p) => sum + p.avgCost / 100, 0)
-              const currentAvgCost = matchingPos.length > 0 ? avgCostSum / matchingPos.length : 0
-              results.push({
-                label: `${g.symbol} ${formatExpiry(nextExpiry)} ${match.strike}${g.right}`,
-                symbol: g.symbol,
-                expiry: nextExpiry,
-                strike: match.strike,
-                right: g.right,
-                bid: match.bid,
-                ask: match.ask,
-                last: match.last,
-                delta: match.delta,
-                type: 'same-strike',
-                currentAvgCost
-              })
-            }
+            // Average avgCost across all positions at this strike+right
+            // IB avgCost for options = per-share price * 100 (multiplier)
+            const matchingPos = optPositions.filter(
+              (p) => p.strike === strike && p.right === g.right
+            )
+            const avgCostSum = matchingPos.reduce((sum, p) => sum + p.avgCost / 100, 0)
+            const currentAvgCost = matchingPos.length > 0 ? avgCostSum / matchingPos.length : 0
+            results.push({
+              label: `${g.symbol} ${formatExpiry(nextExpiry)} ${strike}${g.right}`,
+              symbol: g.symbol,
+              expiry: nextExpiry,
+              strike,
+              right: g.right,
+              bid: match?.bid ?? 0,
+              ask: match?.ask ?? 0,
+              last: match ? (match.last > 0 ? match.last : getPrice(match)) : 0,
+              delta: match?.delta ?? 0,
+              type: 'same-strike',
+              currentAvgCost
+            })
           }
 
           // b. Delta target suggestion: find strike with |delta| closest to 0.2 (but >= 0.2)
-          // Sort candidates by |delta| ascending
+          // Sort candidates by |delta| ascending — no price requirement so suggestions show immediately
           const candidates = sameRight
-            .filter((gk: OptionGreek) => Math.abs(gk.delta) >= 0.15 && hasPrice(gk))
+            .filter((gk: OptionGreek) => Math.abs(gk.delta) >= 0.15)
             .sort((a: OptionGreek, b: OptionGreek) => Math.abs(a.delta) - Math.abs(b.delta))
 
           // Find the one closest to 0.2 with |delta| >= 0.2
@@ -251,7 +226,7 @@ export default function RollSuggestion({
                 right: g.right,
                 bid: deltaTarget.bid,
                 ask: deltaTarget.ask,
-                last: deltaTarget.last,
+                last: deltaTarget.last > 0 ? deltaTarget.last : getPrice(deltaTarget),
                 delta: deltaTarget.delta,
                 type: 'delta-target',
                 currentAvgCost: avgAll
@@ -270,31 +245,35 @@ export default function RollSuggestion({
     }
 
     fetchSuggestions()
-  }, [connected, optPositions, optPositions.length])
 
-  window.ibApi.log(
-    '[RollSuggestion] About to render layout. suggestions:',
-    suggestions.length,
-    'loading:',
-    loading,
-    'error:',
-    error
-  )
+    // Re-fetch every 30s if any suggestion still has missing prices
+    const intervalId = setInterval(() => {
+      fetchedRef.current = '' // Allow re-fetch
+      fetchSuggestions()
+    }, 30000)
+
+    return () => clearInterval(intervalId)
+  }, [connected, optPositions])
+
+
 
   if (optPositions.length === 0) return null
   if (!connected) return null
 
   return (
     <div className="positions-section" style={{ marginTop: '12px' }}>
-      <div style={{ fontWeight: 600, marginBottom: '6px', color: '#64748b' }}>📋 展期建議</div>
+
       {loading && <div style={{ color: '#aaa', padding: '4px 8px' }}>載入中...</div>}
       {error && <div style={{ color: '#dc2626', padding: '4px 8px' }}>{error}</div>}
+      {!loading && !error && suggestions.length === 0 && (
+        <div style={{ color: '#94a3b8', padding: '4px 8px', fontSize: '12px' }}>暫無建議</div>
+      )}
       {suggestions.length > 0 && (
         <table className="positions-table">
           <thead>
             <tr>
-              <th style={{ width: '15%', textAlign: 'center' }}>類型</th>
-              <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
+              <th style={{ width: '15%', textAlign: 'left' }}>展期類型</th>
+              <th style={{ width: '25%', textAlign: 'left' }}>目標期權</th>
               <th style={{ width: '10%' }}>Delta</th>
               <th style={{ width: '11%' }}>中間價</th>
               <th style={{ width: '11%' }}>均價</th>
@@ -306,21 +285,22 @@ export default function RollSuggestion({
               <tr key={i}>
                 <td
                   style={{
-                    textAlign: 'center',
-                    color: s.type === 'same-strike' ? '#64748b' : '#3b82f6'
+                    textAlign: 'left',
+                    color: 'inherit'
                   }}
                 >
-                  {s.type === 'same-strike' ? '同價位' : 'Δ建議'}
+                  {s.type === 'same-strike' ? '依價位' : '依字母'}
                 </td>
                 <td className="pos-symbol">{s.label}</td>
-                <td>{s.delta ? s.delta.toFixed(3) : '-'}</td>
+                <td>{s.delta ? s.delta.toFixed(3) : '—'}</td>
                 {(() => {
                   const mid = s.bid > 0 || s.ask > 0 ? (s.bid + s.ask) / 2 : s.last || 0
-                  return <td>{mid.toFixed(2)}</td>
+                  return <td>{mid > 0 ? mid.toFixed(2) : '—'}</td>
                 })()}
                 <td>{s.currentAvgCost.toFixed(2)}</td>
                 {(() => {
                   const mid = s.bid > 0 || s.ask > 0 ? (s.bid + s.ask) / 2 : s.last || 0
+                  if (mid <= 0) return <td style={{ color: '#94a3b8' }}>—</td>
                   const spread = mid - s.currentAvgCost
                   return (
                     <td style={{ color: spread >= 0 ? '#1a6b3a' : '#8b1a1a' }}>

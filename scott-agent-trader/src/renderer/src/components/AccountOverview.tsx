@@ -150,16 +150,18 @@ export default function AccountOverview({
     setShowCloseOptionDialog(false)
   }, [connected])
 
-  // Watch positions: when pending roll's old positions disappear and new ones appear,
-  // update group posKeys using the actual new posKey reported by IB
+  // Watch positions: when pending roll's new positions appear,
+  // update group posKeys using the actual new posKey reported by IB.
+  // NOTE: We no longer require old positions to disappear first, because with
+  // partial fills the old posKey stays present (reduced qty) since posKey
+  // doesn't include quantity.
   useEffect(() => {
     if (!pendingRollUpdate) return
     const { rolledPositions, target } = pendingRollUpdate
-    // All old positions must be gone AND all new positions must have appeared
+    // Build old→new posKey replacements; bail if any new position hasn't appeared yet
+    const replacements = new Map<string, string>()
     for (const oldPos of rolledPositions) {
-      const oldKey = posKey(oldPos)
-      if (positions.some((p) => posKey(p) === oldKey)) return // old still present
-      const appeared = positions.some(
+      const newPos = positions.find(
         (p) =>
           p.account === oldPos.account &&
           p.symbol === oldPos.symbol &&
@@ -168,27 +170,14 @@ export default function AccountOverview({
           p.strike === target.strike &&
           (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
       )
-      if (!appeared) return // new not yet arrived
+      if (!newPos) return // new not yet arrived — wait for next position update
+      replacements.set(posKey(oldPos), posKey(newPos))
     }
-    // All conditions met → update groups with actual new posKeys from IB
-    const oldKeys = new Set(rolledPositions.map((p) => posKey(p)))
+    // All new positions found → update groups
+    console.log('[ROLL] All new positions detected, updating groups', Object.fromEntries(replacements))
     for (const g of symbolGroups) {
-      if (!g.posKeys.some((k) => oldKeys.has(k))) continue
-      const newPosKeys = g.posKeys.map((k) => {
-        if (!oldKeys.has(k)) return k
-        const oldPos = rolledPositions.find((p) => posKey(p) === k)
-        if (!oldPos) return k
-        const newPos = positions.find(
-          (p) =>
-            p.account === oldPos.account &&
-            p.symbol === oldPos.symbol &&
-            p.secType === 'OPT' &&
-            p.expiry === target.expiry &&
-            p.strike === target.strike &&
-            (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
-        )
-        return newPos ? posKey(newPos) : k
-      })
+      if (!g.posKeys.some((k) => replacements.has(k))) continue
+      const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
       const finalPosKeys = Array.from(new Set(newPosKeys))
       // Only update if there's an actual change in the keys
       if (

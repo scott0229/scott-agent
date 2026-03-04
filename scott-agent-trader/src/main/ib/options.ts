@@ -23,6 +23,7 @@ export interface OptionGreek {
   vega: number
   impliedVol: number
   openInterest: number
+  modelPrice: number
 }
 
 let reqIdCounter = 200000
@@ -70,7 +71,8 @@ function mergeGreek(old: OptionGreek, incoming: OptionGreek): OptionGreek {
     theta: incoming.theta !== 0 ? incoming.theta : old.theta,
     vega: incoming.vega !== 0 ? incoming.vega : old.vega,
     impliedVol: incoming.impliedVol > 0 ? incoming.impliedVol : old.impliedVol,
-    openInterest: incoming.openInterest > 0 ? incoming.openInterest : old.openInterest
+    openInterest: incoming.openInterest > 0 ? incoming.openInterest : old.openInterest,
+    modelPrice: incoming.modelPrice > 0 ? incoming.modelPrice : old.modelPrice
   }
 }
 
@@ -285,9 +287,10 @@ export async function requestOptionGreeks(
     `[IB] requestOptionGreeks called: symbol=${symbol}, expiry=${expiry}, strikes=${strikes.length}, exchange=${exchange}, tradingClass=${tradingClass ?? 'none'}`
   )
 
-  // Use frozen market data (type 2) to get last known bid/ask from market close
-  // Type 1 (live) returns -1 when market is closed; type 2 (frozen) returns last snapshot
-  api.reqMarketDataType(1)
+  // Use delayed-frozen market data (type 4) - returns live when available,
+  // close/frozen prices otherwise (matches TWS behavior and option quotes system)
+  // Type 3 (delayed) doesn't return tickPrice/tickOptionComputation after hours
+  api.reqMarketDataType(4)
 
   const results: OptionGreek[] = []
   const reqIds: Map<number, { strike: number; right: 'C' | 'P' }> = new Map()
@@ -312,7 +315,8 @@ export async function requestOptionGreeks(
         theta: 0,
         vega: 0,
         impliedVol: 0,
-        openInterest: 0
+        openInterest: 0,
+        modelPrice: 0
       })
     }
   }
@@ -393,13 +397,14 @@ export async function requestOptionGreeks(
     }
 
     // tickOptionComputation: handle all field types
-    // field 10 = bid computation, 11 = ask computation, 12 = last computation, 13 = model computation
+    // Live:    field 10 = bid, 11 = ask, 12 = last, 13 = model computation
+    // Delayed: field 53 = bid, 54 = ask, 55 = last, 56 = model computation
     const onTickOptionComputation = (
       reqId: number,
       field: number,
       impliedVol?: number,
       delta?: number,
-      _optPrice?: number,
+      optPrice?: number,
       _pvDividend?: number,
       gamma?: number,
       vega?: number,
@@ -413,10 +418,13 @@ export async function requestOptionGreeks(
 
       tickDataReceived++
 
+      // Map delayed field types (53-56) to their live equivalents (10-13)
+      const normalizedField = field >= 53 && field <= 56 ? field - 43 : field
+
       // Accept greeks from model (13) or any computation that has valid data
       // Prefer model (13), but use bid/ask/last (10/11/12) as fallback
-      if (field === 13 || field === 10 || field === 11 || field === 12) {
-        const isModel = field === 13
+      if (normalizedField === 13 || normalizedField === 10 || normalizedField === 11 || normalizedField === 12) {
+        const isModel = normalizedField === 13
         if (impliedVol !== undefined && isFinite(impliedVol) && impliedVol > 0) {
           if (isModel || data.impliedVol === 0) data.impliedVol = impliedVol
         }
@@ -431,6 +439,9 @@ export async function requestOptionGreeks(
         }
         if (theta !== undefined && isFinite(theta)) {
           if (isModel || data.theta === 0) data.theta = theta
+        }
+        if (optPrice !== undefined && isFinite(optPrice) && optPrice > 0) {
+          if (isModel || data.modelPrice === 0) data.modelPrice = optPrice
         }
       }
       resetSettleTimer()
@@ -513,9 +524,10 @@ export async function requestOptionGreeks(
     const allReqEntries = Array.from(reqIds.entries())
 
     function sendNextBatch(): void {
-      // Set market data type to frozen RIGHT BEFORE each batch
-      // (quotes.ts auto-refresh may set it to 4 between batches)
-      api!.reqMarketDataType(2)
+      // Set market data type to delayed-frozen RIGHT BEFORE each batch
+      // Type 4 (delayed-frozen) returns close/frozen when live unavailable
+      // (quotes.ts auto-refresh may change the type between batches)
+      api!.reqMarketDataType(4)
 
       // Send up to 10 requests at a time
       const batchSize = 20
