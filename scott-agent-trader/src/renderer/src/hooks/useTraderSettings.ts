@@ -62,10 +62,7 @@ export function useTraderSettings() {
         data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>
       )
     }
-    if (
-      data.settings.d1_target === 'staging' ||
-      data.settings.d1_target === 'production'
-    ) {
+    if (data.settings.d1_target === 'staging' || data.settings.d1_target === 'production') {
       setD1TargetState(data.settings.d1_target)
     }
     if (Array.isArray(data.settings.symbol_groups)) {
@@ -205,4 +202,3 @@ export function useTraderSettings() {
     saveAllSettings
   }
 }
-

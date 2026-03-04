@@ -16,6 +16,7 @@ import CloseOptionDialog from './CloseOptionDialog'
 import AddGroupDialog from './AddGroupDialog'
 import CloseGroupDialog from './CloseGroupDialog'
 import AiAdvisorDialog from './AiAdvisorDialog'
+import RollSuggestion from './RollSuggestion'
 
 const TRADING_TYPE_OPTIONS = [
   { value: 'reg_t', label: 'Reg T 保證金' },
@@ -32,11 +33,11 @@ function formatOptionLabel(
 ): string {
   const exp = expiry
     ? (() => {
-      const yy = expiry.slice(2, 4)
-      const mm = parseInt(expiry.slice(4, 6), 10) - 1
-      const dd = expiry.slice(6, 8).replace(/^0/, '')
-      return `${MONTHS[mm]}${dd}'${yy}`
-    })()
+        const yy = expiry.slice(2, 4)
+        const mm = parseInt(expiry.slice(4, 6), 10) - 1
+        const dd = expiry.slice(6, 8).replace(/^0/, '')
+        return `${MONTHS[mm]}${dd}'${yy}`
+      })()
     : ''
   const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
   return `${symbol} ${exp} ${strike || ''}${r}`
@@ -110,7 +111,14 @@ export default function AccountOverview({
   } | null>(null)
   // Pending transfer update: wait for IB to confirm fill before updating group posKeys
   const [pendingTransferUpdate, setPendingTransferUpdate] = useState<{
-    ops: { account: string; sourceSymbol: string; soldShares: number; targetShares: number; originalSourceQty: number; originalTargetQty: number }[]
+    ops: {
+      account: string
+      sourceSymbol: string
+      soldShares: number
+      targetShares: number
+      originalSourceQty: number
+      originalTargetQty: number
+    }[]
     targetSymbol: string
   } | null>(null)
   const [groupNameInput, setGroupNameInput] = useState('')
@@ -183,7 +191,10 @@ export default function AccountOverview({
       })
       const finalPosKeys = Array.from(new Set(newPosKeys))
       // Only update if there's an actual change in the keys
-      if (finalPosKeys.length !== g.posKeys.length || finalPosKeys.some((k, i) => k !== g.posKeys[i])) {
+      if (
+        finalPosKeys.length !== g.posKeys.length ||
+        finalPosKeys.some((k, i) => k !== g.posKeys[i])
+      ) {
         onUpdateSymbolGroup?.({ ...g, posKeys: finalPosKeys })
       }
     }
@@ -197,8 +208,14 @@ export default function AccountOverview({
 
     // 1. Wait for IB positions to reflect the expected quantity changes
     for (const op of ops) {
-      const currentSrc = positions.find((p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK')?.quantity ?? 0
-      const currentTgt = positions.find((p) => p.account === op.account && p.symbol === targetSymbol && p.secType === 'STK')?.quantity ?? 0
+      const currentSrc =
+        positions.find(
+          (p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK'
+        )?.quantity ?? 0
+      const currentTgt =
+        positions.find(
+          (p) => p.account === op.account && p.symbol === targetSymbol && p.secType === 'STK'
+        )?.quantity ?? 0
 
       // Source quantity should decrease by at least soldShares
       if (currentSrc > op.originalSourceQty - op.soldShares) return
@@ -211,7 +228,10 @@ export default function AccountOverview({
     // Build vanished keys (where stock went to 0)
     const vanishedKeys = new Set<string>()
     for (const op of ops) {
-      const currentSrc = positions.find((p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK')?.quantity ?? 0
+      const currentSrc =
+        positions.find(
+          (p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK'
+        )?.quantity ?? 0
       if (currentSrc === 0) {
         vanishedKeys.add(`${op.account}|${op.sourceSymbol}|STK|||`)
       }
@@ -219,7 +239,9 @@ export default function AccountOverview({
 
     for (const g of symbolGroups) {
       // Find ops that apply to this group (i.e. group holds the source stock limit)
-      const opsInGroup = ops.filter((op) => g.posKeys.includes(`${op.account}|${op.sourceSymbol}|STK|||`))
+      const opsInGroup = ops.filter((op) =>
+        g.posKeys.includes(`${op.account}|${op.sourceSymbol}|STK|||`)
+      )
       if (opsInGroup.length === 0) continue
 
       let newKeys = g.posKeys.filter((k) => !vanishedKeys.has(k))
@@ -323,7 +345,6 @@ export default function AccountOverview({
     },
     [cancelEdit, refresh]
   )
-
 
   const togglePosition = (key: string): void => {
     setSelectedPositions((prev) => {
@@ -498,10 +519,7 @@ export default function AccountOverview({
         <div className="sort-bar">
           {groupViewMode ? (
             <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-end' }}>
-              <button
-                className="select-toggle-btn"
-                onClick={() => setShowAddGroup(true)}
-              >
+              <button className="select-toggle-btn" onClick={() => setShowAddGroup(true)}>
                 ＋ 新增
               </button>
             </div>
@@ -574,7 +592,9 @@ export default function AccountOverview({
                           )
                           .forEach((p) => allKeys.add(posKey(p)))
                       })
-                      setSelectedPositions((prev) => (prev.size === allKeys.size ? new Set() : allKeys))
+                      setSelectedPositions((prev) =>
+                        prev.size === allKeys.size ? new Set() : allKeys
+                      )
                     }}
                   >
                     全選
@@ -586,7 +606,10 @@ export default function AccountOverview({
                   </button>
                 )}
                 {selectMode === 'OPT' && canCloseOptions && (
-                  <button className="select-toggle-btn" onClick={() => setShowCloseOptionDialog(true)}>
+                  <button
+                    className="select-toggle-btn"
+                    onClick={() => setShowCloseOptionDialog(true)}
+                  >
                     期權平倉
                   </button>
                 )}
@@ -715,19 +738,25 @@ export default function AccountOverview({
             <div className="accounts-grid">
               {symbolGroups.map((g, gIdx) => {
                 const groupPosKeys = new Set(g.posKeys)
-                const groupPositions = positions.filter((p) => groupPosKeys.has(posKey(p))).sort((a, b) => {
-                  if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
-                  // Group options by expiry then strike
-                  if (a.secType === 'OPT' && b.secType === 'OPT') {
-                    const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
-                    if (expiryComp !== 0) return expiryComp
-                    const strikeComp = (a.strike || 0) - (b.strike || 0)
-                    if (strikeComp !== 0) return strikeComp
-                  }
-                  const aAlias = (accounts.find(x => x.accountId === a.account)?.alias || a.account).replace(/\s*\(.*?\)/, '')
-                  const bAlias = (accounts.find(x => x.accountId === b.account)?.alias || b.account).replace(/\s*\(.*?\)/, '')
-                  return aAlias.localeCompare(bAlias)
-                })
+                const groupPositions = positions
+                  .filter((p) => groupPosKeys.has(posKey(p)))
+                  .sort((a, b) => {
+                    if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
+                    // Group options by expiry then strike
+                    if (a.secType === 'OPT' && b.secType === 'OPT') {
+                      const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
+                      if (expiryComp !== 0) return expiryComp
+                      const strikeComp = (a.strike || 0) - (b.strike || 0)
+                      if (strikeComp !== 0) return strikeComp
+                    }
+                    const aAlias = (
+                      accounts.find((x) => x.accountId === a.account)?.alias || a.account
+                    ).replace(/\s*\(.*?\)/, '')
+                    const bAlias = (
+                      accounts.find((x) => x.accountId === b.account)?.alias || b.account
+                    ).replace(/\s*\(.*?\)/, '')
+                    return aAlias.localeCompare(bAlias)
+                  })
                 return (
                   <div
                     key={g.id}
@@ -736,22 +765,22 @@ export default function AccountOverview({
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
                       e.dataTransfer.setData('text/plain', String(gIdx))
-                        ; (e.currentTarget as HTMLElement).style.opacity = '0.4'
+                      ;(e.currentTarget as HTMLElement).style.opacity = '0.4'
                     }}
                     onDragEnd={(e) => {
-                      ; (e.currentTarget as HTMLElement).style.opacity = '1'
+                      ;(e.currentTarget as HTMLElement).style.opacity = '1'
                     }}
                     onDragOver={(e) => {
                       e.preventDefault()
                       e.dataTransfer.dropEffect = 'move'
-                        ; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
                     }}
                     onDragLeave={(e) => {
-                      ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
                     }}
                     onDrop={(e) => {
                       e.preventDefault()
-                        ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
                       const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10)
                       if (isNaN(fromIdx) || fromIdx === gIdx) return
                       const next = [...symbolGroups]
@@ -760,36 +789,64 @@ export default function AccountOverview({
                       onReorderSymbolGroups?.(next)
                     }}
                   >
-                    <div className="account-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                      className="account-header"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="account-id">{g.name}</span>
                         {(() => {
                           if (groupPositions.length === 0) return null
                           const setGroupKeys = (): void => {
-                            const keys = new Set(groupPositions.map(p => posKey(p)))
+                            const keys = new Set(groupPositions.map((p) => posKey(p)))
                             setSelectedPositions(keys)
                           }
-                          const allOpt = groupPositions.every(p => p.secType === 'OPT')
-                          const allStk = groupPositions.every(p => p.secType === 'STK')
+                          const allOpt = groupPositions.every((p) => p.secType === 'OPT')
+                          const allStk = groupPositions.every((p) => p.secType === 'STK')
                           if (allOpt) {
-                            const rights = new Set(groupPositions.map(p => (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')))
-                            const symbols = new Set(groupPositions.map(p => p.symbol))
+                            const rights = new Set(
+                              groupPositions.map((p) =>
+                                (p.right || '')
+                                  .toUpperCase()
+                                  .replace('CALL', 'C')
+                                  .replace('PUT', 'P')
+                              )
+                            )
+                            const symbols = new Set(groupPositions.map((p) => p.symbol))
                             const canRoll = rights.size === 1 && symbols.size === 1
                             return (
                               <>
                                 {canRoll && (
                                   <button
                                     className="select-toggle-btn"
-                                    style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                    onClick={() => { setGroupKeys(); setShowRollDialog(true) }}
+                                    style={{
+                                      fontSize: '13px',
+                                      padding: '2px 10px',
+                                      lineHeight: '1.4'
+                                    }}
+                                    onClick={() => {
+                                      setGroupKeys()
+                                      setShowRollDialog(true)
+                                    }}
                                   >
                                     展期
                                   </button>
                                 )}
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setGroupKeys(); setShowCloseOptionDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setGroupKeys()
+                                    setShowCloseOptionDialog(true)
+                                  }}
                                 >
                                   平倉
                                 </button>
@@ -801,44 +858,77 @@ export default function AccountOverview({
                               <>
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setGroupKeys(); setShowTransferDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setGroupKeys()
+                                    setShowTransferDialog(true)
+                                  }}
                                 >
                                   轉倉
                                 </button>
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setGroupKeys(); setShowCloseDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setGroupKeys()
+                                    setShowCloseDialog(true)
+                                  }}
                                 >
                                   平倉
                                 </button>
                               </>
                             )
                           }
-                          const optPositions = groupPositions.filter(p => p.secType === 'OPT')
-                          const stkPositions = groupPositions.filter(p => p.secType === 'STK')
+                          const optPositions = groupPositions.filter((p) => p.secType === 'OPT')
+                          const stkPositions = groupPositions.filter((p) => p.secType === 'STK')
                           const setOptKeys = (): void => {
-                            setSelectedPositions(new Set(optPositions.map(p => posKey(p))))
+                            setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
                           }
                           const setStkKeys = (): void => {
-                            setSelectedPositions(new Set(stkPositions.map(p => posKey(p))))
+                            setSelectedPositions(new Set(stkPositions.map((p) => posKey(p))))
                           }
                           // Check if options are rollable (same symbol, same right, same side)
-                          const canRollMixed = optPositions.length > 0 && (() => {
-                            const rights = new Set(optPositions.map(p => (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')))
-                            const symbols = new Set(optPositions.map(p => p.symbol))
-                            const sides = new Set(optPositions.map(p => p.quantity < 0 ? 'SELL' : 'BUY'))
-                            return rights.size === 1 && symbols.size === 1 && sides.size === 1
-                          })()
-                          const canTransferMixed = stkPositions.length > 0 && stkPositions.every(p => p.quantity > 0)
+                          const canRollMixed =
+                            optPositions.length > 0 &&
+                            (() => {
+                              const rights = new Set(
+                                optPositions.map((p) =>
+                                  (p.right || '')
+                                    .toUpperCase()
+                                    .replace('CALL', 'C')
+                                    .replace('PUT', 'P')
+                                )
+                              )
+                              const symbols = new Set(optPositions.map((p) => p.symbol))
+                              const sides = new Set(
+                                optPositions.map((p) => (p.quantity < 0 ? 'SELL' : 'BUY'))
+                              )
+                              return rights.size === 1 && symbols.size === 1 && sides.size === 1
+                            })()
+                          const canTransferMixed =
+                            stkPositions.length > 0 && stkPositions.every((p) => p.quantity > 0)
                           return (
                             <>
                               {canRollMixed && (
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setOptKeys(); setShowRollDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setOptKeys()
+                                    setShowRollDialog(true)
+                                  }}
                                 >
                                   展期
                                 </button>
@@ -846,8 +936,15 @@ export default function AccountOverview({
                               {canTransferMixed && (
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setStkKeys(); setShowTransferDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setStkKeys()
+                                    setShowTransferDialog(true)
+                                  }}
                                 >
                                   轉倉
                                 </button>
@@ -855,7 +952,10 @@ export default function AccountOverview({
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
+                                onClick={() => {
+                                  setGroupKeys()
+                                  setShowCloseGroupDialog(true)
+                                }}
                               >
                                 平倉
                               </button>
@@ -874,21 +974,31 @@ export default function AccountOverview({
                           return sum + pnl
                         }, 0)
                         return (
-                          <span style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            marginLeft: 'auto',
-                            marginRight: '12px',
-                            color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
-                          }}>
-                            {totalPnl >= 0 ? '+' : ''}{Math.round(totalPnl).toLocaleString()}
+                          <span
+                            style={{
+                              fontSize: '14px',
+                              fontWeight: 600,
+                              marginLeft: 'auto',
+                              marginRight: '12px',
+                              color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                            }}
+                          >
+                            {totalPnl >= 0 ? '+' : ''}
+                            {Math.round(totalPnl).toLocaleString()}
                           </span>
                         )
                       })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <svg
-                          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           style={{ cursor: 'pointer', opacity: 0.7 }}
                           onClick={() => {
                             setEditingGroup(g)
@@ -899,8 +1009,15 @@ export default function AccountOverview({
                           <path d="m15 5 4 4" />
                         </svg>
                         <svg
-                          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           style={{ cursor: 'pointer', opacity: 0.7 }}
                           onClick={() => {
                             if (confirm('確定刪除群組「' + g.name + '」？')) {
@@ -919,121 +1036,149 @@ export default function AccountOverview({
                       <div style={{ padding: '12px', fontSize: '12px', color: '#999' }}>
                         無匹配持倉
                       </div>
-                    ) : (() => {
-                      const stkPos = groupPositions.filter(p => p.secType !== 'OPT')
-                      const optPos = groupPositions.filter(p => p.secType === 'OPT')
-                      const renderRow = (pos: PositionData, idx: number, showDays: boolean): React.ReactNode => {
-                        const isOption = pos.secType === 'OPT'
-                        const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                        const lastPrice = isOption ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
-                        const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
-                        const pnl = isOption
-                          ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
-                          : (lastPrice - pos.avgCost) * pos.quantity
-                        const days = pos.expiry
-                          ? Math.max(
-                            0,
-                            Math.ceil(
-                              (new Date(
-                                pos.expiry.substring(0, 4) +
-                                '-' +
-                                pos.expiry.substring(4, 6) +
-                                '-' +
-                                pos.expiry.substring(6, 8) +
-                                'T00:00:00'
-                              ).getTime() -
-                                new Date().setHours(0, 0, 0, 0)) /
-                              (1000 * 60 * 60 * 24)
-                            )
-                          )
-                          : null
-                        return (
-                          <tr key={idx}>
-                            <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>{(accounts.find(a => a.accountId === pos.account)?.alias || pos.account).replace(/\s*\(.*?\)/, '')}</td>
-                            <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
-                            {showDays && (
-                              <td
-                                style={
-                                  days === 0
-                                    ? { backgroundColor: '#fff0f0' }
-                                    : days === 1
-                                      ? { backgroundColor: '#e8f4fd' }
-                                      : undefined
-                                }
-                              >
-                                {days !== null ? days : '-'}
+                    ) : (
+                      (() => {
+                        const stkPos = groupPositions.filter((p) => p.secType !== 'OPT')
+                        const optPos = groupPositions.filter((p) => p.secType === 'OPT')
+                        const renderRow = (
+                          pos: PositionData,
+                          idx: number,
+                          showDays: boolean
+                        ): React.ReactNode => {
+                          const isOption = pos.secType === 'OPT'
+                          const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                          const lastPrice = isOption
+                            ? (optionQuotes[key] ?? 0)
+                            : (quotes[pos.symbol] ?? 0)
+                          const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                          const pnl = isOption
+                            ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
+                            : (lastPrice - pos.avgCost) * pos.quantity
+                          const days = pos.expiry
+                            ? Math.max(
+                                0,
+                                Math.ceil(
+                                  (new Date(
+                                    pos.expiry.substring(0, 4) +
+                                      '-' +
+                                      pos.expiry.substring(4, 6) +
+                                      '-' +
+                                      pos.expiry.substring(6, 8) +
+                                      'T00:00:00'
+                                  ).getTime() -
+                                    new Date().setHours(0, 0, 0, 0)) /
+                                    (1000 * 60 * 60 * 24)
+                                )
+                              )
+                            : null
+                          return (
+                            <tr key={idx}>
+                              <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>
+                                {(
+                                  accounts.find((a) => a.accountId === pos.account)?.alias ||
+                                  pos.account
+                                ).replace(/\s*\(.*?\)/, '')}
                               </td>
+                              <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                              {showDays && (
+                                <td
+                                  style={
+                                    days === 0
+                                      ? { backgroundColor: '#fff0f0' }
+                                      : days === 1
+                                        ? { backgroundColor: '#e8f4fd' }
+                                        : undefined
+                                  }
+                                >
+                                  {days !== null ? days : '-'}
+                                </td>
+                              )}
+                              <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
+                                {pos.quantity.toLocaleString()}
+                              </td>
+                              <td>{displayAvg.toFixed(2)}</td>
+                              <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                              <td
+                                style={{
+                                  color: pnl >= 0 ? '#16a34a' : '#dc2626',
+                                  fontWeight: 500
+                                }}
+                              >
+                                {pnl >= 0 ? '+' : ''}
+                                {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                              </td>
+                            </tr>
+                          )
+                        }
+                        return (
+                          <>
+                            {stkPos.length > 0 && (
+                              <div className="positions-section">
+                                <table className="positions-table">
+                                  <thead>
+                                    <tr>
+                                      <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                      <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
+                                      <th style={{ width: '8%' }}>數量</th>
+                                      <th style={{ width: '11%' }}>均價</th>
+                                      <th style={{ width: '11%' }}>現價</th>
+                                      <th style={{ width: '11%' }}>盈虧</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {stkPos.map((pos, idx) => renderRow(pos, idx, false))}
+                                  </tbody>
+                                </table>
+                              </div>
                             )}
-                            <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
-                              {pos.quantity.toLocaleString()}
-                            </td>
-                            <td>{displayAvg.toFixed(2)}</td>
-                            <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
-                            <td
-                              style={{
-                                color: pnl >= 0 ? '#16a34a' : '#dc2626',
-                                fontWeight: 500
-                              }}
-                            >
-                              {pnl >= 0 ? '+' : ''}
-                              {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                            </td>
-                          </tr>
+                            {optPos.length > 0 && (
+                              <div className="positions-section">
+                                <table className="positions-table">
+                                  <thead>
+                                    <tr>
+                                      <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                      <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                                      <th style={{ width: '8%' }}>天數</th>
+                                      <th style={{ width: '8%' }}>數量</th>
+                                      <th style={{ width: '11%' }}>均價</th>
+                                      <th style={{ width: '11%' }}>現價</th>
+                                      <th style={{ width: '11%' }}>盈虧</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {optPos.map((pos, idx) => {
+                                      const prevPos = idx > 0 ? optPos[idx - 1] : null
+                                      const needsSep =
+                                        prevPos &&
+                                        (prevPos.expiry !== pos.expiry ||
+                                          prevPos.strike !== pos.strike)
+                                      return (
+                                        <React.Fragment key={idx}>
+                                          {needsSep && (
+                                            <tr>
+                                              <td
+                                                colSpan={7}
+                                                style={{
+                                                  padding: 0,
+                                                  height: '3px',
+                                                  backgroundColor: '#f5f0eb'
+                                                }}
+                                              />
+                                            </tr>
+                                          )}
+                                          {renderRow(pos, idx, true)}
+                                        </React.Fragment>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </>
                         )
-                      }
-                      return (
-                        <>
-                          {stkPos.length > 0 && (
-                            <div className="positions-section">
-                              <table className="positions-table">
-                                <thead>
-                                  <tr>
-                                    <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                                    <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
-                                    <th style={{ width: '8%' }}>數量</th>
-                                    <th style={{ width: '11%' }}>均價</th>
-                                    <th style={{ width: '11%' }}>現價</th>
-                                    <th style={{ width: '11%' }}>盈虧</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {stkPos.map((pos, idx) => renderRow(pos, idx, false))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                          {optPos.length > 0 && (
-                            <div className="positions-section">
-                              <table className="positions-table">
-                                <thead>
-                                  <tr>
-                                    <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                                    <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                                    <th style={{ width: '8%' }}>天數</th>
-                                    <th style={{ width: '8%' }}>數量</th>
-                                    <th style={{ width: '11%' }}>均價</th>
-                                    <th style={{ width: '11%' }}>現價</th>
-                                    <th style={{ width: '11%' }}>盈虧</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {optPos.map((pos, idx) => {
-                                    const prevPos = idx > 0 ? optPos[idx - 1] : null
-                                    const needsSep = prevPos && (prevPos.expiry !== pos.expiry || prevPos.strike !== pos.strike)
-                                    return (
-                                      <React.Fragment key={idx}>
-                                        {needsSep && <tr><td colSpan={7} style={{ padding: 0, height: '3px', backgroundColor: '#f5f0eb' }} /></tr>}
-                                        {renderRow(pos, idx, true)}
-                                      </React.Fragment>
-                                    )
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </>
-                      )
-                    })()}
+                      })()
+                    )}
+                    <RollSuggestion positions={groupPositions} connected={connected} />
                   </div>
                 )
               })}
@@ -1132,19 +1277,19 @@ export default function AccountOverview({
                       const potentialMargin =
                         account.netLiquidation > 0
                           ? (account.grossPositionValue +
-                            positions
-                              .filter(
-                                (p) =>
-                                  p.account === account.accountId &&
-                                  p.secType === 'OPT' &&
-                                  (p.right === 'P' || p.right === 'PUT') &&
-                                  p.quantity < 0
-                              )
-                              .reduce(
-                                (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                                0
-                              )) /
-                          account.netLiquidation
+                              positions
+                                .filter(
+                                  (p) =>
+                                    p.account === account.accountId &&
+                                    p.secType === 'OPT' &&
+                                    (p.right === 'P' || p.right === 'PUT') &&
+                                    p.quantity < 0
+                                )
+                                .reduce(
+                                  (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                                  0
+                                )) /
+                            account.netLiquidation
                           : null
                       return (
                         <div
@@ -1226,9 +1371,9 @@ export default function AccountOverview({
                                 >
                                   {quotes[pos.symbol]
                                     ? (
-                                      (quotes[pos.symbol] - pos.avgCost) *
-                                      pos.quantity
-                                    ).toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                        (quotes[pos.symbol] - pos.avgCost) *
+                                        pos.quantity
+                                      ).toLocaleString('en-US', { maximumFractionDigits: 0 })
                                     : '-'}
                                 </td>
                               </tr>
@@ -1287,20 +1432,20 @@ export default function AccountOverview({
                                 {(() => {
                                   const days = pos.expiry
                                     ? Math.max(
-                                      0,
-                                      Math.ceil(
-                                        (new Date(
-                                          pos.expiry.substring(0, 4) +
-                                          '-' +
-                                          pos.expiry.substring(4, 6) +
-                                          '-' +
-                                          pos.expiry.substring(6, 8) +
-                                          'T00:00:00'
-                                        ).getTime() -
-                                          new Date().setHours(0, 0, 0, 0)) /
-                                        (1000 * 60 * 60 * 24)
+                                        0,
+                                        Math.ceil(
+                                          (new Date(
+                                            pos.expiry.substring(0, 4) +
+                                              '-' +
+                                              pos.expiry.substring(4, 6) +
+                                              '-' +
+                                              pos.expiry.substring(6, 8) +
+                                              'T00:00:00'
+                                          ).getTime() -
+                                            new Date().setHours(0, 0, 0, 0)) /
+                                            (1000 * 60 * 60 * 24)
+                                        )
                                       )
-                                    )
                                     : null
                                   return (
                                     <td
@@ -1418,7 +1563,7 @@ export default function AccountOverview({
                                     onDoubleClick={() => startEdit(order, 'quantity')}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                      editingCell.field === 'quantity' ? (
+                                    editingCell.field === 'quantity' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -1456,7 +1601,7 @@ export default function AccountOverview({
                                     }}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                      editingCell.field === 'price' ? (
+                                    editingCell.field === 'price' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -1544,7 +1689,7 @@ export default function AccountOverview({
                                 return true
                               })
                             // Aggregate partial fills: group by orderId+secType
-                            const grouped = new Map<string, typeof filtered[0]>()
+                            const grouped = new Map<string, (typeof filtered)[0]>()
                             for (const e of filtered) {
                               const key = `${e.orderId}|${e.secType}`
                               const existing = grouped.get(key)
@@ -1584,11 +1729,11 @@ export default function AccountOverview({
                                     for (const l of legs) {
                                       const exp = l.expiry
                                         ? (() => {
-                                          const yy = l.expiry.slice(2, 4)
-                                          const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                          const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                          return `${MONTHS[mm]}${dd}'${yy}`
-                                        })()
+                                            const yy = l.expiry.slice(2, 4)
+                                            const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                            const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                            return `${MONTHS[mm]}${dd}'${yy}`
+                                          })()
                                         : ''
                                       const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                       const sign = l.side === 'BOT' ? '+' : '-'
@@ -1603,7 +1748,11 @@ export default function AccountOverview({
                                     )
                                     const arrow = (
                                       <span
-                                        style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}
+                                        style={{
+                                          color: '#956b3a',
+                                          fontWeight: 400,
+                                          margin: '0 3px'
+                                        }}
                                       >
                                         →
                                       </span>
@@ -1722,8 +1871,14 @@ export default function AccountOverview({
         quotes={quotes}
         onTransferComplete={(soldPositions, targetSymbol) => {
           const ops = soldPositions.map((sp) => {
-            const currentSrc = positions.find((p) => p.account === sp.account && p.symbol === sp.symbol && p.secType === 'STK')?.quantity ?? 0
-            const currentTgt = positions.find((p) => p.account === sp.account && p.symbol === targetSymbol && p.secType === 'STK')?.quantity ?? 0
+            const currentSrc =
+              positions.find(
+                (p) => p.account === sp.account && p.symbol === sp.symbol && p.secType === 'STK'
+              )?.quantity ?? 0
+            const currentTgt =
+              positions.find(
+                (p) => p.account === sp.account && p.symbol === targetSymbol && p.secType === 'STK'
+              )?.quantity ?? 0
             return {
               account: sp.account,
               sourceSymbol: sp.symbol,
@@ -1816,7 +1971,10 @@ export default function AccountOverview({
       {/* Add/Edit Group Dialog */}
       <AddGroupDialog
         open={showAddGroup}
-        onClose={() => { setShowAddGroup(false); setEditingGroup(null) }}
+        onClose={() => {
+          setShowAddGroup(false)
+          setEditingGroup(null)
+        }}
         positions={positions}
         accounts={accounts}
         onAddGroup={onAddSymbolGroup!}

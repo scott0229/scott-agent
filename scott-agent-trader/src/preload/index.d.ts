@@ -225,6 +225,8 @@ interface IBApi {
   // Account Group Detection
   detectGroup: (accountIds: string[]) => Promise<{ group: string; label: string }>
 
+  log: (...args: any[]) => void
+
   removeAllListeners: () => void
 }
 

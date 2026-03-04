@@ -6,7 +6,11 @@ interface ChartSelectProps {
   options: { value: string; label: string }[]
 }
 
-export default function ChartSelect({ value, onChange, options }: ChartSelectProps): React.JSX.Element {
+export default function ChartSelect({
+  value,
+  onChange,
+  options
+}: ChartSelectProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

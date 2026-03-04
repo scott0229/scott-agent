@@ -32,7 +32,10 @@ interface RollOptionDialogProps {
   onClose: () => void
   selectedPositions: PositionData[]
   accounts: AccountData[]
-  onRollComplete?: (rolledPositions: PositionData[], target: { expiry: string; strike: number; right: 'C' | 'P' }) => void
+  onRollComplete?: (
+    rolledPositions: PositionData[],
+    target: { expiry: string; strike: number; right: 'C' | 'P' }
+  ) => void
 }
 
 // Format expiry "20260220" -> "Feb20"
@@ -69,7 +72,6 @@ const formatGreek = (v: number): string => {
   if (v === 0) return '-'
   return v.toFixed(3)
 }
-
 
 export default function RollOptionDialog({
   open,
@@ -210,10 +212,7 @@ export default function RollOptionDialog({
   )
 
   const displayStrikes = useMemo(
-    () =>
-      selectedStrikes
-        .filter((s) => availableStrikes.includes(s))
-        .sort((a, b) => a - b),
+    () => selectedStrikes.filter((s) => availableStrikes.includes(s)).sort((a, b) => a - b),
     [selectedStrikes, availableStrikes]
   )
 
@@ -260,7 +259,7 @@ export default function RollOptionDialog({
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
         if (price) setStockPrice(price)
       })
-      .catch(() => { })
+      .catch(() => {})
 
     window.ibApi
       .getOptionChain(symbol)
@@ -271,7 +270,6 @@ export default function RollOptionDialog({
       .catch((err: unknown) => {
         setErrorMsg(`查詢失敗: ${err instanceof Error ? err.message : String(err)}`)
       })
-
   }, [open, symbol])
 
   const mergeGreek = (old: OptionGreek, n: OptionGreek): OptionGreek => ({
@@ -294,16 +292,26 @@ export default function RollOptionDialog({
     const currentExpiries = [...new Set(currentCombos.map((c) => c.expiry))]
     currentExpiries.forEach((exp) => {
       const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
-      window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
-        if (greeks.length === 0) return
-        setCurrentGreeks((prev) => {
-          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+      window.ibApi
+        .getOptionGreeks(symbol, exp, strikesForExp)
+        .then((greeks) => {
+          if (greeks.length === 0) return
+          setCurrentGreeks((prev) => {
+            const incoming = new Map<string, OptionGreek>(
+              greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+            )
+            const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+            const updated = prev.map((g) => {
+              const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+              return n ? mergeGreek(g, n) : g
+            })
+            const newEntries = greeks.filter(
+              (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+            )
+            return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          })
         })
-      }).catch(() => { })
+        .catch(() => {})
     })
   }, [fetchKey, greeksFetched])
 
@@ -332,16 +340,26 @@ export default function RollOptionDialog({
 
     // Fetch greeks directly from IB and update state
     fetchPairs.forEach(({ exp, strikes }) => {
-      window.ibApi.getOptionGreeks(symbol, exp, strikes).then((greeks) => {
-        if (greeks.length === 0) return
-        setAllTargetGreeks((prev) => {
-          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+      window.ibApi
+        .getOptionGreeks(symbol, exp, strikes)
+        .then((greeks) => {
+          if (greeks.length === 0) return
+          setAllTargetGreeks((prev) => {
+            const incoming = new Map<string, OptionGreek>(
+              greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+            )
+            const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+            const updated = prev.map((g) => {
+              const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+              return n ? mergeGreek(g, n) : g
+            })
+            const newEntries = greeks.filter(
+              (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+            )
+            return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          })
         })
-      }).catch(() => { })
+        .catch(() => {})
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -359,58 +377,83 @@ export default function RollOptionDialog({
 
       // Refresh stock price
       promises.push(
-        window.ibApi.getStockQuote(symbol).then((q) => {
-          const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
-          if (price && !cancelled) setStockPrice(price)
-        }).catch(() => { /* non-fatal */ })
+        window.ibApi
+          .getStockQuote(symbol)
+          .then((q) => {
+            const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+            if (price && !cancelled) setStockPrice(price)
+          })
+          .catch(() => {
+            /* non-fatal */
+          })
       )
 
       // Refresh current position greeks — all expiries in parallel
       for (const exp of currentExpiries) {
         const strikesForExp = currentCombos.filter((c) => c.expiry === exp).map((c) => c.strike)
         promises.push(
-          window.ibApi.getOptionGreeks(symbol, exp, strikesForExp).then((greeks) => {
-            const filtered = greeks.filter((g) => strikesForExp.includes(g.strike))
-            if (cancelled || filtered.length === 0) return
-            setCurrentGreeks((prev) => {
-              const incoming = new Map<string, OptionGreek>(filtered.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-              const newEntries = filtered.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          window.ibApi
+            .getOptionGreeks(symbol, exp, strikesForExp)
+            .then((greeks) => {
+              const filtered = greeks.filter((g) => strikesForExp.includes(g.strike))
+              if (cancelled || filtered.length === 0) return
+              setCurrentGreeks((prev) => {
+                const incoming = new Map<string, OptionGreek>(
+                  filtered.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+                )
+                const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+                const updated = prev.map((g) => {
+                  const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+                  return n ? mergeGreek(g, n) : g
+                })
+                const newEntries = filtered.filter(
+                  (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+                )
+                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+              })
             })
-          }).catch(() => { })
+            .catch(() => {})
         )
       }
 
       // Refresh target greeks — all expiries in parallel
       for (const exp of displayExpirations) {
         promises.push(
-          window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
-            if (cancelled || greeks.length === 0) return
-            setAllTargetGreeks((prev) => {
-              const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-              const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          window.ibApi
+            .getOptionGreeks(symbol, exp, displayStrikes)
+            .then((greeks) => {
+              if (cancelled || greeks.length === 0) return
+              setAllTargetGreeks((prev) => {
+                const incoming = new Map<string, OptionGreek>(
+                  greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+                )
+                const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+                const updated = prev.map((g) => {
+                  const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+                  return n ? mergeGreek(g, n) : g
+                })
+                const newEntries = greeks.filter(
+                  (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+                )
+                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+              })
             })
-          }).catch(() => { })
+            .catch(() => {})
         )
       }
 
       await Promise.all(promises)
     }
 
-    const interval = setInterval(() => { void refresh() }, 2000)
+    const interval = setInterval(() => {
+      void refresh()
+    }, 2000)
 
     return () => {
       cancelled = true
       clearInterval(interval)
     }
   }, [symbol, currentCombos, displayExpirations, displayStrikes])
-
-
 
   // Group target greeks by expiry
   const greeksByExpiry = useMemo(() => {
@@ -495,15 +538,10 @@ export default function RollOptionDialog({
     setTargetRight(best.right as 'C' | 'P')
   }, [allTargetGreeks, targetExpiry, targetStrike, positions, displayExpirations])
 
-
-
-
   if (!open) return null
 
   const targetMid = midPrice(targetGreek)
-  const dataReady =
-    displayExpirations.length > 0 &&
-    displayStrikes.length > 0
+  const dataReady = displayExpirations.length > 0 && displayStrikes.length > 0
 
   return (
     <div className="roll-dialog-overlay" onClick={onClose}>
@@ -518,7 +556,6 @@ export default function RollOptionDialog({
         <div className="roll-dialog-body">
           {errorMsg && <div className="roll-dialog-error">{errorMsg}</div>}
 
-
           {/* Selectors row */}
           {dataReady && (availableExpirations.length > 0 || availableStrikes.length > 0) && (
             <div className="roll-selectors-row">
@@ -529,7 +566,10 @@ export default function RollOptionDialog({
                     className="roll-expiry-dropdown-btn"
                     onClick={() => setExpiryDropdownOpen((v) => !v)}
                   >
-                    {selectedExpirations.length > 0 ? formatExpiry(selectedExpirations[0]) : '最後交易日'} ▾
+                    {selectedExpirations.length > 0
+                      ? formatExpiry(selectedExpirations[0])
+                      : '最後交易日'}{' '}
+                    ▾
                   </button>
                   {expiryDropdownOpen && (
                     <>
@@ -542,7 +582,10 @@ export default function RollOptionDialog({
                           <div
                             key={exp}
                             className={`roll-expiry-option ${selectedExpirations.includes(exp) ? 'checked' : ''}`}
-                            onClick={() => { toggleExpiry(exp); setExpiryDropdownOpen(false) }}
+                            onClick={() => {
+                              toggleExpiry(exp)
+                              setExpiryDropdownOpen(false)
+                            }}
                           >
                             {formatExpiry(exp)}
                           </div>
@@ -705,17 +748,29 @@ export default function RollOptionDialog({
           {/* Order entry section */}
           <div className="roll-order-section">
             {/* Quotes on the left */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13, flex: '0 0 auto' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '6px',
+                alignItems: 'center',
+                fontSize: 13,
+                flex: '0 0 auto'
+              }}
+            >
               <span className="roll-order-label">買價</span>
               <span className="roll-order-value roll-order-bid">
                 {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
               </span>
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              />
               <span className="roll-order-label">賣價</span>
               <span className="roll-order-value roll-order-ask">
                 {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
               </span>
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              />
               <span className="roll-order-label">中間價</span>
               <span className="roll-order-value roll-order-mid">
                 {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
@@ -732,17 +787,24 @@ export default function RollOptionDialog({
                   ) : (
                     <span style={{ color: '#15803d', marginRight: 6 }}>買入</span>
                   )}{' '}
-                  {symbol} {formatExpiry(targetExpiry)} {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)} {targetRight === 'C' ? 'CALL' : 'PUT'}
+                  {symbol} {formatExpiry(targetExpiry)}{' '}
+                  {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}{' '}
+                  {targetRight === 'C' ? 'CALL' : 'PUT'}
                 </span>
               )}
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              />
               <span className="roll-order-label">限價</span>
               <div className="roll-limit-wrapper" ref={limitInputRef}>
                 <input
                   type="text"
                   className="roll-order-input"
                   value={limitPrice}
-                  onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
+                  onChange={(e) => {
+                    userEditedPriceRef.current = true
+                    setLimitPrice(e.target.value)
+                  }}
                   placeholder="0.00"
                 />
               </div>
@@ -861,7 +923,11 @@ export default function RollOptionDialog({
                     { [pos.account]: qty }
                   )
                 }
-                onRollComplete?.(positions, { expiry: targetExpiry, strike: targetStrike, right: targetRight })
+                onRollComplete?.(positions, {
+                  expiry: targetExpiry,
+                  strike: targetStrike,
+                  right: targetRight
+                })
                 onClose()
               } catch (err: unknown) {
                 alert('展期下單失敗: ' + String(err))

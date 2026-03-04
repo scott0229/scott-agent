@@ -63,7 +63,6 @@ const formatGreek = (v: number): string => {
   return v.toFixed(3)
 }
 
-
 export default function OptionOrderDialog({
   open,
   onClose,
@@ -189,7 +188,7 @@ export default function OptionOrderDialog({
           if (cached) setStockPrice(cached)
         }
       })
-      .catch(() => { })
+      .catch(() => {})
 
     window.ibApi
       .getOptionChain(sym)
@@ -253,10 +252,7 @@ export default function OptionOrderDialog({
     [selectedExpirations, availableExpirations]
   )
   const displayStrikes = useMemo(
-    () =>
-      selectedStrikes
-        .filter((s) => availableStrikes.includes(s))
-        .sort((a, b) => a - b),
+    () => selectedStrikes.filter((s) => availableStrikes.includes(s)).sort((a, b) => a - b),
     [selectedStrikes, availableStrikes]
   )
 
@@ -312,16 +308,26 @@ export default function OptionOrderDialog({
 
     // Fetch greeks directly from IB and update state
     fetchPairs.forEach(({ exp, strikes }) => {
-      window.ibApi.getOptionGreeks(symbol, exp, strikes).then((greeks) => {
-        if (greeks.length === 0) return
-        setAllGreeks((prev) => {
-          const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-          const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-          const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-          const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-          return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+      window.ibApi
+        .getOptionGreeks(symbol, exp, strikes)
+        .then((greeks) => {
+          if (greeks.length === 0) return
+          setAllGreeks((prev) => {
+            const incoming = new Map<string, OptionGreek>(
+              greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+            )
+            const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+            const updated = prev.map((g) => {
+              const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+              return n ? mergeGreek(g, n) : g
+            })
+            const newEntries = greeks.filter(
+              (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+            )
+            return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          })
         })
-      }).catch(() => { })
+        .catch(() => {})
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -334,22 +340,34 @@ export default function OptionOrderDialog({
       const promises: Promise<void>[] = []
       for (const exp of displayExpirations) {
         promises.push(
-          window.ibApi.getOptionGreeks(symbol, exp, displayStrikes).then((greeks) => {
-            if (cancelled || greeks.length === 0) return
-            setAllGreeks((prev) => {
-              const incoming = new Map<string, OptionGreek>(greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g]))
-              const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
-              const updated = prev.map((g) => { const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`); return n ? mergeGreek(g, n) : g })
-              const newEntries = greeks.filter((g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`))
-              return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+          window.ibApi
+            .getOptionGreeks(symbol, exp, displayStrikes)
+            .then((greeks) => {
+              if (cancelled || greeks.length === 0) return
+              setAllGreeks((prev) => {
+                const incoming = new Map<string, OptionGreek>(
+                  greeks.map((g) => [`${g.expiry}_${g.strike}_${g.right}`, g])
+                )
+                const existingKeys = new Set(prev.map((g) => `${g.expiry}_${g.strike}_${g.right}`))
+                const updated = prev.map((g) => {
+                  const n = incoming.get(`${g.expiry}_${g.strike}_${g.right}`)
+                  return n ? mergeGreek(g, n) : g
+                })
+                const newEntries = greeks.filter(
+                  (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
+                )
+                return newEntries.length > 0 ? [...updated, ...newEntries] : updated
+              })
             })
-          }).catch(() => { })
+            .catch(() => {})
         )
       }
       await Promise.all(promises)
     }
 
-    const id = setInterval(() => { void refresh() }, 2000)
+    const id = setInterval(() => {
+      void refresh()
+    }, 2000)
 
     return () => {
       cancelled = true
@@ -592,7 +610,6 @@ export default function OptionOrderDialog({
               )}
             </div>
 
-
             {/* Filter buttons pushed to the right */}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
               {dataReady && availableExpirations.length > 0 && (
@@ -601,7 +618,10 @@ export default function OptionOrderDialog({
                     className="roll-expiry-dropdown-btn"
                     onClick={() => setExpiryDropdownOpen((v) => !v)}
                   >
-                    {selectedExpirations.length > 0 ? formatExpiry(selectedExpirations[0]) : '最後交易日'} ▾
+                    {selectedExpirations.length > 0
+                      ? formatExpiry(selectedExpirations[0])
+                      : '最後交易日'}{' '}
+                    ▾
                   </button>
                   {expiryDropdownOpen && (
                     <>
@@ -650,7 +670,7 @@ export default function OptionOrderDialog({
                       <div
                         className="roll-expiry-dropdown"
                         ref={(el) => {
-                          ; (
+                          ;(
                             strikeDropdownRef as React.MutableRefObject<HTMLDivElement | null>
                           ).current = el
                           if (el && !strikeScrolledRef.current && selectedStrikes.length > 0) {
@@ -684,7 +704,9 @@ export default function OptionOrderDialog({
                 </div>
               )}
               {stockPrice !== null && (
-                <span className="roll-stock-price" style={{ marginRight: 8 }}>股價 {stockPrice.toFixed(2)}</span>
+                <span className="roll-stock-price" style={{ marginRight: 8 }}>
+                  股價 {stockPrice.toFixed(2)}
+                </span>
               )}
               {dataReady && (
                 <button
@@ -731,11 +753,15 @@ export default function OptionOrderDialog({
                       {Array.from({ length: 10 }, (_, i) => (
                         <tr key={`loading-${i}`}>
                           {Array.from({ length: 4 }, (__, j) => (
-                            <td key={`c-${j}`} className="roll-chain-cell roll-chain-call">-</td>
+                            <td key={`c-${j}`} className="roll-chain-cell roll-chain-call">
+                              -
+                            </td>
                           ))}
                           <td className="roll-chain-strike">-</td>
                           {Array.from({ length: 4 }, (__, j) => (
-                            <td key={`p-${j}`} className="roll-chain-cell roll-chain-put">-</td>
+                            <td key={`p-${j}`} className="roll-chain-cell roll-chain-put">
+                              -
+                            </td>
                           ))}
                         </tr>
                       ))}
@@ -832,34 +858,63 @@ export default function OptionOrderDialog({
             <span className="roll-order-value roll-order-bid">
               {selGreek ? formatPrice(selGreek.bid) : '-'}
             </span>
-            <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
             <span className="roll-order-label">賣價</span>
             <span className="roll-order-value roll-order-ask">
               {selGreek ? formatPrice(selGreek.ask) : '-'}
             </span>
-            <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
             <span className="roll-order-label">中間價</span>
             <span className="roll-order-value roll-order-mid">
-              {selGreek && selGreek.bid > 0 && selGreek.ask > 0 ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2) : '-'}
+              {selGreek && selGreek.bid > 0 && selGreek.ask > 0
+                ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
+                : '-'}
             </span>
 
             {/* Selected contract summary + limit price pushed to right */}
             {selExpiry && selStrike !== null && selRight !== null && (
-              <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#333', fontWeight: 500 }}>
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  color: '#333',
+                  fontWeight: 500
+                }}
+              >
                 {action === 'BUY' ? (
                   <span style={{ color: '#15803d', fontWeight: 600 }}>買入</span>
                 ) : (
                   <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣出</span>
                 )}
-                <span>{symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}</span>
-                <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
+                <span>
+                  {symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}
+                </span>
+                <span
+                  style={{
+                    width: 1,
+                    height: 16,
+                    background: '#ccc',
+                    flexShrink: 0,
+                    margin: '0 6px'
+                  }}
+                />
                 <span className="roll-order-label">限價</span>
                 <div className="roll-limit-wrapper" ref={limitInputRef}>
                   <input
                     type="text"
                     className="roll-order-input"
                     value={limitPrice}
-                    onChange={(e) => { userEditedPriceRef.current = true; setLimitPrice(e.target.value) }}
+                    onChange={(e) => {
+                      userEditedPriceRef.current = true
+                      setLimitPrice(e.target.value)
+                    }}
                     placeholder="0.00"
                   />
                 </div>
@@ -1057,19 +1112,19 @@ export default function OptionOrderDialog({
             onClick={
               orderSubmitted
                 ? () => {
-                  setSelExpiry('')
-                  setSelStrike(null)
-                  setSelRight(null)
-                  setLimitPrice('')
-                  const initQty: Record<string, string> = {}
-                  accounts.forEach((a) => {
-                    initQty[a.accountId] = ''
-                  })
-                  setQtys(initQty)
-                  setCheckedAccounts({})
-                  setOrderStatuses({})
-                  setOrderSubmitted(false)
-                }
+                    setSelExpiry('')
+                    setSelStrike(null)
+                    setSelRight(null)
+                    setLimitPrice('')
+                    const initQty: Record<string, string> = {}
+                    accounts.forEach((a) => {
+                      initQty[a.accountId] = ''
+                    })
+                    setQtys(initQty)
+                    setCheckedAccounts({})
+                    setOrderStatuses({})
+                    setOrderSubmitted(false)
+                  }
                 : handleSubmit
             }
           >

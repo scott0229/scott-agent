@@ -103,7 +103,6 @@ body {
   -webkit-app-region: no-drag;
 }
 
-
 .upload-prices-btn {
   display: inline-flex;
   align-items: center;
@@ -117,7 +116,9 @@ body {
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    opacity 0.15s;
   -webkit-app-region: no-drag;
 }
 
@@ -209,7 +210,6 @@ body {
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -1340,7 +1340,6 @@ input[type='number']::-webkit-outer-spin-button {
   font-weight: 600;
 }
 
-
 .roll-dialog-subtitle {
   font-size: 13px;
   color: var(--text-muted);
@@ -1758,7 +1757,7 @@ input[type='number']::-webkit-outer-spin-button {
   display: inline-block;
 }
 
-.roll-order-label+.roll-order-value+.roll-order-label {
+.roll-order-label + .roll-order-value + .roll-order-label {
   margin-left: 6px;
 }
 
@@ -2627,7 +2626,9 @@ input[type='number']::-webkit-outer-spin-button {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .upload-dialog-close:hover {
@@ -2733,7 +2734,9 @@ input[type='number']::-webkit-outer-spin-button {
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .upload-dialog-done-btn:hover {
@@ -2751,7 +2754,10 @@ input[type='number']::-webkit-outer-spin-button {
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .upload-dialog-cancel-btn:hover {

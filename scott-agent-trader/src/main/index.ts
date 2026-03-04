@@ -27,7 +27,6 @@ import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
 
-
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
@@ -140,6 +139,18 @@ function setupIpcHandlers(): void {
     return getHistoricalData(req)
   })
 
+  ipcMain.on('renderer-log', (_event, ...args) => {
+    console.log('[RENDERER]', ...args)
+    const fs = require('fs')
+    const path = require('path')
+    try {
+      fs.appendFileSync(
+        path.join(process.cwd(), 'debugroll.log'),
+        '[RENDERER] ' + args.join(' ') + '\n'
+      )
+    } catch (e) {}
+  })
+
   // Options
   ipcMain.handle('ib:getOptionChain', async (_event, symbol: string) => {
     return requestOptionChain(symbol)
@@ -151,8 +162,6 @@ function setupIpcHandlers(): void {
       return requestOptionGreeks(symbol, expiry, strikes, exchange)
     }
   )
-
-
 
   ipcMain.handle(
     'ib:placeOptionBatchOrders',
@@ -196,14 +205,24 @@ function setupIpcHandlers(): void {
 
   // Settings (proxy through main process to bypass CORS)
   const SETTINGS_TARGETS = [
-    { label: 'staging', url: 'https://staging.scott-agent.com/api/trader-settings', apiKey: 'MZ12MUOIJXFNK7LZ' },
-    { label: 'production', url: 'https://scott-agent.com/api/trader-settings', apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07' }
+    {
+      label: 'staging',
+      url: 'https://staging.scott-agent.com/api/trader-settings',
+      apiKey: 'MZ12MUOIJXFNK7LZ'
+    },
+    {
+      label: 'production',
+      url: 'https://scott-agent.com/api/trader-settings',
+      apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07'
+    }
   ]
 
   // Track detected group so settings are per-group
   let detectedGroup: string = 'advisor'
   let resolveGroupReady: () => void
-  const groupReady = new Promise<void>((r) => { resolveGroupReady = r })
+  const groupReady = new Promise<void>((r) => {
+    resolveGroupReady = r
+  })
   // Auto-resolve after 5s in case group detection never fires
   setTimeout(() => resolveGroupReady(), 5000)
 
@@ -216,7 +235,12 @@ function setupIpcHandlers(): void {
       console.log('[settings:get] url=', url, 'group=', detectedGroup, 'target=', t.label)
       const res = await fetch(url)
       const json = await res.json()
-      console.log('[settings:get] response margin_limit=', json?.settings?.margin_limit, 'watch_symbols=', json?.settings?.watch_symbols)
+      console.log(
+        '[settings:get] response margin_limit=',
+        json?.settings?.margin_limit,
+        'watch_symbols=',
+        json?.settings?.watch_symbols
+      )
       return json
     } catch {
       return { settings: null }
@@ -281,72 +305,79 @@ function setupIpcHandlers(): void {
     }
   ]
 
-  ipcMain.handle('prices:uploadSymbol', async (_event, symbol: string, target?: 'staging' | 'production') => {
-    const effectiveTarget = target || 'staging'
-    const targets = UPLOAD_TARGETS.filter((t) =>
-      t.label === effectiveTarget
-    )
-    try {
-      const bars = await getHistoricalData({
-        symbol,
-        durationString: '1 Y',
-        barSizeSetting: '1 day',
-        useRTH: 1,
-        whatToShow: 'TRADES'
-      })
-
-      const rows: { symbol: string; date: number; price: number }[] = bars.map((bar) => {
-        const t = String(bar.time)
-        const n = Number(t)
-        let dateSec: number
-        if (!isNaN(n) && t.length > 5) {
-          dateSec = n
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
-          dateSec = Math.floor(new Date(t + 'T00:00:00Z').getTime() / 1000)
-        } else {
-          dateSec = Math.floor(new Date(t).getTime() / 1000)
-        }
-        return { symbol, date: dateSec, price: bar.close }
-      })
-
-      if (rows.length === 0) return { success: false, error: '無歷史資料' }
-
-      const body = JSON.stringify({ rows })
-
-      // Upload to selected target(s) in parallel
-      const results = await Promise.allSettled(
-        targets.map(async (t) => {
-          const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
-          const bulkUrl = `${t.bulk}?group=${encodeURIComponent(detectedGroup)}`
-          const res = await fetch(bulkUrl, { method: 'POST', headers: hdrs, body })
-          if (!res.ok) throw new Error(`${t.label}: ${await res.text().catch(() => res.statusText)}`)
-          return t.label
+  ipcMain.handle(
+    'prices:uploadSymbol',
+    async (_event, symbol: string, target?: 'staging' | 'production') => {
+      const effectiveTarget = target || 'staging'
+      const targets = UPLOAD_TARGETS.filter((t) => t.label === effectiveTarget)
+      try {
+        const bars = await getHistoricalData({
+          symbol,
+          durationString: '1 Y',
+          barSizeSetting: '1 day',
+          useRTH: 1,
+          whatToShow: 'TRADES'
         })
-      )
 
-      const failures = results.filter((r) => r.status === 'rejected')
-      if (failures.length === targets.length) {
-        const msgs = failures.map((r) => (r as PromiseRejectedResult).reason?.message).join('; ')
-        return { success: false, error: `Upload failed: ${msgs}` }
-      }
-      if (failures.length > 0) {
-        failures.forEach((r) => console.warn('[upload] partial fail:', (r as PromiseRejectedResult).reason?.message))
-      }
+        const rows: { symbol: string; date: number; price: number }[] = bars.map((bar) => {
+          const t = String(bar.time)
+          const n = Number(t)
+          let dateSec: number
+          if (!isNaN(n) && t.length > 5) {
+            dateSec = n
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+            dateSec = Math.floor(new Date(t + 'T00:00:00Z').getTime() / 1000)
+          } else {
+            dateSec = Math.floor(new Date(t).getTime() / 1000)
+          }
+          return { symbol, date: dateSec, price: bar.close }
+        })
 
-      // Clear cache on selected environments
-      for (const t of targets) {
-        const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
-        const cacheUrl = `${t.clearCache}?group=${encodeURIComponent(detectedGroup)}`
-        fetch(cacheUrl, { method: 'POST', headers: hdrs, body: JSON.stringify({ symbols: [symbol] }) })
-          .catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))
-      }
+        if (rows.length === 0) return { success: false, error: '無歷史資料' }
 
-      return { success: true, count: rows.length }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      return { success: false, error: msg }
+        const body = JSON.stringify({ rows })
+
+        // Upload to selected target(s) in parallel
+        const results = await Promise.allSettled(
+          targets.map(async (t) => {
+            const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
+            const bulkUrl = `${t.bulk}?group=${encodeURIComponent(detectedGroup)}`
+            const res = await fetch(bulkUrl, { method: 'POST', headers: hdrs, body })
+            if (!res.ok)
+              throw new Error(`${t.label}: ${await res.text().catch(() => res.statusText)}`)
+            return t.label
+          })
+        )
+
+        const failures = results.filter((r) => r.status === 'rejected')
+        if (failures.length === targets.length) {
+          const msgs = failures.map((r) => (r as PromiseRejectedResult).reason?.message).join('; ')
+          return { success: false, error: `Upload failed: ${msgs}` }
+        }
+        if (failures.length > 0) {
+          failures.forEach((r) =>
+            console.warn('[upload] partial fail:', (r as PromiseRejectedResult).reason?.message)
+          )
+        }
+
+        // Clear cache on selected environments
+        for (const t of targets) {
+          const hdrs = { 'Content-Type': 'application/json', Authorization: `Bearer ${t.apiKey}` }
+          const cacheUrl = `${t.clearCache}?group=${encodeURIComponent(detectedGroup)}`
+          fetch(cacheUrl, {
+            method: 'POST',
+            headers: hdrs,
+            body: JSON.stringify({ symbols: [symbol] })
+          }).catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))
+        }
+
+        return { success: true, count: rows.length }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { success: false, error: msg }
+      }
     }
-  })
+  )
 }
 
 // === App Lifecycle ===

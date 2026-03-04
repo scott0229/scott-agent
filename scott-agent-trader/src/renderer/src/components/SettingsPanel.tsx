@@ -56,7 +56,9 @@ export default function SettingsPanel({
   onSetD1Target
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
-  useEffect(() => { setLimitInput(String(marginLimit)) }, [marginLimit])
+  useEffect(() => {
+    setLimitInput(String(marginLimit))
+  }, [marginLimit])
   const [showRisk, setShowRisk] = useState(true)
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)

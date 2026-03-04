@@ -417,17 +417,22 @@ export default function CloseOptionDialog({
             const actionColor = firstPos && firstPos.quantity < 0 ? '#1a6b3a' : '#8b1a1a'
 
             return (
-              <div
-                key={key}
-                className="order-form"
-                style={{ marginBottom: '20px' }}
-              >
+              <div key={key} className="order-form" style={{ marginBottom: '20px' }}>
                 <div
                   style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}
                 >
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', width: '220px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '13px', color: actionColor }}>{action}</span>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        width: '220px'
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: '13px', color: actionColor }}>
+                        {action}
+                      </span>
                       <span style={{ fontWeight: 600, fontSize: '13px' }}>{c.label}</span>
                     </span>
                     <span className="roll-order-label">限價</span>
@@ -456,10 +461,22 @@ export default function CloseOptionDialog({
                     )}
                   </div>
                   {quote && (
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13, flex: '0 0 auto' }}>
-                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '6px',
+                        alignItems: 'center',
+                        fontSize: 13,
+                        flex: '0 0 auto'
+                      }}
+                    >
+                      <span className="roll-order-value roll-order-bid">
+                        {quote.bid.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
-                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="roll-order-value roll-order-ask">
+                        {quote.ask.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">中間價</span>
                       <span className="roll-order-value roll-order-mid">

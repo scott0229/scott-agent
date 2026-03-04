@@ -180,21 +180,21 @@ export function QuantitativeChart(): React.JSX.Element {
     const bbUpData = sourceBars
       .map((b, i) => ({ time: parseTimeVal(b) as Time, value: bbUpper[i] }))
       .filter((d) => d.value !== null && !isNaN(d.value as number)) as {
-        time: Time
-        value: number
-      }[]
+      time: Time
+      value: number
+    }[]
     const bbLowData = sourceBars
       .map((b, i) => ({ time: parseTimeVal(b) as Time, value: bbLower[i] }))
       .filter((d) => d.value !== null && !isNaN(d.value as number)) as {
-        time: Time
-        value: number
-      }[]
+      time: Time
+      value: number
+    }[]
     const emaData = sourceBars
       .map((b, i) => ({ time: parseTimeVal(b) as Time, value: ema[i] }))
       .filter((d) => d.value !== null && !isNaN(d.value as number)) as {
-        time: Time
-        value: number
-      }[]
+      time: Time
+      value: number
+    }[]
 
     bbUpRef.current.setData(bbUpData)
     bbLowRef.current.setData(bbLowData)

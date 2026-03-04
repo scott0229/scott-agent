@@ -91,8 +91,6 @@ export function setGreeksCache(key: string, greeks: OptionGreek[]): void {
   }
 }
 
-
-
 /**
  * Look up the tradingClass for a given symbol+expiry from the cached chain params.
  * Returns undefined if not found (chain not yet cached or expiry not in chain).
@@ -101,7 +99,9 @@ export function setGreeksCache(key: string, greeks: OptionGreek[]): void {
 export function getTradingClass(symbol: string, expiry: string): string | undefined {
   const cached = chainParamsCache.get(symbol)
   if (!cached) return undefined
-  const preferred = cached.params.find((p) => p.exchange === 'SMART' && p.expirations.includes(expiry))
+  const preferred = cached.params.find(
+    (p) => p.exchange === 'SMART' && p.expirations.includes(expiry)
+  )
   const fallback = cached.params.find((p) => p.expirations.includes(expiry))
   return (preferred || fallback)?.tradingClass
 }
@@ -117,7 +117,9 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
   // Return cached chain if still fresh (avoids 3-4s IB round-trip on every dialog open)
   const cached = chainParamsCache.get(symbol)
   if (cached && Date.now() - cached.fetchedAt < CHAIN_CACHE_TTL_MS) {
-    console.log(`[IB] Option chain cache hit for ${symbol} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`)
+    console.log(
+      `[IB] Option chain cache hit for ${symbol} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`
+    )
     return cached.params
   }
 
@@ -180,8 +182,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
     console.log(`[IB] Requesting option chain for ${symbol} (conId: ${conId}, reqId: ${reqId})`)
   })
 }
-
-
 
 /**
  * Get the contract ID for an underlying stock symbol.
@@ -248,7 +248,9 @@ export async function requestOptionGreeks(
     const strikeSet = new Set(strikes)
     const filtered = cached.greeks.filter((g) => strikeSet.has(g.strike))
     const withData = filtered.filter((g) => g.bid > 0 || g.ask > 0 || g.last > 0)
-    console.log(`[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${strikes.length * 2} matched, ${withData.length} with data)`)
+    console.log(
+      `[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${strikes.length * 2} matched, ${withData.length} with data)`
+    )
     return filtered
   }
   console.log(`[IB] Greeks fetching from IB: ${symbol} ${expiry} (${strikes.length} strikes)`)

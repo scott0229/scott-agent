@@ -241,7 +241,9 @@ async function resolveOptionConId(
 
     // Resolve tradingClass from chain cache to disambiguate QQQ weekly vs monthly options
     const tradingClass = getTradingClass(symbol, expiry)
-    console.log(`[IB] resolveOptionConId: ${symbol} ${expiry} ${strike}${right}, tradingClass=${tradingClass ?? 'none'}`)
+    console.log(
+      `[IB] resolveOptionConId: ${symbol} ${expiry} ${strike}${right}, tradingClass=${tradingClass ?? 'none'}`
+    )
 
     const contract: Contract = {
       symbol,
@@ -593,14 +595,16 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         }
       }
 
-      const comboLegs = contract.secType === 'BAG'
-        ? ((contract as any).comboLegs as ComboLeg[] | undefined)?.map((leg) => ({
-            conId: leg.conId ?? 0,
-            ratio: leg.ratio ?? 1,
-            action: typeof leg.action === 'string' ? leg.action : (leg.action === 1 ? 'BUY' : 'SELL'),
-            exchange: (leg.exchange as string) || 'SMART'
-          }))
-        : undefined
+      const comboLegs =
+        contract.secType === 'BAG'
+          ? ((contract as any).comboLegs as ComboLeg[] | undefined)?.map((leg) => ({
+              conId: leg.conId ?? 0,
+              ratio: leg.ratio ?? 1,
+              action:
+                typeof leg.action === 'string' ? leg.action : leg.action === 1 ? 'BUY' : 'SELL',
+              exchange: (leg.exchange as string) || 'SMART'
+            }))
+          : undefined
 
       const orderEntry: OpenOrder = {
         orderId,

@@ -86,6 +86,8 @@ const ibApi = {
     ipcRenderer.invoke('prices:uploadSymbol', symbol, target),
 
   // Cleanup
+  log: (...args: any[]) => ipcRenderer.send('renderer-log', ...args),
+
   removeAllListeners: (): void => {
     ipcRenderer.removeAllListeners('ib:connectionStatus')
     ipcRenderer.removeAllListeners('ib:orderStatus')

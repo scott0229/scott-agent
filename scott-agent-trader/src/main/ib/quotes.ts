@@ -99,7 +99,9 @@ function _fetchOptionQuote(
         resolved = true
         cleanup()
         const price = finalize()
-        console.log(`[IB] Option quote timeout for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`)
+        console.log(
+          `[IB] Option quote timeout for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`
+        )
         if (price > 0) optionQuoteCache[key] = { price, ts: Date.now() }
         resolve(price)
       }
@@ -124,7 +126,9 @@ function _fetchOptionQuote(
       clearTimeout(timeout)
       cleanup()
       const price = finalize()
-      console.log(`[IB] Option snapshot end for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`)
+      console.log(
+        `[IB] Option snapshot end for ${key}: last=${last} close=${close} bid=${bid} ask=${ask} → ${price}`
+      )
       if (price > 0) optionQuoteCache[key] = { price, ts: Date.now() }
       resolve(price)
     }
