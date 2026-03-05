@@ -671,7 +671,8 @@ export async function POST(request: NextRequest) {
                     // Check if this stock position is the result of an assignment
                     const relatedAssignment = parsed.optionTrades.find(t =>
                         t.underlying === pos.symbol &&
-                        t.tradeAction === 'ASSIGN'
+                        t.tradeAction === 'ASSIGN' &&
+                        t.strikePrice === pos.costPrice
                     );
                     const source = relatedAssignment ? 'assigned' : null;
 
