@@ -245,7 +245,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 if (!isColumnVisible(user)) return null;
                                 const colKey = user.user_id || user.id.toString();
                                 return (
-                                    <td key={user.id} className="text-center min-w-[140px] px-2 py-1 bg-muted/40">
+                                    <td key={user.id} className={cn("text-center px-2 py-1 bg-muted/40", visibleUsers.length > 9 ? "min-w-[100px]" : "min-w-[140px]")}>
                                         <div className="inline-flex items-center justify-center gap-0">
                                             <button
                                                 onClick={() => toggleColumn(colKey)}
