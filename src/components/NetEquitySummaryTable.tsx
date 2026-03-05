@@ -220,7 +220,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                     {/* Header: Users */}
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 px-2 w-[180px] sticky left-0 bg-muted/40 z-10 border-r">
+                            <td className="py-1 px-2 w-[180px] sticky left-0 whitespace-nowrap bg-muted/40 z-10 border-r">
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
@@ -270,7 +270,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 0. Last Updated Date */}
                         {visibleRows.lastUpdated && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="lastUpdated" visible={visibleRows.lastUpdated} />
                                     最後更新日
                                 </td>
@@ -290,7 +290,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 1. Current Net Equity */}
                         {visibleRows.currentNetEquity && (
                             <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="currentNetEquity" visible={visibleRows.currentNetEquity} />
                                     當前淨值
                                 </td>
@@ -305,7 +305,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 2. Initial Net Equity */}
                         {visibleRows.initialNetEquity && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="initialNetEquity" visible={visibleRows.initialNetEquity} />
                                     年初淨值
                                 </td>
@@ -320,7 +320,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 3. Transfer Record */}
                         {visibleRows.transferRecord && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="transferRecord" visible={visibleRows.transferRecord} />
                                     存款和取款
                                 </td>
@@ -335,7 +335,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 4. Initial Cost */}
                         {visibleRows.initialCost && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="initialCost" visible={visibleRows.initialCost} />
                                     初始成本
                                 </td>
@@ -350,7 +350,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 5. Net Profit */}
                         {visibleRows.netProfit && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="netProfit" visible={visibleRows.netProfit} />
                                     淨利潤
                                 </td>
@@ -375,7 +375,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 6. Return Rate */}
                         {visibleRows.returnRate && (
                             <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="returnRate" visible={visibleRows.returnRate} />
                                     報酬率
                                 </td>
@@ -390,7 +390,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 8. Max Drawdown */}
                         {visibleRows.maxDrawdown && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-1 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-1 border-r">
                                     <RowToggleIcon rowKey="maxDrawdown" visible={visibleRows.maxDrawdown} />
                                     最大回撤
                                 </td>
@@ -405,7 +405,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 9. Annualized Return */}
                         {visibleRows.annualizedReturn && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="annualizedReturn" visible={visibleRows.annualizedReturn} />
                                     年化報酬率
                                 </td>
@@ -420,7 +420,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 10. Annualized StdDev */}
                         {visibleRows.annualizedStdDev && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="annualizedStdDev" visible={visibleRows.annualizedStdDev} />
                                     年化標準差
                                 </td>
@@ -435,7 +435,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 11. Sharpe Ratio */}
                         {visibleRows.sharpeRatio && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="sharpeRatio" visible={visibleRows.sharpeRatio} />
                                     夏普值
                                 </td>
@@ -450,7 +450,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 12. New High Count */}
                         {visibleRows.newHighCount && (
                             <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="newHighCount" visible={visibleRows.newHighCount} />
                                     新高次數
                                 </td>
@@ -465,7 +465,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 13. New High Freq */}
                         {visibleRows.newHighFreq && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="newHighFreq" visible={visibleRows.newHighFreq} />
                                     新高頻率
                                 </td>
@@ -480,7 +480,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 13.5. Potential Margin */}
                         {visibleRows.potentialMargin && (
                             <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="potentialMargin" visible={visibleRows.potentialMargin} />
                                     潛在融資
                                 </td>
@@ -501,7 +501,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 14. Cash Balance */}
                         {visibleRows.cashBalance && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="cashBalance" visible={visibleRows.cashBalance} />
                                     帳戶現金
                                 </td>
@@ -526,7 +526,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                         {/* 14.5. Total Interest */}
                         {visibleRows.totalInterest && (
                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-white z-10 border-r">
                                     <RowToggleIcon rowKey="totalInterest" visible={visibleRows.totalInterest} />
                                     利息總合
                                 </td>
@@ -555,7 +555,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             const bgClass = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                             return (
                                 <tr key={rowKey} className={`border-t hover:bg-secondary/20 ${bgClass}`}>
-                                    <td className={`h-7 py-1 px-2 font-medium sticky left-0 ${bgClass} z-10 border-r`}>
+                                    <td className={`h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap ${bgClass} z-10 border-r`}>
                                         <RowToggleIcon rowKey={rowKey} visible={isVisible} />
                                         持股{chineseNumerals[idx] || (idx + 1)}
                                     </td>
