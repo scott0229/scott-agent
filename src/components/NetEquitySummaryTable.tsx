@@ -220,7 +220,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                     {/* Header: Users */}
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 px-2 w-[180px] sticky left-0 whitespace-nowrap bg-muted/40 z-10 border-r">
+                            <td className="py-1 px-2 w-[124px] sticky left-0 whitespace-nowrap bg-muted/40 z-10 border-r">
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
