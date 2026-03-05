@@ -313,11 +313,11 @@ function parseIBStatement(html: string) {
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
                 let tradeAction = 'O';
-                if (actionCode === 'A;C') {
+                if (actionCode.includes('A;C') || actionCode.includes('C;A')) {
                     tradeAction = 'ASSIGN';
-                } else if (actionCode === 'C;Ep') {
+                } else if (actionCode.includes('Ep') || actionCode.includes('EP')) {
                     tradeAction = 'EXPIRE';
-                } else if (actionCode.includes('C')) {
+                } else if (actionCode.includes('C') && !actionCode.includes('O')) {
                     tradeAction = 'C';
                 }
 
