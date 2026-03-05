@@ -130,6 +130,7 @@ function parseIBStockTrades(html: string): {
         // Skip header/currency/subtotal rows
         if (!symbol || !dateTime || symbol === 'USD' || symbol.startsWith('總數') || symbol === '代碼') continue;
 
+        const codes = tradeCode.split(';').map(c => c.trim());
         trades.push({
             symbol,
             dateTime,
@@ -138,9 +139,9 @@ function parseIBStockTrades(html: string): {
             closePrice,
             realizedPnL,
             tradeCode,
-            isOpen: tradeCode.includes('O'),
-            isClose: tradeCode.includes('C'),
-            isAssignment: tradeCode.includes('A'),
+            isOpen: codes.includes('O'),
+            isClose: codes.includes('C'),
+            isAssignment: codes.includes('A'),
         });
     }
 
