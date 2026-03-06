@@ -150,6 +150,14 @@ export default function AccountOverview({
     setShowCloseOptionDialog(false)
   }, [connected])
 
+  // Reset filters when switching between 帳戶總覽 / 交易群組 tabs
+  useEffect(() => {
+    setFilterSymbol('')
+    setSelectMode(false)
+    setSelectedPositions(new Set())
+    setShowGroupNameInput(false)
+  }, [groupViewMode])
+
   // Watch positions: when pending roll's new positions appear,
   // update group posKeys using the actual new posKey reported by IB.
   // NOTE: We no longer require old positions to disappear first, because with
