@@ -89,6 +89,7 @@ export default function OptionOrderDialog({
   const [strikeDropdownOpen, setStrikeDropdownOpen] = useState(false)
   const [chainHidden, setChainHidden] = useState(false)
 
+
   const fetchedExpiriesRef = useRef<Set<string>>(new Set())
   const fetchedStrikesRef = useRef<Set<number>>(new Set())
   const strikeDropdownRef = useRef<HTMLDivElement>(null)
@@ -188,7 +189,7 @@ export default function OptionOrderDialog({
           if (cached) setStockPrice(cached)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
 
     window.ibApi
       .getOptionChain(sym)
@@ -209,13 +210,38 @@ export default function OptionOrderDialog({
     return Array.from(set).sort()
   }, [chainParams])
 
+  // Detect if .5 strikes are "extra" by checking the most common spacing
+  const hasExtraDecimals = useMemo(() => {
+    const allStrikes = new Set<number>()
+    chainParams.forEach((p) => p.strikes.forEach((s) => allStrikes.add(s)))
+    const sorted = Array.from(allStrikes).sort((a, b) => a - b)
+    if (sorted.length < 2) return false
+    const diffs = new Map<number, number>()
+    for (let i = 1; i < sorted.length; i++) {
+      const d = Math.round((sorted[i] - sorted[i - 1]) * 100) / 100
+      diffs.set(d, (diffs.get(d) || 0) + 1)
+    }
+    let modeVal = 0
+    let modeCount = 0
+    diffs.forEach((count, val) => {
+      if (count > modeCount) {
+        modeVal = val
+        modeCount = count
+      }
+    })
+    return modeVal >= 1.0
+  }, [chainParams])
+
   const availableStrikes = useMemo(() => {
     const set = new Set<number>()
     chainParams.forEach((p) => p.strikes.forEach((s) => set.add(s)))
     return Array.from(set)
-      .filter((s) => (s * 2) % 1 === 0)
+      .filter((s) => {
+        if (hasExtraDecimals) return s % 1 === 0
+        return (s * 2) % 1 === 0
+      })
       .sort((a, b) => a - b)
-  }, [chainParams])
+  }, [chainParams, hasExtraDecimals])
 
   // ── Auto-select first expiration ──────────────────────────────────────
   useEffect(() => {
@@ -235,14 +261,20 @@ export default function OptionOrderDialog({
       lastStrikeCenterRef.current = rounded
       const idx = availableStrikes.findIndex((s) => s >= stockPrice)
       const center = idx === -1 ? availableStrikes.length - 1 : idx
-      const start = Math.max(0, center - 5)
-      const end = Math.min(availableStrikes.length, center + 6)
-      setSelectedStrikes(availableStrikes.slice(start, end).slice(0, 10))
+      const total = Math.min(10, availableStrikes.length)
+      let start = Math.max(0, center - Math.floor(total / 2))
+      let end = start + total
+      if (end > availableStrikes.length) {
+        end = availableStrikes.length
+        start = Math.max(0, end - total)
+      }
+      setSelectedStrikes(availableStrikes.slice(start, end))
     } else if (selectedStrikes.length === 0) {
       // fallback: pick 10 from the middle
       const mid = Math.floor(availableStrikes.length / 2)
-      const start = Math.max(0, mid - 5)
-      const end = Math.min(availableStrikes.length, start + 10)
+      const total = Math.min(10, availableStrikes.length)
+      const start = Math.max(0, mid - Math.floor(total / 2))
+      const end = Math.min(availableStrikes.length, start + total)
       setSelectedStrikes(availableStrikes.slice(start, end))
     }
   }, [availableStrikes, stockPrice])
@@ -327,7 +359,7 @@ export default function OptionOrderDialog({
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => {})
+        .catch(() => { })
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -359,7 +391,7 @@ export default function OptionOrderDialog({
                 return newEntries.length > 0 ? [...updated, ...newEntries] : updated
               })
             })
-            .catch(() => {})
+            .catch(() => { })
         )
       }
       await Promise.all(promises)
@@ -612,7 +644,7 @@ export default function OptionOrderDialog({
 
             {/* Filter buttons pushed to the right */}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {dataReady && availableExpirations.length > 0 && (
+              {dataReady && availableExpirations.length > 0 ? (
                 <div className="roll-expiry-selector">
                   <button
                     className="roll-expiry-dropdown-btn"
@@ -646,6 +678,8 @@ export default function OptionOrderDialog({
                     </>
                   )}
                 </div>
+              ) : (
+                <button className="roll-expiry-dropdown-btn" disabled style={{ opacity: 0.5 }}>載入中…</button>
               )}
               {dataReady && availableStrikes.length > 0 && (
                 <div className="roll-expiry-selector">
@@ -670,7 +704,7 @@ export default function OptionOrderDialog({
                       <div
                         className="roll-expiry-dropdown"
                         ref={(el) => {
-                          ;(
+                          ; (
                             strikeDropdownRef as React.MutableRefObject<HTMLDivElement | null>
                           ).current = el
                           if (el && !strikeScrolledRef.current && selectedStrikes.length > 0) {
@@ -708,14 +742,12 @@ export default function OptionOrderDialog({
                   股價 {stockPrice.toFixed(2)}
                 </span>
               )}
-              {dataReady && (
-                <button
-                  className="roll-expiry-dropdown-btn"
-                  onClick={() => setChainHidden((v) => !v)}
-                >
-                  {chainHidden ? '顯示期權鏈 ▼' : '隱藏期權鏈 ▲'}
-                </button>
-              )}
+              <button
+                className="roll-expiry-dropdown-btn"
+                onClick={() => setChainHidden((v) => !v)}
+              >
+                {chainHidden ? '顯示期權鏈 ▼' : '隱藏期權鏈 ▲'}
+              </button>
             </div>
           </div>
 
@@ -1112,19 +1144,19 @@ export default function OptionOrderDialog({
             onClick={
               orderSubmitted
                 ? () => {
-                    setSelExpiry('')
-                    setSelStrike(null)
-                    setSelRight(null)
-                    setLimitPrice('')
-                    const initQty: Record<string, string> = {}
-                    accounts.forEach((a) => {
-                      initQty[a.accountId] = ''
-                    })
-                    setQtys(initQty)
-                    setCheckedAccounts({})
-                    setOrderStatuses({})
-                    setOrderSubmitted(false)
-                  }
+                  setSelExpiry('')
+                  setSelStrike(null)
+                  setSelRight(null)
+                  setLimitPrice('')
+                  const initQty: Record<string, string> = {}
+                  accounts.forEach((a) => {
+                    initQty[a.accountId] = ''
+                  })
+                  setQtys(initQty)
+                  setCheckedAccounts({})
+                  setOrderStatuses({})
+                  setOrderSubmitted(false)
+                }
                 : handleSubmit
             }
           >

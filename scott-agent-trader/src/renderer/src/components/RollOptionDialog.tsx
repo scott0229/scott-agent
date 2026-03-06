@@ -96,6 +96,7 @@ export default function RollOptionDialog({
   const [errorMsg, setErrorMsg] = useState('')
   const [greeksFetched, setGreeksFetched] = useState(false)
   const [stockPrice, setStockPrice] = useState<number | null>(null)
+  const stockPriceSymbolRef = useRef('')
   const [selectedExpirations, setSelectedExpirations] = useState<string[]>([])
   const [expiryDropdownOpen, setExpiryDropdownOpen] = useState(false)
   const [selectedStrikes, setSelectedStrikes] = useState<number[]>([])
@@ -104,6 +105,7 @@ export default function RollOptionDialog({
   const fetchedStrikesRef = useRef<Set<number>>(new Set())
   const strikeDropdownRef = useRef<HTMLDivElement>(null)
   const [chainHidden, setChainHidden] = useState(false)
+
   const [limitPrice, setLimitPrice] = useState('')
   const limitInputRef = useRef<HTMLInputElement>(null)
   const userEditedPriceRef = useRef(false)
@@ -165,14 +167,39 @@ export default function RollOptionDialog({
     return filtered
   }, [chainParams, maxCurrentExpiry])
 
+  // Detect if .5 strikes are "extra" by checking the most common spacing
+  const hasExtraDecimals = useMemo(() => {
+    const allStrikes = new Set<number>()
+    chainParams.forEach((p) => p.strikes.forEach((s) => allStrikes.add(s)))
+    const sorted = Array.from(allStrikes).sort((a, b) => a - b)
+    if (sorted.length < 2) return false
+    const diffs = new Map<number, number>()
+    for (let i = 1; i < sorted.length; i++) {
+      const d = Math.round((sorted[i] - sorted[i - 1]) * 100) / 100
+      diffs.set(d, (diffs.get(d) || 0) + 1)
+    }
+    let modeVal = 0
+    let modeCount = 0
+    diffs.forEach((count, val) => {
+      if (count > modeCount) {
+        modeVal = val
+        modeCount = count
+      }
+    })
+    return modeVal >= 1.0
+  }, [chainParams])
+
   // Available strikes from chain
   const availableStrikes = useMemo(() => {
     const set = new Set<number>()
     chainParams.forEach((p) => p.strikes.forEach((s) => set.add(s)))
     return Array.from(set)
-      .filter((s) => (s * 2) % 1 === 0)
+      .filter((s) => {
+        if (hasExtraDecimals) return s % 1 === 0
+        return (s * 2) % 1 === 0
+      })
       .sort((a, b) => a - b)
-  }, [chainParams])
+  }, [chainParams, hasExtraDecimals])
 
   // Auto-select first expiration when available
   useEffect(() => {
@@ -186,23 +213,21 @@ export default function RollOptionDialog({
   }, [availableExpirations, initialTarget])
 
   // Auto-select nearby strikes (±5 around stock price or current position strike) when available
-  const strikeCenteredWithPriceRef = useRef(false)
   useEffect(() => {
-    if (availableStrikes.length === 0) return
-    // Re-center if no strikes selected, or if we previously used fallback and now have real stock price
-    if (selectedStrikes.length > 0 && (strikeCenteredWithPriceRef.current || !stockPrice)) return
-    const centerPrice =
-      stockPrice ??
-      (currentCombos.length > 0 ? Math.max(...currentCombos.map((c) => c.strike)) : null)
-    if (centerPrice === null) return
-    strikeCenteredWithPriceRef.current = !!stockPrice
-    const centerIdx = availableStrikes.findIndex((s) => s >= centerPrice)
+    if (availableStrikes.length === 0 || !stockPrice) return
+    if (selectedStrikes.length > 0) return
+    const centerIdx = availableStrikes.findIndex((s) => s >= stockPrice)
     const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
-    const nearbyRange = 5
-    const startIdx = Math.max(0, idx - nearbyRange)
-    const endIdx = Math.min(availableStrikes.length, idx + nearbyRange + 1)
-    setSelectedStrikes(availableStrikes.slice(startIdx, endIdx).slice(0, 10))
-  }, [availableStrikes, stockPrice, currentCombos])
+    // Always pick 10 strikes centered around idx, expanding asymmetrically if near edges
+    const total = Math.min(10, availableStrikes.length)
+    let startIdx = Math.max(0, idx - Math.floor(total / 2))
+    let endIdx = startIdx + total
+    if (endIdx > availableStrikes.length) {
+      endIdx = availableStrikes.length
+      startIdx = Math.max(0, endIdx - total)
+    }
+    setSelectedStrikes(availableStrikes.slice(startIdx, endIdx))
+  }, [availableStrikes, stockPrice])
 
   // Scroll strike dropdown to first checked item on open
   useEffect(() => {
@@ -257,13 +282,18 @@ export default function RollOptionDialog({
     setSelectedExpirations([])
     setSelectedStrikes([])
     setStockPrice(null)
+    setChainParams([])
+    setLimitPrice('')
     fetchedExpiriesRef.current = new Set()
     fetchedStrikesRef.current = new Set()
+    userEditedPriceRef.current = false
 
     // Fetch stock price for strike centering
+    stockPriceSymbolRef.current = symbol
     window.ibApi
       .getStockQuote(symbol)
       .then((q) => {
+        if (stockPriceSymbolRef.current !== symbol) return
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
         if (price) setStockPrice(price)
       })
@@ -573,8 +603,8 @@ export default function RollOptionDialog({
         <div className="roll-dialog-body">
           {errorMsg && <div className="roll-dialog-error">{errorMsg}</div>}
 
-          {/* Selectors row */}
-          {dataReady && (availableExpirations.length > 0 || availableStrikes.length > 0) && (
+          {/* Selectors row - show skeleton placeholder while loading */}
+          {dataReady && (availableExpirations.length > 0 || availableStrikes.length > 0) ? (
             <div className="roll-selectors-row">
               {/* Expiry date selector */}
               {availableExpirations.length > 0 && (
@@ -647,11 +677,12 @@ export default function RollOptionDialog({
                   )}
                 </div>
               )}
-              {stockPrice !== null && (
+              {stockPrice !== null && stockPriceSymbolRef.current === symbol && (
                 <span className="roll-stock-price" style={{ marginLeft: 'auto', marginRight: 8 }}>
                   {symbol} 股價 {stockPrice.toFixed(2)}
                 </span>
               )}
+
               <button
                 className="roll-expiry-dropdown-btn"
                 onClick={() => setChainHidden((v) => !v)}
@@ -659,10 +690,14 @@ export default function RollOptionDialog({
                 {chainHidden ? '顯示期權鏈 ▼' : '隱藏期權鏈 ▲'}
               </button>
             </div>
+          ) : (
+            <div className="roll-selectors-row" style={{ opacity: 0.5 }}>
+              <button className="roll-expiry-dropdown-btn" disabled>載入中…</button>
+            </div>
           )}
 
-          {/* Multi-expiry option chain - show table structure as soon as chain is ready */}
-          {dataReady && !chainHidden && (
+          {/* Multi-expiry option chain */}
+          {!chainHidden && (
             <div className="roll-chain-multi">
               <table className="roll-chain-table">
                 <thead>
@@ -677,86 +712,116 @@ export default function RollOptionDialog({
                   </tr>
                 </thead>
                 <tbody>
-                  {displayExpirations.map((expiry) => {
-                    const greeksMap = greeksByExpiry.get(expiry)
-                    return [
-                      <tr key={`header-${expiry}`} className="roll-chain-expiry-row">
-                        <td>DELTA</td>
-                        <td>買價</td>
-                        <td>賣價</td>
-                        <td>最後價</td>
-                        <td className="roll-chain-expiry-label">{formatExpiry(expiry)}</td>
-                        <td>買價</td>
-                        <td>賣價</td>
-                        <td>最後價</td>
-                        <td>DELTA</td>
-                      </tr>,
-                      ...displayStrikes.map((strike) => {
-                        const callGreek = greeksMap?.get(`${strike}_C`)
-                        const putGreek = greeksMap?.get(`${strike}_P`)
-                        const callSelected =
-                          targetExpiry === expiry && targetStrike === strike && targetRight === 'C'
-                        const putSelected =
-                          targetExpiry === expiry && targetStrike === strike && targetRight === 'P'
+                  {dataReady ? (
+                    displayExpirations.map((expiry) => {
+                      const greeksMap = greeksByExpiry.get(expiry)
+                      return [
+                        <tr key={`header-${expiry}`} className="roll-chain-expiry-row">
+                          <td>DELTA</td>
+                          <td>買價</td>
+                          <td>賣價</td>
+                          <td>最後價</td>
+                          <td className="roll-chain-expiry-label">{formatExpiry(expiry)}</td>
+                          <td>買價</td>
+                          <td>賣價</td>
+                          <td>最後價</td>
+                          <td>DELTA</td>
+                        </tr>,
+                        ...displayStrikes.map((strike) => {
+                          const callGreek = greeksMap?.get(`${strike}_C`)
+                          const putGreek = greeksMap?.get(`${strike}_P`)
+                          const callSelected =
+                            targetExpiry === expiry && targetStrike === strike && targetRight === 'C'
+                          const putSelected =
+                            targetExpiry === expiry && targetStrike === strike && targetRight === 'P'
 
-                        return (
-                          <tr key={`${expiry}-${strike}`}>
-                            {/* Call side: Delta | Bid | Ask | Last */}
-                            <td
-                              className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'C')}
-                            >
-                              {callGreek ? formatGreek(callGreek.delta) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-call chain-bid ${callSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'C')}
-                            >
-                              {callGreek ? formatPrice(callGreek.bid) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-call chain-ask ${callSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'C')}
-                            >
-                              {callGreek ? formatPrice(callGreek.ask) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'C')}
-                            >
-                              {callGreek ? formatPrice(callGreek.last) : '-'}
-                            </td>
-                            <td className="roll-chain-strike">{strike}</td>
-                            {/* Put side: Bid | Ask | Last | Theta | Delta | IV */}
-                            <td
-                              className={`roll-chain-cell roll-chain-put chain-bid ${putSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'P')}
-                            >
-                              {putGreek ? formatPrice(putGreek.bid) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-put chain-ask ${putSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'P')}
-                            >
-                              {putGreek ? formatPrice(putGreek.ask) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'P')}
-                            >
-                              {putGreek ? formatPrice(putGreek.last) : '-'}
-                            </td>
-                            <td
-                              className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
-                              onClick={() => handleSelect(expiry, strike, 'P')}
-                            >
-                              {putGreek ? formatGreek(putGreek.delta) : '-'}
-                            </td>
-                          </tr>
-                        )
-                      })
-                    ]
-                  })}
+                          return (
+                            <tr key={`${expiry}-${strike}`}>
+                              {/* Call side: Delta | Bid | Ask | Last */}
+                              <td
+                                className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'C')}
+                              >
+                                {callGreek ? formatGreek(callGreek.delta) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-call chain-bid ${callSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'C')}
+                              >
+                                {callGreek ? formatPrice(callGreek.bid) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-call chain-ask ${callSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'C')}
+                              >
+                                {callGreek ? formatPrice(callGreek.ask) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-call ${callSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'C')}
+                              >
+                                {callGreek ? formatPrice(callGreek.last) : '-'}
+                              </td>
+                              <td className="roll-chain-strike">{strike}</td>
+                              {/* Put side: Bid | Ask | Last | Theta | Delta | IV */}
+                              <td
+                                className={`roll-chain-cell roll-chain-put chain-bid ${putSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'P')}
+                              >
+                                {putGreek ? formatPrice(putGreek.bid) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-put chain-ask ${putSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'P')}
+                              >
+                                {putGreek ? formatPrice(putGreek.ask) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'P')}
+                              >
+                                {putGreek ? formatPrice(putGreek.last) : '-'}
+                              </td>
+                              <td
+                                className={`roll-chain-cell roll-chain-put ${putSelected ? 'roll-chain-selected' : ''}`}
+                                onClick={() => handleSelect(expiry, strike, 'P')}
+                              >
+                                {putGreek ? formatGreek(putGreek.delta) : '-'}
+                              </td>
+                            </tr>
+                          )
+                        })
+                      ]
+                    })
+                  ) : (
+                    /* Skeleton placeholder rows while loading */
+                    <>
+                      <tr className="roll-chain-expiry-row">
+                        <td>DELTA</td>
+                        <td>買價</td>
+                        <td>賣價</td>
+                        <td>最後價</td>
+                        <td className="roll-chain-expiry-label" style={{ opacity: 0.4 }}>載入中…</td>
+                        <td>買價</td>
+                        <td>賣價</td>
+                        <td>最後價</td>
+                        <td>DELTA</td>
+                      </tr>
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <tr key={`skeleton-${i}`}>
+                          <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-call chain-bid" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-call chain-ask" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-strike" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-put chain-bid" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-put chain-ask" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>-</td>
+                          <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>-</td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
