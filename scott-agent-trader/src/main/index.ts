@@ -20,7 +20,7 @@ import {
   setupNextOrderIdListener,
   setupOrderStatusListener
 } from './ib/orders'
-import { requestOptionChain, requestOptionGreeks } from './ib/options'
+import { requestOptionChain, requestOptionGreeks, cancelOptionGreeksSubscriptions } from './ib/options'
 import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
@@ -159,10 +159,17 @@ function setupIpcHandlers(): void {
   ipcMain.handle(
     'ib:getOptionGreeks',
     async (_event, symbol: string, expiry: string, strikes: number[], exchange?: string) => {
-      return requestOptionGreeks(symbol, expiry, strikes, exchange)
+      const result = await requestOptionGreeks(symbol, expiry, strikes, exchange)
+      const withData = result.filter(g => g.bid > 0 || g.ask > 0 || g.last > 0 || g.delta !== 0)
+      console.log(`[IPC] getOptionGreeks → ${symbol} ${expiry}: ${result.length} items, ${withData.length} with data`)
+      return result
     }
   )
 
+
+  ipcMain.handle('ib:cancelOptionGreeksSubscriptions', async (_event, symbol: string) => {
+    cancelOptionGreeksSubscriptions(symbol)
+  })
   ipcMain.handle(
     'ib:placeOptionBatchOrders',
     async (_event, request, accountQuantities: Record<string, number>) => {

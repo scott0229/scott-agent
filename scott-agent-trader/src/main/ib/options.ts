@@ -43,21 +43,18 @@ interface CachedChain {
 const chainParamsCache = new Map<string, CachedChain>()
 const CHAIN_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
-// Cache greeks data — short-lived debounce to avoid redundant IB requests
+// Cache greeks data — updated continuously by streaming subscriptions
 interface CachedGreeks {
   greeks: OptionGreek[]
   fetchedAt: number
 }
 const greeksCache = new Map<string, CachedGreeks>()
-const GREEKS_CACHE_TTL_MS = 3_000 // 3 seconds debounce
 
-// Serialization queue: only one requestOptionGreeks call runs at a time
-// This prevents exceeding IB's ~100 concurrent market data request limit
-// and avoids settle-timer interference between concurrent calls.
+// Serialization queue: only one initial subscription runs at a time
+// This prevents exceeding IB's ~100 concurrent market data request limit.
 let greeksQueue: Promise<unknown> = Promise.resolve()
 
-/** Build cache key for greeks lookup — keyed by symbol+expiry only so
- *  different strike lists can still hit the same cache entry. */
+/** Build cache key for greeks lookup — keyed by symbol+expiry only */
 function buildGreeksCacheKey(symbol: string, expiry: string): string {
   return `${symbol}_${expiry}`
 }
@@ -85,7 +82,6 @@ function mergeGreek(old: OptionGreek, incoming: OptionGreek): OptionGreek {
 export function setGreeksCache(key: string, greeks: OptionGreek[]): void {
   const existing = greeksCache.get(key)
   if (existing) {
-    // Merge: field-level — only non-zero new values overwrite existing ones
     const map = new Map<string, OptionGreek>()
     for (const g of existing.greeks) map.set(`${g.strike}_${g.right}`, g)
     for (const g of greeks) {
@@ -100,8 +96,6 @@ export function setGreeksCache(key: string, greeks: OptionGreek[]): void {
 
 /**
  * Look up the tradingClass for a given symbol+expiry from the cached chain params.
- * Returns undefined if not found (chain not yet cached or expiry not in chain).
- * Used by orders.ts to set tradingClass on contracts before reqContractDetails.
  */
 export function getTradingClass(symbol: string, expiry: string): string | undefined {
   const cached = chainParamsCache.get(symbol)
@@ -121,7 +115,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
-  // Return cached chain if still fresh (avoids 3-4s IB round-trip on every dialog open)
   const cached = chainParamsCache.get(symbol)
   if (cached && Date.now() - cached.fetchedAt < CHAIN_CACHE_TTL_MS) {
     console.log(
@@ -130,7 +123,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
     return cached.params
   }
 
-  // First, get the conId for the underlying stock
   const conId = await getUnderlyingConId(symbol)
 
   return new Promise((resolve, reject) => {
@@ -176,7 +168,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
       if (finished) return
       finished = true
       cleanup()
-      // Store in cache for subsequent dialog opens
       chainParamsCache.set(symbol, { params: results, fetchedAt: Date.now() })
       console.log(`[IB] Option chain cached for ${symbol} (${results.length} exchanges)`)
       resolve(results)
@@ -194,7 +185,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
  * Get the contract ID for an underlying stock symbol.
  */
 async function getUnderlyingConId(symbol: string): Promise<number> {
-  // Return cached value if available
   if (conIdCache.has(symbol)) return conIdCache.get(symbol)!
 
   const api = getIBApi()
@@ -213,7 +203,8 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
       currency: 'USD'
     }
 
-    const onDetails = (id: number, details: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const onDetails = (id: number, details: any): void => {
       if (id !== reqId) return
       clearTimeout(timeout)
       api.removeListener(EventName.contractDetails, onDetails)
@@ -223,7 +214,7 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
       resolve(cid)
     }
 
-    const onErr = (err: Error, _code: number, id: number) => {
+    const onErr = (err: Error, _code: number, id: number): void => {
       if (id !== reqId) return
       clearTimeout(timeout)
       api.removeListener(EventName.contractDetails, onDetails)
@@ -237,9 +228,99 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
   })
 }
 
+// ── Streaming subscription infrastructure ──────────────────────────────
+
+interface StreamingSubscription {
+  symbol: string
+  expiry: string
+  reqIds: Map<number, { strike: number; right: 'C' | 'P' }>
+  greeksMap: Map<string, Partial<OptionGreek>>
+  errorReqIds: Set<number>
+  listeners: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onTickPrice: (...args: any[]) => void
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onTickOptionComputation: (...args: any[]) => void
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (...args: any[]) => void
+  }
+}
+
+// Active streaming subscriptions keyed by "SYMBOL_EXPIRY"
+const activeSubscriptions = new Map<string, StreamingSubscription>()
+
+// Keys currently being subscribed (prevents duplicates while initial data loads)
+const pendingSubscriptions = new Set<string>()
+
+/** Cancel all streaming subscriptions for a given symbol */
+export function cancelOptionGreeksSubscriptions(symbol: string): void {
+  const api = getIBApi()
+  const keysToRemove: string[] = []
+
+  for (const [key, sub] of activeSubscriptions.entries()) {
+    if (sub.symbol === symbol) {
+      keysToRemove.push(key)
+      if (api) {
+        api.removeListener(EventName.tickPrice, sub.listeners.onTickPrice)
+        api.removeListener(
+          EventName.tickOptionComputation,
+          sub.listeners.onTickOptionComputation
+        )
+        api.removeListener(EventName.error, sub.listeners.onError)
+        for (const reqId of sub.reqIds.keys()) {
+          try {
+            api.cancelMktData(reqId)
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+  }
+
+  for (const key of keysToRemove) {
+    activeSubscriptions.delete(key)
+    greeksCache.delete(key)
+  }
+
+  if (keysToRemove.length > 0) {
+    console.log(`[IB] Cancelled ${keysToRemove.length} streaming subscription(s) for ${symbol}`)
+  }
+}
+
+/** Get sorted results from a live subscription's greeksMap */
+function getSubscriptionResults(sub: StreamingSubscription): OptionGreek[] {
+  // Apply model price fallback for entries with no live price
+  for (const data of sub.greeksMap.values()) {
+    if (
+      (data.bid ?? 0) === 0 &&
+      (data.ask ?? 0) === 0 &&
+      (data.last ?? 0) === 0 &&
+      (data.modelPrice ?? 0) > 0
+    ) {
+      data.last = data.modelPrice
+    }
+  }
+
+  // Exclude error entries
+  const errorKeys = new Set<string>()
+  for (const errReqId of sub.errorReqIds) {
+    const info = sub.reqIds.get(errReqId)
+    if (info) errorKeys.add(`${info.strike}_${info.right}`)
+  }
+
+  const results = Array.from(sub.greeksMap.entries())
+    .filter(([key]) => !errorKeys.has(key))
+    .map(([, v]) => v as OptionGreek)
+
+  results.sort((a, b) => a.strike - b.strike || (a.right === 'C' ? -1 : 1))
+  return results
+}
+
 /**
  * Request market data (bid/ask/greeks) for a batch of option contracts.
- * Returns from short-lived cache if available; otherwise fetches from IB.
+ * Uses persistent streaming subscriptions — first call subscribes and waits
+ * for initial data; subsequent calls return from the live cache instantly.
  */
 export function requestOptionGreeks(
   symbol: string,
@@ -247,10 +328,141 @@ export function requestOptionGreeks(
   strikes: number[],
   exchange: string = 'SMART'
 ): Promise<OptionGreek[]> {
-  // Serialize: queue behind any in-flight request to avoid concurrent IB market data floods
-  const queued = greeksQueue.then(() => _requestOptionGreeksImpl(symbol, expiry, strikes, exchange))
-  greeksQueue = queued.catch(() => {}) // swallow errors so queue doesn't get stuck
+  const cacheKey = buildGreeksCacheKey(symbol, expiry)
+
+  // If there's an active streaming subscription, check strike coverage
+  const existingSub = activeSubscriptions.get(cacheKey)
+  if (existingSub) {
+    // Find strikes not yet in the subscription
+    const subscribedStrikes = new Set<number>()
+    for (const info of existingSub.reqIds.values()) {
+      subscribedStrikes.add(info.strike)
+    }
+    const missingStrikes = strikes.filter((s) => !subscribedStrikes.has(s))
+
+    if (missingStrikes.length > 0) {
+      // Expand the subscription with missing strikes
+      console.log(`[IB] Expanding subscription ${symbol} ${expiry}: +${missingStrikes.length} strikes`)
+      const expandPromise = _expandSubscription(existingSub, cacheKey, missingStrikes, exchange)
+      return expandPromise.then(() => {
+        const results = getSubscriptionResults(existingSub)
+        const strikeSet = new Set(strikes)
+        const filtered = results.filter((g) => strikeSet.has(g.strike))
+        setGreeksCache(cacheKey, filtered)
+        return filtered
+      })
+    }
+
+    // All strikes covered — return from live cache
+    const results = getSubscriptionResults(existingSub)
+    const strikeSet = new Set(strikes)
+    const filtered = results.filter((g) => strikeSet.has(g.strike))
+    console.log(`[IB] Streaming cache hit for ${symbol} ${expiry}: ${filtered.length} items`)
+    setGreeksCache(cacheKey, filtered)
+    return Promise.resolve(filtered)
+  }
+
+  // If subscription is pending (being set up), queue behind it
+  const queued = greeksQueue.then(() =>
+    _requestOptionGreeksImpl(symbol, expiry, strikes, exchange)
+  )
+  greeksQueue = queued.catch(() => {})
   return queued
+}
+
+
+/** Expand an existing streaming subscription with additional strikes */
+async function _expandSubscription(
+  sub: StreamingSubscription,
+  cacheKey: string,
+  newStrikes: number[],
+  exchange: string
+): Promise<void> {
+  const api = getIBApi()
+  const tradingClass = getTradingClass(sub.symbol, sub.expiry)
+
+  const newReqIds: Array<[number, { strike: number; right: 'C' | 'P' }]> = []
+
+  for (const strike of newStrikes) {
+    for (const right of ['C', 'P'] as const) {
+      const key = `${strike}_${right}`
+      if (sub.greeksMap.has(key)) continue // Already subscribed
+
+      const reqId = getNextReqId()
+      const info = { strike, right }
+      sub.reqIds.set(reqId, info)
+      sub.greeksMap.set(key, {
+        strike,
+        right,
+        expiry: sub.expiry,
+        bid: 0, ask: 0, last: 0,
+        delta: 0, gamma: 0, theta: 0, vega: 0,
+        impliedVol: 0, openInterest: 0, modelPrice: 0
+      })
+      newReqIds.push([reqId, info])
+    }
+  }
+
+  if (newReqIds.length === 0) return
+
+  console.log(`[IB] Subscribing ${newReqIds.length} new contracts for ${sub.symbol} ${sub.expiry}`)
+
+  // Subscribe to streaming for the new strikes
+  api.reqMarketDataType(4)
+  for (const [reqId, info] of newReqIds) {
+    const contract: Contract = new Option(
+      sub.symbol,
+      sub.expiry,
+      info.strike,
+      info.right === 'C' ? OptionType.Call : OptionType.Put,
+      exchange,
+      'USD'
+    )
+    if (tradingClass) contract.tradingClass = tradingClass
+    api.reqMktData(reqId, contract, '', false, false)
+  }
+
+  // Wait for enough new contracts to have data, then resolve
+  return new Promise((resolve) => {
+    let resolved = false
+
+    const doResolve = (reason: string): void => {
+      if (resolved) return
+      resolved = true
+      let withData = 0
+      for (const [, info] of newReqIds) {
+        const data = sub.greeksMap.get(`${info.strike}_${info.right}`)
+        if (data && ((data.bid ?? 0) > 0 || (data.ask ?? 0) > 0 || (data.delta ?? 0) !== 0)) {
+          withData++
+        }
+      }
+      console.log(`[IB] Expansion ${reason}: ${withData}/${newReqIds.length} contracts have data`)
+      resolve()
+    }
+
+    const checkReady = (): void => {
+      if (resolved) return
+      let withData = 0
+      for (const [, info] of newReqIds) {
+        const data = sub.greeksMap.get(`${info.strike}_${info.right}`)
+        if (data && ((data.bid ?? 0) > 0 || (data.ask ?? 0) > 0 || (data.delta ?? 0) !== 0)) {
+          withData++
+        }
+      }
+      if (withData >= 4 || (newReqIds.length > 0 && withData / newReqIds.length >= 0.3)) {
+        doResolve(`ready (${withData}/${newReqIds.length})`)
+      } else {
+        setTimeout(checkReady, 200)
+      }
+    }
+
+    setTimeout(checkReady, 300)
+
+    // Hard timeout
+    setTimeout(() => {
+      doResolve('hard timeout')
+    }, 3000)
+  })
 }
 
 async function _requestOptionGreeksImpl(
@@ -260,70 +472,46 @@ async function _requestOptionGreeksImpl(
   exchange: string = 'SMART'
 ): Promise<OptionGreek[]> {
   const cacheKey = buildGreeksCacheKey(symbol, expiry)
-  const cached = greeksCache.get(cacheKey)
 
-  // Return from cache if fresh (within TTL) AND covering enough of the requested strikes
-  if (cached && Date.now() - cached.fetchedAt < GREEKS_CACHE_TTL_MS) {
+  // Double-check: subscription may have been created while we were queued
+  const existingSub = activeSubscriptions.get(cacheKey)
+  if (existingSub) {
+    const results = getSubscriptionResults(existingSub)
     const strikeSet = new Set(strikes)
-    const filtered = cached.greeks.filter((g) => strikeSet.has(g.strike))
-    const withData = filtered.filter((g) => g.bid > 0 || g.ask > 0 || g.last > 0)
-    const expectedCount = strikes.length * 2 // C + P for each strike
-    console.log(
-      `[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${expectedCount} matched, ${withData.length} with data)`
-    )
-    // Only use cache if it covers at least half the requested strikes
-    if (filtered.length >= expectedCount * 0.5) {
-      return filtered
-    }
-    console.log(`[IB] Cache insufficient (${filtered.length}/${expectedCount}), re-fetching from IB`)
+    return results.filter((g) => strikeSet.has(g.strike))
   }
-  console.log(`[IB] Greeks fetching from IB: ${symbol} ${expiry} (${strikes.length} strikes)`)
+
+  console.log(`[IB] Subscribing streaming greeks: ${symbol} ${expiry} (${strikes.length} strikes)`)
 
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
-  // Resolve tradingClass from cached option chain for this expiry
-  // IB requires tradingClass to disambiguate weekly/daily vs monthly options
+  // Resolve tradingClass
   let tradingClass: string | undefined
   const chainCached = chainParamsCache.get(symbol)
   if (chainCached) {
-    // Prefer chain entry matching our exchange (usually SMART), fallback to any
     const preferred = chainCached.params.find(
       (p) => p.exchange === exchange && p.expirations.includes(expiry)
     )
     const fallback = chainCached.params.find((p) => p.expirations.includes(expiry))
     const matched = preferred || fallback
-    if (matched) {
-      tradingClass = matched.tradingClass
-    }
-    // Log chain structure for diagnostics (first call only per expiry)
+    if (matched) tradingClass = matched.tradingClass
     console.log(
-      `[IB] Chain entries for ${symbol}: ${chainCached.params.map((p) => `${p.exchange}/${p.tradingClass}(${p.expirations.length}exp)`).join(', ')}`
-    )
-    console.log(
-      `[IB] Resolved tradingClass for expiry ${expiry}: ${tradingClass ?? 'none'} (matched exchange: ${matched?.exchange ?? 'none'})`
+      `[IB] Resolved tradingClass for expiry ${expiry}: ${tradingClass ?? 'none'}`
     )
   }
 
-  console.log(
-    `[IB] requestOptionGreeks called: symbol=${symbol}, expiry=${expiry}, strikes=${strikes.length}, exchange=${exchange}, tradingClass=${tradingClass ?? 'none'}`
-  )
-
-  // Use frozen market data (type 2) - returns live when available,
-  // frozen prices otherwise. Type 4 drops greeks during off-hours.
-  api.reqMarketDataType(2)
+  // Use delayed-frozen (type 4) for model-computed greeks (delta, gamma, theta, vega)
+  api.reqMarketDataType(4)
 
   const reqIds: Map<number, { strike: number; right: 'C' | 'P' }> = new Map()
   const greeksMap: Map<string, Partial<OptionGreek>> = new Map()
 
-  // Create requests for both calls and puts at each strike
   for (const strike of strikes) {
     for (const right of ['C', 'P'] as const) {
       const reqId = getNextReqId()
       reqIds.set(reqId, { strike, right })
-
-      const key = `${strike}_${right}`
-      greeksMap.set(key, {
+      greeksMap.set(`${strike}_${right}`, {
         strike,
         right,
         expiry,
@@ -341,279 +529,195 @@ async function _requestOptionGreeksImpl(
     }
   }
 
-  return new Promise((resolve) => {
-    let resolved = false
-    let completedCount = 0
-    const totalExpected = reqIds.size
-    let settleTimer: ReturnType<typeof setTimeout> | null = null
-    let tickDataReceived = 0
-    const errorReqIds = new Set<number>()
+  const totalExpected = reqIds.size
+  const errorReqIds = new Set<number>()
+  let tickDataReceived = 0
 
-    // Hard timeout: safety net
-    const hardTimeout = setTimeout(() => {
-      if (!resolved) {
-        console.log(
-          `[IB] Hard timeout fired. tickDataReceived=${tickDataReceived}, errors=${errorReqIds.size}, completed=${completedCount}/${totalExpected}`
-        )
-        finish()
+  // ── Persistent streaming listeners ──
+
+  const onTickPrice = (reqId: number, tickType: number, value: number): void => {
+    const info = reqIds.get(reqId)
+    if (!info) return
+    const data = greeksMap.get(`${info.strike}_${info.right}`)
+    if (!data) return
+
+    tickDataReceived++
+    if (value >= 0) {
+      if (tickType === 1 || tickType === 68) data.bid = value
+      else if (tickType === 2 || tickType === 69) data.ask = value
+      else if (tickType === 4 || tickType === 70) data.last = value
+      else if (tickType === 9 || tickType === 75) {
+        if (data.last === 0) data.last = value
+        if (data.bid === 0) data.bid = value
+        if (data.ask === 0) data.ask = value
       }
-    }, 8000)
+    }
+  }
 
-    // "Settle" timer: resolve early once data stops flowing for 200ms
-    function resetSettleTimer(): void {
-      if (resolved) return
-      if (settleTimer) clearTimeout(settleTimer)
-      settleTimer = setTimeout(() => {
-        if (!resolved) {
-          console.log(
-            `[IB] Settle timer fired, tickDataReceived=${tickDataReceived}, completed=${completedCount}/${totalExpected}`
-          )
-          finish()
-        }
-      }, 500)
+  const onTickOptionComputation = (
+    reqId: number,
+    field: number,
+    impliedVol?: number,
+    delta?: number,
+    optPrice?: number,
+    _pvDividend?: number,
+    gamma?: number,
+    vega?: number,
+    theta?: number
+  ): void => {
+    const info = reqIds.get(reqId)
+    if (!info) return
+    const data = greeksMap.get(`${info.strike}_${info.right}`)
+    if (!data) return
+
+    tickDataReceived++
+    const normalizedField = field >= 53 && field <= 56 ? field - 43 : field
+
+    if (
+      normalizedField === 13 ||
+      normalizedField === 10 ||
+      normalizedField === 11 ||
+      normalizedField === 12
+    ) {
+      const isModel = normalizedField === 13
+      if (impliedVol !== undefined && isFinite(impliedVol) && impliedVol > 0) {
+        if (isModel || data.impliedVol === 0) data.impliedVol = impliedVol
+      }
+      if (delta !== undefined && isFinite(delta)) {
+        if (isModel || data.delta === 0) data.delta = delta
+      }
+      if (gamma !== undefined && isFinite(gamma)) {
+        if (isModel || data.gamma === 0) data.gamma = gamma
+      }
+      if (vega !== undefined && isFinite(vega)) {
+        if (isModel || data.vega === 0) data.vega = vega
+      }
+      if (theta !== undefined && isFinite(theta)) {
+        if (isModel || data.theta === 0) data.theta = theta
+      }
+      if (optPrice !== undefined && isFinite(optPrice) && optPrice > 0) {
+        if (isModel || data.modelPrice === 0) data.modelPrice = optPrice
+      }
+    }
+  }
+
+  const onError = (err: Error, code: number, id: number): void => {
+    if (!reqIds.has(id)) return
+    errorReqIds.add(id)
+    if (errorReqIds.size <= 3) {
+      const info = reqIds.get(id)
+      console.log(
+        `[IB] Option data error for ${info?.strike} ${info?.right}: code=${code}, msg=${err.message}`
+      )
+    }
+  }
+
+  // Track as pending (not yet active — will register after initial data settles)
+  pendingSubscriptions.add(cacheKey)
+  const subscription: StreamingSubscription = {
+    symbol,
+    expiry,
+    reqIds,
+    greeksMap,
+    errorReqIds,
+    listeners: { onTickPrice, onTickOptionComputation, onError }
+  }
+  // Note: NOT registering in activeSubscriptions yet — will do so after initial data arrives
+
+  // Attach persistent listeners
+  api.on(EventName.tickPrice, onTickPrice)
+  api.on(EventName.tickOptionComputation, onTickOptionComputation)
+  api.on(EventName.error, onError)
+
+  // Subscribe to streaming market data (NOT snapshot)
+  let requestIndex = 0
+  const allReqEntries = Array.from(reqIds.entries())
+
+  function sendNextBatch(): void {
+    const batchSize = 20
+    const end = Math.min(requestIndex + batchSize, allReqEntries.length)
+
+    for (let i = requestIndex; i < end; i++) {
+      const [reqId, info] = allReqEntries[i]
+      const contract: Contract = new Option(
+        symbol,
+        expiry,
+        info.strike,
+        info.right === 'C' ? OptionType.Call : OptionType.Put,
+        exchange,
+        'USD'
+      )
+      if (tradingClass) contract.tradingClass = tradingClass
+
+      if (i === 0) {
+        console.log('[IB] First option contract:', JSON.stringify(contract))
+      }
+
+      // snapshot=false for streaming
+      api!.reqMktData(reqId, contract, '', false, false)
     }
 
-    // Finish successfully
-    const finish = (): void => {
+    requestIndex = end
+    if (requestIndex < allReqEntries.length) {
+      setTimeout(sendNextBatch, 20)
+    }
+  }
+
+  console.log(
+    `[IB] Streaming subscribe: ${strikes.length} strikes x 2 (C/P) = ${totalExpected} contracts, expiry ${expiry}`
+  )
+
+  sendNextBatch()
+
+  // Reset market data type after subscription requests are sent
+  setTimeout(() => {
+    api.reqMarketDataType(2)
+  }, 500)
+
+  // Wait for initial data — resolve as soon as enough contracts have meaningful data
+  return new Promise((resolve) => {
+    let resolved = false
+
+    const doResolve = (reason: string): void => {
       if (resolved) return
       resolved = true
-      clearTimeout(hardTimeout)
-      if (settleTimer !== null) clearTimeout(settleTimer)
-      cleanup()
-
-      // Remove entries where IB returned error (e.g. code 300 = contract not found)
-      for (const errReqId of errorReqIds) {
-        const info = reqIds.get(errReqId)
-        if (info) {
-          const key = `${info.strike}_${info.right}`
-          greeksMap.delete(key)
-        }
-      }
-
-      // Fallback: If an option has no bid/ask/last but HAS a model price, use the model price as "last"
-      // so the UI doesn't just show a dash
-      for (const data of greeksMap.values()) {
-        if ((data.bid ?? 0) === 0 && (data.ask ?? 0) === 0 && (data.last ?? 0) === 0 && (data.modelPrice ?? 0) > 0) {
-          data.last = data.modelPrice
-        }
-      }
-
-      const results = Array.from(greeksMap.values()) as OptionGreek[]
-      // Sort by strike ascending, calls first
-      results.sort((a, b) => a.strike - b.strike || (a.right === 'C' ? -1 : 1))
-
-      console.log(
-        `[IB] Option greeks finished: ${results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length}/${results.length} have data, ${errorReqIds.size} errors removed`
-      )
-      // Auto-store fetched results in greeks cache
+      activeSubscriptions.set(cacheKey, subscription)
+      pendingSubscriptions.delete(cacheKey)
+      const results = getSubscriptionResults(subscription)
+      const withData = results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length
+      console.log(`[IB] Streaming ${reason}: ${withData}/${results.length} have data, ${errorReqIds.size} errors`)
       setGreeksCache(cacheKey, results)
       resolve(results)
     }
 
-    // tickPrice: bid(1), ask(2), last(4), close(9)
-    // Delayed: bid(68), ask(69), last(70), close(75)
-    // IB returns -1 for "no data available", so accept value >= 0
-    const onTickPrice = (reqId: number, tickType: number, value: number): void => {
-      const info = reqIds.get(reqId)
-      if (!info) return
-      const key = `${info.strike}_${info.right}`
-      const data = greeksMap.get(key)
-      if (!data) return
-
-      // Log first few ticks for debugging
-      if (tickDataReceived < 5) {
-        console.log(`[IB] Option tick: ${info.strike}${info.right} type=${tickType} value=${value}`)
-      }
-
-      tickDataReceived++
-      if (value >= 0) {
-        if (tickType === 1 || tickType === 68) {
-          // Live bid: store directly
-          data.bid = value
-        } else if (tickType === 2 || tickType === 69) {
-          // Live ask: store directly
-          data.ask = value
-        } else if (tickType === 4 || tickType === 70) {
-          data.last = value
-        } else if (tickType === 9 || tickType === 75) {
-          // Close price: best frozen-data fallback during off-hours.
-          // Use as last always; also fill bid/ask as approximation when live quotes are absent (-1).
-          if (data.last === 0) data.last = value
-          // If bid/ask were not received (IB sends -1 during off-hours) use close as a best-effort
-          if (data.bid === 0) data.bid = value
-          if (data.ask === 0) data.ask = value
+    const checkReady = (): void => {
+      if (resolved) return
+      // Count contracts with meaningful data
+      let withData = 0
+      for (const data of greeksMap.values()) {
+        if ((data.bid ?? 0) > 0 || (data.ask ?? 0) > 0 || (data.delta ?? 0) !== 0) {
+          withData++
         }
       }
-      resetSettleTimer()
-    }
+      const total = greeksMap.size
+      const coverage = total > 0 ? withData / total : 0
 
-    // tickOptionComputation: handle all field types
-    // Live:    field 10 = bid, 11 = ask, 12 = last, 13 = model computation
-    // Delayed: field 53 = bid, 54 = ask, 55 = last, 56 = model computation
-    const onTickOptionComputation = (
-      reqId: number,
-      field: number,
-      impliedVol?: number,
-      delta?: number,
-      optPrice?: number,
-      _pvDividend?: number,
-      gamma?: number,
-      vega?: number,
-      theta?: number
-    ): void => {
-      const info = reqIds.get(reqId)
-      if (!info) return
-      const key = `${info.strike}_${info.right}`
-      const data = greeksMap.get(key)
-      if (!data) return
-
-      tickDataReceived++
-
-      // Map delayed field types (53-56) to their live equivalents (10-13)
-      const normalizedField = field >= 53 && field <= 56 ? field - 43 : field
-
-      // Accept greeks from model (13) or any computation that has valid data
-      // Prefer model (13), but use bid/ask/last (10/11/12) as fallback
-      if (normalizedField === 13 || normalizedField === 10 || normalizedField === 11 || normalizedField === 12) {
-        const isModel = normalizedField === 13
-        if (impliedVol !== undefined && isFinite(impliedVol) && impliedVol > 0) {
-          if (isModel || data.impliedVol === 0) data.impliedVol = impliedVol
-        }
-        if (delta !== undefined && isFinite(delta)) {
-          if (isModel || data.delta === 0) data.delta = delta
-        }
-        if (gamma !== undefined && isFinite(gamma)) {
-          if (isModel || data.gamma === 0) data.gamma = gamma
-        }
-        if (vega !== undefined && isFinite(vega)) {
-          if (isModel || data.vega === 0) data.vega = vega
-        }
-        if (theta !== undefined && isFinite(theta)) {
-          if (isModel || data.theta === 0) data.theta = theta
-        }
-        if (optPrice !== undefined && isFinite(optPrice) && optPrice > 0) {
-          if (isModel || data.modelPrice === 0) data.modelPrice = optPrice
-        }
-      }
-      resetSettleTimer()
-    }
-
-    const onTickSnapshotEnd = (reqId: number): void => {
-      if (!reqIds.has(reqId)) return
-      completedCount++
-      if (completedCount >= totalExpected) {
-        finish()
+      if (coverage >= 0.3 || withData >= 4) {
+        doResolve(`ready (${(coverage * 100).toFixed(0)}% coverage)`)
+      } else if (tickDataReceived > 0) {
+        // Some ticks arrived but not enough data yet — check again soon
+        setTimeout(checkReady, 200)
+      } else {
+        // No ticks yet — wait a bit longer
+        setTimeout(checkReady, 300)
       }
     }
 
-    // Listen for errors on our reqIds
-    const onError = (err: Error, code: number, id: number): void => {
-      if (!reqIds.has(id)) return
-      errorReqIds.add(id)
-      // Only log first few errors to avoid flooding
-      if (errorReqIds.size <= 3) {
-        const info = reqIds.get(id)
-        console.log(
-          `[IB] Option data error for ${info?.strike} ${info?.right}: code=${code}, msg=${err.message}`
-        )
-      }
-      // Count errors as completed to avoid hanging
-      completedCount++
-      if (completedCount >= totalExpected) {
-        finish()
-      }
-    }
+    setTimeout(checkReady, 300)
 
-    function cleanup(): void {
-      api!.removeListener(EventName.tickPrice, debugTickListener)
-      api!.removeListener(EventName.tickPrice, onTickPrice)
-      api!.removeListener(EventName.tickOptionComputation, onTickOptionComputation)
-      api!.removeListener(EventName.tickSnapshotEnd, onTickSnapshotEnd)
-      api!.removeListener(EventName.error, onError)
-      // Cancel market data requests
-      for (const reqId of reqIds.keys()) {
-        try {
-          api!.cancelMktData(reqId)
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    // Log reqId range for debugging
-    const reqIdKeys = Array.from(reqIds.keys())
-    console.log(`[IB] Option reqId range: ${reqIdKeys[0]} to ${reqIdKeys[reqIdKeys.length - 1]}`)
-
-    // Temporary debug: log first 3 tickPrice events for ANY reqId to verify events arrive
-    let debugTickCount = 0
-    const debugTickListener = (rId: number, tt: number, val: number): void => {
-      if (debugTickCount < 3) {
-        console.log(
-          `[IB] DEBUG tickPrice: reqId=${rId}, type=${tt}, value=${val}, isOurs=${reqIds.has(rId)}`
-        )
-        debugTickCount++
-      }
-    }
-    api.on(EventName.tickPrice, debugTickListener)
-
-    api.on(EventName.tickPrice, onTickPrice)
-    api.on(EventName.tickOptionComputation, onTickOptionComputation)
-    api.on(EventName.tickSnapshotEnd, onTickSnapshotEnd)
-    api.on(EventName.error, onError)
-
-    // Request snapshot market data for each option contract
-    // Use small delay between requests to avoid overwhelming IB
-    let requestIndex = 0
-    const allReqEntries = Array.from(reqIds.entries())
-
-    function sendNextBatch(): void {
-      // Set market data type to delayed-frozen RIGHT BEFORE each batch
-      // Type 4 (delayed-frozen) returns close/frozen when live unavailable, including greeks
-      api!.reqMarketDataType(4)
-
-      // Send up to 10 requests at a time
-      const batchSize = 20
-      const end = Math.min(requestIndex + batchSize, allReqEntries.length)
-
-      for (let i = requestIndex; i < end; i++) {
-        const [reqId, info] = allReqEntries[i]
-        const contract: Contract = new Option(
-          symbol,
-          expiry,
-          info.strike,
-          info.right === 'C' ? OptionType.Call : OptionType.Put,
-          exchange,
-          'USD'
-        )
-        // Set tradingClass to disambiguate weekly/daily vs monthly options
-        if (tradingClass) {
-          contract.tradingClass = tradingClass
-        }
-
-        // Log first contract for debugging
-        if (i === 0) {
-          console.log('[IB] First option contract:', JSON.stringify(contract))
-        }
-
-        api!.reqMktData(reqId, contract, '', true, false)
-      }
-
-      requestIndex = end
-      if (requestIndex < allReqEntries.length) {
-        // Schedule next batch with a small delay
-        setTimeout(sendNextBatch, 20)
-      }
-    }
-
-    console.log(
-      `[IB] Requesting greeks for ${strikes.length} strikes x 2 (C/P) = ${totalExpected} contracts, expiry ${expiry}`
-    )
-
-    sendNextBatch()
-
-    // NOTE: Do NOT call resetSettleTimer() here!
-    // Option data takes 4-6 seconds to start arriving from IB.
-    // The settle timer should only start after the FIRST tick data arrives.
-    // The hard timeout (8s) is the safety net if no data comes at all.
+    // Hard timeout safety net — resolve with whatever we have
+    setTimeout(() => {
+      doResolve('hard timeout')
+    }, 3000)
   })
 }

@@ -141,6 +141,7 @@ interface IBApi {
     strikes: number[],
     exchange?: string
   ) => Promise<OptionGreek[]>
+  cancelOptionGreeksSubscriptions: (symbol: string) => Promise<void>
 
   placeOptionBatchOrders: (
     request: any,

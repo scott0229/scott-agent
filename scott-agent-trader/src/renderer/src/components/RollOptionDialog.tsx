@@ -376,11 +376,18 @@ export default function RollOptionDialog({
     }
     displayStrikes.forEach((s) => fetchedStrikesRef.current.add(s))
 
+    console.log('[ROLL-DEBUG] Initial fetch:', fetchPairs.length, 'pairs, displayExp:', displayExpirations, 'displayStrikes:', displayStrikes)
+
     // Fetch greeks directly from IB and update state
     fetchPairs.forEach(({ exp, strikes }) => {
       window.ibApi
         .getOptionGreeks(symbol, exp, strikes)
         .then((greeks) => {
+          const withData = greeks.filter(g => g.bid > 0 || g.ask > 0 || g.last > 0 || g.delta !== 0)
+          console.log(`[ROLL-DEBUG] Initial fetch result: exp=${exp}, total=${greeks.length}, withData=${withData.length}`)
+          if (greeks.length > 0 && withData.length > 0) {
+            console.log('[ROLL-DEBUG] Sample:', JSON.stringify(withData[0]))
+          }
           if (greeks.length === 0) return
           setAllTargetGreeks((prev) => {
             const incoming = new Map<string, OptionGreek>(
@@ -394,10 +401,11 @@ export default function RollOptionDialog({
             const newEntries = greeks.filter(
               (g) => !existingKeys.has(`${g.expiry}_${g.strike}_${g.right}`)
             )
+            console.log(`[ROLL-DEBUG] setAllTargetGreeks: prev=${prev.length}, updated=${updated.length}, newEntries=${newEntries.length}`)
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => { })
+        .catch((err) => { console.log('[ROLL-DEBUG] Initial fetch error:', err) })
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -490,6 +498,8 @@ export default function RollOptionDialog({
     return () => {
       cancelled = true
       clearInterval(interval)
+      // Cancel streaming subscriptions when dialog closes or dependencies change
+      window.ibApi.cancelOptionGreeksSubscriptions(symbol)
     }
   }, [symbol, currentCombos, displayExpirations, displayStrikes])
 

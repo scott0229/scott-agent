@@ -55,6 +55,8 @@ const ibApi = {
     strikes: number[],
     exchange?: string
   ): Promise<any[]> => ipcRenderer.invoke('ib:getOptionGreeks', symbol, expiry, strikes, exchange),
+  cancelOptionGreeksSubscriptions: (symbol: string): Promise<void> =>
+    ipcRenderer.invoke('ib:cancelOptionGreeksSubscriptions', symbol),
 
   placeOptionBatchOrders: (
     request: any,
