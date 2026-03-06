@@ -49,7 +49,12 @@ interface CachedGreeks {
   fetchedAt: number
 }
 const greeksCache = new Map<string, CachedGreeks>()
-const GREEKS_CACHE_TTL_MS = 2_000 // 2 seconds debounce
+const GREEKS_CACHE_TTL_MS = 3_000 // 3 seconds debounce
+
+// Serialization queue: only one requestOptionGreeks call runs at a time
+// This prevents exceeding IB's ~100 concurrent market data request limit
+// and avoids settle-timer interference between concurrent calls.
+let greeksQueue: Promise<unknown> = Promise.resolve()
 
 /** Build cache key for greeks lookup — keyed by symbol+expiry only so
  *  different strike lists can still hit the same cache entry. */
@@ -236,7 +241,19 @@ async function getUnderlyingConId(symbol: string): Promise<number> {
  * Request market data (bid/ask/greeks) for a batch of option contracts.
  * Returns from short-lived cache if available; otherwise fetches from IB.
  */
-export async function requestOptionGreeks(
+export function requestOptionGreeks(
+  symbol: string,
+  expiry: string,
+  strikes: number[],
+  exchange: string = 'SMART'
+): Promise<OptionGreek[]> {
+  // Serialize: queue behind any in-flight request to avoid concurrent IB market data floods
+  const queued = greeksQueue.then(() => _requestOptionGreeksImpl(symbol, expiry, strikes, exchange))
+  greeksQueue = queued.catch(() => {}) // swallow errors so queue doesn't get stuck
+  return queued
+}
+
+async function _requestOptionGreeksImpl(
   symbol: string,
   expiry: string,
   strikes: number[],
@@ -245,15 +262,20 @@ export async function requestOptionGreeks(
   const cacheKey = buildGreeksCacheKey(symbol, expiry)
   const cached = greeksCache.get(cacheKey)
 
-  // Return from cache if fresh (within TTL)
+  // Return from cache if fresh (within TTL) AND covering enough of the requested strikes
   if (cached && Date.now() - cached.fetchedAt < GREEKS_CACHE_TTL_MS) {
     const strikeSet = new Set(strikes)
     const filtered = cached.greeks.filter((g) => strikeSet.has(g.strike))
     const withData = filtered.filter((g) => g.bid > 0 || g.ask > 0 || g.last > 0)
+    const expectedCount = strikes.length * 2 // C + P for each strike
     console.log(
-      `[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${strikes.length * 2} matched, ${withData.length} with data)`
+      `[IB] Greeks cache hit for ${symbol} ${expiry} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s, ${filtered.length}/${expectedCount} matched, ${withData.length} with data)`
     )
-    return filtered
+    // Only use cache if it covers at least half the requested strikes
+    if (filtered.length >= expectedCount * 0.5) {
+      return filtered
+    }
+    console.log(`[IB] Cache insufficient (${filtered.length}/${expectedCount}), re-fetching from IB`)
   }
   console.log(`[IB] Greeks fetching from IB: ${symbol} ${expiry} (${strikes.length} strikes)`)
 
@@ -287,12 +309,10 @@ export async function requestOptionGreeks(
     `[IB] requestOptionGreeks called: symbol=${symbol}, expiry=${expiry}, strikes=${strikes.length}, exchange=${exchange}, tradingClass=${tradingClass ?? 'none'}`
   )
 
-  // Use delayed-frozen market data (type 4) - returns live when available,
-  // close/frozen prices otherwise (matches TWS behavior and option quotes system)
-  // Type 3 (delayed) doesn't return tickPrice/tickOptionComputation after hours
-  api.reqMarketDataType(4)
+  // Use frozen market data (type 2) - returns live when available,
+  // frozen prices otherwise. Type 4 drops greeks during off-hours.
+  api.reqMarketDataType(2)
 
-  const results: OptionGreek[] = []
   const reqIds: Map<number, { strike: number; right: 'C' | 'P' }> = new Map()
   const greeksMap: Map<string, Partial<OptionGreek>> = new Map()
 
@@ -330,7 +350,7 @@ export async function requestOptionGreeks(
     const errorReqIds = new Set<number>()
 
     // Hard timeout: safety net
-    const timeout = setTimeout(() => {
+    const hardTimeout = setTimeout(() => {
       if (!resolved) {
         console.log(
           `[IB] Hard timeout fired. tickDataReceived=${tickDataReceived}, errors=${errorReqIds.size}, completed=${completedCount}/${totalExpected}`
@@ -353,15 +373,37 @@ export async function requestOptionGreeks(
       }, 500)
     }
 
-    function finish(): void {
+    // Finish successfully
+    const finish = (): void => {
       if (resolved) return
       resolved = true
-      clearTimeout(timeout)
-      if (settleTimer) clearTimeout(settleTimer)
+      clearTimeout(hardTimeout)
+      if (settleTimer !== null) clearTimeout(settleTimer)
       cleanup()
-      buildResults()
+
+      // Remove entries where IB returned error (e.g. code 300 = contract not found)
+      for (const errReqId of errorReqIds) {
+        const info = reqIds.get(errReqId)
+        if (info) {
+          const key = `${info.strike}_${info.right}`
+          greeksMap.delete(key)
+        }
+      }
+
+      // Fallback: If an option has no bid/ask/last but HAS a model price, use the model price as "last"
+      // so the UI doesn't just show a dash
+      for (const data of greeksMap.values()) {
+        if ((data.bid ?? 0) === 0 && (data.ask ?? 0) === 0 && (data.last ?? 0) === 0 && (data.modelPrice ?? 0) > 0) {
+          data.last = data.modelPrice
+        }
+      }
+
+      const results = Array.from(greeksMap.values()) as OptionGreek[]
+      // Sort by strike ascending, calls first
+      results.sort((a, b) => a.strike - b.strike || (a.right === 'C' ? -1 : 1))
+
       console.log(
-        `[IB] Option greeks finished: ${results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length}/${results.length} have data`
+        `[IB] Option greeks finished: ${results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length}/${results.length} have data, ${errorReqIds.size} errors removed`
       )
       // Auto-store fetched results in greeks cache
       setGreeksCache(cacheKey, results)
@@ -385,12 +427,21 @@ export async function requestOptionGreeks(
 
       tickDataReceived++
       if (value >= 0) {
-        if (tickType === 1 || tickType === 68) data.bid = value
-        else if (tickType === 2 || tickType === 69) data.ask = value
-        else if (tickType === 4 || tickType === 70) data.last = value
-        else if (tickType === 9 || tickType === 75) {
-          // Close price: use as last if last is still 0
+        if (tickType === 1 || tickType === 68) {
+          // Live bid: store directly
+          data.bid = value
+        } else if (tickType === 2 || tickType === 69) {
+          // Live ask: store directly
+          data.ask = value
+        } else if (tickType === 4 || tickType === 70) {
+          data.last = value
+        } else if (tickType === 9 || tickType === 75) {
+          // Close price: best frozen-data fallback during off-hours.
+          // Use as last always; also fill bid/ask as approximation when live quotes are absent (-1).
           if (data.last === 0) data.last = value
+          // If bid/ask were not received (IB sends -1 during off-hours) use close as a best-effort
+          if (data.bid === 0) data.bid = value
+          if (data.ask === 0) data.ask = value
         }
       }
       resetSettleTimer()
@@ -489,14 +540,6 @@ export async function requestOptionGreeks(
       }
     }
 
-    function buildResults(): void {
-      for (const data of greeksMap.values()) {
-        results.push(data as OptionGreek)
-      }
-      // Sort by strike ascending, calls first
-      results.sort((a, b) => a.strike - b.strike || (a.right === 'C' ? -1 : 1))
-    }
-
     // Log reqId range for debugging
     const reqIdKeys = Array.from(reqIds.keys())
     console.log(`[IB] Option reqId range: ${reqIdKeys[0]} to ${reqIdKeys[reqIdKeys.length - 1]}`)
@@ -525,8 +568,7 @@ export async function requestOptionGreeks(
 
     function sendNextBatch(): void {
       // Set market data type to delayed-frozen RIGHT BEFORE each batch
-      // Type 4 (delayed-frozen) returns close/frozen when live unavailable
-      // (quotes.ts auto-refresh may change the type between batches)
+      // Type 4 (delayed-frozen) returns close/frozen when live unavailable, including greeks
       api!.reqMarketDataType(4)
 
       // Send up to 10 requests at a time

@@ -158,9 +158,11 @@ export default function RollOptionDialog({
   const availableExpirations = useMemo(() => {
     const set = new Set<string>()
     chainParams.forEach((p) => p.expirations.forEach((e) => set.add(e)))
-    return Array.from(set)
+    const all = Array.from(set)
+    const filtered = all
       .filter((e) => e >= maxCurrentExpiry)
       .sort()
+    return filtered
   }, [chainParams, maxCurrentExpiry])
 
   // Available strikes from chain

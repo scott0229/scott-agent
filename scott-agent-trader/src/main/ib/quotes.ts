@@ -79,9 +79,9 @@ function _fetchOptionQuote(
   let bid = 0
   let ask = 0
 
-  // Use delayed-frozen (4) to get best available data:
-  // live when available, close/frozen otherwise (matches TWS behavior)
-  api.reqMarketDataType(4)
+  // Use frozen (2) to get best available data:
+  // live when available, frozen otherwise (matches TWS behavior and returns greeks)
+  api.reqMarketDataType(2)
 
   return new Promise((resolve) => {
     let resolved = false
@@ -222,8 +222,8 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
     last: 0
   }
 
-  // Use delayed-frozen (4) to get best available data
-  api.reqMarketDataType(4)
+  // Use frozen market data (type 2) to get best available data
+  api.reqMarketDataType(2)
 
   return new Promise((resolve) => {
     let resolved = false

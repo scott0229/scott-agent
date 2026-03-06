@@ -16,7 +16,6 @@ import CloseOptionDialog from './CloseOptionDialog'
 import AddGroupDialog from './AddGroupDialog'
 import CloseGroupDialog from './CloseGroupDialog'
 import AiAdvisorDialog from './AiAdvisorDialog'
-import RollSuggestion from './RollSuggestion'
 
 const TRADING_TYPE_OPTIONS = [
   { value: 'reg_t', label: 'Reg T 保證金' },
@@ -93,7 +92,7 @@ export default function AccountOverview({
   const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
-  const [rollInitialTarget, setRollInitialTarget] = useState<{ expiry: string; strike: number; right: 'C' | 'P' } | undefined>(undefined)
+
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
@@ -1090,7 +1089,7 @@ export default function AccountOverview({
                               <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                               <td
                                 style={{
-                                  color: pnl >= 0 ? '#16a34a' : '#dc2626',
+                                  color: pnl >= 0 ? '#1a6b3a' : '#dc2626',
                                   fontWeight: 500
                                 }}
                               >
@@ -1168,16 +1167,7 @@ export default function AccountOverview({
                         )
                       })()
                     )}
-                    <RollSuggestion
-                      positions={groupPositions}
-                      connected={connected}
-                      onExecute={(target) => {
-                        const optPositions = groupPositions.filter((p) => p.secType === 'OPT')
-                        setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
-                        setRollInitialTarget(target)
-                        setShowRollDialog(true)
-                      }}
-                    />
+
                   </div>
                 )
               })}
@@ -1236,9 +1226,8 @@ export default function AccountOverview({
                         {formatCurrency(account.totalCashValue, account.currency)}
                       </span>
                     </div>
-                    {account.totalCashValue < 0 &&
-                      fedRate !== null &&
-                      (() => {
+                    {(() => {
+                      if (account.totalCashValue < 0 && fedRate !== null) {
                         const loan = account.totalCashValue
                         const abs = Math.abs(loan)
                         const spread =
@@ -1263,7 +1252,14 @@ export default function AccountOverview({
                             </span>
                           </div>
                         )
-                      })()}
+                      }
+                      return (
+                        <div className="metric">
+                          <span className="metric-label">日利息</span>
+                          <span className="metric-value">0</span>
+                        </div>
+                      )
+                    })()}
                     <div className="metric">
                       <span className="metric-label">融資率</span>
                       <span className="metric-value">
@@ -1841,11 +1837,10 @@ export default function AccountOverview({
         open={showRollDialog}
         onClose={() => {
           setShowRollDialog(false)
-          setRollInitialTarget(undefined)
         }}
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
-        initialTarget={rollInitialTarget}
+
         onRollComplete={(rolledPositions, target) => {
           // Store intent: will be applied once IB confirms the fill via position updates
           setPendingRollUpdate({ rolledPositions, target })
