@@ -26,6 +26,7 @@ interface User {
     open_put_covered_capital?: number;
     current_cash_balance?: number;
     last_update_date?: number;
+    current_net_equity?: number;
 }
 
 interface OptionsSummaryPanelProps {
@@ -123,7 +124,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const endMonth = startMonth + 2;
 
     const calculateUserMetrics = (user: User) => {
-        const equity = (user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0);
+        const equity = user.current_net_equity !== undefined ? user.current_net_equity : ((user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0));
 
         // Margin Rate: (Put Capital + Debt) / Equity
         const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
@@ -170,7 +171,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     };
 
     // Calculate Aggregates
-    const totalNetEquity = users.reduce((sum, user) => sum + (user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0), 0);
+    const totalNetEquity = users.reduce((sum, user) => sum + (user.current_net_equity !== undefined ? user.current_net_equity : ((user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0))), 0);
     const totalOpenPutCapital = users.reduce((sum, user) => sum + (user.open_put_covered_capital || 0), 0);
     const totalDebt = users.reduce((sum, user) => sum + Math.abs(Math.min(0, user.current_cash_balance || 0)), 0);
     const aggregateMarginRate = totalNetEquity > 0 ? (totalOpenPutCapital + totalDebt) / totalNetEquity : 0;

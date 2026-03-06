@@ -53,6 +53,7 @@ interface User {
     last_update_date?: number;
     daily_premium?: { date: number; cumulative_profit: number }[];
     deposits?: { date: number; amount: number }[];
+    current_net_equity?: number;
 }
 
 interface EquityHistoryItem {
@@ -116,9 +117,7 @@ export default function OptionsPage() {
                 fetch(`/api/net-equity?year=${year}`, { cache: 'no-store' })
             ]);
             const data = await usersRes.json();
-            if (data.users) {
-                setClients(data.users);
-            }
+            let parsedClients = data.users || [];
 
             // Parse equity history per user
             if (equityRes.ok) {
@@ -126,17 +125,29 @@ export default function OptionsPage() {
                     const eqData = await equityRes.json();
                     if (eqData.success && eqData.data) {
                         const map = new Map<number, EquityHistoryItem[]>();
+                        const currentNetEquityMap = new Map<number, number>();
                         for (const user of eqData.data) {
                             if (user.equity_history) {
                                 map.set(user.id, user.equity_history);
                             }
+                            if (user.current_net_equity !== undefined) {
+                                currentNetEquityMap.set(user.id, user.current_net_equity);
+                            }
                         }
                         setEquityDataMap(map);
+
+                        // Attach current_net_equity to users
+                        parsedClients = parsedClients.map((c: User) => ({
+                            ...c,
+                            current_net_equity: currentNetEquityMap.get(c.id)
+                        }));
                     }
                 } catch (e) {
+
                     console.error('Failed to parse equity data:', e);
                 }
             }
+            setClients(parsedClients);
         } catch (error) {
             console.error('Failed to init options page:', error);
         } finally {
@@ -181,12 +192,12 @@ export default function OptionsPage() {
             const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
             return equityB - equityA;
         } else if (sortOrder === 'margin-desc') {
-            const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
+            const equityA = a.current_net_equity !== undefined ? a.current_net_equity : ((a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0));
             const debtA = Math.abs(Math.min(0, a.current_cash_balance || 0));
             const marginUsedA = (a.open_put_covered_capital || 0) + debtA;
             const marginRateA = equityA > 0 ? marginUsedA / equityA : 0;
 
-            const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
+            const equityB = b.current_net_equity !== undefined ? b.current_net_equity : ((b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0));
             const debtB = Math.abs(Math.min(0, b.current_cash_balance || 0));
             const marginUsedB = (b.open_put_covered_capital || 0) + debtB;
             const marginRateB = equityB > 0 ? marginUsedB / equityB : 0;
