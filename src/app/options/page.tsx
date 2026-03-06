@@ -182,10 +182,14 @@ export default function OptionsPage() {
             return equityB - equityA;
         } else if (sortOrder === 'margin-desc') {
             const equityA = (a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0);
-            const marginRateA = equityA > 0 ? (a.open_put_covered_capital || 0) / equityA : 0;
+            const debtA = Math.abs(Math.min(0, a.current_cash_balance || 0));
+            const marginUsedA = (a.open_put_covered_capital || 0) + debtA;
+            const marginRateA = equityA > 0 ? marginUsedA / equityA : 0;
 
             const equityB = (b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0);
-            const marginRateB = equityB > 0 ? (b.open_put_covered_capital || 0) / equityB : 0;
+            const debtB = Math.abs(Math.min(0, b.current_cash_balance || 0));
+            const marginUsedB = (b.open_put_covered_capital || 0) + debtB;
+            const marginRateB = equityB > 0 ? marginUsedB / equityB : 0;
 
             return marginRateB - marginRateA;
         } else if (sortOrder === 'premium-rate-desc') {
