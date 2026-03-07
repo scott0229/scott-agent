@@ -57,14 +57,18 @@ export async function GET(req: NextRequest) {
         ];
 
         for (const year of yearsToTry) {
+            let bestMatch: { group: string; label: string; year: number; count: number } | null = null;
             for (const g of groups) {
                 const db = await getDb(g.dbName);
                 const rows = await db.prepare(allAccountsQuery).bind(year).all() as { results: { ib_account: string }[] };
                 const dbAccounts = (rows.results || []).map(r => r.ib_account);
-                // Match if any connected account belongs to this group
-                if (dbAccounts.length > 0 && accountIds.some(a => dbAccounts.includes(a))) {
-                    return NextResponse.json({ group: g.group, label: g.label, year });
+                const matchCount = accountIds.filter(a => dbAccounts.includes(a)).length;
+                if (matchCount > 0 && (!bestMatch || matchCount > bestMatch.count)) {
+                    bestMatch = { group: g.group, label: g.label, year, count: matchCount };
                 }
+            }
+            if (bestMatch) {
+                return NextResponse.json({ group: bestMatch.group, label: bestMatch.label, year: bestMatch.year });
             }
         }
 
