@@ -101,6 +101,7 @@ export default function AccountOverview({
   const [showCloseGroupDialog, setShowCloseGroupDialog] = useState(false)
   const [showAiAdvisor, setShowAiAdvisor] = useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [showGroupNameInput, setShowGroupNameInput] = useState(false)
@@ -791,7 +792,8 @@ export default function AccountOverview({
                 return (
                   <div
                     key={g.id}
-                    className="account-card"
+                    className={`account-card${selectedGroupId === g.id ? ' account-card-selected' : ''}`}
+                    onClick={() => setSelectedGroupId((prev) => (prev === g.id ? null : g.id))}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
