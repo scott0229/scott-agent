@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         }
 
 
-        // Reverse logic: check if ALL DB accounts (for a given year) are found in the APP's account list.
+        // Check if any of the app's connected accounts exist in a group's DB.
         // Try current year first, then previous year as fallback.
         const currentYear = new Date().getFullYear();
         const yearsToTry = [currentYear, currentYear - 1];
@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
                 const db = await getDb(g.dbName);
                 const rows = await db.prepare(allAccountsQuery).bind(year).all() as { results: { ib_account: string }[] };
                 const dbAccounts = (rows.results || []).map(r => r.ib_account);
-                if (dbAccounts.length > 0 && dbAccounts.every(a => accountIds.includes(a))) {
+                // Match if any connected account belongs to this group
+                if (dbAccounts.length > 0 && accountIds.some(a => dbAccounts.includes(a))) {
                     return NextResponse.json({ group: g.group, label: g.label, year });
                 }
             }
