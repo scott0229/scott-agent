@@ -29,10 +29,12 @@ export function useTraderSettings() {
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const fetchedRef = useRef(false)
+  const settingsLoadedRef = useRef(false)
   const d1TargetRef = useRef(d1Target)
 
   const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
     if (!data.settings) return
+    settingsLoadedRef.current = true
     if (typeof data.settings.margin_limit === 'number') {
       setMarginLimitState(data.settings.margin_limit)
     }
@@ -91,7 +93,12 @@ export function useTraderSettings() {
   }, [applySettings, d1Target])
 
   // Save ALL settings to cloud at once (called when settings panel closes)
+  // Guard: only save if settings were successfully loaded to prevent overwriting real data with empty defaults
   const saveAllSettings = useCallback(() => {
+    if (!settingsLoadedRef.current) {
+      console.warn('[Settings] Skipping save — settings not yet loaded')
+      return
+    }
     window.ibApi.putSettings('margin_limit', marginLimit, d1Target).catch(() => {})
     window.ibApi.putSettings('watch_symbols', watchSymbols, d1Target).catch(() => {})
     window.ibApi.putSettings('account_aliases', accountAliases, d1Target).catch(() => {})

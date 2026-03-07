@@ -374,7 +374,7 @@ export function requestOptionGreeks(
 /** Expand an existing streaming subscription with additional strikes */
 async function _expandSubscription(
   sub: StreamingSubscription,
-  cacheKey: string,
+  _cacheKey: string,
   newStrikes: number[],
   exchange: string
 ): Promise<void> {
@@ -408,6 +408,7 @@ async function _expandSubscription(
   console.log(`[IB] Subscribing ${newReqIds.length} new contracts for ${sub.symbol} ${sub.expiry}`)
 
   // Subscribe to streaming for the new strikes
+  if (!api) return
   api.reqMarketDataType(4)
   for (const [reqId, info] of newReqIds) {
     const contract: Contract = new Option(
