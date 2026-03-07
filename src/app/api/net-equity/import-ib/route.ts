@@ -57,6 +57,10 @@ function parseIBStatement(html: string) {
     }
     const userAlias = aliasMatch[1].trim();
 
+    // 2b. Extract account capability (帳戶能力 / 賬戶能力)
+    const capabilityMatch = html.match(/[帳賬]戶能力<\/td>\s*<td>(.*?)<\/td>/);
+    const accountCapability = capabilityMatch ? capabilityMatch[1].trim() : null;
+
     // 3. Extract NAV section values
     // Find the NAV section body
     const navSectionMatch = html.match(/id="tblNAV_[^"]*Body"[^>]*>([\s\S]*?)(?=<div class="sectionHeading|<div class="pa-promo)/);
@@ -342,6 +346,7 @@ function parseIBStatement(html: string) {
         dateStr,
         year,
         userAlias,
+        accountCapability,
         cashBalance,
 
         netEquity,
@@ -581,6 +586,7 @@ export async function POST(request: NextRequest) {
                     managementFee: parsed.managementFee,
                     deposit: parsed.deposit,
                     isYearStart: parsed.isYearStart,
+                    accountCapability: parsed.accountCapability,
                     positionActions,
                     openOptionActions,
                     optionActions,
@@ -605,12 +611,14 @@ export async function POST(request: NextRequest) {
                     initial_cost = ?,
                     initial_cash = ?,
                     initial_management_fee = ?,
+                    account_capability = COALESCE(?, account_capability),
                     updated_at = unixepoch()
                 WHERE id = ?
             `).bind(
                 parsed.netEquity,
                 parsed.cashBalance,
                 parsed.managementFee,
+                parsed.accountCapability,
                 userResult.id
             ).run();
             yearStartUpdated = true;
@@ -650,6 +658,12 @@ export async function POST(request: NextRequest) {
                 dailyInterest,
                 parsed.year
             ).run();
+
+            // Update account_capability in USERS if parsed from report
+            if (parsed.accountCapability) {
+                await db.prepare(`UPDATE USERS SET account_capability = ? WHERE id = ?`)
+                    .bind(parsed.accountCapability, userResult.id).run();
+            }
         }
 
         // Sync open stock positions: ADD-ONLY (never update existing trades)
