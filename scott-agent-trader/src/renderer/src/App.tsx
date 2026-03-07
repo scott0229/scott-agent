@@ -103,11 +103,22 @@ function App(): React.JSX.Element {
         setAccountGroupLabel(result.label ? result.label + yearSuffix : null)
         // Re-fetch settings for the detected group
         refetchSettings()
+        // Auto-fetch account types from D1
+        window.ibApi
+          .getAccountTypes(accountIds, d1Target)
+          .then((res) => {
+            if (res.accountTypes && Object.keys(res.accountTypes).length > 0) {
+              for (const [accountId, type] of Object.entries(res.accountTypes) as [string, string][]) {
+                setAccountType(accountId, type)
+              }
+            }
+          })
+          .catch(() => { })
       })
       .catch(() => {
         setAccountGroupLabel(null)
       })
-  }, [accountIdsKey, refetchSettings])
+  }, [accountIdsKey, refetchSettings, d1Target, setAccountType])
 
   const toggleHiddenAccount = useCallback(
     (accountId: string) => {

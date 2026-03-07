@@ -129,6 +129,7 @@ export default function AccountOverview({
   } | null>(null)
   const [editValue, setEditValue] = useState('')
   const editInputRef = useRef<HTMLInputElement | null>(null)
+  const groupGridRef = useRef<HTMLDivElement | null>(null)
   // Context menu state for order cancellation
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -157,6 +158,26 @@ export default function AccountOverview({
     setSelectedPositions(new Set())
     setShowGroupNameInput(false)
   }, [groupViewMode])
+
+  // Masonry layout: measure each card and set grid-row span
+  useEffect(() => {
+    const grid = groupGridRef.current
+    if (!grid || !groupViewMode) return
+    const rowHeight = 10
+    const rowGap = 6
+    const cards = grid.querySelectorAll<HTMLElement>('.account-card')
+    // Reset first so we can measure natural height
+    cards.forEach((card) => {
+      card.style.gridRowEnd = ''
+    })
+    // Force reflow then measure
+    void grid.offsetHeight
+    cards.forEach((card) => {
+      const contentHeight = card.scrollHeight
+      const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)) + 1
+      card.style.gridRowEnd = `span ${span}`
+    })
+  })
 
   // Watch positions: when pending roll's new positions appear,
   // update group posKeys using the actual new posKey reported by IB.
@@ -732,7 +753,7 @@ export default function AccountOverview({
           symbolGroups.length === 0 ? (
             <div className="empty-state">尚無群組，請選取期權後建立</div>
           ) : (
-            <div className="accounts-grid">
+            <div className="group-cards-grid" ref={groupGridRef}>
               {symbolGroups.map((g, gIdx) => {
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions

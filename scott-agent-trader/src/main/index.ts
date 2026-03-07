@@ -296,6 +296,27 @@ function setupIpcHandlers(): void {
     }
   })
 
+  // Fetch account types (帳戶能力) from D1 USERS table
+  ipcMain.handle(
+    'settings:getAccountTypes',
+    async (_event, accountIds: string[], d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'staging'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-account-types')
+        const params = new URLSearchParams({ accounts: accountIds.join(',') })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        const result = await res.json()
+        console.log('[settings:getAccountTypes] result:', JSON.stringify(result))
+        return result
+      } catch {
+        return { accountTypes: {} }
+      }
+    }
+  )
+
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
     {

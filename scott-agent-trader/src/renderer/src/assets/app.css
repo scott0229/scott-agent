@@ -210,6 +210,7 @@ body {
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
@@ -427,6 +428,18 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+}
+
+.group-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 10px;
+  column-gap: 16px;
+  row-gap: 6px;
+}
+
+.group-cards-grid>.account-card {
+  overflow: hidden;
 }
 
 .account-card {
@@ -1757,7 +1770,7 @@ input[type='number']::-webkit-outer-spin-button {
   display: inline-block;
 }
 
-.roll-order-label + .roll-order-value + .roll-order-label {
+.roll-order-label+.roll-order-value+.roll-order-label {
   margin-left: 6px;
 }
 

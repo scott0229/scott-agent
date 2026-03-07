@@ -225,6 +225,10 @@ interface IBApi {
 
   // Account Group Detection
   detectGroup: (accountIds: string[]) => Promise<{ group: string; label: string }>
+  getAccountTypes: (
+    accountIds: string[],
+    d1Target?: string
+  ) => Promise<{ accountTypes: Record<string, string> }>
 
   log: (...args: any[]) => void
 

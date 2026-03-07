@@ -79,6 +79,11 @@ const ibApi = {
     ipcRenderer.invoke('settings:put', key, value, d1Target),
   detectGroup: (accountIds: string[]): Promise<{ group: string; label: string; year?: number }> =>
     ipcRenderer.invoke('settings:detectGroup', accountIds),
+  getAccountTypes: (
+    accountIds: string[],
+    d1Target?: string
+  ): Promise<{ accountTypes: Record<string, string> }> =>
+    ipcRenderer.invoke('settings:getAccountTypes', accountIds, d1Target),
 
   // Price Upload (per-symbol)
   uploadSymbol: (
