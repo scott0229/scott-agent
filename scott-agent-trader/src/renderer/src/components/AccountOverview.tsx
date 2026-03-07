@@ -160,24 +160,37 @@ export default function AccountOverview({
   }, [groupViewMode])
 
   // Masonry layout: measure each card and set grid-row span
+  // Only recalculate when actual data changes (not on every poll-triggered render)
+  const masonryKey = useMemo(() => {
+    if (!groupViewMode) return ''
+    return symbolGroups
+      .map((g) => {
+        const groupPosKeys = new Set(g.posKeys)
+        const count = positions.filter((p) => groupPosKeys.has(posKey(p))).length
+        return `${g.id}:${count}`
+      })
+      .join('|')
+  }, [groupViewMode, symbolGroups, positions])
+
   useEffect(() => {
     const grid = groupGridRef.current
     if (!grid || !groupViewMode) return
-    const rowHeight = 10
-    const rowGap = 6
-    const cards = grid.querySelectorAll<HTMLElement>('.account-card')
-    // Reset first so we can measure natural height
-    cards.forEach((card) => {
-      card.style.gridRowEnd = ''
+    const rafId = requestAnimationFrame(() => {
+      const rowHeight = 10
+      const rowGap = 6
+      const cards = grid.querySelectorAll<HTMLElement>('.account-card')
+      cards.forEach((card) => {
+        card.style.gridRowEnd = ''
+      })
+      void grid.offsetHeight
+      cards.forEach((card) => {
+        const contentHeight = card.scrollHeight
+        const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)) + 1
+        card.style.gridRowEnd = `span ${span}`
+      })
     })
-    // Force reflow then measure
-    void grid.offsetHeight
-    cards.forEach((card) => {
-      const contentHeight = card.scrollHeight
-      const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)) + 1
-      card.style.gridRowEnd = `span ${span}`
-    })
-  })
+    return () => cancelAnimationFrame(rafId)
+  }, [groupViewMode, masonryKey])
 
   // Watch positions: when pending roll's new positions appear,
   // update group posKeys using the actual new posKey reported by IB.
