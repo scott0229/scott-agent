@@ -77,7 +77,6 @@ export default function AccountOverview({
   loading,
   refresh,
   accountTypes,
-  onSetAccountType,
   marginLimit = 1.3,
   symbolGroups = [],
   onAddSymbolGroup,
