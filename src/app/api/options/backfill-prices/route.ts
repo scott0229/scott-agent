@@ -25,12 +25,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const symbol = searchParams.get('symbol')
 
-    if (!symbol) {
-      return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 })
-    }
-
     const group = await getGroupFromRequest(req)
     const db = await getDb(group)
+
+    // No symbol → return distinct underlyings with missing prices
+    if (!symbol) {
+      const { results } = await db.prepare(
+        `SELECT DISTINCT underlying FROM OPTIONS
+         WHERE underlying IS NOT NULL AND (underlying_price IS NULL OR underlying_price = 0)
+         ORDER BY underlying`
+      ).all()
+      const symbols = results.map((r: Record<string, unknown>) => r.underlying as string)
+      return NextResponse.json({ symbols })
+    }
 
     const { results } = await db.prepare(
       `SELECT id, open_date FROM OPTIONS
