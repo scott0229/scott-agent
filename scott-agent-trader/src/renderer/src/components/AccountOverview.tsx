@@ -77,7 +77,6 @@ export default function AccountOverview({
   loading,
   refresh,
   accountTypes,
-  onSetAccountType,
   marginLimit = 1.3,
   symbolGroups = [],
   onAddSymbolGroup,
@@ -1243,13 +1242,9 @@ export default function AccountOverview({
                   >
                     💡
                   </button>
-                  <div className="account-type-select" onClick={(e) => e.stopPropagation()}>
-                    <CustomSelect
-                      value={accountTypes?.[account.accountId] || 'reg_t'}
-                      options={TRADING_TYPE_OPTIONS}
-                      onChange={(v) => onSetAccountType?.(account.accountId, v)}
-                    />
-                  </div>
+                  <span className="account-type-label">
+                    {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
+                  </span>
                 </div>
 
                 {!selectMode && (
