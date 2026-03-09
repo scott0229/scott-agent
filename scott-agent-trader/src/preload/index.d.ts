@@ -230,6 +230,17 @@ interface IBApi {
     d1Target?: string
   ) => Promise<{ accountTypes: Record<string, string> }>
 
+  // Get distinct underlying symbols with missing underlying_price
+  getMissingPriceSymbols: (
+    target?: 'staging' | 'production'
+  ) => Promise<string[]>
+
+  // Backfill underlying_price for one symbol (1-sec precision)
+  backfillUnderlyingPrice: (
+    symbol: string,
+    target?: 'staging' | 'production'
+  ) => Promise<{ success: boolean; found: number; updated: number; error?: string }>
+
   log: (...args: any[]) => void
 
   removeAllListeners: () => void

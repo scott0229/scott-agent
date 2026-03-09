@@ -5,6 +5,7 @@ import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
 import UploadProgressDialog from './components/UploadProgressDialog'
+import BackfillProgressDialog from './components/BackfillProgressDialog'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
 import './assets/app.css'
@@ -32,6 +33,7 @@ function App(): React.JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [showUpload, setShowUpload] = useState(false)
+  const [showBackfill, setShowBackfill] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const {
     marginLimit,
@@ -180,6 +182,14 @@ function App(): React.JSX.Element {
           >
             ☁ 上傳股價
           </button>
+          <button
+            className="upload-prices-btn"
+            title="回填缺少底層股價的期權紀錄（1分鐘精度）"
+            disabled={!connected || watchSymbols.filter(Boolean).length === 0}
+            onClick={() => setShowBackfill(true)}
+          >
+            📊 回填底層股價
+          </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
         </div>
         <nav className="tab-nav-inline">
@@ -281,6 +291,12 @@ function App(): React.JSX.Element {
           symbols={watchSymbols.filter(Boolean)}
           d1Target={d1Target}
           onClose={() => setShowUpload(false)}
+        />
+      )}
+      {showBackfill && (
+        <BackfillProgressDialog
+          d1Target={d1Target}
+          onClose={() => setShowBackfill(false)}
         />
       )}
     </div>

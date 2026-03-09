@@ -537,6 +537,229 @@ function setupIpcHandlers(): void {
       }
     }
   )
+
+  // Fetch distinct underlying symbols with missing underlying_price
+  ipcMain.handle(
+    'prices:getMissingPriceSymbols',
+    async (_event, target?: 'staging' | 'production') => {
+      const effectiveTarget = target || 'staging'
+      const t = UPLOAD_TARGETS.find((t) => t.label === effectiveTarget) || UPLOAD_TARGETS[0]
+      try {
+        const hdrs = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${t.apiKey}`
+        }
+        const url = `${t.backfill}?group=${encodeURIComponent(detectedGroup)}`
+        console.log(`[getMissingPriceSymbols] url=${url}`)
+        const res = await fetch(url, { headers: hdrs })
+        console.log(`[getMissingPriceSymbols] status=${res.status}`)
+        if (!res.ok) {
+          const errText = await res.text()
+          console.warn(`[getMissingPriceSymbols] error: ${errText}`)
+          return []
+        }
+        const json = (await res.json()) as { symbols?: string[] }
+        console.log(`[getMissingPriceSymbols] symbols=`, json.symbols)
+        return json.symbols || []
+      } catch (err) {
+        console.error(`[getMissingPriceSymbols] catch:`, err)
+        return []
+      }
+    }
+  )
+
+  // Backfill underlying_price for one symbol using 1-second IB bars
+  ipcMain.handle(
+    'prices:backfillUnderlyingPrice',
+    async (_event, symbol: string, target?: 'staging' | 'production') => {
+      const effectiveTarget = target || 'staging'
+      const t = UPLOAD_TARGETS.find((t) => t.label === effectiveTarget) || UPLOAD_TARGETS[0]
+      try {
+        const hdrs = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${t.apiKey}`
+        }
+        const bfUrl = `${t.backfill}?symbol=${encodeURIComponent(symbol)}&group=${encodeURIComponent(detectedGroup)}`
+        const bfRes = await fetch(bfUrl, { headers: hdrs })
+        if (!bfRes.ok) {
+          return { success: false, found: 0, updated: 0, error: `API error: ${bfRes.status}` }
+        }
+        const { options: missingOpts } = (await bfRes.json()) as {
+          options: { id: number; open_date: number }[]
+        }
+        if (!missingOpts || missingOpts.length === 0) {
+          return { success: true, found: 0, updated: 0 }
+        }
+
+        console.log(
+          `[backfill-btn][${t.label}] Found ${missingOpts.length} missing underlying_price for ${symbol}`
+        )
+
+        const updates: { id: number; underlying_price: number }[] = []
+
+        // ── Batch by 1-day window to minimise IB requests (1-min bars) ──
+        const WINDOW = 86400 // 1 day in seconds
+        const sorted = [...missingOpts].sort((a, b) => a.open_date - b.open_date)
+        const groups: { start: number; end: number; opts: typeof missingOpts }[] = []
+        for (const opt of sorted) {
+          const last = groups[groups.length - 1]
+          if (last && opt.open_date - last.start < WINDOW) {
+            last.end = Math.max(last.end, opt.open_date)
+            last.opts.push(opt)
+          } else {
+            groups.push({ start: opt.open_date, end: opt.open_date, opts: [opt] })
+          }
+        }
+        console.log(
+          `[backfill-btn][${t.label}] Grouped ${missingOpts.length} records into ${groups.length} time-windows for ${symbol}`
+        )
+
+        // Format Unix epoch → IB endDateTime string
+        // NOTE: open_date in DB stores ET time as naive UTC, so we use UTC methods
+        // which gives the correct ET time string for IB
+        const fmtDt = (sec: number): string => {
+          const d = new Date(sec * 1000)
+          const Y = d.getUTCFullYear()
+          const M = String(d.getUTCMonth() + 1).padStart(2, '0')
+          const D = String(d.getUTCDate()).padStart(2, '0')
+          const h = String(d.getUTCHours()).padStart(2, '0')
+          const m = String(d.getUTCMinutes()).padStart(2, '0')
+          const s = String(d.getUTCSeconds()).padStart(2, '0')
+          return `${Y}${M}${D}-${h}:${m}:${s}`
+        }
+
+        for (let gi = 0; gi < groups.length; gi++) {
+          const grp = groups[gi]
+          try {
+            // endDateTime = latest record + 30s buffer
+            const endSec = grp.end + 30
+            // duration covers earliest to latest + padding, min 60s
+            const dur = Math.max(60, grp.end - grp.start + 60)
+
+            console.log(
+              `[backfill-btn] Window ${gi + 1}/${groups.length}: ${grp.opts.length} records, ` +
+                `${dur}s duration, end=${fmtDt(endSec)}`
+            )
+
+            const secBars = await getHistoricalData({
+              symbol,
+              durationString: `${dur} S`,
+              barSizeSetting: '1 min',
+              endDateTime: fmtDt(endSec),
+              useRTH: 1,
+              whatToShow: 'TRADES'
+            })
+
+            if (secBars.length === 0) {
+              console.warn(`[backfill-btn] No bars for window ${gi + 1}`)
+              continue
+            }
+
+            console.log(
+              `[backfill-btn] Window ${gi + 1}: got ${secBars.length} bars, ` +
+                `first=${JSON.stringify(secBars[0].time)} (type=${typeof secBars[0].time}), ` +
+                `last=${JSON.stringify(secBars[secBars.length - 1].time)}`
+            )
+
+            // Parse bar times once for this window
+            // IB bar.time formats observed:
+            //   number: unix seconds
+            //   "YYYYMMDD  HH:MM:SS": dense date string (ET)
+            //   "YYYY MM DD HH:MM:SS timezone": spaced date with timezone (e.g. "2026 02 21 04:55:00 Asia/Taipei")
+            //   ISO string: fallback
+            // NOTE: open_date in DB stores ET time as naive UTC, so we parse bar time
+            //   and strip timezone, treating the local time digits as UTC for correct matching.
+            const parsedBars = secBars.map((bar) => {
+              let barSec: number
+              if (typeof bar.time === 'number') {
+                barSec = bar.time
+              } else {
+                const ts = String(bar.time).trim()
+                // Try "YYYY MM DD HH:MM:SS timezone" format (IB 1-min bars)
+                const spacedMatch = ts.match(/^(\d{4})\s+(\d{2})\s+(\d{2})\s+(\d{2}:\d{2}:\d{2})/)
+                if (spacedMatch) {
+                  // Treat as naive UTC (matches how open_date is stored)
+                  barSec = Math.floor(
+                    new Date(`${spacedMatch[1]}-${spacedMatch[2]}-${spacedMatch[3]}T${spacedMatch[4]}Z`).getTime() / 1000
+                  )
+                } else if (/^\d{8}\s/.test(ts)) {
+                  // Format: "20260306  10:06:17" — dense date
+                  const y = ts.substring(0, 4)
+                  const mo = ts.substring(4, 6)
+                  const da = ts.substring(6, 8)
+                  const rest = ts.substring(9).trim()
+                  barSec = Math.floor(new Date(`${y}-${mo}-${da}T${rest}Z`).getTime() / 1000)
+                } else {
+                  barSec = Math.floor(new Date(ts).getTime() / 1000)
+                }
+              }
+              return { sec: barSec, close: bar.close }
+            })
+
+            // Match every record in this group to closest bar
+            for (const opt of grp.opts) {
+              let bestBar = parsedBars[0]
+              let bestDiff = Math.abs(opt.open_date - parsedBars[0].sec)
+              for (const pb of parsedBars) {
+                const diff = Math.abs(opt.open_date - pb.sec)
+                if (diff < bestDiff) {
+                  bestDiff = diff
+                  bestBar = pb
+                }
+              }
+              updates.push({ id: opt.id, underlying_price: bestBar.close })
+              // Debug: show the open_date as decoded time
+              const od = new Date(opt.open_date * 1000)
+              const odStr = `${od.getUTCFullYear()}${String(od.getUTCMonth() + 1).padStart(2, '0')}${String(od.getUTCDate()).padStart(2, '0')}-${String(od.getUTCHours()).padStart(2, '0')}:${String(od.getUTCMinutes()).padStart(2, '0')}:${String(od.getUTCSeconds()).padStart(2, '0')}`
+              const bd = new Date(bestBar.sec * 1000)
+              const bdStr = `${bd.getUTCFullYear()}${String(bd.getUTCMonth() + 1).padStart(2, '0')}${String(bd.getUTCDate()).padStart(2, '0')}-${String(bd.getUTCHours()).padStart(2, '0')}:${String(bd.getUTCMinutes()).padStart(2, '0')}:${String(bd.getUTCSeconds()).padStart(2, '0')}`
+              console.log(
+                `[backfill-btn]   id=${opt.id}: open_date=${odStr} matched_bar=${bdStr} price=${bestBar.close}, diff=${bestDiff}s`
+              )
+            }
+
+            // IB pacing: wait 2s between window requests (not per record)
+            if (gi < groups.length - 1) {
+              await new Promise((r) => setTimeout(r, 10000))
+            }
+          } catch (grpErr) {
+            console.warn(
+              `[backfill-btn] Window ${gi + 1} failed:`,
+              grpErr instanceof Error ? grpErr.message : grpErr
+            )
+          }
+        }
+
+        // Send batch update
+        if (updates.length > 0) {
+          const postRes = await fetch(bfUrl, {
+            method: 'POST',
+            headers: hdrs,
+            body: JSON.stringify({ updates })
+          })
+          if (postRes.ok) {
+            const postJson = await postRes.json()
+            console.log(
+              `[backfill-btn][${t.label}] Updated ${postJson.updated} records for ${symbol}`
+            )
+            return { success: true, found: missingOpts.length, updated: postJson.updated }
+          } else {
+            return {
+              success: false,
+              found: missingOpts.length,
+              updated: 0,
+              error: `POST failed: ${postRes.status}`
+            }
+          }
+        }
+
+        return { success: true, found: missingOpts.length, updated: updates.length }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { success: false, found: 0, updated: 0, error: msg }
+      }
+    }
+  )
 }
 
 // === App Lifecycle ===

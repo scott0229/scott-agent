@@ -92,6 +92,19 @@ const ibApi = {
   ): Promise<{ success: boolean; count?: number; error?: string }> =>
     ipcRenderer.invoke('prices:uploadSymbol', symbol, target),
 
+  // Get list of underlying symbols with missing underlying_price
+  getMissingPriceSymbols: (
+    target?: 'staging' | 'production'
+  ): Promise<string[]> =>
+    ipcRenderer.invoke('prices:getMissingPriceSymbols', target),
+
+  // Backfill underlying_price for one symbol (1-sec precision)
+  backfillUnderlyingPrice: (
+    symbol: string,
+    target?: 'staging' | 'production'
+  ): Promise<{ success: boolean; found: number; updated: number; error?: string }> =>
+    ipcRenderer.invoke('prices:backfillUnderlyingPrice', symbol, target),
+
   // Cleanup
   log: (...args: any[]) => ipcRenderer.send('renderer-log', ...args),
 
