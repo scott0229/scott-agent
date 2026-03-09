@@ -260,6 +260,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         return `${year}-${month}-${day}`;
     };
 
+    const formatTime = (timestamp: number | null) => {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp * 1000);
+        const h = date.getUTCHours();
+        const m = date.getUTCMinutes();
+        const s = date.getUTCSeconds();
+        if (h === 0 && m === 0 && s === 0) return '-';
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
     const calculateDays = (start: number, end: number | null) => {
         if (!end) return '';
         const diffTime = Math.abs(end * 1000 - start * 1000);
@@ -446,6 +456,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
+                            <TableHead className="text-center">時間</TableHead>
                             <TableHead className="text-center">到期日</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
@@ -525,6 +536,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             )}
                                         </TableCell>
                                         <TableCell>{formatDate(opt.open_date)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm font-mono">{formatTime(opt.open_date)}</TableCell>
                                         <TableCell>{formatDate(opt.to_date)}</TableCell>
                                         <TableCell>{getDaysToExpire(opt)}</TableCell>
                                         <TableCell>
