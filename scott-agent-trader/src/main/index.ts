@@ -323,13 +323,15 @@ function setupIpcHandlers(): void {
       label: 'staging',
       apiKey: 'MZ12MUOIJXFNK7LZ',
       bulk: 'https://staging.scott-agent.com/api/market-data/bulk',
-      clearCache: 'https://staging.scott-agent.com/api/market-data/clear-cache'
+      clearCache: 'https://staging.scott-agent.com/api/market-data/clear-cache',
+      backfill: 'https://staging.scott-agent.com/api/options/backfill-prices'
     },
     {
       label: 'production',
       apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07',
       bulk: 'https://scott-agent.com/api/market-data/bulk',
-      clearCache: 'https://scott-agent.com/api/market-data/clear-cache'
+      clearCache: 'https://scott-agent.com/api/market-data/clear-cache',
+      backfill: 'https://scott-agent.com/api/options/backfill-prices'
     }
   ]
 
@@ -397,6 +399,135 @@ function setupIpcHandlers(): void {
             headers: hdrs,
             body: JSON.stringify({ symbols: [symbol] })
           }).catch((e) => console.warn(`[clear-cache][${t.label}] notify failed:`, e))
+        }
+
+        // ── Backfill underlying_price in OPTIONS table (best-effort) ──
+        // For each target, find OPTIONS records missing underlying_price for this symbol,
+        // fetch 1-min intraday bars from IB for each relevant date, and update.
+        for (const t of targets) {
+          try {
+            const hdrs = {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${t.apiKey}`
+            }
+            const bfUrl = `${t.backfill}?symbol=${encodeURIComponent(symbol)}&group=${encodeURIComponent(detectedGroup)}`
+            const bfRes = await fetch(bfUrl, { headers: hdrs })
+            if (!bfRes.ok) {
+              console.warn(`[backfill][${t.label}] GET failed: ${bfRes.status}`)
+              continue
+            }
+            const { options: missingOpts } = (await bfRes.json()) as {
+              options: { id: number; open_date: number }[]
+            }
+            if (!missingOpts || missingOpts.length === 0) {
+              console.log(`[backfill][${t.label}] No missing underlying_price for ${symbol}`)
+              continue
+            }
+
+            console.log(
+              `[backfill][${t.label}] Found ${missingOpts.length} options missing underlying_price for ${symbol}`
+            )
+
+            // Group by trading date (YYYYMMDD) — open_date is Unix timestamp (seconds)
+            const byDate = new Map<string, { id: number; open_date: number }[]>()
+            for (const opt of missingOpts) {
+              // Convert open_date (UTC seconds) to YYYYMMDD in US Eastern (approximate with UTC-5)
+              const dateObj = new Date(opt.open_date * 1000)
+              const yyyy = dateObj.getUTCFullYear()
+              const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0')
+              const dd = String(dateObj.getUTCDate()).padStart(2, '0')
+              const dateKey = `${yyyy}${mm}${dd}`
+              if (!byDate.has(dateKey)) byDate.set(dateKey, [])
+              byDate.get(dateKey)!.push(opt)
+            }
+
+            const updates: { id: number; underlying_price: number }[] = []
+
+            for (const [dateKey, opts] of byDate) {
+              try {
+                // Fetch 1-min bars for this day from IB
+                // endDateTime format: 'YYYYMMDD 23:59:59'
+                const intradayBars = await getHistoricalData({
+                  symbol,
+                  durationString: '1 D',
+                  barSizeSetting: '1 min',
+                  endDateTime: `${dateKey} 23:59:59`,
+                  useRTH: 1,
+                  whatToShow: 'TRADES'
+                })
+
+                if (intradayBars.length === 0) {
+                  console.warn(`[backfill] No intraday bars for ${symbol} on ${dateKey}`)
+                  continue
+                }
+
+                // Parse bar times to Unix seconds for matching
+                const parsedBars = intradayBars.map((bar) => {
+                  const t = String(bar.time)
+                  let barSec: number
+                  if (/^\d{8}\s/.test(t)) {
+                    // Format: "YYYYMMDD HH:mm:ss"
+                    const y = t.substring(0, 4)
+                    const m = t.substring(4, 6)
+                    const d = t.substring(6, 8)
+                    const rest = t.substring(9) // "HH:mm:ss"
+                    barSec = Math.floor(
+                      new Date(`${y}-${m}-${d}T${rest}Z`).getTime() / 1000
+                    )
+                  } else {
+                    barSec = Math.floor(new Date(t).getTime() / 1000)
+                  }
+                  return { sec: barSec, close: bar.close }
+                })
+
+                // For each option, find the closest 1-min bar
+                for (const opt of opts) {
+                  let bestBar = parsedBars[0]
+                  let bestDiff = Math.abs(opt.open_date - parsedBars[0].sec)
+                  for (const pb of parsedBars) {
+                    const diff = Math.abs(opt.open_date - pb.sec)
+                    if (diff < bestDiff) {
+                      bestDiff = diff
+                      bestBar = pb
+                    }
+                  }
+                  updates.push({ id: opt.id, underlying_price: bestBar.close })
+                }
+
+                // IB pacing: wait 2s between intraday requests to respect rate limits
+                if (byDate.size > 1) {
+                  await new Promise((r) => setTimeout(r, 2000))
+                }
+              } catch (dayErr) {
+                console.warn(
+                  `[backfill] Failed to get intraday for ${symbol} ${dateKey}:`,
+                  dayErr instanceof Error ? dayErr.message : dayErr
+                )
+              }
+            }
+
+            // Send batch update
+            if (updates.length > 0) {
+              const postRes = await fetch(bfUrl, {
+                method: 'POST',
+                headers: hdrs,
+                body: JSON.stringify({ updates })
+              })
+              if (postRes.ok) {
+                const postJson = await postRes.json()
+                console.log(
+                  `[backfill][${t.label}] Updated ${postJson.updated} underlying_price records for ${symbol}`
+                )
+              } else {
+                console.warn(`[backfill][${t.label}] POST failed: ${postRes.status}`)
+              }
+            }
+          } catch (bfErr) {
+            console.warn(
+              `[backfill][${t.label}] Error:`,
+              bfErr instanceof Error ? bfErr.message : bfErr
+            )
+          }
         }
 
         return { success: true, count: rows.length }

@@ -48,6 +48,7 @@ interface Option {
     delta: number | null;
     iv: number | null;
     capital_efficiency: number | null;
+    underlying_price: number | null;
 }
 
 interface EditOptionDialogProps {
@@ -98,7 +99,8 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
         collateral: '',
         iv: '',
         delta: '',
-        final_profit: ''
+        final_profit: '',
+        underlying_price: ''
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -121,7 +123,8 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 collateral: optionToEdit.collateral?.toString() || '',
                 iv: optionToEdit.iv?.toString() || '',
                 delta: optionToEdit.delta?.toString() || '',
-                final_profit: formatNumberWithCommas(optionToEdit.final_profit)
+                final_profit: formatNumberWithCommas(optionToEdit.final_profit),
+                underlying_price: formatNumberWithCommas(optionToEdit.underlying_price)
             });
         }
     }, [optionToEdit]);
@@ -164,6 +167,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
                 final_profit: formData.final_profit ? parseFloat(formData.final_profit.toString().replace(/,/g, '')) : null,
+                underlying_price: formData.underlying_price ? parseFloat(formData.underlying_price.toString().replace(/,/g, '')) : null,
             };
 
             const res = await fetch('/api/options', {
@@ -349,6 +353,28 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                             id="underlying"
                             value={formData.underlying}
                             onChange={(e) => setFormData({ ...formData, underlying: e.target.value.toUpperCase() })}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="underlying_price">底層股價</Label>
+                        <Input
+                            id="underlying_price"
+                            type="text"
+                            value={formData.underlying_price}
+                            onChange={(e) => setFormData({ ...formData, underlying_price: e.target.value })}
+                            onFocus={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                setFormData({ ...formData, underlying_price: cleanValue });
+                            }}
+                            onBlur={(e) => {
+                                const cleanValue = e.target.value.replace(/,/g, '');
+                                if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
+                                    const parts = cleanValue.split('.');
+                                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                    setFormData({ ...formData, underlying_price: parts.join('.') });
+                                }
+                            }}
                         />
                     </div>
 

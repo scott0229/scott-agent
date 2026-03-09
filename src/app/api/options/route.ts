@@ -130,8 +130,8 @@ export async function POST(req: NextRequest) {
                 operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
-                delta, iv, capital_efficiency, user_id, owner_id, year, code, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                delta, iv, capital_efficiency, underlying_price, user_id, owner_id, year, code, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             operation || '新開倉',
             open_date,
@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
             body.delta || null,
             body.iv || null,
             body.capital_efficiency || null,
+            body.underlying_price || null,
             userId || null,
             ownerId || null, // Bind ownerId
             optionYear,
@@ -205,7 +206,8 @@ export async function PUT(req: NextRequest) {
                 operation = ?, open_date = ?, to_date = ?, settlement_date = ?,
                 quantity = ?, underlying = ?, type = ?, strike_price = ?,
                 collateral = ?, premium = ?, final_profit = ?, profit_percent = ?,
-                delta = ?, iv = ?, capital_efficiency = ?, updated_at = unixepoch()
+                delta = ?, iv = ?, capital_efficiency = ?, underlying_price = ?,
+                updated_at = unixepoch()
             WHERE id = ?
         `).bind(
             operation,
@@ -223,6 +225,7 @@ export async function PUT(req: NextRequest) {
             body.delta || null,
             body.iv || null,
             body.capital_efficiency || null,
+            body.underlying_price || null,
             id
         ).run();
 

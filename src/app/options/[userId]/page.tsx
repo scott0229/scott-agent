@@ -62,6 +62,7 @@ interface Option {
     capital_efficiency: number | null;
     user_id: string | null;
     code?: string;
+    underlying_price: number | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -463,6 +464,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">持有天數</TableHead>
                             <TableHead className="text-center">口數</TableHead>
                             <TableHead className="text-center">底層標的</TableHead>
+                            <TableHead className="text-center">底層股價</TableHead>
                             <TableHead className="text-center">多空</TableHead>
                             <TableHead className="text-center">行權價</TableHead>
 
@@ -563,6 +565,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 {opt.underlying}
                                             </span>
                                         </TableCell>
+                                        <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
                                         <TableCell>
                                             <Badge
                                                 variant="outline"

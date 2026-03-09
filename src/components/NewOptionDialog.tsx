@@ -76,6 +76,7 @@ interface OptionFormData {
     premium: number | string;
     close_price: number | string;
     underlying: string;
+    underlying_price: number | string;
     collateral: number | string;
     iv: string;
     delta: string;
@@ -96,6 +97,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
         premium: 0,
         close_price: 0,
         underlying: '',
+        underlying_price: '',
         collateral: 0,
         iv: '',
         delta: ''
@@ -140,6 +142,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                 collateral: Math.abs(parseFloat(formData.quantity.toString().replace(/,/g, ''))) * parseFloat(formData.strike_price.toString().replace(/,/g, '')) * 100,
                 iv: formData.iv ? parseFloat(formData.iv) : null,
                 delta: formData.delta ? parseFloat(formData.delta) : null,
+                underlying_price: formData.underlying_price ? parseFloat(formData.underlying_price.toString().replace(/,/g, '')) : null,
 
                 userId: userId, // Include userId in payload
                 ownerId: ownerId, // Include ownerId in payload
@@ -164,6 +167,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     settlement_date: getNextWorkday(),
                     quantity: '',
                     underlying: '',
+                    underlying_price: '',
                     type: 'CALL',
                     strike_price: '',
                     premium: '',
@@ -353,6 +357,28 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                 id="underlying"
                                 value={formData.underlying}
                                 onChange={(e) => setFormData({ ...formData, underlying: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="underlying_price">底層股價</Label>
+                            <Input
+                                id="underlying_price"
+                                type="text"
+                                value={formData.underlying_price}
+                                onChange={(e) => setFormData({ ...formData, underlying_price: e.target.value })}
+                                onFocus={(e) => {
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    setFormData({ ...formData, underlying_price: cleanValue });
+                                }}
+                                onBlur={(e) => {
+                                    const cleanValue = e.target.value.replace(/,/g, '');
+                                    if (cleanValue && /^-?\d*\.?\d*$/.test(cleanValue)) {
+                                        const parts = cleanValue.split('.');
+                                        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                        setFormData({ ...formData, underlying_price: parts.join('.') });
+                                    }
+                                }}
                             />
                         </div>
 
