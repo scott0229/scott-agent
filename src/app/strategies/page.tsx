@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote, AlertTriangle } from 'lucide-react';
+import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote, AlertTriangle, Layers } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -104,6 +104,8 @@ export default function StrategiesPage() {
     const [stockSymbolFilters, setStockSymbolFilters] = useState<Record<number, string>>({});
     const [optionSymbolFilters, setOptionSymbolFilters] = useState<Record<number, string>>({});
     const [filtersSaved, setFiltersSaved] = useState(false);
+    const [groupByName, setGroupByName] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false);
     const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
@@ -322,7 +324,7 @@ export default function StrategiesPage() {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => { setSelectedUserId('all'); setStatusFilter('all'); setSymbolFilter('all'); setSortOrder('status-new'); }}
+                        onClick={() => { setSelectedUserId('all'); setStatusFilter('all'); setSymbolFilter('all'); setSortOrder('status-new'); setGroupByName(false); setExpandedGroups(new Set()); }}
                         title="重置篩選"
                     >
                         <FilterX className="h-4 w-4" />
@@ -379,6 +381,14 @@ export default function StrategiesPage() {
                             <SelectItem value="status-old">未結案-舊到新</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Button
+                        variant={groupByName ? 'default' : 'outline'}
+                        size="icon"
+                        onClick={() => { setGroupByName(!groupByName); setExpandedGroups(new Set()); }}
+                        title={groupByName ? '取消疊牌' : '相同標題疊起來'}
+                    >
+                        <Layers className="h-4 w-4" />
+                    </Button>
                     <Button onClick={handleAddAnnotation} variant="outline" className="gap-2">
                         <StickyNote className="h-4 w-4" />
                         新增註解
@@ -444,70 +454,86 @@ export default function StrategiesPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {strategies
-                        .filter(strategy => selectedUserId === 'all' || strategy.user_id === selectedUserId)
-                        .filter(strategy => statusFilter === 'all' || strategy.status === statusFilter)
-                        .filter(strategy => symbolFilter === 'all' || strategy.stocks.some(s => s.symbol === symbolFilter) || strategy.options.some(o => o.underlying === symbolFilter))
-                        .map((strategy) => {
-                            // Calculate total profit for sorting
-                            const stockProfit = strategy.stocks.reduce((sum, stock) => {
-                                if (stock.close_price && stock.open_price) {
-                                    return sum + (stock.close_price - stock.open_price) * stock.quantity;
-                                } else if (!stock.close_price && stock.current_market_price) {
-                                    // Include unrealized P&L for open positions
-                                    return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
+                    {(() => {
+                        const sorted = strategies
+                            .filter(strategy => selectedUserId === 'all' || strategy.user_id === selectedUserId)
+                            .filter(strategy => statusFilter === 'all' || strategy.status === statusFilter)
+                            .filter(strategy => symbolFilter === 'all' || strategy.stocks.some(s => s.symbol === symbolFilter) || strategy.options.some(o => o.underlying === symbolFilter))
+                            .map((strategy) => {
+                                // Calculate total profit for sorting
+                                const stockProfit = strategy.stocks.reduce((sum, stock) => {
+                                    if (stock.close_price && stock.open_price) {
+                                        return sum + (stock.close_price - stock.open_price) * stock.quantity;
+                                    } else if (!stock.close_price && stock.current_market_price) {
+                                        // Include unrealized P&L for open positions
+                                        return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
+                                    }
+                                    return sum;
+                                }, 0);
+
+                                const optionProfit = strategy.options.reduce((sum, option) => {
+                                    if (option.final_profit !== null && option.final_profit !== undefined) {
+                                        return sum + option.final_profit;
+                                    }
+                                    return sum;
+                                }, 0);
+
+                                const totalProfit = stockProfit + optionProfit;
+
+                                return { ...strategy, totalProfit, hasMismatch: false };
+                            })
+                            .sort((a, b) => {
+                                if (sortOrder === 'date-new') {
+                                    return b.created_at - a.created_at;
+                                } else if (sortOrder === 'date-old') {
+                                    return a.created_at - b.created_at;
+                                } else if (sortOrder === 'status-new') {
+                                    const statusA = a.status === '進行中' ? 0 : 1;
+                                    const statusB = b.status === '進行中' ? 0 : 1;
+                                    if (statusA !== statusB) return statusA - statusB;
+                                    return b.created_at - a.created_at;
+                                } else {
+                                    const statusA = a.status === '進行中' ? 0 : 1;
+                                    const statusB = b.status === '進行中' ? 0 : 1;
+                                    if (statusA !== statusB) return statusA - statusB;
+                                    return a.created_at - b.created_at;
                                 }
-                                return sum;
-                            }, 0);
+                            });
 
-                            const optionProfit = strategy.options.reduce((sum, option) => {
-                                if (option.final_profit !== null && option.final_profit !== undefined) {
-                                    return sum + option.final_profit;
-                                }
-                                return sum;
-                            }, 0);
-
-                            const totalProfit = stockProfit + optionProfit;
-
-                            return { ...strategy, totalProfit, hasMismatch: false };
-                        })
-                        .sort((a, b) => {
-                            // Mismatch strategies always come first
-
-
-                            if (sortOrder === 'date-new') {
-                                // Sort by creation date (newest first)
-                                return b.created_at - a.created_at;
-                            } else if (sortOrder === 'date-old') {
-                                // Sort by creation date (oldest first)
-                                return a.created_at - b.created_at;
-                            } else if (sortOrder === 'status-new') {
-                                // First, sort by status: 進行中 comes before 已結案
-                                const statusA = a.status === '進行中' ? 0 : 1;
-                                const statusB = b.status === '進行中' ? 0 : 1;
-
-                                if (statusA !== statusB) {
-                                    return statusA - statusB;
-                                }
-
-                                // Then sort by creation date (newest first)
-                                return b.created_at - a.created_at;
-                            } else {
-                                // status-old: First, sort by status: 進行中 comes before 已結案
-                                const statusA = a.status === '進行中' ? 0 : 1;
-                                const statusB = b.status === '進行中' ? 0 : 1;
-
-                                if (statusA !== statusB) {
-                                    return statusA - statusB;
-                                }
-
-                                // Then sort by creation date (oldest first)
-                                return a.created_at - b.created_at;
+                        // Apply grouping logic
+                        let displayList: typeof sorted;
+                        if (groupByName) {
+                            const grouped = new Map<string, typeof sorted>();
+                            for (const s of sorted) {
+                                const key = s.name;
+                                if (!grouped.has(key)) grouped.set(key, []);
+                                grouped.get(key)!.push(s);
                             }
-                        })
-                        .map((strategy) => {
+                            displayList = [];
+                            for (const [name, group] of grouped) {
+                                if (group.length <= 1 || expandedGroups.has(name)) {
+                                    // Show all cards, but tag them for group header rendering
+                                    displayList.push(...group);
+                                } else {
+                                    // Show only first card
+                                    displayList.push(group[0]);
+                                }
+                            }
+                        } else {
+                            displayList = sorted;
+                        }
+
+                        // Build a lookup of group sizes for badge rendering
+                        const groupCounts = new Map<string, number>();
+                        if (groupByName) {
+                            for (const s of sorted) {
+                                groupCounts.set(s.name, (groupCounts.get(s.name) || 0) + 1);
+                            }
+                        }
+
+                        return displayList.map((strategy) => {
                             return (
-                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px]`}>
+                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px]${groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name) ? ' ring-2 ring-offset-2 ring-gray-300' : ''}`}>
                                     <CardHeader className="px-4 pt-2 pb-0 shrink-0">
                                         {(() => {
                                             // Calculate total profit from stocks
@@ -550,6 +576,26 @@ export default function StrategiesPage() {
                                                         <CardTitle className="flex items-center gap-2">
                                                             <span>
                                                                 <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{(() => { const opts = strategy.option_strategy ? strategy.option_strategy.split(',').map(s => s.trim()) : []; const hasCC = opts.includes('Covered Call'); const hasPP = opts.includes('Protective Put'); if (hasCC && hasPP) { return <span className="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">雙腿</span>; } return opts.map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>)); })()}{strategy.stock_strategy && strategy.stock_strategy.split(',').map(s => s.trim()).map((s, i) => { const label = s === '價差' ? (() => { try { const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {}; return `價差${params.spread_target_pct || 10}%`; } catch { return '價差'; } })() : s; return (<span key={`ss-${i}`} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === '價差' ? 'bg-orange-100 text-orange-800' : 'bg-sky-100 text-sky-800'}`}>{label}</span>); })} {strategy.name}
+                                                                {groupByName && (groupCounts.get(strategy.name) || 0) > 1 && (
+                                                                    <span
+                                                                        className="ml-1.5 inline-flex items-center justify-center bg-gray-700 text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-gray-900 transition-colors"
+                                                                        title={expandedGroups.has(strategy.name) ? '收合同名卡牌' : '展開同名卡牌'}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setExpandedGroups(prev => {
+                                                                                const next = new Set(prev);
+                                                                                if (next.has(strategy.name)) {
+                                                                                    next.delete(strategy.name);
+                                                                                } else {
+                                                                                    next.add(strategy.name);
+                                                                                }
+                                                                                return next;
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        {groupCounts.get(strategy.name)}
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         </CardTitle>
                                                         <div className="flex gap-1">
@@ -815,7 +861,8 @@ export default function StrategiesPage() {
                                     </CardContent>
                                 </Card>
                             );
-                        })}
+                        });
+                    })()}
                 </div>
             )
             }
