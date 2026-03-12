@@ -34,6 +34,8 @@ function App(): React.JSX.Element {
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
   const [showUpload, setShowUpload] = useState(false)
   const [showBackfill, setShowBackfill] = useState(false)
+  const [uploadSymbols, setUploadSymbols] = useState<string[]>([])
+  const [fetchingSymbols, setFetchingSymbols] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const {
     marginLimit,
@@ -176,16 +178,32 @@ function App(): React.JSX.Element {
           </button>
           <button
             className="upload-prices-btn"
-            title="上傳可交易標的過去一年股價到雲端"
-            disabled={!connected || watchSymbols.filter(Boolean).length === 0}
-            onClick={() => setShowUpload(true)}
+            title="從網頁資料庫查詢需要的標的，上傳過去一年股價"
+            disabled={!connected || fetchingSymbols}
+            onClick={async () => {
+              setFetchingSymbols(true)
+              try {
+                const symbols = await window.ibApi.getNeededSymbols(d1Target === 'production' ? 'production' : 'staging')
+                if (symbols.length > 0) {
+                  setUploadSymbols(symbols)
+                  setShowUpload(true)
+                } else {
+                  alert('沒有找到需要上傳股價的標的')
+                }
+              } catch (err) {
+                console.error('getNeededSymbols error:', err)
+                alert('取得需要上傳的標的清單失敗')
+              } finally {
+                setFetchingSymbols(false)
+              }
+            }}
           >
-            ☁ 上傳股價
+            {fetchingSymbols ? '⏳ 查詢中...' : '☁ 上傳股價'}
           </button>
           <button
             className="upload-prices-btn"
             title="回填缺少底層股價的期權紀錄（1分鐘精度）"
-            disabled={!connected || watchSymbols.filter(Boolean).length === 0}
+            disabled={!connected}
             onClick={() => setShowBackfill(true)}
           >
             📊 回填底層股價
@@ -288,7 +306,7 @@ function App(): React.JSX.Element {
       />
       {showUpload && (
         <UploadProgressDialog
-          symbols={watchSymbols.filter(Boolean)}
+          symbols={uploadSymbols}
           d1Target={d1Target}
           onClose={() => setShowUpload(false)}
         />

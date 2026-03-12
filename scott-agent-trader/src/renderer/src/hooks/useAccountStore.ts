@@ -67,7 +67,7 @@ interface AccountStore {
   refresh: () => void
 }
 
-const POLL_INTERVAL = 1000
+const POLL_INTERVAL = 8000
 
 export function useAccountStore(
   connected: boolean,
@@ -84,6 +84,7 @@ export function useAccountStore(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const aliasRef = useRef<Record<string, string>>({})
   const fetchingRef = useRef(false)
+  const hasDataRef = useRef(false)
 
   // Clear old data and reload aliases when port changes
   useEffect(() => {
@@ -94,6 +95,7 @@ export function useAccountStore(
     setOpenOrders([])
     setExecutions([])
     aliasRef.current = {}
+    hasDataRef.current = false
     window.ibApi
       .getCachedAliases(port)
       .then((cached) => {
@@ -113,14 +115,15 @@ export function useAccountStore(
     if (fetchingRef.current) return
     fetchingRef.current = true
 
-    setLoading(true)
+    if (!hasDataRef.current) setLoading(true)
     try {
       const [accountData, positionData, orderData, execData] = await Promise.all([
-        window.ibApi.getAccountSummary(),
-        window.ibApi.getPositions(),
+        window.ibApi.getAccountSummary().catch(() => [] as AccountData[]),
+        window.ibApi.getPositions().catch(() => [] as PositionData[]),
         window.ibApi.getOpenOrders().catch(() => [] as OpenOrderData[]),
         window.ibApi.getExecutions().catch(() => [] as ExecutionDataItem[])
       ])
+      console.log('[fetchData] accounts:', accountData.length, 'positions:', positionData.length, 'orders:', orderData.length, 'execs:', execData.length)
 
       // Apply known aliases immediately (from cache or previous fetch)
       const accountIds = accountData.map((a: AccountData) => a.accountId)
@@ -129,11 +132,13 @@ export function useAccountStore(
         alias: aliasRef.current[a.accountId] || a.alias
       }))
       // Merge accounts so partial responses don't remove existing cards
-      setAccounts((prev) => {
-        const merged = new Map(prev.map((a) => [a.accountId, a]))
-        for (const a of withAliases) merged.set(a.accountId, a)
-        return Array.from(merged.values())
-      })
+      if (withAliases.length > 0) {
+        setAccounts((prev) => {
+          const merged = new Map(prev.map((a) => [a.accountId, a]))
+          for (const a of withAliases) merged.set(a.accountId, a)
+          return Array.from(merged.values())
+        })
+      }
       // Merge positions: keep previous entries for accounts not in this response
       if (positionData.length > 0) {
         setPositions((prev) => {
@@ -145,6 +150,7 @@ export function useAccountStore(
       }
       setOpenOrders(orderData)
       setExecutions(execData)
+      hasDataRef.current = true
       setLoading(false)
 
       // Always fetch fresh aliases in background
@@ -248,6 +254,8 @@ export function useAccountStore(
       fetchData()
       intervalRef.current = setInterval(fetchData, POLL_INTERVAL)
     } else {
+      hasDataRef.current = false
+      fetchingRef.current = false
       setAccounts([])
       setPositions([])
       setQuotes({})

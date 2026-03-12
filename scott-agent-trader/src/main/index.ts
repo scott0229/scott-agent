@@ -324,16 +324,44 @@ function setupIpcHandlers(): void {
       apiKey: 'MZ12MUOIJXFNK7LZ',
       bulk: 'https://staging.scott-agent.com/api/market-data/bulk',
       clearCache: 'https://staging.scott-agent.com/api/market-data/clear-cache',
-      backfill: 'https://staging.scott-agent.com/api/options/backfill-prices'
+      backfill: 'https://staging.scott-agent.com/api/options/backfill-prices',
+      neededSymbols: 'https://staging.scott-agent.com/api/market-data/needed-symbols'
     },
     {
       label: 'production',
       apiKey: 'R1TIoxXSri38FVn63eolduORz-NXUNyqoptyIx07',
       bulk: 'https://scott-agent.com/api/market-data/bulk',
       clearCache: 'https://scott-agent.com/api/market-data/clear-cache',
-      backfill: 'https://scott-agent.com/api/options/backfill-prices'
+      backfill: 'https://scott-agent.com/api/options/backfill-prices',
+      neededSymbols: 'https://scott-agent.com/api/market-data/needed-symbols'
     }
   ]
+
+  // Fetch the list of symbols the web app needs stock prices for
+  ipcMain.handle(
+    'prices:getNeededSymbols',
+    async (_event, target?: 'staging' | 'production') => {
+      const effectiveTarget = target || 'staging'
+      const t = UPLOAD_TARGETS.find((t) => t.label === effectiveTarget) || UPLOAD_TARGETS[0]
+      try {
+        const url = `${t.neededSymbols}?group=${encodeURIComponent(detectedGroup)}`
+        console.log(`[getNeededSymbols] url=${url}`)
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        if (!res.ok) {
+          console.warn(`[getNeededSymbols] error: ${res.status}`)
+          return []
+        }
+        const json = (await res.json()) as { symbols?: string[] }
+        console.log(`[getNeededSymbols] symbols=`, json.symbols)
+        return json.symbols || []
+      } catch (err) {
+        console.error(`[getNeededSymbols] catch:`, err)
+        return []
+      }
+    }
+  )
 
   ipcMain.handle(
     'prices:uploadSymbol',

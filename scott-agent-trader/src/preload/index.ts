@@ -92,6 +92,12 @@ const ibApi = {
   ): Promise<{ success: boolean; count?: number; error?: string }> =>
     ipcRenderer.invoke('prices:uploadSymbol', symbol, target),
 
+  // Get symbols the web app needs stock prices for
+  getNeededSymbols: (
+    target?: 'staging' | 'production'
+  ): Promise<string[]> =>
+    ipcRenderer.invoke('prices:getNeededSymbols', target),
+
   // Get list of underlying symbols with missing underlying_price
   getMissingPriceSymbols: (
     target?: 'staging' | 'production'

@@ -233,24 +233,29 @@ function requestAccountSummaryRaw(reqId: number, group: string): Promise<Account
       if (_reqId === reqId) {
         api.removeListener(EventName.accountSummary, dataHandler)
         api.removeListener(EventName.accountSummaryEnd, endHandler)
-        resolve(Array.from(buildAccountMap(summaryItems).values()))
+        const accounts = Array.from(buildAccountMap(summaryItems).values())
+        console.log(`[IB] Account summary received: ${accounts.length} accounts`)
+        resolve(accounts)
       }
     }
 
     api.on(EventName.accountSummary, dataHandler)
     api.on(EventName.accountSummaryEnd, endHandler)
 
-    // Timeout after 1 second
+    // Timeout after 15 seconds
     setTimeout(() => {
       api.removeListener(EventName.accountSummary, dataHandler)
       api.removeListener(EventName.accountSummaryEnd, endHandler)
       api.cancelAccountSummary(reqId)
       if (summaryItems.length > 0) {
-        resolve(Array.from(buildAccountMap(summaryItems).values()))
+        const accounts = Array.from(buildAccountMap(summaryItems).values())
+        console.log(`[IB] Account summary timeout (partial): ${accounts.length} accounts, ${summaryItems.length} items`)
+        resolve(accounts)
       } else {
+        console.log('[IB] Account summary timeout: no data received')
         reject(new Error('Timeout requesting account summary'))
       }
-    }, 1000)
+    }, 15000)
 
     api.reqAccountSummary(reqId, group, tags)
   })
@@ -285,18 +290,20 @@ export function requestPositions(): Promise<PositionData[]> {
     const endHandler = (): void => {
       api.removeListener(EventName.position, posHandler)
       api.removeListener(EventName.positionEnd, endHandler)
+      console.log(`[IB] Positions received: ${positions.length}`)
       resolve(positions)
     }
 
     api.on(EventName.position, posHandler as any)
     api.on(EventName.positionEnd, endHandler)
 
-    // Timeout after 1 second
+    // Timeout after 15 seconds
     setTimeout(() => {
       api.removeListener(EventName.position, posHandler)
       api.removeListener(EventName.positionEnd, endHandler)
+      console.log(`[IB] Positions timeout: ${positions.length} received so far`)
       resolve(positions) // Return what we have
-    }, 1000)
+    }, 15000)
 
     api.reqPositions()
   })
