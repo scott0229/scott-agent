@@ -533,7 +533,7 @@ export default function StrategiesPage() {
 
                         return displayList.map((strategy) => {
                             return (
-                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px]${groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name) ? ' ring-2 ring-offset-2 ring-gray-300' : ''}`}>
+                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px] overflow-hidden${groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name) ? ' ring-2 ring-offset-2 ring-gray-300' : ''}`}>
                                     <CardHeader className="px-4 pt-2 pb-0 shrink-0">
                                         {(() => {
                                             // Calculate total profit from stocks
