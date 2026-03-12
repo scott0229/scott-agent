@@ -22,6 +22,7 @@ interface ImportOption {
     capital_efficiency?: number | null;
     owner_id: number;
     year?: number;
+    trade_time?: string | null;
 }
 
 // POST: Import options from JSON array
@@ -95,8 +96,8 @@ export async function POST(req: NextRequest) {
                         status, operation, open_date, to_date, settlement_date,
                         quantity, underlying, type, strike_price,
                         collateral, premium, final_profit, profit_percent,
-                        delta, iv, capital_efficiency, owner_id, year, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                        delta, iv, capital_efficiency, owner_id, year, trade_time, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
                 `).bind(
                     option.status || 'Open',
                     option.operation || '無',
@@ -115,7 +116,8 @@ export async function POST(req: NextRequest) {
                     option.iv || null,
                     option.capital_efficiency || null,
                     targetOwnerId,
-                    optionYear
+                    optionYear,
+                    option.trade_time || null
                 ).run();
 
                 imported++;

@@ -87,11 +87,11 @@ function _fetchOptionQuote(
     let resolved = false
 
     const finalize = (): number => {
-      // last (有成交) > bid/ask midpoint (開盤無成交) > close (收盤)
+      // TWS mark price: bid/ask midpoint 優先 > last (成交) > close (收盤)
+      if (ask > 0) return (bid + ask) / 2
       if (last > 0) return last
-      if (bid > 0 && ask > 0) return (bid + ask) / 2
       if (close > 0) return close
-      return bid || ask || 0
+      return 0
     }
 
     const timeout = setTimeout(() => {

@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
             premium,
             userId,
             ownerId, // Add ownerId
-            year // Add year
+            year, // Add year
+            trade_time
         } = body;
 
         // Auto-fill final_profit with premium if operation is '新開倉' (New Opening)
@@ -130,8 +131,8 @@ export async function POST(req: NextRequest) {
                 operation, open_date, to_date, settlement_date, 
                 quantity, underlying, type, strike_price, 
                 collateral, premium, final_profit, profit_percent, 
-                delta, iv, capital_efficiency, underlying_price, user_id, owner_id, year, code, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+                delta, iv, capital_efficiency, underlying_price, user_id, owner_id, year, code, trade_time, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         `).bind(
             operation || '新開倉',
             open_date,
@@ -152,7 +153,8 @@ export async function POST(req: NextRequest) {
             userId || null,
             ownerId || null, // Bind ownerId
             optionYear,
-            code
+            code,
+            trade_time || null
         ).run();
 
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
@@ -183,7 +185,8 @@ export async function PUT(req: NextRequest) {
             underlying,
             type,
             strike_price,
-            premium
+            premium,
+            trade_time
         } = body;
 
         // Auto-calculate profit percent
@@ -207,7 +210,7 @@ export async function PUT(req: NextRequest) {
                 quantity = ?, underlying = ?, type = ?, strike_price = ?,
                 collateral = ?, premium = ?, final_profit = ?, profit_percent = ?,
                 delta = ?, iv = ?, capital_efficiency = ?, underlying_price = ?,
-                updated_at = unixepoch()
+                trade_time = ?, updated_at = unixepoch()
             WHERE id = ?
         `).bind(
             operation,
@@ -226,6 +229,7 @@ export async function PUT(req: NextRequest) {
             body.iv || null,
             body.capital_efficiency || null,
             body.underlying_price || null,
+            trade_time !== undefined ? (trade_time || null) : null,
             id
         ).run();
 

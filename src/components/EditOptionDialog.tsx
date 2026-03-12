@@ -49,6 +49,7 @@ interface Option {
     iv: number | null;
     capital_efficiency: number | null;
     underlying_price: number | null;
+    trade_time?: string | null;
 }
 
 interface EditOptionDialogProps {
@@ -102,6 +103,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
         final_profit: '',
         underlying_price: ''
     });
+    const [tradeTime, setTradeTime] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -126,6 +128,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 final_profit: formatNumberWithCommas(optionToEdit.final_profit),
                 underlying_price: formatNumberWithCommas(optionToEdit.underlying_price)
             });
+            setTradeTime(optionToEdit.trade_time || '');
         }
     }, [optionToEdit]);
 
@@ -168,6 +171,7 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                 delta: formData.delta ? parseFloat(formData.delta) : null,
                 final_profit: formData.final_profit ? parseFloat(formData.final_profit.toString().replace(/,/g, '')) : null,
                 underlying_price: formData.underlying_price ? parseFloat(formData.underlying_price.toString().replace(/,/g, '')) : null,
+                trade_time: tradeTime || null,
             };
 
             const res = await fetch('/api/options', {
@@ -256,6 +260,17 @@ export function EditOptionDialog({ open, onOpenChange, onSuccess, optionToEdit }
                                 />
                             </PopoverContent>
                         </Popover>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="trade_time">時間</Label>
+                        <Input
+                            id="trade_time"
+                            type="text"
+                            placeholder="HH:MM:SS"
+                            value={tradeTime}
+                            onChange={(e) => setTradeTime(e.target.value)}
+                        />
                     </div>
 
                     <div className="grid gap-2">

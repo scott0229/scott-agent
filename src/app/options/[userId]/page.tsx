@@ -63,6 +63,7 @@ interface Option {
     user_id: string | null;
     code?: string;
     underlying_price: number | null;
+    trade_time?: string | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -538,7 +539,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             )}
                                         </TableCell>
                                         <TableCell>{formatDate(opt.open_date)}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm font-mono">{formatTime(opt.open_date)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm font-mono">{opt.trade_time || '-'}</TableCell>
                                         <TableCell>{formatDate(opt.to_date)}</TableCell>
                                         <TableCell>{getDaysToExpire(opt)}</TableCell>
                                         <TableCell>

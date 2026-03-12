@@ -80,6 +80,7 @@ interface OptionFormData {
     collateral: number | string;
     iv: string;
     delta: string;
+    trade_time: string;
 }
 
 export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId }: NewOptionDialogProps) {
@@ -100,7 +101,8 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
         underlying_price: '',
         collateral: 0,
         iv: '',
-        delta: ''
+        delta: '',
+        trade_time: ''
     });
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -146,7 +148,8 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
 
                 userId: userId, // Include userId in payload
                 ownerId: ownerId, // Include ownerId in payload
-                year: selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear) // Include year
+                year: selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear), // Include year
+                trade_time: formData.trade_time || null
             };
 
             const res = await fetch('/api/options', {
@@ -176,7 +179,8 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                     delta: '',
                     status: 'Open',
                     close_date: '',
-                    close_price: 0
+                    close_price: 0,
+                    trade_time: ''
                 });
                 setIsSettlementDateDirty(false);
             } else {
@@ -258,6 +262,17 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                                     />
                                 </PopoverContent>
                             </Popover>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="new_trade_time">時間</Label>
+                            <Input
+                                id="new_trade_time"
+                                type="text"
+                                placeholder="HH:MM:SS"
+                                value={formData.trade_time}
+                                onChange={(e) => setFormData({ ...formData, trade_time: e.target.value })}
+                            />
                         </div>
 
                         <div className="grid gap-2">

@@ -421,6 +421,26 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                             </select>
                                         );
                                     })()}
+                                    {stockTrades.length > 0 && (() => {
+                                        const filtered = stockTrades.filter(s => stockFilter === 'all' || s.symbol === stockFilter);
+                                        const allSelected = filtered.length > 0 && filtered.every(s => formData.selectedStocks.includes(s.id));
+                                        return (
+                                            <button
+                                                type="button"
+                                                className="text-xs border rounded px-1.5 py-0.5 hover:bg-gray-100 transition-colors"
+                                                onClick={() => {
+                                                    const filteredIds = filtered.map(s => s.id);
+                                                    if (allSelected) {
+                                                        setFormData(prev => ({ ...prev, selectedStocks: prev.selectedStocks.filter(id => !filteredIds.includes(id)) }));
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, selectedStocks: [...new Set([...prev.selectedStocks, ...filteredIds])] }));
+                                                    }
+                                                }}
+                                            >
+                                                {allSelected ? '取消全選' : '全選'}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="border rounded-md p-3 h-96 overflow-y-auto space-y-2">
                                     {stockTrades.length === 0 ? (
@@ -489,6 +509,26 @@ export function StrategyDialog({ open, onOpenChange, strategy, onSave, currentYe
                                         <option value="PUT">PUT</option>
                                         <option value="CALL">CALL</option>
                                     </select>
+                                    {options.length > 0 && (() => {
+                                        const filtered = options.filter(o => (optionFilter === 'all' || o.underlying === optionFilter) && (optionTypeFilter === 'all' || ((o as any).type || 'CALL') === optionTypeFilter));
+                                        const allSelected = filtered.length > 0 && filtered.every(o => formData.selectedOptions.includes(o.id));
+                                        return (
+                                            <button
+                                                type="button"
+                                                className="text-xs border rounded px-1.5 py-0.5 hover:bg-gray-100 transition-colors"
+                                                onClick={() => {
+                                                    const filteredIds = filtered.map(o => o.id);
+                                                    if (allSelected) {
+                                                        setFormData(prev => ({ ...prev, selectedOptions: prev.selectedOptions.filter(id => !filteredIds.includes(id)) }));
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, selectedOptions: [...new Set([...prev.selectedOptions, ...filteredIds])] }));
+                                                    }
+                                                }}
+                                            >
+                                                {allSelected ? '取消全選' : '全選'}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="border rounded-md p-3 h-96 overflow-y-auto space-y-2">
                                     {options.length === 0 ? (

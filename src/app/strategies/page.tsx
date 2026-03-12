@@ -469,53 +469,11 @@ export default function StrategiesPage() {
 
                             const totalProfit = stockProfit + optionProfit;
 
-                            // Check for CC/PP mismatch
-                            let hasMismatch = false;
-                            if (strategy.option_strategy && strategy.status !== '已結案') {
-                                const strats = strategy.option_strategy.split(',').map(s => s.trim());
-                                const openStks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
-                                const totalShares = openStks.reduce((sum, s) => sum + s.quantity, 0);
-                                const expected = Math.floor(totalShares / 100);
-                                if (strats.includes('Covered Call') && expected > 0) {
-                                    const openCalls = strategy.options.filter(o => o.operation === 'Open' && o.type === 'CALL').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                    if (openCalls < expected) hasMismatch = true;
-                                }
-                                if (strats.includes('Protective Put')) {
-                                    const openPuts = strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                    if (totalShares === 0 && openPuts === 0) hasMismatch = true;
-                                }
-                            }
-
-                            // Check for stock strategy alerts
-                            if (strategy.stock_strategy && strategy.status !== '已結案') {
-                                const stockStrats = strategy.stock_strategy.split(',').map(s => s.trim());
-                                const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
-
-                                if (stockStrats.includes('價差')) {
-                                    const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {};
-                                    const targetPct = params.spread_target_pct || 0;
-                                    if (targetPct > 0) {
-                                        for (const stock of openStocks) {
-                                            if (stock.current_market_price && stock.open_price) {
-                                                const gain = ((stock.current_market_price - stock.open_price) / stock.open_price) * 100;
-                                                if (gain >= targetPct) hasMismatch = true;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (stockStrats.includes('不持股') && openStocks.length > 0 && totalProfit > 0) {
-                                    hasMismatch = true;
-                                }
-                            }
-
-                            return { ...strategy, totalProfit, hasMismatch };
+                            return { ...strategy, totalProfit, hasMismatch: false };
                         })
                         .sort((a, b) => {
                             // Mismatch strategies always come first
-                            if (a.hasMismatch !== b.hasMismatch) {
-                                return a.hasMismatch ? -1 : 1;
-                            }
+
 
                             if (sortOrder === 'date-new') {
                                 // Sort by creation date (newest first)
@@ -549,8 +507,8 @@ export default function StrategiesPage() {
                         })
                         .map((strategy) => {
                             return (
-                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 ${strategy.hasMismatch ? 'border-2 border-red-400' : ''}`}>
-                                    <CardHeader className="px-4 pt-2 pb-0">
+                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px]`}>
+                                    <CardHeader className="px-4 pt-2 pb-0 shrink-0">
                                         {(() => {
                                             // Calculate total profit from stocks
                                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -611,90 +569,8 @@ export default function StrategiesPage() {
                                                             </Button>
                                                         </div>
                                                     </div>
-                                                    {/* CC/PP Mismatch Warning */}
-                                                    {strategy.option_strategy && strategy.status !== '已結案' && (() => {
-                                                        const strategies = strategy.option_strategy!.split(',').map(s => s.trim());
-                                                        const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
-                                                        const totalOpenShares = openStocks.reduce((sum, s) => sum + s.quantity, 0);
-                                                        const expectedContracts = Math.floor(totalOpenShares / 100);
-                                                        const stockSymbol = openStocks.length > 0 ? openStocks[0].symbol : '';
-                                                        const warnings: string[] = [];
 
-                                                        if (strategies.includes('Covered Call') && expectedContracts > 0) {
-                                                            const openCalls = strategy.options
-                                                                .filter(o => o.operation === 'Open' && o.type === 'CALL')
-                                                                .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                                            if (openCalls < expectedContracts) {
-                                                                warnings.push(`持有 ${stockSymbol} ${totalOpenShares} 股，建議持續 SELL CALL`);
-                                                            }
-                                                        }
 
-                                                        if (strategies.includes('Protective Put')) {
-                                                            const openPuts = strategy.options
-                                                                .filter(o => o.operation === 'Open' && o.type === 'PUT')
-                                                                .reduce((sum, o) => sum + Math.abs(o.quantity), 0);
-                                                            if (totalOpenShares === 0 && openPuts === 0) {
-                                                                warnings.push(`未持有正股，建議持續 SELL PUT`);
-                                                            }
-                                                        }
-
-                                                        if (warnings.length === 0) return null;
-                                                        return (
-                                                            <div className="mt-1 space-y-0.5">
-                                                                {warnings.map((w, i) => (
-                                                                    <div key={i} className="text-sm bg-amber-100 border border-amber-200 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
-                                                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                    {/* Stock Strategy Alerts */}
-                                                    {strategy.stock_strategy && strategy.status !== '已結案' && (() => {
-                                                        const stockStrats = strategy.stock_strategy!.split(',').map(s => s.trim());
-                                                        const openStocks = strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned');
-                                                        const warnings: string[] = [];
-
-                                                        if (stockStrats.includes('價差')) {
-                                                            const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {};
-                                                            const targetPct = params.spread_target_pct || 0;
-                                                            if (targetPct > 0) {
-                                                                for (const stock of openStocks) {
-                                                                    if (stock.current_market_price && stock.open_price) {
-                                                                        const gain = ((stock.current_market_price - stock.open_price) / stock.open_price) * 100;
-                                                                        if (gain >= targetPct) {
-                                                                            warnings.push(`${stock.symbol} 已漲 ${gain.toFixed(1)}%，超過目標 ${targetPct}%！`);
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-
-                                                        if (stockStrats.includes('不持股') && openStocks.length > 0) {
-                                                            // Calculate total strategy profit
-                                                            const stkProfit = strategy.stocks.reduce((sum, stock) => {
-                                                                if (stock.close_price && stock.open_price) return sum + (stock.close_price - stock.open_price) * stock.quantity;
-                                                                if (!stock.close_price && stock.current_market_price) return sum + (stock.current_market_price - stock.open_price) * stock.quantity;
-                                                                return sum;
-                                                            }, 0);
-                                                            const optProfit = strategy.options.reduce((sum, o) => sum + (o.final_profit || 0), 0);
-                                                            const total = stkProfit + optProfit;
-                                                            if (total > 0) {
-                                                                warnings.push(`策略盈利中 (+${Math.round(total).toLocaleString()})，但仍持有正股！`);
-                                                            }
-                                                        }
-
-                                                        if (warnings.length === 0) return null;
-                                                        return (
-                                                            <div className="mt-1 space-y-0.5">
-                                                                {warnings.map((w, i) => (
-                                                                    <div key={i} className="text-sm bg-amber-100 border border-amber-200 text-amber-900 px-2 py-1 rounded font-medium flex items-center gap-1">
-                                                                        <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" /> {w}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        );
-                                                    })()}
                                                     <div className="flex items-center gap-1 mt-3 text-sm">
                                                         <span>{strategy.status === '已結案' ? '最終收益' : '當前收益'} <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-700' : 'text-red-600'}`}>{Math.round(totalProfit).toLocaleString()}</span>{strategy.status === '已結案' && (() => { const allOpenDates = [...strategy.stocks.map(s => s.open_date), ...strategy.options.map(o => o.open_date)].filter(Boolean); const allCloseDates = [...strategy.stocks.map(s => s.close_date).filter(Boolean), ...strategy.options.map(o => o.to_date).filter(Boolean)] as number[]; if (allOpenDates.length > 0 && allCloseDates.length > 0) { const earliest = Math.min(...allOpenDates); const latest = Math.max(...allCloseDates); const days = Math.round((latest - earliest) / 86400); return `，歷時 ${days} 天`; } return null; })()}</span>
                                                         {totalMargin > 0 && <span>, 資金需求 {Math.round(totalMargin).toLocaleString()}{parseFloat(marginPct) > 0 && ` (${marginPct}%)`}</span>}
@@ -726,7 +602,7 @@ export default function StrategiesPage() {
                                             );
                                         })()}
                                     </CardHeader>
-                                    <CardContent className="px-4 space-y-3 pt-0 pb-3">
+                                    <CardContent className="px-4 pt-0 pb-3 flex-1 overflow-y-auto space-y-3 min-h-0">
                                         {/* Stock Trades Table */}
                                         {strategy.stocks.length > 0 && (() => {
                                             const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -740,8 +616,8 @@ export default function StrategiesPage() {
                                             }, 0);
 
                                             return (
-                                                <div className="space-y-1">
-                                                    <div className="text-sm font-medium bg-red-50 border border-red-200 px-3 py-1.5 rounded flex items-center justify-between">
+                                                <div className="flex flex-col gap-1 shrink-0">
+                                                    <div className="text-sm font-medium bg-red-50 border border-red-200 px-3 py-1.5 rounded flex items-center justify-between shrink-0">
                                                         <span>{strategy.stocks.length} 筆股票, 收益 <span className={stockProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(stockProfit).toLocaleString()}</span></span>
                                                         <div className="flex items-center gap-2">
                                                             {(() => { const m = Math.round(strategy.stocks.filter(s => s.status === 'Open' || (s as any).source === 'assigned').reduce((sum, s) => sum + (s.open_price || 0) * s.quantity, 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
@@ -762,7 +638,7 @@ export default function StrategiesPage() {
                                                             })()}
                                                         </div>
                                                     </div>
-                                                    <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
+                                                    <div className="overflow-x-auto">
                                                         <table className="w-full table-auto text-xs">
                                                             <thead>
                                                                 <tr className="border-b">
@@ -844,8 +720,8 @@ export default function StrategiesPage() {
                                             }, 0);
 
                                             return (
-                                                <div className="space-y-1">
-                                                    <div className="text-sm font-medium bg-red-50 border border-red-200 px-3 py-1.5 rounded flex items-center justify-between">
+                                                <div className="flex flex-col gap-1 shrink-0">
+                                                    <div className="text-sm font-medium bg-red-50 border border-red-200 px-3 py-1.5 rounded flex items-center justify-between shrink-0">
                                                         <span>{strategy.options.length} 筆期權, 收益 <span className={optionProfit >= 0 ? 'text-green-700' : 'text-red-600'}>{Math.round(optionProfit).toLocaleString()}</span></span>
                                                         <div className="flex items-center gap-2">
                                                             {(() => { const m = Math.round(strategy.options.filter(o => o.operation === 'Open' && o.type === 'PUT').reduce((sum, o) => sum + ((o.strike_price || 0) * Math.abs(o.quantity) * 100), 0)); return m > 0 ? <span className="text-xs text-muted-foreground">資金需求 {m.toLocaleString()}</span> : null; })()}
@@ -866,7 +742,7 @@ export default function StrategiesPage() {
                                                             })()}
                                                         </div>
                                                     </div>
-                                                    <div className="overflow-x-auto max-h-[170px] overflow-y-auto">
+                                                    <div className="overflow-x-auto">
                                                         <table className="w-full table-auto text-xs">
                                                             <thead>
                                                                 <tr className="border-b">
