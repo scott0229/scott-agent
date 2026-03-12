@@ -106,7 +106,7 @@ export default function StrategiesPage() {
     const [stockSymbolFilters, setStockSymbolFilters] = useState<Record<number, string>>({});
     const [optionSymbolFilters, setOptionSymbolFilters] = useState<Record<number, string>>({});
     const [filtersSaved, setFiltersSaved] = useState(false);
-    const [groupByName, setGroupByName] = useState(false);
+    const [groupByName, setGroupByName] = useState(true);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false);
@@ -596,7 +596,7 @@ export default function StrategiesPage() {
                                                                 <span className="bg-gray-200 px-2 py-0.5 rounded text-sm cursor-pointer hover:bg-gray-300 transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedUserId(strategy.user_id); }}>{strategy.user_id}</span>{strategy.status === '已結案' && (<span className="ml-1 mr-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-sm font-normal">已結案</span>)}{(() => { const opts = strategy.option_strategy ? strategy.option_strategy.split(',').map(s => s.trim()) : []; const hasCC = opts.includes('Covered Call'); const hasPP = opts.includes('Protective Put'); if (hasCC && hasPP) { return <span className="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">雙腿</span>; } return opts.map((s, i) => (<span key={i} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === 'Covered Call' ? 'bg-emerald-100 text-emerald-800' : 'bg-violet-100 text-violet-800'}`}>{s === 'Covered Call' ? 'CC' : 'PP'}</span>)); })()}{strategy.stock_strategy && strategy.stock_strategy.split(',').map(s => s.trim()).map((s, i) => { const label = s === '價差' ? (() => { try { const params = strategy.stock_strategy_params ? JSON.parse(strategy.stock_strategy_params) : {}; return `價差${params.spread_target_pct || 10}%`; } catch { return '價差'; } })() : s; return (<span key={`ss-${i}`} className={`ml-1 px-1.5 py-0.5 rounded text-xs font-semibold ${s === '價差' ? 'bg-orange-100 text-orange-800' : 'bg-sky-100 text-sky-800'}`}>{label}</span>); })} {strategy.name}
                                                                 {groupByName && (groupCounts.get(strategy.name) || 0) > 1 && (
                                                                     <span
-                                                                        className="ml-2 inline-flex items-center justify-center align-middle bg-gray-700 text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-gray-900 transition-colors"
+                                                                        className="ml-2 relative -top-[2px] inline-flex items-center justify-center align-middle bg-amber-200 text-amber-950 text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-amber-300 transition-colors"
                                                                         title="只顯示此策略群組"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
