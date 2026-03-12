@@ -601,6 +601,7 @@ export default function StrategiesPage() {
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             setNameFilter(strategy.name);
+                                                                            setGroupByName(false);
                                                                             setExpandedGroups(new Set([strategy.name]));
                                                                         }}
                                                                     >
