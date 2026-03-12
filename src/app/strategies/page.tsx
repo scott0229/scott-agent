@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Target, Plus, Pencil, Trash2, Bookmark, BookmarkCheck, FilterX, StickyNote, AlertTriangle, Layers } from 'lucide-react';
@@ -101,6 +102,7 @@ export default function StrategiesPage() {
     const [selectedUserId, setSelectedUserId] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [symbolFilter, setSymbolFilter] = useState<string>('all');
+    const [nameFilter, setNameFilter] = useState<string>('');
     const [stockSymbolFilters, setStockSymbolFilters] = useState<Record<number, string>>({});
     const [optionSymbolFilters, setOptionSymbolFilters] = useState<Record<number, string>>({});
     const [filtersSaved, setFiltersSaved] = useState(false);
@@ -121,6 +123,7 @@ export default function StrategiesPage() {
                 if (filters.selectedUserId) setSelectedUserId(filters.selectedUserId);
                 if (filters.statusFilter) setStatusFilter(filters.statusFilter);
                 if (filters.symbolFilter) setSymbolFilter(filters.symbolFilter);
+                if (filters.nameFilter) setNameFilter(filters.nameFilter);
                 if (filters.sortOrder) setSortOrder(filters.sortOrder);
                 setFiltersSaved(true);
             }
@@ -135,7 +138,7 @@ export default function StrategiesPage() {
             setFiltersSaved(false);
             toast({ title: '已清除篩選記憶' });
         } else {
-            const filters = { selectedUserId, statusFilter, symbolFilter, sortOrder };
+            const filters = { selectedUserId, statusFilter, symbolFilter, sortOrder, nameFilter };
             localStorage.setItem('strategy-filters', JSON.stringify(filters));
             setFiltersSaved(true);
             toast({ title: '已記住篩選設定' });
@@ -324,11 +327,17 @@ export default function StrategiesPage() {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => { setSelectedUserId('all'); setStatusFilter('all'); setSymbolFilter('all'); setSortOrder('status-new'); setGroupByName(false); setExpandedGroups(new Set()); }}
+                        onClick={() => { setNameFilter(''); setSelectedUserId('all'); setStatusFilter('all'); setSymbolFilter('all'); setSortOrder('status-new'); setGroupByName(false); setExpandedGroups(new Set()); }}
                         title="重置篩選"
                     >
                         <FilterX className="h-4 w-4" />
                     </Button>
+                    <Input
+                        placeholder="搜尋策略..."
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="w-[150px] bg-white h-9"
+                    />
                     <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                         <SelectTrigger className="w-[150px]">
                             <SelectValue />
@@ -459,6 +468,7 @@ export default function StrategiesPage() {
                             .filter(strategy => selectedUserId === 'all' || strategy.user_id === selectedUserId)
                             .filter(strategy => statusFilter === 'all' || strategy.status === statusFilter)
                             .filter(strategy => symbolFilter === 'all' || strategy.stocks.some(s => s.symbol === symbolFilter) || strategy.options.some(o => o.underlying === symbolFilter))
+                            .filter(strategy => !nameFilter || strategy.name.toLowerCase().includes(nameFilter.toLowerCase()))
                             .map((strategy) => {
                                 // Calculate total profit for sorting
                                 const stockProfit = strategy.stocks.reduce((sum, stock) => {
@@ -587,18 +597,11 @@ export default function StrategiesPage() {
                                                                 {groupByName && (groupCounts.get(strategy.name) || 0) > 1 && (
                                                                     <span
                                                                         className="ml-1.5 inline-flex items-center justify-center bg-gray-700 text-white text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-gray-900 transition-colors"
-                                                                        title={expandedGroups.has(strategy.name) ? '收合同名卡牌' : '展開同名卡牌'}
+                                                                        title="只顯示此策略群組"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setExpandedGroups(prev => {
-                                                                                const next = new Set(prev);
-                                                                                if (next.has(strategy.name)) {
-                                                                                    next.delete(strategy.name);
-                                                                                } else {
-                                                                                    next.add(strategy.name);
-                                                                                }
-                                                                                return next;
-                                                                            });
+                                                                            setNameFilter(strategy.name);
+                                                                            setExpandedGroups(new Set([strategy.name]));
                                                                         }}
                                                                     >
                                                                         {groupCounts.get(strategy.name)}
