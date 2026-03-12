@@ -532,8 +532,16 @@ export default function StrategiesPage() {
                         }
 
                         return displayList.map((strategy) => {
+                            const isStacked = groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name);
                             return (
-                                <Card key={strategy.id} className={`hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full max-h-[550px] overflow-hidden${groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name) ? ' ring-2 ring-offset-2 ring-gray-300' : ''}`}>
+                                <div key={strategy.id} className="relative h-full max-h-[550px] w-full isolate">
+                                    {isStacked && (
+                                        <>
+                                            <div className="absolute top-[-8px] left-[8px] right-[8px] h-full bg-[#f8f9fa] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-10" />
+                                            <div className="absolute top-[-16px] left-[16px] right-[16px] h-full bg-[#f1f3f5] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-20" />
+                                        </>
+                                    )}
+                                    <Card className={`relative z-10 hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full overflow-hidden bg-white ${isStacked ? 'shadow-md border-gray-300' : ''}`}>
                                     <CardHeader className="px-4 pt-2 pb-0 shrink-0">
                                         {(() => {
                                             // Calculate total profit from stocks
@@ -860,6 +868,7 @@ export default function StrategiesPage() {
                                         )}
                                     </CardContent>
                                 </Card>
+                                </div>
                             );
                         });
                     })()}
