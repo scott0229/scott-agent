@@ -221,15 +221,15 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     return (
         <div className="rounded-md border bg-white mb-8 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-                <table className="w-full text-[13px] table-auto">
+            <div>
+                <table className="w-full text-[13px] table-fixed">
                     <colgroup>
-                        <col className="w-[180px]" /> {/* Label Column */}
-                        {columnVisibility.allUsers && <col className="w-[140px]" />} {/* All Users Column */}
+                        <col style={{ width: '120px' }} /> {/* Label Column */}
+                        {columnVisibility.allUsers && <col />} {/* All Users Column */}
                         {users.map(u => {
                             const userKey = u.user_id || u.id.toString();
                             const isVisible = columnVisibility.users[userKey] !== false;
-                            return isVisible ? <col key={u.id} className="w-[120px]" /> : null;
+                            return isVisible ? <col key={u.id} /> : null;
                         })}
                     </colgroup>
                     <thead>
