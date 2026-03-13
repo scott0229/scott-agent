@@ -547,8 +547,8 @@ export default function StrategiesPage() {
                                 <div key={strategy.id} className={`relative h-full max-h-[450px] w-full isolate ${isStacked ? 'mt-10' : 'mt-4'}`}>
                                     {isStacked && (
                                         <>
-                                            <div className="absolute top-[-16px] left-[8px] right-[8px] h-full bg-[#f8f9fa] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-10" />
-                                            <div className="absolute top-[-32px] left-[16px] right-[16px] h-full bg-[#f1f3f5] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-20" />
+                                            <div className="absolute top-[-8px] left-[8px] right-[8px] h-full bg-[#f8f9fa] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-10" />
+                                            <div className="absolute top-[-16px] left-[16px] right-[16px] h-full bg-[#f1f3f5] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-20" />
                                         </>
                                     )}
                                     <Card className={`relative z-10 hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full overflow-hidden bg-white ${isStacked ? 'shadow-md border-gray-300' : ''}`}>
