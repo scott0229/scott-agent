@@ -639,8 +639,10 @@ export default function StrategiesPage() {
                                                         const totalOpenQty = openStocks.reduce((sum, s) => sum + s.quantity, 0);
                                                         if (totalOpenQty === 0) return null;
 
+                                                        // Only count option profits from options opened on or after the earliest stock open date
+                                                        const earliestStockDate = Math.min(...openStocks.map(s => s.open_date));
                                                         const optProfit = strategy.options.reduce((sum, o) => {
-                                                            if (o.final_profit !== null && o.final_profit !== undefined) {
+                                                            if (o.final_profit !== null && o.final_profit !== undefined && o.open_date >= earliestStockDate) {
                                                                 return sum + o.final_profit;
                                                             }
                                                             return sum;
