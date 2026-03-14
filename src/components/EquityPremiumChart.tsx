@@ -186,6 +186,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                             {/* 0% reference line */}
                             <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} />
                             <Tooltip
+                                defaultIndex={chartData.length - 1}
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) return null;
                                     const dataPoint = payload[0]?.payload;
