@@ -202,11 +202,11 @@ function App(): React.JSX.Element {
           </button>
           <button
             className="upload-prices-btn"
-            title="回填缺少底層股價的期權紀錄（1分鐘精度）"
+            title="回填缺少當時股價的期權紀錄（1分鐘精度）"
             disabled={!connected}
             onClick={() => setShowBackfill(true)}
           >
-            📊 回填底層股價
+            📊 回填當時股價
           </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
         </div>

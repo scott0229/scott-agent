@@ -387,7 +387,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
-                            <TableHead className="text-center">底層股價</TableHead>
+                            <TableHead className="text-center">當時股價</TableHead>
 
                             <TableHead className="text-center">權利金</TableHead>
                             <TableHead className="text-center">已實現損益</TableHead>

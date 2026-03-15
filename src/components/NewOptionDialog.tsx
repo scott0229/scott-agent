@@ -363,7 +363,7 @@ export function NewOptionDialog({ open, onOpenChange, onSuccess, userId, ownerId
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="underlying_price">底層股價</Label>
+                            <Label htmlFor="underlying_price">當時股價</Label>
                             <Input
                                 id="underlying_price"
                                 type="text"

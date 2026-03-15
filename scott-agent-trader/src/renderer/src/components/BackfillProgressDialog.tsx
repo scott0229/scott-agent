@@ -101,7 +101,7 @@ export default function BackfillProgressDialog({
         <div className="upload-dialog-overlay">
             <div className="upload-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="upload-dialog-header">
-                    <h3>回填底層股價（1分鐘精度）</h3>
+                    <h3>回填當時股價（1分鐘精度）</h3>
                     {finished && (
                         <button className="upload-dialog-close" onClick={onClose}>
                             ✕
@@ -111,11 +111,11 @@ export default function BackfillProgressDialog({
 
                 {discovering ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: '#888' }}>
-                        正在查詢缺少底層股價的期權記錄…
+                        正在查詢缺少當時股價的期權記錄…
                     </div>
                 ) : items.length === 0 ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: '#888' }}>
-                        所有期權記錄都已有底層股價，無需回填 ✓
+                        所有期權記錄都已有當時股價，無需回填 ✓
                     </div>
                 ) : (
                     <ul className="upload-dialog-list">
