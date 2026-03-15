@@ -104,6 +104,10 @@ export default function AccountOverview({
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [showGroupNameInput, setShowGroupNameInput] = useState(false)
+  // Per-group checkbox state: groupId -> Set of checked posKeys
+  const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
+  // Which groups have check mode active (checkboxes visible)
+  const [checkModeGroups, setCheckModeGroups] = useState<Set<string>>(new Set())
   // Pending roll update: wait for IB to confirm fill before updating group posKeys
   const [pendingRollUpdate, setPendingRollUpdate] = useState<{
     rolledPositions: PositionData[]
@@ -833,22 +837,30 @@ export default function AccountOverview({
                         <span className="account-id">{g.name}</span>
                         {(() => {
                           if (groupPositions.length === 0) return null
+                          // Determine which positions to use: checked ones or all
+                          const checkedSet = groupChecked[g.id]
+                          const hasChecked = checkedSet && checkedSet.size > 0
+                          const effectivePositions = hasChecked
+                            ? groupPositions.filter((p) => checkedSet.has(posKey(p)))
+                            : groupPositions
                           const setGroupKeys = (): void => {
-                            const keys = new Set(groupPositions.map((p) => posKey(p)))
+                            const keys = new Set(effectivePositions.map((p) => posKey(p)))
                             setSelectedPositions(keys)
                           }
-                          const allOpt = groupPositions.every((p) => p.secType === 'OPT')
-                          const allStk = groupPositions.every((p) => p.secType === 'STK')
+                          const checkedCount = hasChecked ? checkedSet.size : 0
+                          const checkedLabel = checkedCount > 0 ? ` (${checkedCount})` : ''
+                          const allOpt = effectivePositions.every((p) => p.secType === 'OPT')
+                          const allStk = effectivePositions.every((p) => p.secType === 'STK')
                           if (allOpt) {
                             const rights = new Set(
-                              groupPositions.map((p) =>
+                              effectivePositions.map((p) =>
                                 (p.right || '')
                                   .toUpperCase()
                                   .replace('CALL', 'C')
                                   .replace('PUT', 'P')
                               )
                             )
-                            const symbols = new Set(groupPositions.map((p) => p.symbol))
+                            const symbols = new Set(effectivePositions.map((p) => p.symbol))
                             const canRoll = rights.size === 1 && symbols.size === 1
                             return (
                               <>
@@ -865,7 +877,7 @@ export default function AccountOverview({
                                       setShowRollDialog(true)
                                     }}
                                   >
-                                    展期
+                                    展期{checkedLabel}
                                   </button>
                                 )}
                                 <button
@@ -880,7 +892,7 @@ export default function AccountOverview({
                                     setShowCloseOptionDialog(true)
                                   }}
                                 >
-                                  平倉
+                                  平倉{checkedLabel}
                                 </button>
                               </>
                             )
@@ -900,7 +912,7 @@ export default function AccountOverview({
                                     setShowTransferDialog(true)
                                   }}
                                 >
-                                  轉倉
+                                  轉倉{checkedLabel}
                                 </button>
                                 <button
                                   className="select-toggle-btn"
@@ -914,13 +926,13 @@ export default function AccountOverview({
                                     setShowCloseDialog(true)
                                   }}
                                 >
-                                  平倉
+                                  平倉{checkedLabel}
                                 </button>
                               </>
                             )
                           }
-                          const optPositions = groupPositions.filter((p) => p.secType === 'OPT')
-                          const stkPositions = groupPositions.filter((p) => p.secType === 'STK')
+                          const optPositions = effectivePositions.filter((p) => p.secType === 'OPT')
+                          const stkPositions = effectivePositions.filter((p) => p.secType === 'STK')
                           const setOptKeys = (): void => {
                             setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
                           }
@@ -962,7 +974,7 @@ export default function AccountOverview({
                                     setShowRollDialog(true)
                                   }}
                                 >
-                                  展期
+                                  展期{checkedLabel}
                                 </button>
                               )}
                               {canTransferMixed && (
@@ -978,7 +990,7 @@ export default function AccountOverview({
                                     setShowTransferDialog(true)
                                   }}
                                 >
-                                  轉倉
+                                  轉倉{checkedLabel}
                                 </button>
                               )}
                               <button
@@ -989,11 +1001,59 @@ export default function AccountOverview({
                                   setShowCloseGroupDialog(true)
                                 }}
                               >
-                                平倉
+                                平倉{checkedLabel}
                               </button>
                             </>
                           )
                         })()}
+                        {groupPositions.length > 0 && (
+                          <button
+                            className="select-toggle-btn"
+                            style={{
+                              fontSize: '13px',
+                              padding: '4px 6px',
+                              lineHeight: '1',
+                              backgroundColor: checkModeGroups.has(g.id) ? '#2563eb' : undefined,
+                              color: checkModeGroups.has(g.id) ? '#fff' : undefined,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="勾選"
+                            onClick={() => {
+                              setCheckModeGroups((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(g.id)) {
+                                  next.delete(g.id)
+                                  // Clear checked items when exiting check mode
+                                  setGroupChecked((gc) => {
+                                    const copy = { ...gc }
+                                    delete copy[g.id]
+                                    return copy
+                                  })
+                                } else {
+                                  next.add(g.id)
+                                }
+                                return next
+                              })
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="9 11 12 14 22 4" />
+                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       {(() => {
                         const totalPnl = groupPositions.reduce((sum, pos) => {
@@ -1072,6 +1132,15 @@ export default function AccountOverview({
                       (() => {
                         const stkPos = groupPositions.filter((p) => p.secType !== 'OPT')
                         const optPos = groupPositions.filter((p) => p.secType === 'OPT')
+                        const currentCheckedSet = groupChecked[g.id] || new Set<string>()
+                        const toggleCheck = (pk: string): void => {
+                          setGroupChecked((prev) => {
+                            const cur = new Set(prev[g.id] || [])
+                            if (cur.has(pk)) cur.delete(pk)
+                            else cur.add(pk)
+                            return { ...prev, [g.id]: cur }
+                          })
+                        }
                         const renderRow = (
                           pos: PositionData,
                           idx: number,
@@ -1103,8 +1172,21 @@ export default function AccountOverview({
                               )
                             )
                             : null
+                          const pk = posKey(pos)
+                          const isChecked = currentCheckedSet.has(pk)
                           return (
                             <tr key={idx}>
+                              {checkModeGroups.has(g.id) && (
+                                <td style={{ width: '28px', padding: '0 4px', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleCheck(pk)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                  />
+                                </td>
+                              )}
                               <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>
                                 {(
                                   accounts.find((a) => a.accountId === pos.account)?.alias ||
@@ -1149,12 +1231,33 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                                      <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
-                                      <th style={{ width: '8%' }}>數量</th>
-                                      <th style={{ width: '11%' }}>均價</th>
-                                      <th style={{ width: '11%' }}>現價</th>
-                                      <th style={{ width: '11%' }}>盈虧</th>
+                                      {checkModeGroups.has(g.id) && (
+                                        <th style={{ width: '28px', padding: '0 4px' }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={stkPos.length > 0 && stkPos.every((p) => currentCheckedSet.has(posKey(p)))}
+                                            onChange={() => {
+                                              const allChecked = stkPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                              setGroupChecked((prev) => {
+                                                const cur = new Set(prev[g.id] || [])
+                                                stkPos.forEach((p) => {
+                                                  if (allChecked) cur.delete(posKey(p))
+                                                  else cur.add(posKey(p))
+                                                })
+                                                return { ...prev, [g.id]: cur }
+                                              })
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                          />
+                                        </th>
+                                      )}
+                                      <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
+                                      <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
+                                      <th style={{ width: '10%' }}>數量</th>
+                                      <th style={{ width: '13%' }}>均價</th>
+                                      <th style={{ width: '13%' }}>現價</th>
+                                      <th style={{ width: '13%' }}>盈虧</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1168,6 +1271,27 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
+                                      {checkModeGroups.has(g.id) && (
+                                        <th style={{ width: '28px', padding: '0 4px' }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={optPos.length > 0 && optPos.every((p) => currentCheckedSet.has(posKey(p)))}
+                                            onChange={() => {
+                                              const allChecked = optPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                              setGroupChecked((prev) => {
+                                                const cur = new Set(prev[g.id] || [])
+                                                optPos.forEach((p) => {
+                                                  if (allChecked) cur.delete(posKey(p))
+                                                  else cur.add(posKey(p))
+                                                })
+                                                return { ...prev, [g.id]: cur }
+                                              })
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                          />
+                                        </th>
+                                      )}
                                       <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>天數</th>
@@ -1189,7 +1313,7 @@ export default function AccountOverview({
                                           {needsSep && (
                                             <tr>
                                               <td
-                                                colSpan={7}
+                                                colSpan={checkModeGroups.has(g.id) ? 8 : 7}
                                                 style={{
                                                   padding: 0,
                                                   height: '3px',
