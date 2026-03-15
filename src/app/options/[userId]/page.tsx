@@ -448,10 +448,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {formatDate(opt.open_date)}
-                                            {(() => {
+                                            {formatDate(opt.open_date)}{(() => {
                                                 const time = formatTime(opt.open_date);
-                                                return time !== '-' ? <div className="text-muted-foreground text-xs font-mono">{time}</div> : null;
+                                                return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
                                         <TableCell>{formatDate(opt.to_date)}</TableCell>
