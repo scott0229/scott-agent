@@ -161,6 +161,8 @@ export default function AccountOverview({
     setSelectMode(false)
     setSelectedPositions(new Set())
     setShowGroupNameInput(false)
+    setGroupChecked({})
+    setCheckModeGroups(new Set())
   }, [groupViewMode])
 
   // Masonry layout: measure each card and set grid-row span
