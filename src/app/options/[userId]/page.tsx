@@ -201,6 +201,19 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const formatOptionTicker = (opt: Option) => {
+        const underlying = opt.underlying || '';
+        const typeChar = opt.type === 'PUT' ? 'P' : 'C';
+        const strike = opt.strike_price;
+        if (!opt.to_date) return `${underlying} - ${strike}${typeChar}`;
+        const d = new Date(opt.to_date * 1000);
+        const mon = MONTH_ABBR[d.getMonth()];
+        const day = d.getDate();
+        const yr = d.getFullYear().toString().slice(-2);
+        return `${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
+    };
+
     const calculateDays = (start: number, end: number | null) => {
         if (!end) return '';
         const diffTime = Math.abs(end * 1000 - start * 1000);
@@ -369,15 +382,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
-                            <TableHead className="text-center">到期日</TableHead>
+                            <TableHead className="text-center">合約</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
                             <TableHead className="text-center">口數</TableHead>
-                            <TableHead className="text-center">底層標的</TableHead>
                             <TableHead className="text-center">底層股價</TableHead>
-                            <TableHead className="text-center">多空</TableHead>
-                            <TableHead className="text-center">行權價</TableHead>
 
                             <TableHead className="text-center">權利金</TableHead>
                             <TableHead className="text-center">已實現損益</TableHead>
@@ -453,7 +463,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
-                                        <TableCell>{formatDate(opt.to_date)}</TableCell>
+                                        <TableCell className="font-mono text-sm">
+                                            {formatOptionTicker(opt)}
+                                        </TableCell>
                                         <TableCell>{getDaysToExpire(opt)}</TableCell>
                                         <TableCell>
                                             {(opt.operation === 'Open' || !opt.settlement_date) ? (
@@ -470,30 +482,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className={opt.quantity > 0 ? 'text-green-700' : ''}>
                                             {opt.quantity}
                                         </TableCell>
-                                        <TableCell>
-                                            <span
-                                                className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
-                                                onClick={() => setSelectedUnderlying(opt.underlying)}
-                                                title={`點擊過濾 ${opt.underlying} 的交易`}
-                                            >
-                                                {opt.underlying}
-                                            </span>
-                                        </TableCell>
                                         <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant="outline"
-                                                className={`cursor-pointer transition-all duration-150 ${opt.type === 'CALL'
-                                                    ? 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 hover:font-semibold'
-                                                    : 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 hover:font-semibold'
-                                                    }`}
-                                                onClick={() => setSelectedType(opt.type)}
-                                                title={`點擊過濾 ${opt.type} 的交易`}
-                                            >
-                                                {opt.type}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>{opt.strike_price}</TableCell>
 
                                         <TableCell>{opt.premium != null ? opt.premium.toLocaleString() : '-'}</TableCell>
                                         <TableCell className={opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
