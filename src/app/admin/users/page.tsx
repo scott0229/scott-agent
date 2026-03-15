@@ -108,6 +108,8 @@ export default function AdminUsersPage() {
     // Report Generation State
     const [reportDialog, setReportDialog] = useState<{ open: boolean; userId: number; userName: string; report: string } | null>(null);
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [userReports, setUserReports] = useState<Map<number, { userName: string; report: string }>>(new Map());
+    const [isLoadingReports, setIsLoadingReports] = useState(false);
 
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
@@ -173,6 +175,8 @@ export default function AdminUsersPage() {
             const data = await res.json();
             if (data.users) {
                 setUsers(data.users);
+                // Fetch reports after users are loaded
+                fetchAllReports(data.users);
             }
             if (data.meta && typeof data.meta.marketDataCount === 'number') {
                 setMarketDataCount(data.meta.marketDataCount);
@@ -192,6 +196,28 @@ export default function AdminUsersPage() {
     useEffect(() => {
         fetchUsers();
     }, [selectedYear]); // Add selectedYear dependency
+
+    // Fetch all user reports for cards
+    const fetchAllReports = async (usersList: User[]) => {
+        const nonAdminUsers = usersList.filter(u => u.email !== 'admin');
+        if (nonAdminUsers.length === 0) return;
+        setIsLoadingReports(true);
+        const reportsMap = new Map<number, { userName: string; report: string }>();
+        await Promise.all(nonAdminUsers.map(async (user) => {
+            try {
+                const res = await fetch(`/api/users/${user.id}/report`);
+                const data = await res.json();
+                if (data.success) {
+                    const report = formatUserReport(data.reportData);
+                    reportsMap.set(user.id, { userName: data.reportData.user_id || user.user_id || user.email, report });
+                }
+            } catch (e) {
+                // skip failed
+            }
+        }));
+        setUserReports(reportsMap);
+        setIsLoadingReports(false);
+    };
 
     const handleDelete = async (id: number) => {
         setUserToDelete(id);
@@ -1425,6 +1451,37 @@ export default function AdminUsersPage() {
                         </TableBody>
                     </Table>
                 </div>
+
+                {/* User Report Cards */}
+                {userReports.size > 0 && (
+                    <div className="mt-6">
+                        <h2 className="text-lg font-semibold mb-3">用戶報告</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {Array.from(userReports.entries()).map(([userId, { userName, report }]) => (
+                                <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="font-semibold text-sm">{userName}</h3>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(report);
+                                                toast({ title: "已複製", description: `${userName} 的報告已複製` });
+                                            }}
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                    <pre className="font-mono text-xs whitespace-pre-wrap text-muted-foreground flex-1 leading-relaxed">{report}</pre>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {isLoadingReports && (
+                    <div className="mt-6 text-center text-muted-foreground text-sm py-4">載入報告中...</div>
+                )}
 
                 <Dialog open={reportDialog?.open || false} onOpenChange={(open) => !open && setReportDialog(null)}>
                     <DialogContent className="w-[400px] max-w-[90vw] max-h-[95vh]">
