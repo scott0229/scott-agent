@@ -112,6 +112,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                 tickLine={false}
                             />
                             <Tooltip
+                                defaultIndex={chartData.length - 1}
                                 content={({ active, payload, label }) => {
                                     if (!active || !payload || payload.length === 0) return null;
                                     const dataPoint = payload[0]?.payload;

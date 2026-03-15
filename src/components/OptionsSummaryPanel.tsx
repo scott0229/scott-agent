@@ -225,7 +225,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                 <table className="w-full text-[13px] table-fixed">
                     <colgroup>
                         <col style={{ width: '120px' }} /> {/* Label Column */}
-                        {columnVisibility.allUsers && <col />} {/* All Users Column */}
+
                         {users.map(u => {
                             const userKey = u.user_id || u.id.toString();
                             const isVisible = columnVisibility.users[userKey] !== false;
@@ -255,37 +255,25 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                     </button>
                                 </div>
                             </td>
-                            {columnVisibility.allUsers && (
-                                <td className="text-center px-2 py-1 bg-muted/40 text-foreground border-r whitespace-nowrap">
-                                    <div className="inline-flex items-center gap-0">
-                                        <button
-                                            onClick={() => toggleColumn('allUsers')}
-                                            className="inline-flex items-center justify-center w-5 h-5 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                            title="隱藏此列"
-                                        >
-                                            <Eye className="w-3.5 h-3.5" />
-                                        </button>
-                                        <span className="font-bold">全體用戶</span>
-                                    </div>
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
 
                                 return isVisible ? (
-                                    <td key={user.id} className="text-center px-2 py-1 bg-muted/40 text-foreground">
-                                        <div className="inline-flex items-center gap-0">
+                                    <td key={user.id} className="text-center px-1 py-1 bg-muted/40 text-foreground overflow-hidden">
+                                        <div className="flex items-center justify-center gap-0 min-w-0">
                                             <button
                                                 onClick={() => toggleColumn(userKey)}
-                                                className="inline-flex items-center justify-center w-5 h-5 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                                                className="inline-flex items-center justify-center w-5 h-5 flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
                                                 title="隱藏此列"
                                             >
                                                 <Eye className="w-3.5 h-3.5" />
                                             </button>
                                             <Link
                                                 href={`/options/${user.user_id || user.id}`}
-                                                className="inline-flex items-center justify-center px-1 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer font-bold"
+                                                className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer font-bold"
+                                                title={user.user_id || user.email.split('@')[0]}
                                             >
                                                 {user.user_id || user.email.split('@')[0]}
                                             </Link>
@@ -299,17 +287,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Last Update Date */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">最後更新日</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {(() => {
-                                        const dates = users.map(u => u.last_update_date).filter(Boolean) as number[];
-                                        if (dates.length === 0) return '-';
-                                        const latest = Math.max(...dates);
-                                        const d = new Date(latest * 1000);
-                                        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                                    })()}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -326,25 +304,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Open Position Count */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    <div className="flex items-center justify-center gap-1">
-                                        <Link
-                                            href={`/options/All?year=All&operation=${encodeURIComponent('Open')}`}
-                                            className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 font-medium text-red-600"
-                                        >
-                                            {totalActiveCount}
-                                        </Link>
-                                        <span className="text-muted-foreground">/</span>
-                                        <Link
-                                            href={`/options/All?year=${year === 'All' ? 'All' : year}`}
-                                            className="hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 text-foreground"
-                                        >
-                                            {totalOptionsCount}
-                                        </Link>
-                                    </div>
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -372,14 +332,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Premium Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金率</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {(() => {
-                                        const costBase = totalInitialCost || 1;
-                                        return <StatBadge>{((totalAnnualPremium / costBase) * 100).toFixed(2)}%</StatBadge>;
-                                    })()}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -397,11 +350,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    <StatBadge>{formatPercent(aggregates.marginRate)}</StatBadge>
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -415,11 +364,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Turnover Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">周轉率</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                    {formatPercent(aggregates.turnoverRate)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -433,11 +378,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Quarterly Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    <StatBadge>{formatMoney(aggregates.quarterPremium)}</StatBadge>
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -451,11 +392,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Quarterly Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-PUT</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {formatMoney(aggregates.quarterPutPremium)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -469,11 +406,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Quarterly Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-CALL</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {formatMoney(aggregates.quarterCallPremium)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -487,11 +420,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Quarterly Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-季-目標</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                    {formatMoney(aggregates.quarterTarget)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -505,11 +434,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    <StatBadge>{formatMoney(aggregates.annualPremium)}</StatBadge>
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -523,11 +448,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Annual Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-PUT</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {formatMoney(aggregates.annualPutPremium)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -541,11 +462,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Annual Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-CALL</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-50/50">
-                                    {formatMoney(aggregates.annualCallPremium)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
@@ -559,11 +476,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Annual Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-年-目標</td>
-                            {columnVisibility.allUsers && (
-                                <td className="h-7 py-1 px-2 text-center border-r bg-slate-100/50">
-                                    {formatMoney(aggregates.annualTarget)}
-                                </td>
-                            )}
+
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
                                 const isVisible = columnVisibility.users[userKey] !== false;
