@@ -382,11 +382,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
+                            <TableHead className="text-center">口數</TableHead>
                             <TableHead className="text-center">合約</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
-                            <TableHead className="text-center">口數</TableHead>
                             <TableHead className="text-center">底層股價</TableHead>
 
                             <TableHead className="text-center">權利金</TableHead>
@@ -463,6 +463,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
+                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : ''}>
+                                            {opt.quantity}
+                                        </TableCell>
                                         <TableCell className="font-mono text-sm">
                                             {formatOptionTicker(opt)}
                                         </TableCell>
@@ -478,9 +481,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             {(opt.operation === 'Open' || !opt.settlement_date)
                                                 ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
                                                 : getDaysHeld(opt)}
-                                        </TableCell>
-                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : ''}>
-                                            {opt.quantity}
                                         </TableCell>
                                         <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
 
