@@ -1455,7 +1455,6 @@ export default function AdminUsersPage() {
                 {/* User Report Cards */}
                 {userReports.size > 0 && (
                     <div className="mt-6">
-                        <h2 className="text-lg font-semibold mb-3">用戶報告</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {Array.from(userReports.entries()).map(([userId, { userName, report }]) => (
                                 <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
@@ -1473,7 +1472,7 @@ export default function AdminUsersPage() {
                                             <Copy className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
-                                    <pre className="font-mono text-xs whitespace-pre-wrap text-muted-foreground flex-1 leading-relaxed">{report}</pre>
+                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">{report}</pre>
                                 </div>
                             ))}
                         </div>
