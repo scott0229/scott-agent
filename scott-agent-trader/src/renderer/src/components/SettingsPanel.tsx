@@ -18,6 +18,9 @@ interface SettingsPanelProps {
   onSetSymbolOptionType: (symbol: string, type: 'cc' | 'pp', enabled: boolean) => void
   d1Target: 'staging' | 'production'
   onSetD1Target: (target: 'staging' | 'production') => void
+  connected: boolean
+  fetchingSymbols: boolean
+  onSyncPrices: () => void
 }
 
 function SectionHeader({
@@ -53,7 +56,10 @@ export default function SettingsPanel({
   symbolOptionTypes,
   onSetSymbolOptionType,
   d1Target,
-  onSetD1Target
+  onSetD1Target,
+  connected,
+  fetchingSymbols,
+  onSyncPrices
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
   useEffect(() => {
@@ -63,6 +69,7 @@ export default function SettingsPanel({
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
   const [showD1, setShowD1] = useState(true)
+
 
   if (!open) return null
 
@@ -78,6 +85,16 @@ export default function SettingsPanel({
           </button>
         </div>
         <div className="settings-body">
+          <div style={{ padding: '0 8px', marginBottom: 12 }}>
+            <button
+              className="upload-prices-btn"
+              style={{ width: '100%' }}
+              disabled={!connected || fetchingSymbols}
+              onClick={onSyncPrices}
+            >
+              {fetchingSymbols ? '⏳ 查詢中...' : '📈 股價同步'}
+            </button>
+          </div>
           <SectionHeader
             title="風險參數"
             expanded={showRisk}

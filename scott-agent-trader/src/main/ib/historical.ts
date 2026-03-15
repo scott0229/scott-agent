@@ -57,7 +57,7 @@ export async function getHistoricalData(req: HistoricalDataRequest): Promise<Bar
         console.error(`[IB] Historical data timeout for ${req.symbol}`)
         reject(new Error(`Historical data request timeout for ${req.symbol}`))
       }
-    }, 10000)
+    }, 30000)
 
     const onHistoricalData = (
       id: number,

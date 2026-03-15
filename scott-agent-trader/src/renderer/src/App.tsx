@@ -4,8 +4,7 @@ import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
-import UploadProgressDialog from './components/UploadProgressDialog'
-import BackfillProgressDialog from './components/BackfillProgressDialog'
+import PriceSyncDialog from './components/PriceSyncDialog'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
 import './assets/app.css'
@@ -32,8 +31,7 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const [showUpload, setShowUpload] = useState(false)
-  const [showBackfill, setShowBackfill] = useState(false)
+  const [showSync, setShowSync] = useState(false)
   const [uploadSymbols, setUploadSymbols] = useState<string[]>([])
   const [fetchingSymbols, setFetchingSymbols] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
@@ -176,38 +174,6 @@ function App(): React.JSX.Element {
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          <button
-            className="upload-prices-btn"
-            title="從網頁資料庫查詢需要的標的，上傳過去一年股價"
-            disabled={!connected || fetchingSymbols}
-            onClick={async () => {
-              setFetchingSymbols(true)
-              try {
-                const symbols = await window.ibApi.getNeededSymbols(d1Target === 'production' ? 'production' : 'staging')
-                if (symbols.length > 0) {
-                  setUploadSymbols(symbols)
-                  setShowUpload(true)
-                } else {
-                  alert('沒有找到需要上傳股價的標的')
-                }
-              } catch (err) {
-                console.error('getNeededSymbols error:', err)
-                alert('取得需要上傳的標的清單失敗')
-              } finally {
-                setFetchingSymbols(false)
-              }
-            }}
-          >
-            {fetchingSymbols ? '⏳ 查詢中...' : '☁ 上傳股價'}
-          </button>
-          <button
-            className="upload-prices-btn"
-            title="回填缺少當時股價的期權紀錄（1分鐘精度）"
-            disabled={!connected}
-            onClick={() => setShowBackfill(true)}
-          >
-            📊 回填當時股價
-          </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
         </div>
         <nav className="tab-nav-inline">
@@ -303,18 +269,29 @@ function App(): React.JSX.Element {
         onSetSymbolOptionType={setSymbolOptionType}
         d1Target={d1Target}
         onSetD1Target={setD1Target}
+        connected={connected}
+        fetchingSymbols={fetchingSymbols}
+        onSyncPrices={async () => {
+          setFetchingSymbols(true)
+          try {
+            const symbols = await window.ibApi.getNeededSymbols(
+              d1Target === 'production' ? 'production' : 'staging'
+            )
+            setUploadSymbols(symbols)
+            setShowSync(true)
+          } catch (err) {
+            console.error('getNeededSymbols error:', err)
+            alert('取得需要上傳的標的清單失敗')
+          } finally {
+            setFetchingSymbols(false)
+          }
+        }}
       />
-      {showUpload && (
-        <UploadProgressDialog
+      {showSync && (
+        <PriceSyncDialog
           symbols={uploadSymbols}
           d1Target={d1Target}
-          onClose={() => setShowUpload(false)}
-        />
-      )}
-      {showBackfill && (
-        <BackfillProgressDialog
-          d1Target={d1Target}
-          onClose={() => setShowBackfill(false)}
+          onClose={() => setShowSync(false)}
         />
       )}
     </div>

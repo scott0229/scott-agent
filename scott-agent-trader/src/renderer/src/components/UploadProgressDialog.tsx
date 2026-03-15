@@ -13,12 +13,14 @@ interface UploadProgressDialogProps {
   symbols: string[]
   d1Target: 'staging' | 'production'
   onClose: () => void
+  onComplete?: () => void
 }
 
 export default function UploadProgressDialog({
   symbols,
   d1Target,
-  onClose
+  onClose,
+  onComplete
 }: UploadProgressDialogProps): React.JSX.Element {
   const [items, setItems] = useState<SymbolUploadState[]>(
     symbols.map((s) => ({ symbol: s, status: 'pending' }))
@@ -70,6 +72,15 @@ export default function UploadProgressDialog({
       setFinished(true)
     })
   }, [])
+
+  // Auto-transition when finished (if onComplete provided)
+  useEffect(() => {
+    if (finished && onComplete) {
+      const timer = setTimeout(() => onComplete(), 1500)
+      return (): void => { clearTimeout(timer) }
+    }
+    return undefined
+  }, [finished, onComplete])
 
   const handleCancel = (): void => {
     cancelledRef.current = true
