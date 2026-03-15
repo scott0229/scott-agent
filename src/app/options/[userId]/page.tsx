@@ -11,25 +11,15 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { NewOptionDialog } from "@/components/NewOptionDialog";
-import { EditOptionDialog } from "@/components/EditOptionDialog";
-import { ArrowLeft, FilterX, Pencil, Trash, Trash2 } from 'lucide-react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ArrowLeft, FilterX } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+
 import {
     Select,
     SelectContent,
@@ -37,7 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
@@ -63,7 +53,6 @@ interface Option {
     user_id: string | null;
     code?: string;
     underlying_price: number | null;
-    trade_time?: string | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -71,12 +60,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [users, setUsers] = useState<any[]>([]);
     const [selectedUserValue, setSelectedUserValue] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [optionToEdit, setOptionToEdit] = useState<Option | null>(null);
 
-    const [optionToDelete, setOptionToDelete] = useState<number | null>(null);
 
     // Use global year filter instead of local state
     const { selectedYear, setSelectedYear } = useYearFilter();
@@ -91,7 +75,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [ownerId, setOwnerId] = useState<number | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
-    const { toast } = useToast();
     const router = useRouter();
     const { settings } = useAdminSettings();
 
@@ -166,23 +149,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         fetchUserAndCheckRole();
     }, [params.userId, selectedYear]);
 
-    const handleDeleteAll = async () => {
-        try {
-            const idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
-            const res = await fetch(`/api/options?${idParam}&year=${selectedYear}`, {
-                method: 'DELETE',
-            });
-
-            if (!res.ok) throw new Error('Failed to delete all options');
-
-            await fetchOptions();
-            setIsDeleteAllOpen(false);
-        } catch (error) {
-            console.error('Delete all error:', error);
-            alert('刪除失敗');
-        }
-    };
-
     const fetchOptions = async () => {
         try {
             const year = selectedYear; // Allow 'All' to be passed directly
@@ -211,44 +177,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         fetchOptions();
     }, [params.userId, selectedYear, ownerId]);
 
-    const handleEdit = (option: Option) => {
-        setOptionToEdit(option);
-        setEditDialogOpen(true);
-    };
 
-    const handleDelete = (id: number) => {
-        setOptionToDelete(id);
-    };
-
-    const confirmDelete = async () => {
-        if (!optionToDelete) return;
-
-        try {
-            const res = await fetch(`/api/options/${optionToDelete}`, {
-                method: 'DELETE',
-            });
-
-            if (res.ok) {
-
-                fetchOptions();
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "刪除失敗",
-                    description: "無法刪除交易紀錄",
-                });
-            }
-        } catch (error) {
-            console.error('Delete failed', error);
-            toast({
-                variant: "destructive",
-                title: "錯誤",
-                description: "發生錯誤，請稍後再試",
-            });
-        } finally {
-            setOptionToDelete(null);
-        }
-    };
 
 
 
@@ -427,25 +356,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         </Select>
                     </div>
 
-                    {currentUserRole && currentUserRole !== 'customer' && (
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                className="flex gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-600"
-                                onClick={() => setIsDeleteAllOpen(true)}
-                            >
-                                <Trash className="h-4 w-4" />
-                                刪除全部
-                            </Button>
-                            <Button
-                                onClick={() => setDialogOpen(true)}
-                                variant="secondary"
-                                className="hover:bg-accent hover:text-accent-foreground"
-                            >
-                                <span className="mr-0.5">+</span>新增
-                            </Button>
-                        </div>
-                    )}
+
                 </div>
             </div>
 
@@ -458,7 +369,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
-                            <TableHead className="text-center">時間</TableHead>
                             <TableHead className="text-center">到期日</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
@@ -474,7 +384,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
-                            <TableHead className="text-center"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -538,8 +447,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 </div>
                                             )}
                                         </TableCell>
-                                        <TableCell>{formatDate(opt.open_date)}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm font-mono">{opt.trade_time || '-'}</TableCell>
+                                        <TableCell>
+                                            {formatDate(opt.open_date)}
+                                            {(() => {
+                                                const time = formatTime(opt.open_date);
+                                                return time !== '-' ? <div className="text-muted-foreground text-xs font-mono">{time}</div> : null;
+                                            })()}
+                                        </TableCell>
                                         <TableCell>{formatDate(opt.to_date)}</TableCell>
                                         <TableCell>{getDaysToExpire(opt)}</TableCell>
                                         <TableCell>
@@ -593,48 +507,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 {opt.code || '-'}
                                             </TableCell>
                                         )}
-                                        <TableCell>
-                                            {/* Only non-customer roles can edit/delete */}
-                                            {currentUserRole && currentUserRole !== 'customer' && (
-                                                <div className="flex justify-center gap-1">
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleEdit(opt)}
-                                                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>編輯</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
 
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleDelete(opt.id)}
-                                                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>刪除</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </div>
-                                            )}
-                                        </TableCell>
                                     </TableRow>
                                 );
                             })
@@ -643,61 +516,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 </Table>
             </div>
 
-            <NewOptionDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                onSuccess={fetchOptions}
-
-                userId={params.userId} // Keep for backward compat if needed, or remove if dialog updated
-                ownerId={ownerId} // Pass ownerId
-            />
-
-            <EditOptionDialog
-                open={editDialogOpen}
-                onOpenChange={(open) => {
-                    setEditDialogOpen(open);
-                    if (!open) setOptionToEdit(null);
-                }}
-                onSuccess={fetchOptions}
-                optionToEdit={optionToEdit}
-            />
-
-            <AlertDialog open={!!optionToDelete} onOpenChange={(open) => !open && setOptionToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>確定要刪除嗎？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            此動作無法復原。這將永久刪除此交易紀錄。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-                            刪除
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>確定要刪除全部資料嗎？</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            此動作無法復原。這將會永久刪除 {selectedYear === 'All' ? '所有年份' : `${selectedYear}年`} {params.userId} 的所有期權交易資料。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDeleteAll}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            確認刪除
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
