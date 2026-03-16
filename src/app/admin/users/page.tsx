@@ -171,8 +171,6 @@ export default function AdminUsersPage() {
             const data = await res.json();
             if (data.users) {
                 setUsers(data.users);
-                // Fetch reports after users are loaded
-                fetchAllReports(data.users);
             }
             if (data.meta && typeof data.meta.marketDataCount === 'number') {
                 setMarketDataCount(data.meta.marketDataCount);
