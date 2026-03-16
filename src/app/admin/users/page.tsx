@@ -20,7 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive, Check, Eraser } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileUp, FolderOpen, HardDrive, Check, Eraser } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
@@ -105,11 +105,7 @@ export default function AdminUsersPage() {
     const [exportProcessing, setExportProcessing] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
 
-    // Report Generation State
-    const [reportDialog, setReportDialog] = useState<{ open: boolean; userId: number; userName: string; report: string } | null>(null);
-    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-    const [userReports, setUserReports] = useState<Map<number, { userName: string; report: string }>>(new Map());
-    const [isLoadingReports, setIsLoadingReports] = useState(false);
+
 
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
@@ -197,27 +193,7 @@ export default function AdminUsersPage() {
         fetchUsers();
     }, [selectedYear]); // Add selectedYear dependency
 
-    // Fetch all user reports for cards
-    const fetchAllReports = async (usersList: User[]) => {
-        const nonAdminUsers = usersList.filter(u => u.email !== 'admin');
-        if (nonAdminUsers.length === 0) return;
-        setIsLoadingReports(true);
-        const reportsMap = new Map<number, { userName: string; report: string }>();
-        await Promise.all(nonAdminUsers.map(async (user) => {
-            try {
-                const res = await fetch(`/api/users/${user.id}/report`);
-                const data = await res.json();
-                if (data.success) {
-                    const report = formatUserReport(data.reportData);
-                    reportsMap.set(user.id, { userName: data.reportData.user_id || user.user_id || user.email, report });
-                }
-            } catch (e) {
-                // skip failed
-            }
-        }));
-        setUserReports(reportsMap);
-        setIsLoadingReports(false);
-    };
+
 
     const handleDelete = async (id: number) => {
         setUserToDelete(id);
@@ -283,92 +259,7 @@ export default function AdminUsersPage() {
         }
     };
 
-    const formatUserReport = (data: any) => {
-        const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
-        const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
 
-        let report = '';
-        if (data.lastUpdateDate) {
-            const d = new Date(data.lastUpdateDate * 1000);
-            const dateStr = `${d.getFullYear().toString().slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            report += `最後更新日 : ${dateStr}\n`;
-            report += `----------------------------------------\n`;
-        }
-        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
-        report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
-        report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
-        report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
-        report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
-        report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
-        report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
-        report += `----------------------------------------\n`;
-        report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
-        report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
-        report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
-        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
-        report += `----------------------------------------\n`;
-
-        // Stock positions
-        if (data.stockPositions && data.stockPositions.length > 0) {
-            data.stockPositions.forEach((pos: any) => {
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股\n`;
-            });
-            report += `----------------------------------------\n`;
-        }
-
-        // Quarterly premium
-        report += `季-累積權利金 : $${formatMoney(data.quarterlyPremium)}\n`;
-        report += `季-目標權利金 : $${formatMoney(data.quarterlyTarget)}\n`;
-        report += `----------------------------------------\n`;
-
-        // Annual premium
-        report += `年-累積權利金 : $${formatMoney(data.annualPremium)}\n`;
-        report += `年-目標權利金 : $${formatMoney(data.annualTarget)}\n`;
-        report += `----------------------------------------\n`;
-
-        // Open options
-        if (data.openOptions && data.openOptions.length > 0) {
-            data.openOptions.forEach((opt: any) => {
-                // to_date is Unix timestamp, convert to date string
-                const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
-                const expiry = expiryDate ? `${String(expiryDate.getMonth() + 1).padStart(2, '0')}/${String(expiryDate.getDate()).padStart(2, '0')}` : '';
-                const quantity = Math.abs(opt.quantity);
-                const optType = opt.type.toLowerCase();
-                // Premium is negative for sold options in the database
-                report += `${quantity}口 ${expiry} sell-${opt.underlying}-${optType} ${opt.strike_price}, 權利金 ${formatMoney(Math.abs(opt.premium))}\n`;
-            });
-        }
-
-        return report;
-    };
-
-    const handleGenerateReport = async (userId: number) => {
-        setIsGeneratingReport(true);
-        try {
-            const res = await fetch(`/api/users/${userId}/report`);
-            const data = await res.json();
-
-            if (data.success) {
-                const report = formatUserReport(data.reportData);
-                setReportDialog({ open: true, userId, userName: data.reportData.user_id, report });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "錯誤",
-                    description: data.error || '無法生成報告',
-                });
-            }
-        } catch (error) {
-            console.error('Failed to generate report:', error);
-            toast({
-                variant: "destructive",
-                title: "錯誤",
-                description: '無法生成報告',
-            });
-        } finally {
-            setIsGeneratingReport(false);
-        }
-    };
 
     const handleExportClick = () => {
         // Prepare selection list from current users (excluding admin)
@@ -1392,24 +1283,7 @@ export default function AdminUsersPage() {
                                                                 </TooltipContent>
                                                             </Tooltip>
 
-                                                            {user.role === 'customer' && (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => handleGenerateReport(user.id)}
-                                                                            className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                                                                            disabled={isGeneratingReport}
-                                                                        >
-                                                                            <FileText className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>生成報告</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
+
 
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
@@ -1452,66 +1326,7 @@ export default function AdminUsersPage() {
                     </Table>
                 </div>
 
-                {/* User Report Cards */}
-                {userReports.size > 0 && (
-                    <div className="mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {Array.from(userReports.entries()).map(([userId, { userName, report }]) => (
-                                <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="font-semibold text-sm">{userName}</h3>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(report);
-                                                toast({ title: "已複製", description: `${userName} 的報告已複製` });
-                                            }}
-                                        >
-                                            <Copy className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">{report}</pre>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                {isLoadingReports && (
-                    <div className="mt-6 text-center text-muted-foreground text-sm py-4">載入報告中...</div>
-                )}
 
-                <Dialog open={reportDialog?.open || false} onOpenChange={(open) => !open && setReportDialog(null)}>
-                    <DialogContent className="w-[400px] max-w-[90vw] max-h-[95vh]">
-                        <DialogHeader>
-                            <div className="flex items-center gap-2">
-                                <DialogTitle>{reportDialog?.userName} 用戶報告</DialogTitle>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => {
-                                        if (reportDialog?.report) {
-                                            navigator.clipboard.writeText(reportDialog.report);
-                                            toast({
-                                                title: "已複製",
-                                                description: "報告已複製到剪貼簿",
-                                            });
-                                        }
-                                    }}
-                                >
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </DialogHeader>
-                        <Textarea
-                            value={reportDialog?.report || ''}
-                            readOnly
-                            className="font-mono text-sm min-h-[650px] resize-none"
-                        />
-                    </DialogContent>
-                </Dialog>
 
                 <AdminUserDialog
                     open={dialogOpen}
