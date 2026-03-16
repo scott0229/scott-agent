@@ -35,6 +35,7 @@ function App(): React.JSX.Element {
   const [uploadSymbols, setUploadSymbols] = useState<string[]>([])
   const [fetchingSymbols, setFetchingSymbols] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
+  const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
   const {
     marginLimit,
     setMarginLimit,
@@ -113,6 +114,15 @@ function App(): React.JSX.Element {
               for (const [accountId, type] of Object.entries(res.accountTypes) as [string, string][]) {
                 setAccountType(accountId, type)
               }
+            }
+          })
+          .catch(() => { })
+        // Auto-fetch return rates (報酬率) from D1
+        window.ibApi
+          .getReturnRates(accountIds, d1Target)
+          .then((res) => {
+            if (res.returnRates && Object.keys(res.returnRates).length > 0) {
+              setReturnRates(res.returnRates)
             }
           })
           .catch(() => { })
@@ -237,6 +247,7 @@ function App(): React.JSX.Element {
               loading={loading}
               refresh={refresh}
               accountTypes={accountTypes}
+              returnRates={returnRates}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

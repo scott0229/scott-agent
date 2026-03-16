@@ -317,6 +317,27 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Fetch return rates (報酬率) from D1 using TWR calculation
+  ipcMain.handle(
+    'performance:getReturnRates',
+    async (_event, accountIds: string[], d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'staging'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-return-rates')
+        const params = new URLSearchParams({ accounts: accountIds.join(',') })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        const result = await res.json()
+        console.log('[performance:getReturnRates] result:', JSON.stringify(result))
+        return result
+      } catch {
+        return { returnRates: {} }
+      }
+    }
+  )
+
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
     {

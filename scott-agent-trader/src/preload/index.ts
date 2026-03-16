@@ -84,6 +84,11 @@ const ibApi = {
     d1Target?: string
   ): Promise<{ accountTypes: Record<string, string> }> =>
     ipcRenderer.invoke('settings:getAccountTypes', accountIds, d1Target),
+  getReturnRates: (
+    accountIds: string[],
+    d1Target?: string
+  ): Promise<{ returnRates: Record<string, number | null> }> =>
+    ipcRenderer.invoke('performance:getReturnRates', accountIds, d1Target),
 
   // Price Upload (per-symbol)
   uploadSymbol: (

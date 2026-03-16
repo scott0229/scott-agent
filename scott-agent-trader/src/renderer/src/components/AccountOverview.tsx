@@ -53,6 +53,7 @@ interface AccountOverviewProps {
   loading: boolean
   refresh?: () => void
   accountTypes?: Record<string, string>
+  returnRates?: Record<string, number | null>
   onSetAccountType?: (accountId: string, type: string) => void
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
@@ -77,6 +78,7 @@ export default function AccountOverview({
   loading,
   refresh,
   accountTypes,
+  returnRates,
   marginLimit = 1.3,
   symbolGroups = [],
   onAddSymbolGroup,
@@ -537,6 +539,11 @@ export default function AccountOverview({
       const bRatio = b.netLiquidation > 0 ? (b.grossPositionValue + bPutCost) / b.netLiquidation : 0
       return bRatio - aRatio
     }
+    if (sortBy === 'returnRate') {
+      const aRate = returnRates?.[a.accountId] ?? -Infinity
+      const bRate = returnRates?.[b.accountId] ?? -Infinity
+      return bRate - aRate
+    }
     return b.totalCashValue - a.totalCashValue
   })
 
@@ -760,7 +767,8 @@ export default function AccountOverview({
                 options={[
                   { value: 'netLiquidation', label: '淨值-從高到低' },
                   { value: 'margin', label: '潛在融資-從高到低' },
-                  { value: 'cash', label: '現金-從多到少' }
+                  { value: 'cash', label: '現金-從多到少' },
+                  { value: 'returnRate', label: '報酬率-從高到低' }
                 ]}
               />
             </>
@@ -1371,6 +1379,13 @@ export default function AccountOverview({
                   <span className="account-type-label">
                     {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
                   </span>
+                  {(() => {
+                    const rate = returnRates?.[account.accountId]
+                    if (rate === undefined) return null
+                    if (rate === null) return <span className="return-rate-badge" style={{ color: '#888' }}>報酬率 --</span>
+                    const sign = rate >= 0 ? '+' : ''
+                    return <span className="return-rate-badge" style={{ fontWeight: 600 }}>報酬率 {sign}{rate.toFixed(2)}%</span>
+                  })()}
                 </div>
 
                 {!selectMode && (
