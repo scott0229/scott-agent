@@ -39,8 +39,7 @@ routes = [
 ]
 
 [env.staging.vars]
-# API Key is now stored ONLY in database (USERS.api_key for admin user)
-# No environment variable fallback - admin must configure via settings page
+RESEND_API_KEY = "re_3e8UHBP1_4ecHGufTVorDB4GKKkTYDJjP"
 
 [[env.staging.d1_databases]]
 binding = "DB"
@@ -64,6 +63,9 @@ routes = [
   { pattern = "scott-agent.com", custom_domain = true },
   { pattern = "www.scott-agent.com", custom_domain = true }
 ]
+
+[env.production.vars]
+RESEND_API_KEY = "re_3e8UHBP1_4ecHGufTVorDB4GKKkTYDJjP"
 
 [[env.production.d1_databases]]
 binding = "DB"

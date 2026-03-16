@@ -20,7 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { AdminUserDialog } from '@/components/AdminUserDialog';
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive, Check, Eraser } from "lucide-react";
+import { Pencil, Trash2, Download, Upload, Wallet, DollarSign, FileText, Copy, FileUp, FolderOpen, HardDrive, Check, Eraser, Mail } from "lucide-react";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
@@ -110,6 +110,7 @@ export default function AdminUsersPage() {
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
     const [userReports, setUserReports] = useState<Map<number, { userName: string; report: string }>>(new Map());
     const [isLoadingReports, setIsLoadingReports] = useState(false);
+    const [sendingMailUserId, setSendingMailUserId] = useState<number | null>(null);
 
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
@@ -1443,17 +1444,51 @@ export default function AdminUsersPage() {
                                 <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="font-semibold text-sm">{userName}</h3>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-6 w-6"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(report);
-                                                toast({ title: "已複製", description: `${userName} 的報告已複製` });
-                                            }}
-                                        >
-                                            <Copy className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <div className="flex gap-0.5">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                disabled={sendingMailUserId === userId}
+                                                onClick={async () => {
+                                                    setSendingMailUserId(userId);
+                                                    try {
+                                                        // Extract date from report content
+                                                        const dateMatch = report.match(/最後更新日 : (\S+)/);
+                                                        const dateStr = dateMatch ? dateMatch[1] : '';
+                                                        const res = await fetch('/api/users/send-report', {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ userId, report, userName, dateStr }),
+                                                        });
+                                                        const data = await res.json();
+                                                        if (res.ok) {
+                                                            const userEmail = users.find(u => u.id === userId)?.email || '';
+                                                            toast({ title: "已發送", description: `報告已寄送至 ${userEmail}` });
+                                                        } else {
+                                                            toast({ variant: "destructive", title: "發送失敗", description: data.error || '無法發送郵件' });
+                                                        }
+                                                    } catch {
+                                                        toast({ variant: "destructive", title: "發送失敗", description: '網路錯誤' });
+                                                    } finally {
+                                                        setSendingMailUserId(null);
+                                                    }
+                                                }}
+                                            >
+                                                <Mail className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(report);
+                                                    toast({ title: "已複製", description: `${userName} 的報告已複製` });
+                                                }}
+                                            >
+                                                <Copy className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
                                     </div>
                                     <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">{report}</pre>
                                 </div>
