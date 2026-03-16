@@ -53,6 +53,7 @@ interface AccountOverviewProps {
   loading: boolean
   refresh?: () => void
   accountTypes?: Record<string, string>
+  returnRates?: Record<string, number | null>
   onSetAccountType?: (accountId: string, type: string) => void
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
@@ -77,6 +78,7 @@ export default function AccountOverview({
   loading,
   refresh,
   accountTypes,
+  returnRates,
   marginLimit = 1.3,
   symbolGroups = [],
   onAddSymbolGroup,
@@ -1245,6 +1247,14 @@ export default function AccountOverview({
                   <span className="account-type-label">
                     {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
                   </span>
+                  {(() => {
+                    const rate = returnRates?.[account.accountId]
+                    if (rate === undefined) return null
+                    if (rate === null) return <span className="return-rate-badge" style={{ color: '#888' }}>報酬率 --</span>
+                    const color = rate >= 0 ? '#16a34a' : '#dc2626'
+                    const sign = rate >= 0 ? '+' : ''
+                    return <span className="return-rate-badge" style={{ color, fontWeight: 600 }}>{sign}{rate.toFixed(2)}%</span>
+                  })()}
                 </div>
 
                 {!selectMode && (
