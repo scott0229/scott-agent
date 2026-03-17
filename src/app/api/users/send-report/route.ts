@@ -51,6 +51,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Email 服務未設定' }, { status: 500 });
         }
 
+        // Escape HTML special characters for safe embedding
+        const escapeHtml = (str: string) =>
+            str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;">${escapeHtml(subject)}</h2>
+  <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.6; font-size: 14px;">${escapeHtml(report)}</pre>
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin-top: 24px;" />
+  <p style="font-size: 12px; color: #9ca3af;">此郵件由 Scott Agent 系統自動發送</p>
+</body>
+</html>`.trim();
+
         const emailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -58,10 +74,12 @@ export async function POST(req: NextRequest) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                from: 'Scott Agent <noreply@scott-agent.com>',
+                from: 'Scott Agent <reports@scott-agent.com>',
+                reply_to: 'reports@scott-agent.com',
                 to: [recipientEmail],
                 subject,
                 text: report,
+                html: htmlContent,
             }),
         });
 

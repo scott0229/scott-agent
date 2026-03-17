@@ -112,6 +112,13 @@ export default function AdminUsersPage() {
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [sendingMailUserId, setSendingMailUserId] = useState<number | null>(null);
 
+    // Batch Mail State
+    const [batchMailOpen, setBatchMailOpen] = useState(false);
+    const [batchMailProcessing, setBatchMailProcessing] = useState(false);
+    const [batchMailProgress, setBatchMailProgress] = useState(0);
+    const [batchMailCompletedIds, setBatchMailCompletedIds] = useState<(number | string)[]>([]);
+    const [batchMailUsers, setBatchMailUsers] = useState<any[]>([]);
+
     // Data holders
     const [selectionUsers, setSelectionUsers] = useState<any[]>([]); // For dialog options
     const [pendingImportData, setPendingImportData] = useState<any>(null); // To hold parsed JSON before import
@@ -368,6 +375,81 @@ export default function AdminUsersPage() {
             });
         } finally {
             setIsGeneratingReport(false);
+        }
+    };
+
+    const handleBatchMailClick = () => {
+        // Build user list from userReports (only users with reports + valid email)
+        const mailableUsers: { id: number | string; display: string; checked: boolean }[] = [];
+        userReports.forEach(({ userName, report }, userId) => {
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+            // Only include users with a valid email (contains @)
+            if (!user.email || !user.email.includes('@')) return;
+            mailableUsers.push({
+                id: userId,
+                display: `${userName} (${user.email})`,
+                checked: true,
+            });
+        });
+
+        if (mailableUsers.length === 0) {
+            toast({ variant: 'destructive', title: '無可寄出的用戶', description: '沒有用戶擁有有效的 Email 和報告' });
+            return;
+        }
+
+        setBatchMailUsers(mailableUsers);
+        setBatchMailProcessing(false);
+        setBatchMailProgress(0);
+        setBatchMailCompletedIds([]);
+        setBatchMailOpen(true);
+    };
+
+    const confirmBatchMail = async (selectedIds: (number | string)[]) => {
+        setBatchMailProcessing(true);
+        setBatchMailProgress(0);
+        setBatchMailCompletedIds([]);
+
+        const total = selectedIds.length;
+        let succeeded = 0;
+        let failed = 0;
+
+        for (let i = 0; i < total; i++) {
+            const userId = selectedIds[i] as number;
+            const reportData = userReports.get(userId);
+            if (!reportData) continue;
+
+            try {
+                const dateMatch = reportData.report.match(/最後更新日 : (\S+)/);
+                const dateStr = dateMatch ? dateMatch[1] : '';
+                const res = await fetch('/api/users/send-report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        report: reportData.report,
+                        userName: reportData.userName,
+                        dateStr,
+                    }),
+                });
+                if (res.ok) {
+                    succeeded++;
+                } else {
+                    const data = await res.json();
+                    failed++;
+                    toast({ variant: 'destructive', title: `${reportData.userName} 發送失敗`, description: data.error || '未知錯誤' });
+                }
+            } catch {
+                failed++;
+                toast({ variant: 'destructive', title: `${reportData.userName} 發送失敗`, description: '網路錯誤' });
+            }
+
+            setBatchMailCompletedIds(prev => [...prev, userId]);
+            setBatchMailProgress(Math.round(((i + 1) / total) * 100));
+        }
+
+        if (succeeded > 0) {
+            toast({ title: '寄出完成', description: `成功 ${succeeded} 封${failed > 0 ? `，失敗 ${failed} 封` : ''}` });
         }
     };
 
@@ -1171,6 +1253,16 @@ export default function AdminUsersPage() {
                         {/* Only show actions for admin/manager/trader, NOT customer */}
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
+                                {userReports.size > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        className="hover:bg-accent hover:text-accent-foreground"
+                                        onClick={handleBatchMailClick}
+                                    >
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        寄出報告
+                                    </Button>
+                                )}
 
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -1597,6 +1689,26 @@ export default function AdminUsersPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                {/* Batch Mail UserSelectionDialog */}
+                <UserSelectionDialog
+                    open={batchMailOpen}
+                    onOpenChange={(open) => {
+                        setBatchMailOpen(open);
+                        if (!open) {
+                            setBatchMailProcessing(false);
+                            setBatchMailProgress(0);
+                            setBatchMailCompletedIds([]);
+                        }
+                    }}
+                    title="選擇要寄出報告的用戶"
+                    users={batchMailUsers}
+                    onConfirm={confirmBatchMail}
+                    confirmLabel="開始寄出"
+                    processing={batchMailProcessing}
+                    progress={batchMailProgress}
+                    completedIds={batchMailCompletedIds}
+                    preventCloseOnConfirm={true}
+                />
                 <UserSelectionDialog
                     open={exportSelectionOpen}
                     onOpenChange={setExportSelectionOpen}
