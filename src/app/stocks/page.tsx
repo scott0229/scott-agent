@@ -18,7 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
 import {
     Tooltip,
@@ -317,11 +317,17 @@ export default function StockTradingPage() {
 
                         {/* Symbol Filter */}
                         <div className="w-[150px]">
-                            <Input
-                                placeholder="搜尋代號..."
-                                value={symbolFilter}
-                                onChange={(e) => setSymbolFilter(e.target.value)}
-                            />
+                            <Select value={symbolFilter || "All"} onValueChange={(val) => setSymbolFilter(val === "All" ? "" : val)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="所有代號" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">所有代號</SelectItem>
+                                    {[...new Set(trades.map(t => t.symbol))].sort().map(sym => (
+                                        <SelectItem key={sym} value={sym}>{sym}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {isFiltered && filteredTrades.length > 0 && canEdit(filteredTrades[0]) && (
