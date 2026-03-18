@@ -440,41 +440,70 @@ export async function POST(req: NextRequest) {
 
                                 const newStrategyId = strategyResult.meta.last_row_id;
 
-                                // Link stock trades
-                                if (strategy.stock_trade_ids && Array.isArray(strategy.stock_trade_ids)) {
+                                // Link stock trades by code (portable across databases)
+                                if (strategy.stock_trade_codes && Array.isArray(strategy.stock_trade_codes) && strategy.stock_trade_codes.length > 0) {
+                                    const stmts = [];
+                                    for (const code of strategy.stock_trade_codes) {
+                                        const stock = await db.prepare(
+                                            `SELECT id FROM STOCK_TRADES WHERE owner_id = ? AND code = ?`
+                                        ).bind(targetUserId, code).first();
+                                        if (stock) {
+                                            stmts.push(
+                                                db.prepare(`INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id) VALUES (?, ?)`)
+                                                  .bind(newStrategyId, stock.id)
+                                            );
+                                        }
+                                    }
+                                    if (stmts.length > 0) await db.batch(stmts);
+                                }
+                                // Fallback: link stock trades by old ID map (same-request import)
+                                else if (strategy.stock_trade_ids && Array.isArray(strategy.stock_trade_ids)) {
+                                    const stmts = [];
                                     for (const oldStockId of strategy.stock_trade_ids) {
                                         const newStockId = stockIdMap.get(oldStockId);
                                         if (newStockId) {
-                                            try {
-                                                await db.prepare(
-                                                    `INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id)
-                                                     VALUES (?, ?)`
-                                                ).bind(newStrategyId, newStockId).run();
-                                            } catch (linkErr) {
-                                                console.error(`Failed to link stock to strategy for user ${user.email}:`, linkErr);
-                                            }
+                                            stmts.push(
+                                                db.prepare(`INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id) VALUES (?, ?)`)
+                                                  .bind(newStrategyId, newStockId)
+                                            );
                                         }
                                     }
+                                    if (stmts.length > 0) await db.batch(stmts);
                                 }
 
-                                // Link options
-                                if (strategy.option_ids && Array.isArray(strategy.option_ids)) {
+                                // Link options by code (portable across databases)
+                                if (strategy.option_codes && Array.isArray(strategy.option_codes) && strategy.option_codes.length > 0) {
+                                    const stmts = [];
+                                    for (const code of strategy.option_codes) {
+                                        const option = await db.prepare(
+                                            `SELECT id FROM OPTIONS WHERE owner_id = ? AND code = ?`
+                                        ).bind(targetUserId, code).first();
+                                        if (option) {
+                                            stmts.push(
+                                                db.prepare(`INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id) VALUES (?, ?)`)
+                                                  .bind(newStrategyId, option.id)
+                                            );
+                                        }
+                                    }
+                                    if (stmts.length > 0) await db.batch(stmts);
+                                }
+                                // Fallback: link options by old ID map (same-request import)
+                                else if (strategy.option_ids && Array.isArray(strategy.option_ids)) {
+                                    const stmts = [];
                                     for (const oldOptionId of strategy.option_ids) {
                                         const newOptionId = optionIdMap.get(oldOptionId);
                                         if (newOptionId) {
-                                            try {
-                                                await db.prepare(
-                                                    `INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id)
-                                                     VALUES (?, ?)`
-                                                ).bind(newStrategyId, newOptionId).run();
-                                            } catch (linkErr) {
-                                                console.error(`Failed to link option to strategy for user ${user.email}:`, linkErr);
-                                            }
+                                            stmts.push(
+                                                db.prepare(`INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id) VALUES (?, ?)`)
+                                                  .bind(newStrategyId, newOptionId)
+                                            );
                                         }
                                     }
+                                    if (stmts.length > 0) await db.batch(stmts);
                                 }
                             } catch (stratErr) {
                                 console.error(`Failed to import strategy for user ${user.email}:`, stratErr);
+                                errors.push(`策略匯入失敗 (${user.user_id || user.email}): ${(stratErr as any).message}`);
                             }
                         }
                     }

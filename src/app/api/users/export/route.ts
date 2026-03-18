@@ -198,17 +198,21 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             strategiesQuery += ` ORDER BY created_at DESC`;
             const { results: strategies } = await db.prepare(strategiesQuery).bind(...strategiesParams).all();
 
-            // For each strategy, get associated stock and option IDs
+            // For each strategy, get associated stock and option codes (not IDs, for cross-DB portability)
             const strategiesWithRefs = await Promise.all(
                 (strategies || []).map(async (strategy: any) => {
-                    // Get stock trade IDs
+                    // Get stock trade codes
                     const { results: stockLinks } = await db.prepare(`
-                        SELECT stock_trade_id FROM STRATEGY_STOCKS WHERE strategy_id = ?
+                        SELECT st.code FROM STRATEGY_STOCKS ss
+                        JOIN STOCK_TRADES st ON st.id = ss.stock_trade_id
+                        WHERE ss.strategy_id = ?
                     `).bind(strategy.id).all();
 
-                    // Get option IDs
+                    // Get option codes
                     const { results: optionLinks } = await db.prepare(`
-                        SELECT option_id FROM STRATEGY_OPTIONS WHERE strategy_id = ?
+                        SELECT o.code FROM STRATEGY_OPTIONS so
+                        JOIN OPTIONS o ON o.id = so.option_id
+                        WHERE so.strategy_id = ?
                     `).bind(strategy.id).all();
 
                     return {
@@ -219,8 +223,11 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
                         option_strategy: strategy.option_strategy || null,
                         stock_strategy: strategy.stock_strategy || null,
                         stock_strategy_params: strategy.stock_strategy_params || null,
-                        stock_trade_ids: (stockLinks || []).map((link: any) => link.stock_trade_id),
-                        option_ids: (optionLinks || []).map((link: any) => link.option_id)
+                        stock_trade_codes: (stockLinks || []).map((link: any) => link.code),
+                        option_codes: (optionLinks || []).map((link: any) => link.code),
+                        // Keep old format for backward compatibility
+                        stock_trade_ids: [],
+                        option_ids: []
                     };
                 })
             );
