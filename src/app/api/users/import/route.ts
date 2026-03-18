@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
         const defaultPassword = '123456';
-        const passwordHash = await bcrypt.hash(defaultPassword, 10);
+        // Lazy-init: only hash password if we actually need to create a new user
+        let passwordHash: string | null = null;
 
         let imported = 0;
         let skipped = 0;
@@ -125,6 +126,10 @@ export async function POST(req: NextRequest) {
                     ).run();
                     updated++;
                 } else {
+                    // Only hash password once, when first new user needs it
+                    if (!passwordHash) {
+                        passwordHash = await bcrypt.hash(defaultPassword, 10);
+                    }
                     // Insert new user
                     const { meta } = await db.prepare(
                         `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, year, created_at, updated_at)
