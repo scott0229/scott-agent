@@ -824,10 +824,13 @@ export default function AdminUsersPage() {
             fetchUsers(true);
 
             if (errors.length > 0) {
+                console.error('Import errors:', errors);
+                const preview = errors.slice(0, 5).join('\n');
+                const suffix = errors.length > 5 ? `\n...還有 ${errors.length - 5} 個錯誤（詳見 Console）` : '';
                 toast({
                     variant: "destructive",
-                    title: "匯入完成但有錯誤",
-                    description: `共有 ${errors.length} 個錯誤發生。`,
+                    title: `匯入完成但有 ${errors.length} 個錯誤`,
+                    description: preview + suffix,
                 });
             }
 
