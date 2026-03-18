@@ -290,9 +290,9 @@ export async function POST(req: NextRequest) {
                                     owner_id, user_id, status, operation, open_date, to_date, settlement_date,
                                     days_to_expire, days_held,
                                     quantity, underlying, type, strike_price, collateral, premium,
-                                    final_profit, profit_percent, delta, iv, capital_efficiency, code, year,
+                                    final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price,
                                     created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                             ).bind(
                                 targetUserId,
                                 user.user_id || null,
@@ -315,7 +315,8 @@ export async function POST(req: NextRequest) {
                                 option.iv || null,
                                 option.capital_efficiency || null,
                                 code,
-                                optionYear
+                                optionYear,
+                                option.underlying_price ?? null
                             );
                         });
 

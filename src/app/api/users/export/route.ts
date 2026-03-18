@@ -142,7 +142,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             SELECT 
                 id, status, operation, open_date, to_date, settlement_date, days_to_expire, days_held,
                 quantity, underlying, type, strike_price, collateral, premium,
-                final_profit, profit_percent, delta, iv, capital_efficiency, code, year
+                final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price
             FROM OPTIONS 
             WHERE owner_id = ?
         `;
