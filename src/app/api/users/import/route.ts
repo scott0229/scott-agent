@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
                     // Update existing user
                     await db.prepare(
                         `UPDATE USERS SET 
-                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, start_date = ?, fee_exempt_months = ?, updated_at = unixepoch()
+                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, start_date = ?, fee_exempt_months = ?, account_capability = ?, updated_at = unixepoch()
                          WHERE id = ?`
                     ).bind(
                         user.role,
@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
                         user.initial_deposit ?? 0,
                         user.start_date || null,
                         user.fee_exempt_months ?? 0,
+                        (user as any).account_capability || null,
                         existing.id
                     ).run();
                     updated++;
@@ -132,8 +133,8 @@ export async function POST(req: NextRequest) {
                     }
                     // Insert new user
                     const { meta } = await db.prepare(
-                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, year, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, account_capability, year, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                     ).bind(
                         user.user_id || null,
                         user.email,
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
                         user.initial_deposit ?? 0,
                         user.start_date || null,
                         user.fee_exempt_months ?? 0,
+                        (user as any).account_capability || null,
                         targetYear
                     ).run();
                     targetUserId = meta.last_row_id;
