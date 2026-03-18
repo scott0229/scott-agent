@@ -784,45 +784,95 @@ export default function AdminUsersPage() {
                 });
             }
 
-            // Step 1: Import users one at a time to avoid D1 query limits
+            // Step 1: Import users — split each user's sub-data across multiple requests
             const TOTAL = selectedUsers.length;
-            const BATCH_SIZE = 1;
             let processed = 0;
 
-            for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
-                const chunk = selectedUsers.slice(i, i + BATCH_SIZE);
+            for (let i = 0; i < TOTAL; i++) {
+                const rawUser = selectedUsers[i];
+                const userClone = { ...rawUser };
+                if (!importOptions) delete userClone.options;
+                if (!importStocks) delete userClone.stock_trades;
+                if (!importStrategies) delete userClone.strategies;
 
-                const processedChunk = chunk.map((u: any) => {
-                    const clone = { ...u };
-                    if (!importOptions) delete clone.options;
-                    if (!importStocks) delete clone.stock_trades;
-                    if (!importStrategies) delete clone.strategies;
-                    return clone;
-                });
+                // Extract sub-records for chunked sending
+                const allOptions = userClone.options || [];
+                const allStocks = userClone.stock_trades || [];
+                const allStrategies = userClone.strategies || [];
+                const allNetEquity = userClone.net_equity_records || [];
 
-                const chunkPayload: any = {
-                    users: processedChunk,
-                    market_prices: [],
-                    sourceYear: sourceYear
-                };
+                // Sub-record batch size (keep each request small to avoid CPU limits)
+                const SUB_BATCH = 30;
 
-                const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(chunkPayload),
-                });
+                // Build list of sub-requests for this user
+                const subRequests: any[] = [];
 
-                const result = await res.json();
+                // Request 1: User profile + net equity (net equity uses batched INSERT OR IGNORE so it's efficient)
+                const profileUser = { ...userClone, options: [], stock_trades: [], strategies: [] };
+                subRequests.push(profileUser);
 
-                if (!res.ok) {
-                    errors.push(result.error || `匯入失敗 (batch ${i})`);
+                // Additional requests for options in batches of SUB_BATCH
+                for (let o = 0; o < allOptions.length; o += SUB_BATCH) {
+                    const optChunk = allOptions.slice(o, o + SUB_BATCH);
+                    subRequests.push({
+                        ...userClone,
+                        net_equity_records: [], deposits: [],
+                        options: optChunk, stock_trades: [], strategies: [],
+                        monthly_interest: [], monthly_fees: []
+                    });
                 }
 
-                if (result.errors) errors.push(...result.errors);
+                // Additional requests for stocks in batches of SUB_BATCH
+                for (let s = 0; s < allStocks.length; s += SUB_BATCH) {
+                    const stChunk = allStocks.slice(s, s + SUB_BATCH);
+                    subRequests.push({
+                        ...userClone,
+                        net_equity_records: [], deposits: [],
+                        options: [], stock_trades: stChunk, strategies: [],
+                        monthly_interest: [], monthly_fees: []
+                    });
+                }
+
+                // Request for strategies (if any)
+                if (allStrategies.length > 0) {
+                    subRequests.push({
+                        ...userClone,
+                        net_equity_records: [], deposits: [],
+                        options: [], stock_trades: [], strategies: allStrategies,
+                        monthly_interest: [], monthly_fees: []
+                    });
+                }
+
+                // Send each sub-request sequentially
+                for (const subUser of subRequests) {
+                    try {
+                        const chunkPayload: any = {
+                            users: [subUser],
+                            market_prices: [],
+                            sourceYear: sourceYear
+                        };
+
+                        const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(chunkPayload),
+                        });
+
+                        const result = await res.json();
+
+                        if (!res.ok) {
+                            errors.push(result.error || `匯入失敗 (${rawUser.user_id || rawUser.email})`);
+                        }
+
+                        if (result.errors) errors.push(...result.errors);
+                    } catch (e: any) {
+                        errors.push(`匯入失敗 (${rawUser.user_id || rawUser.email}): ${e.message}`);
+                    }
+                }
 
                 // Update Progress
                 setCompletedImportIds(prev => {
-                    const newIds = [...prev, ...chunk.map((u: any) => u.email)];
+                    const newIds = [...prev, rawUser.email];
                     if (importOptions && !prev.includes('options_records')) {
                         newIds.push('options_records');
                     }
@@ -835,8 +885,8 @@ export default function AdminUsersPage() {
                     return newIds;
                 });
 
-                processed += chunk.length;
-                const progressPct = Math.round((processed / TOTAL) * 90); // Scale to 90%
+                processed++;
+                const progressPct = Math.round((processed / TOTAL) * 90);
                 setImportProgress(progressPct);
             }
 
