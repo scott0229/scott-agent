@@ -750,36 +750,61 @@ export default function AdminUsersPage() {
             }
 
             // Scenario 2: Users (and optionally Market Data / Options / Interest)
-            // Step 2: Batch Upload Users
-            const TOTAL = selectedUsers.length;
-            const BATCH_SIZE = 5; // Import 5 users at a time
-            let processed = 0;
-            // Unused variables commented out to prevent linter warnings
-            // let totalImported = 0;
-            // let totalSkipped = 0;
+            // Step 0: Import market data & annotations in a separate request first
             const errors: string[] = [];
+            if (importMarketData || importAnnotations) {
+                setImportProgress(2);
+                const globalPayload: any = {
+                    users: [],
+                    market_prices: importMarketData ? marketPrices : [],
+                    sourceYear: sourceYear
+                };
+                if (importAnnotations && pendingImportData.annotations) {
+                    globalPayload.annotations = pendingImportData.annotations;
+                }
+                try {
+                    const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(globalPayload),
+                    });
+                    const result = await res.json();
+                    if (!res.ok) {
+                        errors.push(result.error || 'Market data / annotations import failed');
+                    }
+                    if (result.errors) errors.push(...result.errors);
+                } catch (e: any) {
+                    errors.push(`Market data import failed: ${e.message}`);
+                }
+                setCompletedImportIds(prev => {
+                    const newIds = [...prev];
+                    if (importMarketData) newIds.push('market_data');
+                    if (importAnnotations) newIds.push('annotations');
+                    return newIds;
+                });
+            }
+
+            // Step 1: Import users one at a time to avoid D1 query limits
+            const TOTAL = selectedUsers.length;
+            const BATCH_SIZE = 1;
+            let processed = 0;
 
             for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
                 const chunk = selectedUsers.slice(i, i + BATCH_SIZE);
 
                 const processedChunk = chunk.map((u: any) => {
                     const clone = { ...u };
-                    // deposit logic removed
                     if (!importOptions) delete clone.options;
                     if (!importStocks) delete clone.stock_trades;
                     if (!importStrategies) delete clone.strategies;
                     return clone;
                 });
 
-                // Only include market_prices and annotations in the VERY FIRST Request if selected
                 const chunkPayload: any = {
                     users: processedChunk,
-                    market_prices: (i === 0 && importMarketData) ? marketPrices : [],
+                    market_prices: [],
                     sourceYear: sourceYear
                 };
-                if (i === 0 && importAnnotations && pendingImportData.annotations) {
-                    chunkPayload.annotations = pendingImportData.annotations;
-                }
 
                 const res = await fetch(`/api/users/import?targetYear=${targetYear}`, {
                     method: 'POST',
@@ -790,28 +815,19 @@ export default function AdminUsersPage() {
                 const result = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(result.error || `Batch ${i} failed`);
+                    errors.push(result.error || `匯入失敗 (batch ${i})`);
                 }
 
-                // totalImported += (result.imported || 0) + (result.updated || 0);
-                // totalSkipped += (result.skipped || 0);
                 if (result.errors) errors.push(...result.errors);
 
                 // Update Progress
                 setCompletedImportIds(prev => {
                     const newIds = [...prev, ...chunk.map((u: any) => u.email)];
-                    // Mark global items as completed after first batch if included
-                    if (i === 0 && importMarketData && !prev.includes('market_data')) {
-                        newIds.push('market_data');
-                    }
-                    if (i === 0 && importOptions && !prev.includes('options_records')) {
+                    if (importOptions && !prev.includes('options_records')) {
                         newIds.push('options_records');
                     }
-                    if (i === 0 && importStocks && !prev.includes('stock_trades')) {
+                    if (importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');
-                    }
-                    if (i === 0 && importAnnotations && !prev.includes('annotations')) {
-                        newIds.push('annotations');
                     }
                     return newIds;
                 });
