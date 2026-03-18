@@ -829,6 +829,9 @@ export default function AdminUsersPage() {
                     if (importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');
                     }
+                    if (importStrategies && !prev.includes('strategies')) {
+                        newIds.push('strategies');
+                    }
                     return newIds;
                 });
 

@@ -242,22 +242,42 @@ export async function POST(req: NextRequest) {
                 // Create ID mapping: old option ID -> new option ID
                 const optionIdMap = new Map<number, number>();
                 if (user.options && Array.isArray(user.options) && targetUserId) {
-                    for (const option of user.options) {
-                        if (!option.open_date || !option.underlying || !option.type) continue;
+                    // Pre-fetch all existing options for this user in ONE query
+                    const existingOptions = await db.prepare(
+                        `SELECT id, open_date, underlying, type, strike_price FROM OPTIONS WHERE owner_id = ?`
+                    ).bind(targetUserId).all();
+                    const existingSet = new Set(
+                        (existingOptions.results || []).map((o: any) =>
+                            `${o.open_date}|${o.underlying}|${o.type}|${o.strike_price}`
+                        )
+                    );
+                    // Build map of existing options for ID mapping
+                    const existingMap = new Map<string, number>();
+                    for (const o of (existingOptions.results || []) as any[]) {
+                        existingMap.set(`${o.open_date}|${o.underlying}|${o.type}|${o.strike_price}`, o.id);
+                    }
 
-                        const optionYear = option.year || targetYear;
+                    // Filter new options and batch insert
+                    const newOptions = user.options.filter((option: any) => {
+                        if (!option.open_date || !option.underlying || !option.type) return false;
+                        const key = `${option.open_date}|${option.underlying}|${option.type}|${option.strike_price || 0}`;
+                        if (existingSet.has(key)) {
+                            // Map old ID to existing ID for strategy linking
+                            if (option.id) {
+                                optionIdMap.set(option.id, existingMap.get(key)!);
+                            }
+                            return false;
+                        }
+                        return true;
+                    });
 
-                        // Check duplicate option (user, open_date, underlying, type, strike_price)
-                        const existingOption = await db.prepare(
-                            `SELECT id FROM OPTIONS 
-                             WHERE owner_id = ? AND open_date = ? AND underlying = ? AND type = ? AND strike_price = ?`
-                        ).bind(targetUserId, option.open_date, option.underlying, option.type, option.strike_price || 0).first();
-
-                        if (!existingOption) {
+                    const OPT_BATCH = 10;
+                    for (let b = 0; b < newOptions.length; b += OPT_BATCH) {
+                        const batch = newOptions.slice(b, b + OPT_BATCH);
+                        for (const option of batch) {
                             try {
-                                // Use imported code directly (skip uniqueness loop to save DB queries)
                                 const code = option.code || generateCode();
-
+                                const optionYear = option.year || targetYear;
                                 const optionResult = await db.prepare(
                                     `INSERT INTO OPTIONS (
                                         owner_id, user_id, status, operation, open_date, to_date, settlement_date,
@@ -297,9 +317,6 @@ export async function POST(req: NextRequest) {
                             } catch (optErr) {
                                 console.error(`Failed to import option for user ${user.email}:`, optErr);
                             }
-                        } else if (option.id) {
-                            // Map old ID to existing ID for strategy linking
-                            optionIdMap.set(option.id, existingOption.id as number);
                         }
                     }
                 }
@@ -308,53 +325,62 @@ export async function POST(req: NextRequest) {
                 // Create ID mapping: old stock ID -> new stock ID
                 const stockIdMap = new Map<number, number>();
                 if (user.stock_trades && Array.isArray(user.stock_trades) && targetUserId) {
-                    for (const trade of user.stock_trades) {
-                        if (!trade.open_date || !trade.symbol || !trade.quantity) continue;
+                    // Pre-fetch all existing stock trades for this user in ONE query
+                    const existingStocks = await db.prepare(
+                        `SELECT id, symbol, open_date, quantity FROM STOCK_TRADES WHERE owner_id = ?`
+                    ).bind(targetUserId).all();
+                    const existingStockSet = new Set(
+                        (existingStocks.results || []).map((s: any) =>
+                            `${s.symbol}|${s.open_date}|${s.quantity}`
+                        )
+                    );
+                    const existingStockMap = new Map<string, number>();
+                    for (const s of (existingStocks.results || []) as any[]) {
+                        existingStockMap.set(`${s.symbol}|${s.open_date}|${s.quantity}`, s.id);
+                    }
 
-                        const tradeYear = trade.year || targetYear;
-
-                        // Check duplicate stock trade (user, symbol, open_date, quantity)
-                        // Removed open_price from check to avoid floating point mismatch issues
-                        const existingTrade = await db.prepare(
-                            `SELECT id FROM STOCK_TRADES 
-                             WHERE owner_id = ? AND symbol = ? AND open_date = ? AND quantity = ?`
-                        ).bind(targetUserId, trade.symbol, trade.open_date, trade.quantity).first();
-
-                        if (!existingTrade) {
-                            try {
-                                // Use imported code directly (skip uniqueness loop to save DB queries)
-                                const code = trade.code || generateCode();
-
-                                const stockResult = await db.prepare(
-                                    `INSERT INTO STOCK_TRADES (
-                                        owner_id, user_id, symbol, status, open_date, close_date, 
-                                        open_price, close_price, quantity, code, year, source, close_source, created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-                                ).bind(
-                                    targetUserId,
-                                    user.user_id || null,
-                                    trade.symbol,
-                                    trade.status || 'Open',
-                                    trade.open_date,
-                                    trade.close_date || null,
-                                    trade.open_price,
-                                    trade.close_price || null,
-                                    trade.quantity,
-                                    code,
-                                    tradeYear,
-                                    trade.source || null,
-                                    trade.close_source || null
-                                ).run();
-
-                                if (trade.id && stockResult.meta?.last_row_id) {
-                                    stockIdMap.set(trade.id, stockResult.meta.last_row_id as number);
-                                }
-                            } catch (stockErr) {
-                                console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
+                    const newTrades = user.stock_trades.filter((trade: any) => {
+                        if (!trade.open_date || !trade.symbol || !trade.quantity) return false;
+                        const key = `${trade.symbol}|${trade.open_date}|${trade.quantity}`;
+                        if (existingStockSet.has(key)) {
+                            if (trade.id) {
+                                stockIdMap.set(trade.id, existingStockMap.get(key)!);
                             }
-                        } else if (trade.id) {
-                            // Map old ID to existing ID for strategy linking
-                            stockIdMap.set(trade.id, existingTrade.id as number);
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    for (const trade of newTrades) {
+                        try {
+                            const code = trade.code || generateCode();
+                            const tradeYear = trade.year || targetYear;
+                            const stockResult = await db.prepare(
+                                `INSERT INTO STOCK_TRADES (
+                                    owner_id, user_id, symbol, status, open_date, close_date, 
+                                    open_price, close_price, quantity, code, year, source, close_source, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                            ).bind(
+                                targetUserId,
+                                user.user_id || null,
+                                trade.symbol,
+                                trade.status || 'Open',
+                                trade.open_date,
+                                trade.close_date || null,
+                                trade.open_price,
+                                trade.close_price || null,
+                                trade.quantity,
+                                code,
+                                tradeYear,
+                                trade.source || null,
+                                trade.close_source || null
+                            ).run();
+
+                            if (trade.id && stockResult.meta?.last_row_id) {
+                                stockIdMap.set(trade.id, stockResult.meta.last_row_id as number);
+                            }
+                        } catch (stockErr) {
+                            console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
                         }
                     }
                 }
