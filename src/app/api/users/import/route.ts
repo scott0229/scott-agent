@@ -182,7 +182,10 @@ export async function POST(req: NextRequest) {
                             );
                         });
                         try {
-                            await db.batch(stmts);
+                            // Only batch if we have statements
+                            if (stmts.length > 0) {
+                                await db.batch(stmts);
+                            }
                         } catch (netErr) {
                             console.error(`Failed to batch import net equity for user ${user.email}:`, netErr);
                         }
@@ -262,7 +265,6 @@ export async function POST(req: NextRequest) {
                         if (!option.open_date || !option.underlying || !option.type) return false;
                         const key = `${option.open_date}|${option.underlying}|${option.type}|${option.strike_price || 0}`;
                         if (existingSet.has(key)) {
-                            // Map old ID to existing ID for strategy linking
                             if (option.id) {
                                 optionIdMap.set(option.id, existingMap.get(key)!);
                             }
@@ -271,52 +273,58 @@ export async function POST(req: NextRequest) {
                         return true;
                     });
 
-                    const OPT_BATCH = 10;
-                    for (let b = 0; b < newOptions.length; b += OPT_BATCH) {
-                        const batch = newOptions.slice(b, b + OPT_BATCH);
-                        for (const option of batch) {
-                            try {
-                                const code = option.code || generateCode();
-                                const optionYear = option.year || targetYear;
-                                const optionResult = await db.prepare(
-                                    `INSERT INTO OPTIONS (
-                                        owner_id, user_id, status, operation, open_date, to_date, settlement_date,
-                                        days_to_expire, days_held,
-                                        quantity, underlying, type, strike_price, collateral, premium,
-                                        final_profit, profit_percent, delta, iv, capital_efficiency, code, year,
-                                        created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-                                ).bind(
-                                    targetUserId,
-                                    user.user_id || null,
-                                    option.status || '未平倉',
-                                    option.operation || null,
-                                    option.open_date,
-                                    option.to_date || null,
-                                    option.settlement_date || null,
-                                    option.days_to_expire ?? null,
-                                    option.days_held ?? null,
-                                    option.quantity || 0,
-                                    option.underlying,
-                                    option.type,
-                                    option.strike_price || 0,
-                                    option.collateral || null,
-                                    option.premium || null,
-                                    option.final_profit || null,
-                                    option.profit_percent || null,
-                                    option.delta || null,
-                                    option.iv || null,
-                                    option.capital_efficiency || null,
-                                    code,
-                                    optionYear
-                                ).run();
+                    // Batch INSERT all new options in one db.batch() call
+                    if (newOptions.length > 0) {
+                        const stmts = newOptions.map((option: any) => {
+                            const code = option.code || generateCode();
+                            const optionYear = option.year || targetYear;
+                            return db.prepare(
+                                `INSERT INTO OPTIONS (
+                                    owner_id, user_id, status, operation, open_date, to_date, settlement_date,
+                                    days_to_expire, days_held,
+                                    quantity, underlying, type, strike_price, collateral, premium,
+                                    final_profit, profit_percent, delta, iv, capital_efficiency, code, year,
+                                    created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                            ).bind(
+                                targetUserId,
+                                user.user_id || null,
+                                option.status || '未平倉',
+                                option.operation || null,
+                                option.open_date,
+                                option.to_date || null,
+                                option.settlement_date || null,
+                                option.days_to_expire ?? null,
+                                option.days_held ?? null,
+                                option.quantity || 0,
+                                option.underlying,
+                                option.type,
+                                option.strike_price || 0,
+                                option.collateral || null,
+                                option.premium || null,
+                                option.final_profit || null,
+                                option.profit_percent || null,
+                                option.delta || null,
+                                option.iv || null,
+                                option.capital_efficiency || null,
+                                code,
+                                optionYear
+                            );
+                        });
 
-                                if (option.id && optionResult.meta?.last_row_id) {
-                                    optionIdMap.set(option.id, optionResult.meta.last_row_id as number);
+                        try {
+                            const results = await db.batch(stmts);
+                            // Map old IDs to new IDs for strategy linking
+                            for (let r = 0; r < results.length; r++) {
+                                const option = newOptions[r];
+                                const newId = results[r]?.meta?.last_row_id;
+                                if (option.id && newId) {
+                                    optionIdMap.set(option.id, newId as number);
                                 }
-                            } catch (optErr) {
-                                console.error(`Failed to import option for user ${user.email}:`, optErr);
                             }
+                        } catch (optErr) {
+                            console.error(`Failed to batch import options for user ${user.email}:`, optErr);
+                            errors.push(`期權批次匯入失敗 (${user.user_id || user.email})`);
                         }
                     }
                 }
@@ -351,11 +359,12 @@ export async function POST(req: NextRequest) {
                         return true;
                     });
 
-                    for (const trade of newTrades) {
-                        try {
+                    // Batch INSERT all new trades in one db.batch() call
+                    if (newTrades.length > 0) {
+                        const stmts = newTrades.map((trade: any) => {
                             const code = trade.code || generateCode();
                             const tradeYear = trade.year || targetYear;
-                            const stockResult = await db.prepare(
+                            return db.prepare(
                                 `INSERT INTO STOCK_TRADES (
                                     owner_id, user_id, symbol, status, open_date, close_date, 
                                     open_price, close_price, quantity, code, year, source, close_source, created_at, updated_at
@@ -374,13 +383,21 @@ export async function POST(req: NextRequest) {
                                 tradeYear,
                                 trade.source || null,
                                 trade.close_source || null
-                            ).run();
+                            );
+                        });
 
-                            if (trade.id && stockResult.meta?.last_row_id) {
-                                stockIdMap.set(trade.id, stockResult.meta.last_row_id as number);
+                        try {
+                            const results = await db.batch(stmts);
+                            for (let r = 0; r < results.length; r++) {
+                                const trade = newTrades[r];
+                                const newId = results[r]?.meta?.last_row_id;
+                                if (trade.id && newId) {
+                                    stockIdMap.set(trade.id, newId as number);
+                                }
                             }
                         } catch (stockErr) {
-                            console.error(`Failed to import stock trade for user ${user.email}:`, stockErr);
+                            console.error(`Failed to batch import stock trades for user ${user.email}:`, stockErr);
+                            errors.push(`股票批次匯入失敗 (${user.user_id || user.email})`);
                         }
                     }
                 }

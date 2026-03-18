@@ -802,7 +802,7 @@ export default function AdminUsersPage() {
                 const allNetEquity = userClone.net_equity_records || [];
 
                 // Sub-record batch size (keep each request small to avoid CPU limits)
-                const SUB_BATCH = 30;
+                const SUB_BATCH = 10;
 
                 // Build list of sub-requests for this user
                 const subRequests: any[] = [];
