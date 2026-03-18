@@ -152,46 +152,39 @@ export async function POST(req: NextRequest) {
 
 
 
-                // Import nested net equity records
+                // Import nested net equity records (batched INSERT OR IGNORE)
                 if (user.net_equity_records && Array.isArray(user.net_equity_records) && targetUserId) {
-                    for (const record of user.net_equity_records) {
-                        if (!record.date || record.net_equity === undefined) continue;
-
-                        const recordYear = record.year || targetYear;
-
-                        // Parse date if string
-                        let dateTimestamp: number;
-                        if (typeof record.date === 'string') {
-                            dateTimestamp = Math.floor(new Date(record.date).getTime() / 1000);
-                        } else {
-                            dateTimestamp = record.date;
-                        }
-
-                        // Check duplicate record (user_id + date + year)
-                        const existingRecord = await db.prepare(
-                            `SELECT id FROM DAILY_NET_EQUITY 
-                             WHERE user_id = ? AND date = ? AND year = ?`
-                        ).bind(targetUserId, dateTimestamp, recordYear).first();
-
-                        if (!existingRecord) {
-                            try {
-                                await db.prepare(
-                                    `INSERT INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, exposure_adjustment, year, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
-                                ).bind(
-                                    targetUserId,
-                                    dateTimestamp,
-                                    record.net_equity,
-                                    record.cash_balance ?? 0,
-                                    record.deposit ?? 0,
-                                    record.management_fee ?? 0,
-                                    record.daily_interest ?? record.interest ?? 0,
-                                    record.exposure_adjustment || 'none',
-                                    recordYear
-                                ).run();
-                            } catch (netErr) {
-                                console.error(`Failed to import net equity record for user ${user.email}:`, netErr);
+                    const validRecords = user.net_equity_records.filter((r: any) => r.date && r.net_equity !== undefined);
+                    const NE_BATCH = 20;
+                    for (let b = 0; b < validRecords.length; b += NE_BATCH) {
+                        const batch = validRecords.slice(b, b + NE_BATCH);
+                        const stmts = batch.map((record: any) => {
+                            const recordYear = record.year || targetYear;
+                            let dateTimestamp: number;
+                            if (typeof record.date === 'string') {
+                                dateTimestamp = Math.floor(new Date(record.date).getTime() / 1000);
+                            } else {
+                                dateTimestamp = record.date;
                             }
+                            return db.prepare(
+                                `INSERT OR IGNORE INTO DAILY_NET_EQUITY (user_id, date, net_equity, cash_balance, deposit, management_fee, interest, exposure_adjustment, year, created_at, updated_at)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
+                            ).bind(
+                                targetUserId,
+                                dateTimestamp,
+                                record.net_equity,
+                                record.cash_balance ?? 0,
+                                record.deposit ?? 0,
+                                record.management_fee ?? 0,
+                                record.daily_interest ?? record.interest ?? 0,
+                                record.exposure_adjustment || 'none',
+                                recordYear
+                            );
+                        });
+                        try {
+                            await db.batch(stmts);
+                        } catch (netErr) {
+                            console.error(`Failed to batch import net equity for user ${user.email}:`, netErr);
                         }
                     }
                 }
@@ -262,25 +255,8 @@ export async function POST(req: NextRequest) {
 
                         if (!existingOption) {
                             try {
-                                // Generate code if not present
-                                let code = option.code || generateCode();
-
-                                // Ensure code is unique across both OPTIONS and STOCK_TRADES
-                                let isUnique = false;
-                                let attempts = 0;
-                                while (!isUnique && attempts < 10) {
-                                    const [existingOptionCode, existingStockCode] = await Promise.all([
-                                        db.prepare('SELECT id FROM OPTIONS WHERE code = ?').bind(code).first(),
-                                        db.prepare('SELECT id FROM STOCK_TRADES WHERE code = ?').bind(code).first()
-                                    ]);
-
-                                    if (!existingOptionCode && !existingStockCode) {
-                                        isUnique = true;
-                                    } else {
-                                        code = generateCode();
-                                        attempts++;
-                                    }
-                                }
+                                // Use imported code directly (skip uniqueness loop to save DB queries)
+                                const code = option.code || generateCode();
 
                                 const optionResult = await db.prepare(
                                     `INSERT INTO OPTIONS (
@@ -292,7 +268,7 @@ export async function POST(req: NextRequest) {
                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
-                                    user.user_id || null,  // Add user_id from the imported user data
+                                    user.user_id || null,
                                     option.status || '未平倉',
                                     option.operation || null,
                                     option.open_date,
@@ -315,7 +291,6 @@ export async function POST(req: NextRequest) {
                                     optionYear
                                 ).run();
 
-                                // Store mapping: old option id -> new option id
                                 if (option.id && optionResult.meta?.last_row_id) {
                                     optionIdMap.set(option.id, optionResult.meta.last_row_id as number);
                                 }
@@ -347,25 +322,8 @@ export async function POST(req: NextRequest) {
 
                         if (!existingTrade) {
                             try {
-                                // Generate code if not present
-                                let code = trade.code || generateCode();
-
-                                // Ensure code is unique across both OPTIONS and STOCK_TRADES
-                                let isUnique = false;
-                                let attempts = 0;
-                                while (!isUnique && attempts < 10) {
-                                    const [existingOptionCode, existingStockCode] = await Promise.all([
-                                        db.prepare('SELECT id FROM OPTIONS WHERE code = ?').bind(code).first(),
-                                        db.prepare('SELECT id FROM STOCK_TRADES WHERE code = ?').bind(code).first()
-                                    ]);
-
-                                    if (!existingOptionCode && !existingStockCode) {
-                                        isUnique = true;
-                                    } else {
-                                        code = generateCode();
-                                        attempts++;
-                                    }
-                                }
+                                // Use imported code directly (skip uniqueness loop to save DB queries)
+                                const code = trade.code || generateCode();
 
                                 const stockResult = await db.prepare(
                                     `INSERT INTO STOCK_TRADES (
@@ -374,7 +332,7 @@ export async function POST(req: NextRequest) {
                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())`
                                 ).bind(
                                     targetUserId,
-                                    user.user_id || null, // API uses string ID
+                                    user.user_id || null,
                                     trade.symbol,
                                     trade.status || 'Open',
                                     trade.open_date,
@@ -388,7 +346,6 @@ export async function POST(req: NextRequest) {
                                     trade.close_source || null
                                 ).run();
 
-                                // Store mapping: old stock id -> new stock id
                                 if (trade.id && stockResult.meta?.last_row_id) {
                                     stockIdMap.set(trade.id, stockResult.meta.last_row_id as number);
                                 }
@@ -530,7 +487,7 @@ export async function POST(req: NextRequest) {
             // Chunk size for batching (D1 has limits on batch size and statement count)
             // Cloudflare D1 batch size limit is usually around 128 or related to SQL size. 
             // 50 is a safe conservative number.
-            const BATCH_SIZE = 50;
+            const BATCH_SIZE = 25;
 
             // Filter valid prices first
             const validPrices = market_prices.filter(p => p.symbol && p.date && p.close_price !== undefined);
