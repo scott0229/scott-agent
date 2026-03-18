@@ -208,7 +208,10 @@ export default function AdminUsersPage() {
     // Fetch all user reports for cards
     const fetchAllReports = async (usersList: User[]) => {
         const nonAdminUsers = usersList.filter(u => u.email !== 'admin');
-        if (nonAdminUsers.length === 0) return;
+        if (nonAdminUsers.length === 0) {
+            setUserReports(new Map());
+            return;
+        }
         setIsLoadingReports(true);
         const reportsMap = new Map<number, { userName: string; report: string }>();
         await Promise.all(nonAdminUsers.map(async (user) => {
