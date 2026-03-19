@@ -54,6 +54,7 @@ interface User {
     daily_premium?: { date: number; cumulative_profit: number }[];
     deposits?: { date: number; amount: number }[];
     current_net_equity?: number;
+    start_date?: string;
 }
 
 interface EquityHistoryItem {

@@ -27,6 +27,7 @@ interface User {
     current_cash_balance?: number;
     last_update_date?: number;
     current_net_equity?: number;
+    start_date?: string;
 }
 
 interface OptionsSummaryPanelProps {
@@ -119,12 +120,11 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     const displayYear = year === 'All' ? new Date().getFullYear() : year;
 
-    // Count weekdays (trading days) from Jan 1 of the display year to today
-    const countWeekdays = (y: number): number => {
-        const start = new Date(y, 0, 1);
+    // Count weekdays (trading days) from a start date to today
+    const countWeekdays = (startDate: Date): number => {
         const end = new Date();
         let count = 0;
-        const d = new Date(start);
+        const d = new Date(startDate);
         while (d <= end) {
             const dow = d.getDay();
             if (dow !== 0 && dow !== 6) count++;
@@ -132,7 +132,6 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         }
         return count;
     };
-    const tradingDays = countWeekdays(Number(displayYear));
 
     const currentMonthStr = new Date().getMonth() + 1; // 1-12
     const daysInCurrentMonth = new Date(new Date().getFullYear(), currentMonthStr, 0).getDate();
@@ -173,8 +172,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
 
-        // Daily Premium = total premium / trading days so far
-        const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
+        // Daily Premium = total premium / trading days so far (from user's start_date)
+        const userStartDate = user.start_date
+            ? new Date(user.start_date)
+            : new Date(Number(displayYear), 0, 1);
+        const userTradingDays = countWeekdays(userStartDate);
+        const dailyPremium = userTradingDays > 0 ? annualPremium / userTradingDays : 0;
 
         return {
             marginRate,
