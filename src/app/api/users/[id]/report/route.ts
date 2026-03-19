@@ -32,7 +32,7 @@ export async function GET(
 
         // 1. Get user profile
         const user = await db.prepare(`
-            SELECT id, user_id, email, initial_cost, year
+            SELECT id, user_id, email, initial_cost, year, start_date
             FROM USERS
             WHERE id = ?
         `).bind(userId).first();
@@ -275,7 +275,8 @@ export async function GET(
                 annualPremium,
                 annualTarget,
                 openOptions: openOptions || [],
-                lastUpdateDate: latestEquity?.date || null
+                lastUpdateDate: latestEquity?.date || null,
+                startDate: user.start_date || null
             }
         });
 

@@ -312,6 +312,25 @@ export default function AdminUsersPage() {
         report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
         report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
+
+        // Calculate daily premium using user's start_date
+        const countWeekdays = (start: Date): number => {
+            const end = new Date();
+            let count = 0;
+            const d = new Date(start);
+            while (d <= end) {
+                const dow = d.getDay();
+                if (dow !== 0 && dow !== 6) count++;
+                d.setDate(d.getDate() + 1);
+            }
+            return count;
+        };
+        const userStartDate = data.startDate
+            ? new Date(data.startDate)
+            : new Date(new Date().getFullYear(), 0, 1);
+        const tradingDays = countWeekdays(userStartDate);
+        const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
+        report += `每日權利金 : ${formatMoney(dailyPremium)}\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
