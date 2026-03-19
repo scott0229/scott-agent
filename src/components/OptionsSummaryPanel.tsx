@@ -117,6 +117,23 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
     const formatPercent = (val: number) => `${(val * 100).toFixed(0)}%`;
 
+    const displayYear = year === 'All' ? new Date().getFullYear() : year;
+
+    // Count weekdays (trading days) from Jan 1 of the display year to today
+    const countWeekdays = (y: number): number => {
+        const start = new Date(y, 0, 1);
+        const end = new Date();
+        let count = 0;
+        const d = new Date(start);
+        while (d <= end) {
+            const dow = d.getDay();
+            if (dow !== 0 && dow !== 6) count++;
+            d.setDate(d.getDate() + 1);
+        }
+        return count;
+    };
+    const tradingDays = countWeekdays(Number(displayYear));
+
     const currentMonthStr = new Date().getMonth() + 1; // 1-12
     const daysInCurrentMonth = new Date(new Date().getFullYear(), currentMonthStr, 0).getDate();
     const currentQuarter = Math.ceil(currentMonthStr / 3);
@@ -156,6 +173,9 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
 
+        // Daily Premium = total premium / trading days so far
+        const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
+
         return {
             marginRate,
             turnoverRate,
@@ -166,7 +186,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
             annualPremium,
             annualPutPremium,
             annualCallPremium,
-            annualTarget
+            annualTarget,
+            dailyPremium
         };
     };
 
@@ -216,8 +237,6 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
             {children}
         </span>
     );
-
-    const displayYear = year === 'All' ? new Date().getFullYear() : year;
 
     return (
         <div className="rounded-md border bg-white mb-8 overflow-hidden shadow-sm">
@@ -343,6 +362,20 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                             const rate = ((user.total_profit || 0) / costBase) * 100;
                                             return <StatBadge>{rate.toFixed(2)}%</StatBadge>;
                                         })()}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
+                        {/* Daily Premium */}
+                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日權利金</td>
+
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                return isVisible ? (
+                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
+                                        {formatMoney(calculateUserMetrics(user).dailyPremium)}
                                     </td>
                                 ) : null;
                             })}
