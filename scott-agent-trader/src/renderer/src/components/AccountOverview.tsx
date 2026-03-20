@@ -1367,7 +1367,7 @@ export default function AccountOverview({
                 }
               >
                 <div className="account-header">
-                  <span className="account-id">{account.alias || account.accountId}</span>
+                  <span className="account-id">{(account.alias || account.accountId).replace(/\s*\(.*?\)/, '')}</span>
                   <button
                     className="ai-advisor-btn"
                     title="AI 交易建議"
@@ -1378,21 +1378,23 @@ export default function AccountOverview({
                   >
                     💡
                   </button>
-                  {operationModes?.[account.accountId] && (
-                    <span className="account-type-label" style={{ backgroundColor: operationModes[account.accountId] === '權利金為主' ? '#fef2f2' : undefined }}>
-                      {operationModes[account.accountId]}
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {operationModes?.[account.accountId] && (
+                      <span className="account-type-label">
+                        {operationModes[account.accountId]}
+                      </span>
+                    )}
+                    <span className="account-type-label">
+                      {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
                     </span>
-                  )}
-                  <span className="account-type-label">
-                    {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
-                  </span>
-                  {(() => {
-                    const rate = returnRates?.[account.accountId]
-                    if (rate === undefined) return null
-                    if (rate === null) return <span className="return-rate-badge" style={{ color: '#888' }}>報酬率 --</span>
-                    const sign = rate >= 0 ? '+' : ''
-                    return <span className="return-rate-badge" style={{ fontWeight: 600 }}>報酬率 {sign}{rate.toFixed(2)}%</span>
-                  })()}
+                    {(() => {
+                      const rate = returnRates?.[account.accountId]
+                      if (rate === undefined) return null
+                      if (rate === null) return <span className="account-type-label" style={{ color: '#888' }}>報酬率 --</span>
+                      const sign = rate >= 0 ? '+' : ''
+                      return <span className="account-type-label" style={{ fontWeight: 600 }}>報酬率 {sign}{rate.toFixed(2)}%</span>
+                    })()}
+                  </div>
                 </div>
 
                 {!selectMode && (
