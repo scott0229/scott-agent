@@ -1539,7 +1539,7 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                                <TableCell className="text-center py-1">{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-pink-50' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-pink-50' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50' : ''}`}>
                                                     {user.start_date ? (() => {
