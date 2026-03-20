@@ -284,22 +284,13 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
                                 return isVisible ? (
                                     <td key={user.id} className="text-center px-1 py-1 bg-muted/40 text-foreground overflow-hidden">
-                                        <div className="flex items-center justify-center gap-0 min-w-0">
-                                            <button
-                                                onClick={() => toggleColumn(userKey)}
-                                                className="inline-flex items-center justify-center w-5 h-5 flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                                title="隱藏此列"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                            </button>
-                                            <Link
-                                                href={`/options/${user.user_id || user.id}`}
-                                                className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer font-bold"
-                                                title={user.user_id || user.email.split('@')[0]}
-                                            >
-                                                {user.user_id || user.email.split('@')[0]}
-                                            </Link>
-                                        </div>
+                                        <Link
+                                            href={`/options/${user.user_id || user.id}`}
+                                            className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer font-bold"
+                                            title={user.user_id || user.email.split('@')[0]}
+                                        >
+                                            {user.user_id || user.email.split('@')[0]}
+                                        </Link>
                                     </td>
                                 ) : null;
                             })}

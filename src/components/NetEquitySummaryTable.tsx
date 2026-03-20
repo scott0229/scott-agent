@@ -245,7 +245,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 if (!isColumnVisible(user)) return null;
                                 const colKey = user.user_id || user.id.toString();
                                 return (
-                                    <td key={user.id} className={cn("text-center px-2 py-1 bg-muted/40", visibleUsers.length > 9 ? "min-w-[100px]" : "min-w-[140px]")}>
+                                    <td key={user.id} className="text-center px-2 py-1 bg-muted/40">
                                         <span
                                             className="font-bold text-foreground cursor-pointer hover:bg-black/5 rounded-md px-1 py-0.5 transition-colors"
                                             onClick={() => onUserClick(user.id)}
