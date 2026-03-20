@@ -25,7 +25,7 @@ interface AdminUserDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string; fee_exempt_months?: number } | null;
+    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string; fee_exempt_months?: number; operation_mode?: string } | null;
 }
 
 
@@ -42,6 +42,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         ibAccount: '',
         phone: '',
         startDate: '',
+        operationMode: '',
     });
 
     // Reset or populate form when opening
@@ -56,6 +57,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
+                operationMode: userToEdit.operation_mode || '',
             });
         }
     });
@@ -74,9 +76,10 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 ibAccount: userToEdit.ib_account || '',
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
+                operationMode: userToEdit.operation_mode || '',
             });
         } else {
-            setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
+            setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '' });
         }
     }
 
@@ -109,7 +112,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '' });
+                setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '' });
             }
         } catch (error: any) {
             toast({
@@ -270,6 +273,23 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                     autoComplete="off"
 
                                 />
+                            </div>
+                            <div className="grid grid-cols-3 items-center gap-4">
+                                <Label htmlFor="operationMode" className="text-right">
+                                    操作模式
+                                </Label>
+                                <Select
+                                    value={formData.operationMode}
+                                    onValueChange={(val) => setFormData({ ...formData, operationMode: val })}
+                                >
+                                    <SelectTrigger className="col-span-2">
+                                        <SelectValue placeholder="選擇操作模式" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="調倉為主">調倉為主</SelectItem>
+                                        <SelectItem value="權利金為主">權利金為主</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                         </>

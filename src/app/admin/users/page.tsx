@@ -50,6 +50,7 @@ interface User {
     start_date?: string;
     fee_exempt_months?: number;
     account_capability?: string;
+    operation_mode?: string;
 }
 
 import {
@@ -1453,6 +1454,7 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">IB 帳戶</TableHead>
                                 <TableHead className="text-center">帳戶能力</TableHead>
+                                <TableHead className="text-center">操作模式</TableHead>
                                 <TableHead className="text-center">起始日期</TableHead>
                                 <TableHead className="text-center">管理費率</TableHead>
                                 <TableHead className="text-center">費用免除</TableHead>
@@ -1469,7 +1471,7 @@ export default function AdminUsersPage() {
                                 if (filteredUsers.length === 0) {
                                     return (
                                         <TableRow className="hover:bg-transparent">
-                                            <TableCell colSpan={11} className="p-4">
+                                            <TableCell colSpan={12} className="p-4">
                                                 <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
                                                     尚無客戶資料
                                                 </div>
@@ -1538,6 +1540,7 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
+                                                <TableCell className="text-center py-1">{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);

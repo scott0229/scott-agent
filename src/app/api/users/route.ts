@@ -375,7 +375,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, operation_mode${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -463,7 +463,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate, feeExemptMonths } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate, feeExemptMonths, operationMode } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -475,6 +475,7 @@ export async function POST(req: NextRequest) {
             initialCost?: number;
             startDate?: string;
             feeExemptMonths?: number;
+            operationMode?: string;
         };
 
         if (!email || !userId || !role) {
@@ -504,9 +505,10 @@ export async function POST(req: NextRequest) {
         const ib = role === 'customer' ? (ibAccount || null) : null;
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
         const exemptMonths = role === 'customer' ? (feeExemptMonths || 0) : 0;
+        const opMode = role === 'customer' ? (operationMode || null) : null;
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null, exemptMonths)
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, operation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null, exemptMonths, opMode)
             .run();
 
         return NextResponse.json({ success: true });
@@ -626,7 +628,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, startDate, feeExemptMonths } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, startDate, feeExemptMonths, operationMode } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -642,6 +644,7 @@ export async function PUT(req: NextRequest) {
 
             startDate?: string;
             feeExemptMonths?: number;
+            operationMode?: string;
         };
 
         if (!id) {
@@ -740,6 +743,11 @@ export async function PUT(req: NextRequest) {
         if (typeof feeExemptMonths !== 'undefined') {
             updateQuery += ', fee_exempt_months = ?';
             params.push(feeExemptMonths || 0);
+        }
+
+        if (typeof operationMode !== 'undefined') {
+            updateQuery += ', operation_mode = ?';
+            params.push(operationMode || null);
         }
 
         if (password && password.trim() !== '') {
