@@ -36,6 +36,7 @@ function App(): React.JSX.Element {
   const [fetchingSymbols, setFetchingSymbols] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
+  const [operationModes, setOperationModes] = useState<Record<string, string>>({})
   const {
     marginLimit,
     setMarginLimit,
@@ -114,6 +115,9 @@ function App(): React.JSX.Element {
               for (const [accountId, type] of Object.entries(res.accountTypes) as [string, string][]) {
                 setAccountType(accountId, type)
               }
+            }
+            if (res.operationModes && Object.keys(res.operationModes).length > 0) {
+              setOperationModes(res.operationModes)
             }
           })
           .catch(() => { })
@@ -248,6 +252,7 @@ function App(): React.JSX.Element {
               refresh={refresh}
               accountTypes={accountTypes}
               returnRates={returnRates}
+              operationModes={operationModes}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

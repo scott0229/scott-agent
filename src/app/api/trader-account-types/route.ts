@@ -60,14 +60,15 @@ export async function GET(req: NextRequest) {
         ];
 
         const accountTypes: Record<string, string> = {};
+        const operationModes: Record<string, string> = {};
 
         for (const year of yearsToTry) {
             for (const g of groups) {
                 const db = await getDb(g.dbName);
                 const placeholders = accountIds.map(() => '?').join(',');
-                const query = `SELECT ib_account, account_capability FROM USERS WHERE ib_account IN (${placeholders}) AND year = ? AND account_capability IS NOT NULL AND account_capability != ''`;
+                const query = `SELECT ib_account, account_capability, operation_mode FROM USERS WHERE ib_account IN (${placeholders}) AND year = ?`;
                 const rows = await db.prepare(query).bind(...accountIds, year).all() as {
-                    results: { ib_account: string; account_capability: string }[]
+                    results: { ib_account: string; account_capability: string | null; operation_mode: string | null }[]
                 };
                 for (const row of (rows.results || [])) {
                     if (row.ib_account && !accountTypes[row.ib_account]) {
@@ -76,13 +77,16 @@ export async function GET(req: NextRequest) {
                             accountTypes[row.ib_account] = mapped;
                         }
                     }
+                    if (row.ib_account && row.operation_mode && !operationModes[row.ib_account]) {
+                        operationModes[row.ib_account] = row.operation_mode;
+                    }
                 }
             }
             // If we found any results in this year, stop
-            if (Object.keys(accountTypes).length > 0) break;
+            if (Object.keys(accountTypes).length > 0 || Object.keys(operationModes).length > 0) break;
         }
 
-        return NextResponse.json({ accountTypes });
+        return NextResponse.json({ accountTypes, operationModes });
     } catch (error) {
         console.error('GET trader-account-types error:', error);
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });

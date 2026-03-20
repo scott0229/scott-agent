@@ -228,7 +228,7 @@ interface IBApi {
   getAccountTypes: (
     accountIds: string[],
     d1Target?: string
-  ) => Promise<{ accountTypes: Record<string, string> }>
+  ) => Promise<{ accountTypes: Record<string, string>; operationModes: Record<string, string> }>
 
   // Get distinct underlying symbols with missing underlying_price
   getMissingPriceSymbols: (

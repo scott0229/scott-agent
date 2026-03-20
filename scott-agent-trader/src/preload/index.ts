@@ -82,7 +82,7 @@ const ibApi = {
   getAccountTypes: (
     accountIds: string[],
     d1Target?: string
-  ): Promise<{ accountTypes: Record<string, string> }> =>
+  ): Promise<{ accountTypes: Record<string, string>; operationModes: Record<string, string> }> =>
     ipcRenderer.invoke('settings:getAccountTypes', accountIds, d1Target),
   getReturnRates: (
     accountIds: string[],

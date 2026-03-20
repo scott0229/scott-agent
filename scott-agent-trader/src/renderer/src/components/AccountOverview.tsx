@@ -54,6 +54,7 @@ interface AccountOverviewProps {
   refresh?: () => void
   accountTypes?: Record<string, string>
   returnRates?: Record<string, number | null>
+  operationModes?: Record<string, string>
   onSetAccountType?: (accountId: string, type: string) => void
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
@@ -79,6 +80,7 @@ export default function AccountOverview({
   refresh,
   accountTypes,
   returnRates,
+  operationModes,
   marginLimit = 1.3,
   symbolGroups = [],
   onAddSymbolGroup,
@@ -1376,6 +1378,11 @@ export default function AccountOverview({
                   >
                     💡
                   </button>
+                  {operationModes?.[account.accountId] && (
+                    <span className="account-type-label" style={{ backgroundColor: operationModes[account.accountId] === '權利金為主' ? '#fef2f2' : undefined }}>
+                      {operationModes[account.accountId]}
+                    </span>
+                  )}
                   <span className="account-type-label">
                     {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
                   </span>
