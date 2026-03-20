@@ -246,21 +246,12 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                 const colKey = user.user_id || user.id.toString();
                                 return (
                                     <td key={user.id} className={cn("text-center px-2 py-1 bg-muted/40", visibleUsers.length > 9 ? "min-w-[100px]" : "min-w-[140px]")}>
-                                        <div className="inline-flex items-center justify-center gap-0">
-                                            <button
-                                                onClick={() => toggleColumn(colKey)}
-                                                className="inline-flex items-center justify-center w-5 h-5 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                                                title="隱藏此列"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                            </button>
-                                            <span
-                                                className="font-bold text-foreground cursor-pointer hover:bg-black/5 rounded-md px-1 py-0.5 transition-colors"
-                                                onClick={() => onUserClick(user.id)}
-                                            >
-                                                {user.user_id || user.email.split('@')[0]}
-                                            </span>
-                                        </div>
+                                        <span
+                                            className="font-bold text-foreground cursor-pointer hover:bg-black/5 rounded-md px-1 py-0.5 transition-colors"
+                                            onClick={() => onUserClick(user.id)}
+                                        >
+                                            {user.user_id || user.email.split('@')[0]}
+                                        </span>
                                     </td>
                                 );
                             })}
