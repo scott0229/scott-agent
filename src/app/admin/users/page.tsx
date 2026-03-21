@@ -1452,9 +1452,9 @@ export default function AdminUsersPage() {
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
+                                <TableHead className="text-center">操作模式</TableHead>
                                 <TableHead className="text-center">IB 帳戶</TableHead>
                                 <TableHead className="text-center">帳戶能力</TableHead>
-                                <TableHead className="text-center">操作模式</TableHead>
                                 <TableHead className="text-center">起始日期</TableHead>
                                 <TableHead className="text-center">管理費率</TableHead>
                                 <TableHead className="text-center">費用免除</TableHead>
@@ -1538,9 +1538,9 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-pink-50' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-pink-50' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-pink-50' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);
@@ -1614,10 +1614,10 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={7} className="text-center py-1"></TableCell>
+                                        <TableCell colSpan={8} className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
-                                        <TableCell colSpan={3} className="py-1"></TableCell>
+                                        <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>
                                 ];
                             })()}
