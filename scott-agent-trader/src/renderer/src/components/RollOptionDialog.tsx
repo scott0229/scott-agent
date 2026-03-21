@@ -214,19 +214,27 @@ export default function RollOptionDialog({
 
   // Auto-select nearby strikes (±5 around stock price or current position strike) when available
   useEffect(() => {
-    if (availableStrikes.length === 0 || !stockPrice) return
-    if (selectedStrikes.length > 0) return
-    const centerIdx = availableStrikes.findIndex((s) => s >= stockPrice)
-    const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
-    // Always pick 10 strikes centered around idx, expanding asymmetrically if near edges
+    if (availableStrikes.length === 0) return
     const total = Math.min(10, availableStrikes.length)
-    let startIdx = Math.max(0, idx - Math.floor(total / 2))
-    let endIdx = startIdx + total
-    if (endIdx > availableStrikes.length) {
-      endIdx = availableStrikes.length
-      startIdx = Math.max(0, endIdx - total)
+
+    if (stockPrice) {
+      if (selectedStrikes.length > 0) return
+      const centerIdx = availableStrikes.findIndex((s) => s >= stockPrice)
+      const idx = centerIdx === -1 ? availableStrikes.length - 1 : centerIdx
+      let startIdx = Math.max(0, idx - Math.floor(total / 2))
+      let endIdx = startIdx + total
+      if (endIdx > availableStrikes.length) {
+        endIdx = availableStrikes.length
+        startIdx = Math.max(0, endIdx - total)
+      }
+      setSelectedStrikes(availableStrikes.slice(startIdx, endIdx))
+    } else if (selectedStrikes.length === 0) {
+      // Immediately show strikes from the middle (don't wait for stockPrice)
+      const mid = Math.floor(availableStrikes.length / 2)
+      const start = Math.max(0, mid - Math.floor(total / 2))
+      const end = Math.min(availableStrikes.length, start + total)
+      setSelectedStrikes(availableStrikes.slice(start, end))
     }
-    setSelectedStrikes(availableStrikes.slice(startIdx, endIdx))
   }, [availableStrikes, stockPrice])
 
   // Scroll strike dropdown to first checked item on open

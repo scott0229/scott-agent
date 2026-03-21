@@ -103,9 +103,9 @@ function setupIpcHandlers(): void {
       const watchSymbols = json?.settings?.watch_symbols || []
       const prefetchMap = json?.settings?.symbol_prefetch || {}
 
-      // Filter: only symbols with prefetch enabled (default to enabled if not set)
+      // Filter: only non-empty symbols with prefetch enabled (default to enabled if not set)
       const tradableSymbols = watchSymbols.filter((sym) => {
-        return prefetchMap[sym] !== false // default: enabled
+        return sym && sym.trim() && prefetchMap[sym] !== false // skip empty, default: enabled
       })
 
       console.log(
@@ -113,16 +113,21 @@ function setupIpcHandlers(): void {
         tradableSymbols
       )
 
+      // Fetch chains sequentially (IB rejects parallel reqSecDefOptParams with error 322)
+      const t0 = Date.now()
+      let chainOk = 0
+      let chainFail = 0
       for (const symbol of tradableSymbols) {
         try {
           await requestOptionChain(symbol)
+          chainOk++
           console.log(`[prefetch] ✓ chain ${symbol}`)
         } catch (err) {
+          chainFail++
           console.warn(`[prefetch] ✗ chain ${symbol}:`, err)
         }
       }
-
-      console.log(`[prefetch] Done prefetching ${tradableSymbols.length} symbols (chains)`)
+      console.log(`[prefetch] Done chains in ${Date.now() - t0}ms: ${chainOk} ok, ${chainFail} failed`)
 
       // Also prefetch stock prices in parallel
       console.log(`[prefetch] Prefetching stock prices for ${tradableSymbols.length} symbols...`)
@@ -226,7 +231,12 @@ function setupIpcHandlers(): void {
 
   // Options
   ipcMain.handle('ib:getOptionChain', async (_event, symbol: string) => {
-    return requestOptionChain(symbol)
+    const t0 = Date.now()
+    const result = await requestOptionChain(symbol)
+    const elapsed = Date.now() - t0
+    const src = elapsed < 50 ? '✓ CACHE HIT' : '⏳ FRESH FETCH'
+    console.log(`[IPC] getOptionChain ${symbol}: ${src}, ${result.length} exchanges, ${elapsed}ms`)
+    return result
   })
 
   ipcMain.handle(

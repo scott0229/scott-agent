@@ -144,7 +144,7 @@ export default function OptionOrderDialog({
     setOrderSubmitted(false)
     if (sym) {
       // triggerFetch internally checks if symbol changed before clearing data
-      setTimeout(() => triggerFetch(sym), 0)
+      triggerFetch(sym)
     } else {
       setChainParams([])
       setAllGreeks([])
@@ -254,14 +254,16 @@ export default function OptionOrderDialog({
   useEffect(() => {
     if (availableStrikes.length === 0) return
     if (userModifiedStrikesRef.current) return
+
+    const total = Math.min(10, availableStrikes.length)
+
     if (stockPrice !== null) {
-      // Only re-center if price moved to a different integer level
+      // Re-center around stock price
       const rounded = Math.round(stockPrice)
       if (lastStrikeCenterRef.current === rounded) return
       lastStrikeCenterRef.current = rounded
       const idx = availableStrikes.findIndex((s) => s >= stockPrice)
       const center = idx === -1 ? availableStrikes.length - 1 : idx
-      const total = Math.min(10, availableStrikes.length)
       let start = Math.max(0, center - Math.floor(total / 2))
       let end = start + total
       if (end > availableStrikes.length) {
@@ -270,9 +272,8 @@ export default function OptionOrderDialog({
       }
       setSelectedStrikes(availableStrikes.slice(start, end))
     } else if (selectedStrikes.length === 0) {
-      // fallback: pick 10 from the middle
+      // Immediately show strikes from the middle (don't wait for stockPrice)
       const mid = Math.floor(availableStrikes.length / 2)
-      const total = Math.min(10, availableStrikes.length)
       const start = Math.max(0, mid - Math.floor(total / 2))
       const end = Math.min(availableStrikes.length, start + total)
       setSelectedStrikes(availableStrikes.slice(start, end))
