@@ -95,6 +95,7 @@ interface IBApi {
   getAccountAliases: (accountIds: string[], port: number) => Promise<Record<string, string>>
   getCachedAliases: (port: number) => Promise<Record<string, string>>
   getStockQuote: (symbol: string) => Promise<{ bid: number; ask: number; last: number }>
+  getCachedStockPrice: (symbol: string) => Promise<number | null>
   getQuotes: (symbols: string[]) => Promise<Record<string, number>>
   getOptionQuotes: (
     contracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>

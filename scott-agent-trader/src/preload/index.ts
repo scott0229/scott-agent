@@ -39,6 +39,8 @@ const ibApi = {
   // Quotes
   getStockQuote: (symbol: string): Promise<{ bid: number; ask: number; last: number }> =>
     ipcRenderer.invoke('ib:getStockQuote', symbol),
+  getCachedStockPrice: (symbol: string): Promise<number | null> =>
+    ipcRenderer.invoke('ib:getCachedStockPrice', symbol),
   getQuotes: (symbols: string[]): Promise<Record<string, number>> =>
     ipcRenderer.invoke('ib:getQuotes', symbols),
   getOptionQuotes: (

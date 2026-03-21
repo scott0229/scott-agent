@@ -23,9 +23,7 @@ export function useTraderSettings() {
   const [watchSymbols, setWatchSymbolsState] = useState<string[]>([])
   const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>({})
   const [accountTypes, setAccountTypesState] = useState<Record<string, string>>({})
-  const [symbolOptionTypes, setSymbolOptionTypesState] = useState<
-    Record<string, { cc: boolean; pp: boolean }>
-  >({})
+  const [symbolPrefetch, setSymbolPrefetchState] = useState<Record<string, boolean>>({})
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const fetchedRef = useRef(false)
@@ -56,12 +54,12 @@ export function useTraderSettings() {
       setAccountTypesState(data.settings.account_types as Record<string, string>)
     }
     if (
-      data.settings.symbol_option_types &&
-      typeof data.settings.symbol_option_types === 'object' &&
-      !Array.isArray(data.settings.symbol_option_types)
+      data.settings.symbol_prefetch &&
+      typeof data.settings.symbol_prefetch === 'object' &&
+      !Array.isArray(data.settings.symbol_prefetch)
     ) {
-      setSymbolOptionTypesState(
-        data.settings.symbol_option_types as Record<string, { cc: boolean; pp: boolean }>
+      setSymbolPrefetchState(
+        data.settings.symbol_prefetch as Record<string, boolean>
       )
     }
     if (data.settings.d1_target === 'staging' || data.settings.d1_target === 'production') {
@@ -103,9 +101,9 @@ export function useTraderSettings() {
     window.ibApi.putSettings('watch_symbols', watchSymbols, d1Target).catch(() => {})
     window.ibApi.putSettings('account_aliases', accountAliases, d1Target).catch(() => {})
     window.ibApi.putSettings('account_types', accountTypes, d1Target).catch(() => {})
-    window.ibApi.putSettings('symbol_option_types', symbolOptionTypes, d1Target).catch(() => {})
+    window.ibApi.putSettings('symbol_prefetch', symbolPrefetch, d1Target).catch(() => {})
     window.ibApi.putSettings('d1_target', d1Target, d1Target).catch(() => {})
-  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolOptionTypes, d1Target])
+  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolPrefetch, d1Target])
 
   const setMarginLimit = useCallback((v: number) => {
     setMarginLimitState(v)
@@ -142,11 +140,10 @@ export function useTraderSettings() {
     })
   }, [])
 
-  const setSymbolOptionType = useCallback((symbol: string, type: 'cc' | 'pp', enabled: boolean) => {
-    setSymbolOptionTypesState((prev) => {
-      const current = prev[symbol] || { cc: true, pp: true }
-      const next = { ...prev, [symbol]: { ...current, [type]: enabled } }
-      window.ibApi.putSettings('symbol_option_types', next, d1TargetRef.current).catch(() => {})
+  const setSymbolPrefetch = useCallback((symbol: string, enabled: boolean) => {
+    setSymbolPrefetchState((prev) => {
+      const next = { ...prev, [symbol]: enabled }
+      window.ibApi.putSettings('symbol_prefetch', next, d1TargetRef.current).catch(() => {})
       return next
     })
   }, [])
@@ -195,8 +192,8 @@ export function useTraderSettings() {
     mergeAccountAliases,
     accountTypes,
     setAccountType,
-    symbolOptionTypes,
-    setSymbolOptionType,
+    symbolPrefetch,
+    setSymbolPrefetch,
     d1Target,
     setD1Target,
     symbolGroups,

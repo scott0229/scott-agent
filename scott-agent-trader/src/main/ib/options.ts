@@ -41,7 +41,7 @@ interface CachedChain {
   fetchedAt: number
 }
 const chainParamsCache = new Map<string, CachedChain>()
-const CHAIN_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const CHAIN_CACHE_TTL_MS = 60 * 60 * 1000 // 60 minutes
 
 // Cache greeks data — updated continuously by streaming subscriptions
 interface CachedGreeks {

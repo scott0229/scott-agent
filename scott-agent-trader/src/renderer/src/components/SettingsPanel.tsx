@@ -14,8 +14,8 @@ interface SettingsPanelProps {
   onSetMarginLimit: (limit: number) => void
   watchSymbols: string[]
   onSetWatchSymbol: (index: number, value: string) => void
-  symbolOptionTypes: Record<string, { cc: boolean; pp: boolean }>
-  onSetSymbolOptionType: (symbol: string, type: 'cc' | 'pp', enabled: boolean) => void
+  symbolPrefetch: Record<string, boolean>
+  onSetSymbolPrefetch: (symbol: string, enabled: boolean) => void
   d1Target: 'staging' | 'production'
   onSetD1Target: (target: 'staging' | 'production') => void
   connected: boolean
@@ -53,8 +53,8 @@ export default function SettingsPanel({
   onSetMarginLimit,
   watchSymbols,
   onSetWatchSymbol,
-  symbolOptionTypes,
-  onSetSymbolOptionType,
+  symbolPrefetch,
+  onSetSymbolPrefetch,
   d1Target,
   onSetD1Target,
   connected,
@@ -148,9 +148,6 @@ export default function SettingsPanel({
           {showSymbols &&
             LABELS.map((label, i) => {
               const sym = watchSymbols[i] || ''
-              const opts = sym
-                ? symbolOptionTypes[sym] || { cc: true, pp: true }
-                : { cc: false, pp: false }
               return (
                 <div
                   key={i}
@@ -181,46 +178,25 @@ export default function SettingsPanel({
                       marginLeft: 'auto'
                     }}
                   />
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        fontSize: '0.9em',
-                        color: sym ? '#555' : '#bbb',
-                        cursor: sym ? 'pointer' : 'default',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={opts.cc}
-                        disabled={!sym}
-                        onChange={(e) => sym && onSetSymbolOptionType(sym, 'cc', e.target.checked)}
-                      />
-                      CC
-                    </label>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        fontSize: '0.9em',
-                        color: sym ? '#555' : '#bbb',
-                        cursor: sym ? 'pointer' : 'default',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={opts.pp}
-                        disabled={!sym}
-                        onChange={(e) => sym && onSetSymbolOptionType(sym, 'pp', e.target.checked)}
-                      />
-                      PP
-                    </label>
-                  </span>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      fontSize: '0.9em',
+                      color: sym ? '#555' : '#bbb',
+                      cursor: sym ? 'pointer' : 'default',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={sym ? (symbolPrefetch[sym] !== false) : false}
+                      disabled={!sym}
+                      onChange={(e) => sym && onSetSymbolPrefetch(sym, e.target.checked)}
+                    />
+                    預載
+                  </label>
                 </div>
               )
             })}

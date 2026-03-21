@@ -7,6 +7,21 @@ function getNextReqId(): number {
   return reqIdCounter++
 }
 
+// Stock price cache (30s TTL — refreshed by prefetch and user actions)
+const STOCK_CACHE_TTL_MS = 30 * 1000
+const stockPriceCache = new Map<string, { quote: StockQuote; fetchedAt: number }>()
+
+/**
+ * Return the cached stock price for a symbol, or null if not cached / expired.
+ */
+export function getCachedStockPrice(symbol: string): number | null {
+  const entry = stockPriceCache.get(symbol.toUpperCase())
+  if (!entry) return null
+  if (Date.now() - entry.fetchedAt > STOCK_CACHE_TTL_MS) return null
+  const q = entry.quote
+  return q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
+}
+
 export interface StockQuote {
   symbol: string
   bid: number
@@ -210,13 +225,25 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, numbe
 }
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
+  const sym = symbol.toUpperCase()
+
+  // Return cached quote if still fresh
+  const cached = stockPriceCache.get(sym)
+  if (cached && Date.now() - cached.fetchedAt < STOCK_CACHE_TTL_MS) {
+    const q = cached.quote
+    if (q.last > 0 || q.bid > 0 || q.ask > 0) {
+      console.log(`[IB] Stock quote cache hit for ${sym} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`)
+      return q
+    }
+  }
+
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
   const reqId = getNextReqId()
 
   const quote: StockQuote = {
-    symbol: symbol.toUpperCase(),
+    symbol: sym,
     bid: 0,
     ask: 0,
     last: 0
@@ -232,7 +259,8 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
       if (!resolved) {
         resolved = true
         cleanup()
-        console.log(`[IB] Quote timeout for ${symbol}: last=${quote.last} bid=${quote.bid}`)
+        console.log(`[IB] Quote timeout for ${sym}: last=${quote.last} bid=${quote.bid}`)
+        stockPriceCache.set(sym, { quote, fetchedAt: Date.now() })
         resolve(quote)
       }
     }, 3000)
@@ -255,7 +283,8 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
       resolved = true
       clearTimeout(timeout)
       cleanup()
-      console.log(`[IB] Snapshot end for ${symbol}: last=${quote.last} bid=${quote.bid}`)
+      console.log(`[IB] Snapshot end for ${sym}: last=${quote.last} bid=${quote.bid}`)
+      stockPriceCache.set(sym, { quote, fetchedAt: Date.now() })
       resolve(quote)
     }
 

@@ -21,7 +21,7 @@ import {
   setupOrderStatusListener
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks, cancelOptionGreeksSubscriptions } from './ib/options'
-import { getStockQuote, getQuotes, getOptionQuotes } from './ib/quotes'
+import { getStockQuote, getQuotes, getOptionQuotes, getCachedStockPrice } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
@@ -78,10 +78,79 @@ function setupIpcHandlers(): void {
     return getConnectionState()
   })
 
+  // Prefetch option chain data (conId + expirations/strikes) for tradable symbols
+  let prefetchDone = false
+  async function prefetchOptionChains(): Promise<void> {
+    console.log('[prefetch] prefetchOptionChains invoked, done=', prefetchDone)
+    try {
+      await groupReady
+      if (prefetchDone) return
+      prefetchDone = true
+      const t = SETTINGS_TARGETS[0] // use staging
+      const url = `${t.url}?group=${encodeURIComponent(detectedGroup)}`
+      const res = await fetch(url)
+      if (!res.ok) {
+        console.warn(`[prefetch] Failed to fetch settings: ${res.status}`)
+        prefetchDone = false
+        return
+      }
+      const json = (await res.json()) as {
+        settings?: {
+          watch_symbols?: string[]
+          symbol_prefetch?: Record<string, boolean>
+        }
+      }
+      const watchSymbols = json?.settings?.watch_symbols || []
+      const prefetchMap = json?.settings?.symbol_prefetch || {}
+
+      // Filter: only symbols with prefetch enabled (default to enabled if not set)
+      const tradableSymbols = watchSymbols.filter((sym) => {
+        return prefetchMap[sym] !== false // default: enabled
+      })
+
+      console.log(
+        `[prefetch] Prefetching option chains for ${tradableSymbols.length} symbols:`,
+        tradableSymbols
+      )
+
+      for (const symbol of tradableSymbols) {
+        try {
+          await requestOptionChain(symbol)
+          console.log(`[prefetch] ✓ chain ${symbol}`)
+        } catch (err) {
+          console.warn(`[prefetch] ✗ chain ${symbol}:`, err)
+        }
+      }
+
+      console.log(`[prefetch] Done prefetching ${tradableSymbols.length} symbols (chains)`)
+
+      // Also prefetch stock prices in parallel
+      console.log(`[prefetch] Prefetching stock prices for ${tradableSymbols.length} symbols...`)
+      await Promise.allSettled(
+        tradableSymbols.map(async (symbol) => {
+          try {
+            await getStockQuote(symbol)
+            console.log(`[prefetch] ✓ price ${symbol}`)
+          } catch (err) {
+            console.warn(`[prefetch] ✗ price ${symbol}:`, err)
+          }
+        })
+      )
+      console.log(`[prefetch] Done prefetching stock prices`)
+    } catch (err) {
+      console.error('[prefetch] Error:', err)
+      prefetchDone = false
+    }
+  }
+
   // Forward connection status changes to renderer
   onConnectionStatusChange((state) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('ib:connectionStatus', state)
+    }
+    // Prefetch option chains on connect
+    if (state.status === 'connected') {
+      prefetchOptionChains()
     }
   })
 
@@ -119,6 +188,10 @@ function setupIpcHandlers(): void {
   // Quotes
   ipcMain.handle('ib:getStockQuote', async (_event, symbol: string) => {
     return getStockQuote(symbol)
+  })
+
+  ipcMain.handle('ib:getCachedStockPrice', async (_event, symbol: string) => {
+    return getCachedStockPrice(symbol)
   })
 
   ipcMain.handle('ib:getQuotes', async (_event, symbols: string[]) => {
@@ -290,6 +363,8 @@ function setupIpcHandlers(): void {
         detectedGroup = result.group
       }
       resolveGroupReady()
+      // Trigger prefetch now that group is known (connection may already be up)
+      prefetchOptionChains()
       return result
     } catch {
       return { group: 'unknown', label: '未知群組' }

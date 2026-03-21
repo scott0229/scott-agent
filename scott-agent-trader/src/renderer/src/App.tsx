@@ -45,8 +45,8 @@ function App(): React.JSX.Element {
     mergeAccountAliases,
     accountTypes,
     setAccountType,
-    symbolOptionTypes,
-    setSymbolOptionType,
+    symbolPrefetch,
+    setSymbolPrefetch,
     d1Target,
     setD1Target,
     symbolGroups,
@@ -281,8 +281,8 @@ function App(): React.JSX.Element {
         onSetMarginLimit={setMarginLimit}
         watchSymbols={watchSymbols}
         onSetWatchSymbol={setWatchSymbol}
-        symbolOptionTypes={symbolOptionTypes}
-        onSetSymbolOptionType={setSymbolOptionType}
+        symbolPrefetch={symbolPrefetch}
+        onSetSymbolPrefetch={setSymbolPrefetch}
         d1Target={d1Target}
         onSetD1Target={setD1Target}
         connected={connected}
