@@ -58,8 +58,6 @@ export function mergeGreek(old: OptionGreek, n: OptionGreek): OptionGreek {
 interface UseOptionChainOptions {
   /** The underlying symbol to fetch chain for */
   symbol: string
-  /** Whether the dialog is open */
-  open: boolean
   /** Optional filter for expirations (e.g. roll dialog filters to >= maxCurrentExpiry) */
   expiryFilter?: (expiry: string) => boolean
   /** Whether to cancel greek subscriptions on cleanup (roll dialog does this) */
@@ -68,7 +66,6 @@ interface UseOptionChainOptions {
 
 export function useOptionChain({
   symbol,
-  open,
   expiryFilter,
   cancelSubscriptionsOnCleanup = false
 }: UseOptionChainOptions) {

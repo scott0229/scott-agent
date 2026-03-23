@@ -5,8 +5,6 @@ import type { AccountData, PositionData } from '../hooks/useAccountStore'
 import {
   useOptionChain,
   formatExpiry,
-  formatPrice,
-  formatGreekValue,
   mergeGreek
 } from '../hooks/useOptionChain'
 import type { OptionGreek } from '../hooks/useOptionChain'
@@ -97,7 +95,6 @@ export default function RollOptionDialog({
 
   const chain = useOptionChain({
     symbol,
-    open,
     expiryFilter,
     cancelSubscriptionsOnCleanup: true
   })

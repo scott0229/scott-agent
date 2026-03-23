@@ -325,12 +325,27 @@ export default function OptionOrderForm({
       {loadingGreeks ? (
         <div className="empty-state">載入期權報價中...</div>
       ) : (
-        <OptionChainTable
-          greeks={greeks}
-          selectedStrike={selectedStrike}
-          selectedRight={selectedRight}
-          onSelect={handleContractSelect}
-        />
+        (() => {
+          // Build greeksByExpiry map from flat greeks array
+          const greeksByExpiry = new Map<string, Map<string, { strike: number; right: 'C' | 'P'; expiry: string; bid: number; ask: number; last: number; delta: number; gamma: number; theta: number; vega: number; impliedVol: number; openInterest: number }>>()
+          greeks.forEach((g) => {
+            if (!greeksByExpiry.has(selectedExpiry)) greeksByExpiry.set(selectedExpiry, new Map())
+            greeksByExpiry.get(selectedExpiry)!.set(`${g.strike}_${g.right}`, { ...g, expiry: selectedExpiry })
+          })
+          const strikes = [...new Set(greeks.map((g) => g.strike))].sort((a, b) => a - b)
+          return (
+            <OptionChainTable
+              loading={false}
+              displayExpirations={selectedExpiry ? [selectedExpiry] : []}
+              displayStrikes={strikes}
+              greeksByExpiry={greeksByExpiry}
+              selectedExpiry={selectedExpiry}
+              selectedStrike={selectedStrike}
+              selectedRight={selectedRight}
+              onSelect={(_expiry, strike, right) => handleContractSelect(strike, right)}
+            />
+          )
+        })()
       )}
 
       {/* Selected Contract & Order Form */}

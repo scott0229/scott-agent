@@ -26,7 +26,7 @@ export default function OptionOrderDialog({
   const [symbolInput, setSymbolInput] = useState(initialSymbol)
 
   // ── Shared option chain hook ────────────────────────────────────────────
-  const chain = useOptionChain({ symbol, open })
+  const chain = useOptionChain({ symbol })
 
   // ── Order selection ──────────────────────────────────────────────────────
   const [selExpiry, setSelExpiry] = useState('')
