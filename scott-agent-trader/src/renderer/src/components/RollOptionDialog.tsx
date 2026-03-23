@@ -458,9 +458,11 @@ export default function RollOptionDialog({
               <span
                 style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
               />
-              <span className="roll-order-label">中間價</span>
-              <span className="roll-order-value roll-order-mid">
-                {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
+              <span style={{ background: '#fff9db', padding: '2px 8px', borderRadius: 4 }}>
+                <span className="roll-order-label">中間價</span>
+                <span className="roll-order-value roll-order-mid">
+                  {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
+                </span>
               </span>
             </div>
 
@@ -509,7 +511,7 @@ export default function RollOptionDialog({
                       const curMid = midPrice(curGreek)
                       const liveSpread =
                         curMid !== null && targetMid !== null ? curMid - targetMid : null
-                      const displayVal = limitPrice ? parseFloat(limitPrice) : liveSpread
+                      const displayVal = liveSpread
                       const rightLabel = pos.right === 'C' ? 'C' : pos.right === 'P' ? 'P' : ''
                       const closePrefix = pos.quantity < 0 ? '+' : '-'
                       const openPrefix = pos.quantity < 0 ? '-' : '+'
@@ -546,18 +548,9 @@ export default function RollOptionDialog({
                                   : 'spread-negative'
                                 : ''
                             }
-                            style={
-                              spreadPrices && limitPrice
-                                ? limitPrice === spreadPrices.bid.toFixed(2)
-                                  ? { color: '#15803d' }
-                                  : limitPrice === spreadPrices.ask.toFixed(2)
-                                    ? { color: '#b91c1c' }
-                                    : {}
-                                : {}
-                            }
                           >
                             {displayVal !== null && !isNaN(displayVal as number)
-                              ? `${(displayVal as number) >= 0 ? '+' : ''}${(displayVal as number).toFixed(2)}`
+                              ? `價差 ${(displayVal as number) >= 0 ? '+' : ''}${(displayVal as number).toFixed(2)}`
                               : '-'}
                           </td>
                         </tr>

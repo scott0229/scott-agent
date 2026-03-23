@@ -1719,13 +1719,11 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .spread-positive {
-  color: #1a6dcc;
-  font-weight: 600;
+  color: #333;
 }
 
 .spread-negative {
-  color: #dc2626;
-  font-weight: 600;
+  color: #333;
 }
 
 /* Order entry section */
