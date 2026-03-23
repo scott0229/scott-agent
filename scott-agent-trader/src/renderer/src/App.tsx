@@ -169,6 +169,16 @@ function App(): React.JSX.Element {
     [executions, hiddenAccounts]
   )
 
+  // Count groups for tab label (includes +1 for uncategorized if any exist)
+  const groupTabCount = useMemo(() => {
+    const allGroupedKeys = new Set<string>()
+    symbolGroups.forEach((g) => g.posKeys.forEach((k) => allGroupedKeys.add(k)))
+    const posKeyFn = (p: { account: string; symbol: string; secType: string; expiry?: string; strike?: number; right?: string }): string =>
+      `${p.account}|${p.symbol}|${p.secType}|${p.expiry || ''}|${p.strike || ''}|${p.right || ''}`
+    const hasUncategorized = visiblePositions.some((p) => !allGroupedKeys.has(posKeyFn(p)))
+    return symbolGroups.length + (hasUncategorized ? 1 : 0)
+  }, [symbolGroups, visiblePositions])
+
   return (
     <div className="app">
       <header className="app-header">
@@ -229,7 +239,7 @@ function App(): React.JSX.Element {
               <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
               <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
             </svg>
-            交易群組{symbolGroups.length > 0 ? ` (${symbolGroups.length})` : ''}
+            交易群組{groupTabCount > 0 ? ` (${groupTabCount})` : ''}
           </button>
         </nav>
         <div className="header-actions">

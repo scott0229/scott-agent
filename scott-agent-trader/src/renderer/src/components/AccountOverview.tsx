@@ -169,18 +169,45 @@ export default function AccountOverview({
     setCheckModeGroups(new Set())
   }, [groupViewMode])
 
+  // Compute positions not belonging to any group
+  const uncategorizedPositions = useMemo(() => {
+    if (!groupViewMode) return []
+    const allGroupedKeys = new Set<string>()
+    symbolGroups.forEach((g) => g.posKeys.forEach((k) => allGroupedKeys.add(k)))
+    return positions
+      .filter((p) => !allGroupedKeys.has(posKey(p)))
+      .sort((a, b) => {
+        if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
+        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
+        if (a.secType === 'OPT' && b.secType === 'OPT') {
+          const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
+          if (expiryComp !== 0) return expiryComp
+          const strikeComp = (a.strike || 0) - (b.strike || 0)
+          if (strikeComp !== 0) return strikeComp
+        }
+        const aAlias = (
+          accounts.find((x) => x.accountId === a.account)?.alias || a.account
+        ).replace(/\s*\(.*?\)/, '')
+        const bAlias = (
+          accounts.find((x) => x.accountId === b.account)?.alias || b.account
+        ).replace(/\s*\(.*?\)/, '')
+        return aAlias.localeCompare(bAlias)
+      })
+  }, [groupViewMode, symbolGroups, positions, accounts])
+
   // Masonry layout: measure each card and set grid-row span
   // Only recalculate when actual data changes (not on every poll-triggered render)
   const masonryKey = useMemo(() => {
     if (!groupViewMode) return ''
-    return symbolGroups
+    const groupPart = symbolGroups
       .map((g) => {
         const groupPosKeys = new Set(g.posKeys)
         const count = positions.filter((p) => groupPosKeys.has(posKey(p))).length
         return `${g.id}:${count}`
       })
       .join('|')
-  }, [groupViewMode, symbolGroups, positions])
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}`
+  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions])
 
   useEffect(() => {
     const grid = groupGridRef.current
@@ -779,10 +806,186 @@ export default function AccountOverview({
 
         {groupViewMode ? (
           /* Group Cards View */
-          symbolGroups.length === 0 ? (
+          symbolGroups.length === 0 && uncategorizedPositions.length === 0 ? (
             <div className="empty-state">尚無群組，請選取期權後建立</div>
           ) : (
             <div className="group-cards-grid" ref={groupGridRef}>
+              {/* 未歸類標的 virtual group */}
+              {uncategorizedPositions.length > 0 && (() => {
+                const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
+                const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
+                const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
+                  const isOpt = pos.secType === 'OPT'
+                  const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                  const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                  const pnl = isOpt
+                    ? (lp - pos.avgCost / 100) * pos.quantity * 100
+                    : (lp - pos.avgCost) * pos.quantity
+                  return sum + pnl
+                }, 0)
+                const renderUcRow = (
+                  pos: PositionData,
+                  idx: number,
+                  showDays: boolean
+                ): React.ReactNode => {
+                  const isOption = pos.secType === 'OPT'
+                  const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                  const lastPrice = isOption
+                    ? (optionQuotes[key] ?? 0)
+                    : (quotes[pos.symbol] ?? 0)
+                  const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                  const pnl = isOption
+                    ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
+                    : (lastPrice - pos.avgCost) * pos.quantity
+                  const days = pos.expiry
+                    ? Math.max(
+                      0,
+                      Math.ceil(
+                        (new Date(
+                          pos.expiry.substring(0, 4) +
+                          '-' +
+                          pos.expiry.substring(4, 6) +
+                          '-' +
+                          pos.expiry.substring(6, 8) +
+                          'T00:00:00'
+                        ).getTime() -
+                          new Date().setHours(0, 0, 0, 0)) /
+                        (1000 * 60 * 60 * 24)
+                      )
+                    )
+                    : null
+                  return (
+                    <tr key={idx}>
+                      <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>
+                        {(
+                          accounts.find((a) => a.accountId === pos.account)?.alias ||
+                          pos.account
+                        ).replace(/\s*\(.*?\)/, '')}
+                      </td>
+                      <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                      {showDays && (
+                        <td
+                          style={
+                            days === 0
+                              ? { backgroundColor: '#fff0f0' }
+                              : days === 1
+                                ? { backgroundColor: '#e8f4fd' }
+                                : undefined
+                          }
+                        >
+                          {days !== null ? days : '-'}
+                        </td>
+                      )}
+                      <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
+                        {pos.quantity.toLocaleString()}
+                      </td>
+                      <td>{displayAvg.toFixed(2)}</td>
+                      <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                      <td
+                        style={{
+                          color: pnl >= 0 ? '#1a6b3a' : '#dc2626',
+                          fontWeight: 500
+                        }}
+                      >
+                        {pnl >= 0 ? '+' : ''}
+                        {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      </td>
+                    </tr>
+                  )
+                }
+                return (
+                  <div
+                    className="account-card"
+                  >
+                    <div
+                      className="account-header"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="account-id" style={{ color: '#2563eb' }}>未歸類標的</span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          marginLeft: 'auto',
+                          marginRight: '12px',
+                          color: ucTotalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                        }}
+                      >
+                        {ucTotalPnl >= 0 ? '+' : ''}
+                        {Math.round(ucTotalPnl).toLocaleString()}
+                      </span>
+                    </div>
+                    {ucStkPos.length > 0 && (
+                      <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
+                        <table className="positions-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
+                              <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
+                              <th style={{ width: '10%' }}>數量</th>
+                              <th style={{ width: '13%' }}>均價</th>
+                              <th style={{ width: '13%' }}>現價</th>
+                              <th style={{ width: '13%' }}>盈虧</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {ucOptPos.length > 0 && (
+                      <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
+                        <table className="positions-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                              <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                              <th style={{ width: '8%' }}>天數</th>
+                              <th style={{ width: '8%' }}>數量</th>
+                              <th style={{ width: '11%' }}>均價</th>
+                              <th style={{ width: '11%' }}>現價</th>
+                              <th style={{ width: '11%' }}>盈虧</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ucOptPos.map((pos, idx) => {
+                              const prevPos = idx > 0 ? ucOptPos[idx - 1] : null
+                              const needsSep =
+                                prevPos &&
+                                (prevPos.expiry !== pos.expiry ||
+                                  prevPos.strike !== pos.strike)
+                              return (
+                                <React.Fragment key={idx}>
+                                  {needsSep && (
+                                    <tr>
+                                      <td
+                                        colSpan={7}
+                                        style={{
+                                          padding: 0,
+                                          height: '3px',
+                                          backgroundColor: '#f5f0eb'
+                                        }}
+                                      />
+                                    </tr>
+                                  )}
+                                  {renderUcRow(pos, idx, true)}
+                                </React.Fragment>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               {symbolGroups.map((g, gIdx) => {
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions
