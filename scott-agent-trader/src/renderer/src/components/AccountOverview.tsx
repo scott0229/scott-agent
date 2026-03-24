@@ -42,6 +42,18 @@ function formatOptionLabel(
   return `${symbol} ${exp} ${strike || ''}${r}`
 }
 
+/** Returns current "trading date" (YYYY-MM-DD) with day boundary at 4:00 AM ET */
+function getTradingDate(): { dateStr: string; month: number; day: number } {
+  const now = new Date()
+  const etStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  const et = new Date(etStr)
+  et.setHours(et.getHours() - 4)
+  const y = et.getFullYear()
+  const m = et.getMonth() + 1
+  const d = et.getDate()
+  return { dateStr: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month: m, day: d }
+}
+
 interface AccountOverviewProps {
   connected: boolean
   accounts: AccountData[]
@@ -206,8 +218,8 @@ export default function AccountOverview({
         return `${g.id}:${count}`
       })
       .join('|')
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}`
-  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions])
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}`
+  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions, checkModeGroups])
 
   useEffect(() => {
     const grid = groupGridRef.current
@@ -222,7 +234,7 @@ export default function AccountOverview({
       void grid.offsetHeight
       cards.forEach((card) => {
         const contentHeight = card.scrollHeight
-        const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)) + 1
+        const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap))
         card.style.gridRowEnd = `span ${span}`
       })
     })
@@ -1050,225 +1062,6 @@ export default function AccountOverview({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="account-id">{g.name}</span>
-                        {(() => {
-                          if (groupPositions.length === 0) return null
-                          // Determine which positions to use: checked ones or all
-                          const checkedSet = groupChecked[g.id]
-                          const hasChecked = checkedSet && checkedSet.size > 0
-                          const effectivePositions = hasChecked
-                            ? groupPositions.filter((p) => checkedSet.has(posKey(p)))
-                            : groupPositions
-                          const setGroupKeys = (): void => {
-                            const keys = new Set(effectivePositions.map((p) => posKey(p)))
-                            setSelectedPositions(keys)
-                          }
-                          const checkedCount = hasChecked ? checkedSet.size : 0
-                          const checkedLabel = checkedCount > 0 ? ` (${checkedCount})` : ''
-                          const allOpt = effectivePositions.every((p) => p.secType === 'OPT')
-                          const allStk = effectivePositions.every((p) => p.secType === 'STK')
-                          if (allOpt) {
-                            const rights = new Set(
-                              effectivePositions.map((p) =>
-                                (p.right || '')
-                                  .toUpperCase()
-                                  .replace('CALL', 'C')
-                                  .replace('PUT', 'P')
-                              )
-                            )
-                            const symbols = new Set(effectivePositions.map((p) => p.symbol))
-                            const canRoll = rights.size === 1 && symbols.size === 1
-                            return (
-                              <>
-                                {canRoll && (
-                                  <button
-                                    className="select-toggle-btn"
-                                    style={{
-                                      fontSize: '13px',
-                                      padding: '2px 10px',
-                                      lineHeight: '1.4'
-                                    }}
-                                    onClick={() => {
-                                      setGroupKeys()
-                                      setShowRollDialog(true)
-                                    }}
-                                  >
-                                    展期{checkedLabel}
-                                  </button>
-                                )}
-                                <button
-                                  className="select-toggle-btn"
-                                  style={{
-                                    fontSize: '13px',
-                                    padding: '2px 10px',
-                                    lineHeight: '1.4'
-                                  }}
-                                  onClick={() => {
-                                    setGroupKeys()
-                                    setShowCloseOptionDialog(true)
-                                  }}
-                                >
-                                  平倉{checkedLabel}
-                                </button>
-                              </>
-                            )
-                          }
-                          if (allStk) {
-                            return (
-                              <>
-                                <button
-                                  className="select-toggle-btn"
-                                  style={{
-                                    fontSize: '13px',
-                                    padding: '2px 10px',
-                                    lineHeight: '1.4'
-                                  }}
-                                  onClick={() => {
-                                    setGroupKeys()
-                                    setShowTransferDialog(true)
-                                  }}
-                                >
-                                  轉倉{checkedLabel}
-                                </button>
-                                <button
-                                  className="select-toggle-btn"
-                                  style={{
-                                    fontSize: '13px',
-                                    padding: '2px 10px',
-                                    lineHeight: '1.4'
-                                  }}
-                                  onClick={() => {
-                                    setGroupKeys()
-                                    setShowCloseDialog(true)
-                                  }}
-                                >
-                                  平倉{checkedLabel}
-                                </button>
-                              </>
-                            )
-                          }
-                          const optPositions = effectivePositions.filter((p) => p.secType === 'OPT')
-                          const stkPositions = effectivePositions.filter((p) => p.secType === 'STK')
-                          const setOptKeys = (): void => {
-                            setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
-                          }
-                          const setStkKeys = (): void => {
-                            setSelectedPositions(new Set(stkPositions.map((p) => posKey(p))))
-                          }
-                          // Check if options are rollable (same symbol, same right, same side)
-                          const canRollMixed =
-                            optPositions.length > 0 &&
-                            (() => {
-                              const rights = new Set(
-                                optPositions.map((p) =>
-                                  (p.right || '')
-                                    .toUpperCase()
-                                    .replace('CALL', 'C')
-                                    .replace('PUT', 'P')
-                                )
-                              )
-                              const symbols = new Set(optPositions.map((p) => p.symbol))
-                              const sides = new Set(
-                                optPositions.map((p) => (p.quantity < 0 ? 'SELL' : 'BUY'))
-                              )
-                              return rights.size === 1 && symbols.size === 1 && sides.size === 1
-                            })()
-                          const canTransferMixed =
-                            stkPositions.length > 0 && stkPositions.every((p) => p.quantity > 0)
-                          return (
-                            <>
-                              {canRollMixed && (
-                                <button
-                                  className="select-toggle-btn"
-                                  style={{
-                                    fontSize: '13px',
-                                    padding: '2px 10px',
-                                    lineHeight: '1.4'
-                                  }}
-                                  onClick={() => {
-                                    setOptKeys()
-                                    setShowRollDialog(true)
-                                  }}
-                                >
-                                  展期{checkedLabel}
-                                </button>
-                              )}
-                              {canTransferMixed && (
-                                <button
-                                  className="select-toggle-btn"
-                                  style={{
-                                    fontSize: '13px',
-                                    padding: '2px 10px',
-                                    lineHeight: '1.4'
-                                  }}
-                                  onClick={() => {
-                                    setStkKeys()
-                                    setShowTransferDialog(true)
-                                  }}
-                                >
-                                  轉倉{checkedLabel}
-                                </button>
-                              )}
-                              <button
-                                className="select-toggle-btn"
-                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => {
-                                  setGroupKeys()
-                                  setShowCloseGroupDialog(true)
-                                }}
-                              >
-                                平倉{checkedLabel}
-                              </button>
-                            </>
-                          )
-                        })()}
-                        {groupPositions.length > 0 && (
-                          <button
-                            className="select-toggle-btn"
-                            style={{
-                              fontSize: '13px',
-                              padding: '4px 6px',
-                              lineHeight: '1',
-                              backgroundColor: checkModeGroups.has(g.id) ? '#2563eb' : undefined,
-                              color: checkModeGroups.has(g.id) ? '#fff' : undefined,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            title="勾選"
-                            onClick={() => {
-                              setCheckModeGroups((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(g.id)) {
-                                  next.delete(g.id)
-                                  // Clear checked items when exiting check mode
-                                  setGroupChecked((gc) => {
-                                    const copy = { ...gc }
-                                    delete copy[g.id]
-                                    return copy
-                                  })
-                                } else {
-                                  next.add(g.id)
-                                }
-                                return next
-                              })
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="9 11 12 14 22 4" />
-                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                            </svg>
-                          </button>
-                        )}
                       </div>
                       {(() => {
                         const totalPnl = groupPositions.reduce((sum, pos) => {
@@ -1338,6 +1131,210 @@ export default function AccountOverview({
                           <line x1="14" y1="11" x2="14" y2="17" />
                         </svg>
                       </div>
+                    </div>
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px 0' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {(() => {
+                        if (groupPositions.length === 0) return null
+                        const checkedSet = groupChecked[g.id]
+                        const hasChecked = checkedSet && checkedSet.size > 0
+                        const effectivePositions = hasChecked
+                          ? groupPositions.filter((p) => checkedSet.has(posKey(p)))
+                          : groupPositions
+                        const setGroupKeys = (): void => {
+                          const keys = new Set(effectivePositions.map((p) => posKey(p)))
+                          setSelectedPositions(keys)
+                        }
+                        const checkedCount = hasChecked ? checkedSet.size : 0
+                        const checkedLabel = checkedCount > 0 ? ` (${checkedCount})` : ''
+                        const allOpt = effectivePositions.every((p) => p.secType === 'OPT')
+                        const allStk = effectivePositions.every((p) => p.secType === 'STK')
+                        if (allOpt) {
+                          const rights = new Set(
+                            effectivePositions.map((p) =>
+                              (p.right || '')
+                                .toUpperCase()
+                                .replace('CALL', 'C')
+                                .replace('PUT', 'P')
+                            )
+                          )
+                          const symbols = new Set(effectivePositions.map((p) => p.symbol))
+                          const canRoll = rights.size === 1 && symbols.size === 1
+                          return (
+                            <>
+                              {canRoll && (
+                                <button
+                                  className="select-toggle-btn"
+                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                  onClick={() => { setGroupKeys(); setShowRollDialog(true) }}
+                                >
+                                  展期{checkedLabel}
+                                </button>
+                              )}
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setGroupKeys(); setShowCloseOptionDialog(true) }}
+                              >
+                                平倉{checkedLabel}
+                              </button>
+                            </>
+                          )
+                        }
+                        if (allStk) {
+                          return (
+                            <>
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setGroupKeys(); setShowTransferDialog(true) }}
+                              >
+                                轉倉{checkedLabel}
+                              </button>
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setGroupKeys(); setShowCloseDialog(true) }}
+                              >
+                                平倉{checkedLabel}
+                              </button>
+                            </>
+                          )
+                        }
+                        const optPositions = effectivePositions.filter((p) => p.secType === 'OPT')
+                        const stkPositions = effectivePositions.filter((p) => p.secType === 'STK')
+                        const setOptKeys = (): void => {
+                          setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
+                        }
+                        const setStkKeys = (): void => {
+                          setSelectedPositions(new Set(stkPositions.map((p) => posKey(p))))
+                        }
+                        const canRollMixed =
+                          optPositions.length > 0 &&
+                          (() => {
+                            const rights = new Set(
+                              optPositions.map((p) =>
+                                (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')
+                              )
+                            )
+                            const symbols = new Set(optPositions.map((p) => p.symbol))
+                            const sides = new Set(
+                              optPositions.map((p) => (p.quantity < 0 ? 'SELL' : 'BUY'))
+                            )
+                            return rights.size === 1 && symbols.size === 1 && sides.size === 1
+                          })()
+                        const canTransferMixed =
+                          stkPositions.length > 0 && stkPositions.every((p) => p.quantity > 0)
+                        return (
+                          <>
+                            {canRollMixed && (
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setOptKeys(); setShowRollDialog(true) }}
+                              >
+                                展期{checkedLabel}
+                              </button>
+                            )}
+                            {canTransferMixed && (
+                              <button
+                                className="select-toggle-btn"
+                                style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                                onClick={() => { setStkKeys(); setShowTransferDialog(true) }}
+                              >
+                                轉倉{checkedLabel}
+                              </button>
+                            )}
+                            <button
+                              className="select-toggle-btn"
+                              style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
+                              onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
+                            >
+                              平倉{checkedLabel}
+                            </button>
+                          </>
+                        )
+                      })()}
+                      {groupPositions.length > 0 && (
+                        <button
+                          className="select-toggle-btn"
+                          style={{
+                            fontSize: '13px',
+                            padding: '4px 6px',
+                            lineHeight: '1',
+                            backgroundColor: checkModeGroups.has(g.id) ? '#2563eb' : undefined,
+                            color: checkModeGroups.has(g.id) ? '#fff' : undefined,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="勾選"
+                          onClick={() => {
+                            setCheckModeGroups((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(g.id)) {
+                                next.delete(g.id)
+                                setGroupChecked((gc) => {
+                                  const copy = { ...gc }
+                                  delete copy[g.id]
+                                  return copy
+                                })
+                              } else {
+                                next.add(g.id)
+                              }
+                              return next
+                            })
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="9 11 12 14 22 4" />
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                          </svg>
+                        </button>
+                      )}
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '12px',
+                          color: '#333',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          marginLeft: '4px',
+                          backgroundColor: (() => { const td = getTradingDate(); return g.completedDate === td.dateStr ? '#dcfce7' : undefined })(),
+                          padding: '2px 6px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={g.completedDate === getTradingDate().dateStr}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            const td = getTradingDate()
+                            const isChecked = g.completedDate === td.dateStr
+                            onUpdateSymbolGroup?.({
+                              ...g,
+                              completedDate: isChecked ? undefined : td.dateStr
+                            })
+                          }}
+                          style={{ accentColor: '#22c55e', cursor: 'pointer' }}
+                        />
+                        {(() => { const td = getTradingDate(); return `今日 (${td.month}/${td.day}) 已完成操作` })()}
+                      </label>
                     </div>
                     {groupPositions.length === 0 ? (
                       <div style={{ padding: '12px', fontSize: '12px', color: '#999' }}>

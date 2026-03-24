@@ -6,6 +6,7 @@ export interface SymbolGroup {
   symbol: string
   posKeys: string[]
   createdAt: number
+  completedDate?: string // YYYY-MM-DD format, marks "今日已完成操作"
 }
 
 declare global {
