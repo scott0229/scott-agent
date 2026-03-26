@@ -48,6 +48,23 @@ const ibApi = {
   ): Promise<Record<string, number>> => ipcRenderer.invoke('ib:getOptionQuotes', contracts),
   getHistoricalData: (req: any): Promise<any[]> => ipcRenderer.invoke('ib:getHistoricalData', req),
 
+  // Streaming quotes
+  subscribeQuotes: (
+    symbols: string[],
+    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+  ): Promise<{ quotes: Record<string, number>; optionQuotes: Record<string, number> }> =>
+    ipcRenderer.invoke('ib:subscribeQuotes', symbols, optionContracts),
+  unsubscribeQuotes: (): Promise<void> => ipcRenderer.invoke('ib:unsubscribeQuotes'),
+  onQuoteUpdate: (
+    callback: (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }) => void
+  ): (() => void) => {
+    const handler = (_event: any, data: any): void => callback(data)
+    ipcRenderer.on('ib:quoteUpdate', handler)
+    return () => {
+      ipcRenderer.removeListener('ib:quoteUpdate', handler)
+    }
+  },
+
   // Options
   getOptionChain: (symbol: string): Promise<any[]> =>
     ipcRenderer.invoke('ib:getOptionChain', symbol),
@@ -124,6 +141,7 @@ const ibApi = {
   removeAllListeners: (): void => {
     ipcRenderer.removeAllListeners('ib:connectionStatus')
     ipcRenderer.removeAllListeners('ib:orderStatus')
+    ipcRenderer.removeAllListeners('ib:quoteUpdate')
   }
 }
 

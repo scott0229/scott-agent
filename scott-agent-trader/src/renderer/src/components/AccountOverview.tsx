@@ -868,7 +868,7 @@ export default function AccountOverview({
                     : null
                   return (
                     <tr key={idx}>
-                      <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>
+                      <td style={{ fontSize: '13px', textAlign: 'left' }}>
                         {(
                           accounts.find((a) => a.accountId === pos.account)?.alias ||
                           pos.account
@@ -888,18 +888,18 @@ export default function AccountOverview({
                           {days !== null ? days : '-'}
                         </td>
                       )}
-                      <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
+                      <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
                         {pos.quantity.toLocaleString()}
                       </td>
                       <td>{displayAvg.toFixed(2)}</td>
                       <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                       <td
                         style={{
-                          color: pnl >= 0 ? '#1a6b3a' : '#dc2626',
-                          fontWeight: 500
+                          color: '#fff',
+                          fontWeight: 500,
+                          backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
                         }}
                       >
-                        {pnl >= 0 ? '+' : ''}
                         {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                       </td>
                     </tr>
@@ -940,7 +940,7 @@ export default function AccountOverview({
                             <tr>
                               <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                               <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
-                              <th style={{ width: '10%' }}>數量</th>
+                              <th style={{ width: '10%' }}>持倉</th>
                               <th style={{ width: '13%' }}>均價</th>
                               <th style={{ width: '13%' }}>現價</th>
                               <th style={{ width: '13%' }}>盈虧</th>
@@ -960,7 +960,7 @@ export default function AccountOverview({
                               <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
                               <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                               <th style={{ width: '8%' }}>天數</th>
-                              <th style={{ width: '8%' }}>數量</th>
+                              <th style={{ width: '8%' }}>持倉</th>
                               <th style={{ width: '11%' }}>均價</th>
                               <th style={{ width: '11%' }}>現價</th>
                               <th style={{ width: '11%' }}>盈虧</th>
@@ -1313,7 +1313,7 @@ export default function AccountOverview({
                           color: '#333',
                           cursor: 'pointer',
                           userSelect: 'none',
-                          marginLeft: '4px',
+                          marginLeft: 'auto',
                           backgroundColor: (() => { const td = getTradingDate(); return g.completedDate === td.dateStr ? '#dcfce7' : undefined })(),
                           padding: '2px 6px',
                           borderRadius: '4px'
@@ -1399,7 +1399,7 @@ export default function AccountOverview({
                                   />
                                 </td>
                               )}
-                              <td style={{ fontSize: '13px', color: '#8b7e74', textAlign: 'left' }}>
+                              <td style={{ fontSize: '13px', textAlign: 'left' }}>
                                 {(
                                   accounts.find((a) => a.accountId === pos.account)?.alias ||
                                   pos.account
@@ -1419,18 +1419,18 @@ export default function AccountOverview({
                                   {days !== null ? days : '-'}
                                 </td>
                               )}
-                              <td style={{ color: pos.quantity >= 0 ? '#15803d' : '#dc2626' }}>
+                              <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
                                 {pos.quantity.toLocaleString()}
                               </td>
                               <td>{displayAvg.toFixed(2)}</td>
                               <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                               <td
                                 style={{
-                                  color: pnl >= 0 ? '#1a6b3a' : '#dc2626',
-                                  fontWeight: 500
+                                  color: '#fff',
+                                  fontWeight: 500,
+                                  backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
                                 }}
                               >
-                                {pnl >= 0 ? '+' : ''}
                                 {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                               </td>
                             </tr>
@@ -1466,7 +1466,7 @@ export default function AccountOverview({
                                       )}
                                       <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                                       <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
-                                      <th style={{ width: '10%' }}>數量</th>
+                                      <th style={{ width: '10%' }}>持倉</th>
                                       <th style={{ width: '13%' }}>均價</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '13%' }}>盈虧</th>
@@ -1507,7 +1507,7 @@ export default function AccountOverview({
                                       <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>天數</th>
-                                      <th style={{ width: '8%' }}>數量</th>
+                                      <th style={{ width: '8%' }}>持倉</th>
                                       <th style={{ width: '11%' }}>均價</th>
                                       <th style={{ width: '11%' }}>現價</th>
                                       <th style={{ width: '11%' }}>盈虧</th>
@@ -1703,7 +1703,7 @@ export default function AccountOverview({
                         <thead>
                           <tr>
                             <th style={{ textAlign: 'left' }}>股票</th>
-                            <th>數量</th>
+                            <th>持倉</th>
                             <th>均價</th>
                             <th>現價</th>
                             <th>盈虧</th>
@@ -1739,27 +1739,29 @@ export default function AccountOverview({
                                   )}
                                   {formatPositionSymbol(pos)}
                                 </td>
-                                <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
+                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
                                   {pos.quantity.toLocaleString()}
                                 </td>
                                 <td>{pos.avgCost.toFixed(2)}</td>
                                 <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
-                                <td
-                                  style={{
-                                    color: quotes[pos.symbol]
-                                      ? (quotes[pos.symbol] - pos.avgCost) * pos.quantity >= 0
-                                        ? '#1a6b3a'
-                                        : '#8b1a1a'
-                                      : undefined
-                                  }}
-                                >
-                                  {quotes[pos.symbol]
-                                    ? (
-                                      (quotes[pos.symbol] - pos.avgCost) *
-                                      pos.quantity
-                                    ).toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                    : '-'}
-                                </td>
+                                {(() => {
+                                  const stkPnl = quotes[pos.symbol]
+                                    ? (quotes[pos.symbol] - pos.avgCost) * pos.quantity
+                                    : null
+                                  return (
+                                    <td
+                                      style={stkPnl != null ? {
+                                        color: '#fff',
+                                        fontWeight: 500,
+                                        backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                      } : undefined}
+                                    >
+                                      {stkPnl != null
+                                        ? stkPnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                        : '-'}
+                                    </td>
+                                  )
+                                })()}
                               </tr>
                             ))}
                         </tbody>
@@ -1777,7 +1779,7 @@ export default function AccountOverview({
                           <tr>
                             <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
                             <th style={{ width: '8%' }}>天數</th>
-                            <th style={{ width: '8%' }}>數量</th>
+                            <th style={{ width: '8%' }}>持倉</th>
                             <th style={{ width: '11%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '11%' }}>盈虧</th>
@@ -1845,7 +1847,7 @@ export default function AccountOverview({
                                     </td>
                                   )
                                 })()}
-                                <td className={pos.quantity > 0 ? 'pos-long' : 'pos-short'}>
+                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
                                   {pos.quantity.toLocaleString()}
                                 </td>
                                 <td>{(pos.avgCost / 100).toFixed(2)}</td>
@@ -1858,8 +1860,13 @@ export default function AccountOverview({
                                     return (
                                       <>
                                         <td>{lastPrice.toFixed(2)}</td>
-                                        <td className={pnl >= 0 ? 'pos-long' : 'pos-short'}>
-                                          {pnl >= 0 ? '+' : ''}
+                                        <td
+                                          style={{
+                                            color: '#fff',
+                                            fontWeight: 500,
+                                            backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                          }}
+                                        >
                                           {Math.round(pnl).toLocaleString()}
                                         </td>
                                       </>

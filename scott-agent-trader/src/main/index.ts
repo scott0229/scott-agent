@@ -21,7 +21,7 @@ import {
   setupOrderStatusListener
 } from './ib/orders'
 import { requestOptionChain, requestOptionGreeks, cancelOptionGreeksSubscriptions } from './ib/options'
-import { getStockQuote, getQuotes, getOptionQuotes, getCachedStockPrice } from './ib/quotes'
+import { getStockQuote, getQuotes, getOptionQuotes, getCachedStockPrice, subscribeStockQuotes, subscribeOptionQuotes, unsubscribeAllQuotes, getLiveQuotes } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
@@ -201,6 +201,39 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('ib:getQuotes', async (_event, symbols: string[]) => {
     return getQuotes(symbols)
+  })
+
+  // Streaming quotes — push updates to renderer
+  ipcMain.handle(
+    'ib:subscribeQuotes',
+    async (
+      _event,
+      symbols: string[],
+      optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+    ) => {
+      const pushUpdate = (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }): void => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ib:quoteUpdate', data)
+        }
+      }
+
+      // Unsubscribe previous before re-subscribing
+      unsubscribeAllQuotes()
+
+      if (symbols.length > 0) {
+        subscribeStockQuotes(symbols, pushUpdate)
+      }
+      if (optionContracts.length > 0) {
+        subscribeOptionQuotes(optionContracts, pushUpdate)
+      }
+
+      console.log(`[IPC] subscribeQuotes: ${symbols.length} stocks, ${optionContracts.length} options`)
+      return getLiveQuotes()
+    }
+  )
+
+  ipcMain.handle('ib:unsubscribeQuotes', async () => {
+    unsubscribeAllQuotes()
   })
 
   ipcMain.handle(

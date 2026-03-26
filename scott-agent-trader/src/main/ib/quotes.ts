@@ -312,3 +312,249 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
     console.log(`[IB] Requesting stock quote for ${symbol.toUpperCase()} (reqId: ${reqId})`)
   })
 }
+
+// ════════════════════════════════════════════════════
+//  Streaming Market Data Engine
+// ════════════════════════════════════════════════════
+
+type QuoteUpdateCallback = (data: {
+  quotes: Record<string, number>
+  optionQuotes: Record<string, number>
+}) => void
+
+// Live price maps — updated on every tick
+const liveStockPrices: Record<string, number> = {}
+const liveOptionPrices: Record<string, number> = {}
+
+// reqId → symbol/key mapping for cleanup
+const streamingStockReqs = new Map<number, string>() // reqId → symbol
+const streamingOptionReqs = new Map<number, string>() // reqId → optionKey
+
+// Global tick handler reference (for cleanup)
+let streamTickHandler: ((id: number, tickType: number, value: number) => void) | null = null
+let streamCallback: QuoteUpdateCallback | null = null
+let throttleTimer: ReturnType<typeof setTimeout> | null = null
+
+function emitUpdate(): void {
+  if (!streamCallback) return
+  if (throttleTimer) return // already scheduled
+  throttleTimer = setTimeout(() => {
+    throttleTimer = null
+    if (streamCallback) {
+      streamCallback({
+        quotes: { ...liveStockPrices },
+        optionQuotes: { ...liveOptionPrices }
+      })
+    }
+  }, 500)
+}
+
+/**
+ * Subscribe to streaming stock quotes.
+ * Calls callback with updated price map whenever ticks arrive (throttled to ~500ms).
+ */
+export function subscribeStockQuotes(symbols: string[], callback: QuoteUpdateCallback): void {
+  const api = getIBApi()
+  if (!api) return
+
+  streamCallback = callback
+
+  // Use frozen (2) for best available data
+  api.reqMarketDataType(2)
+
+  // Install global tick handler if not already done
+  if (!streamTickHandler) {
+    streamTickHandler = (id: number, tickType: number, value: number): void => {
+      if (value < 0) return
+
+      // Check stock subscriptions
+      const stockSym = streamingStockReqs.get(id)
+      if (stockSym) {
+        // 4=last, 70=delayed_last, 9=close, 75=delayed_close
+        if (tickType === 4 || tickType === 70) {
+          liveStockPrices[stockSym] = value
+          // Also update snapshot cache so dialogs see fresh prices
+          const entry = stockPriceCache.get(stockSym)
+          if (entry) {
+            entry.quote.last = value
+            entry.fetchedAt = Date.now()
+          } else {
+            stockPriceCache.set(stockSym, {
+              quote: { symbol: stockSym, bid: 0, ask: 0, last: value },
+              fetchedAt: Date.now()
+            })
+          }
+          emitUpdate()
+        } else if (tickType === 9 || tickType === 75) {
+          if (!liveStockPrices[stockSym]) {
+            liveStockPrices[stockSym] = value
+            emitUpdate()
+          }
+        } else if (tickType === 1 || tickType === 68) {
+          // bid — use mid if we have ask
+          const entry = stockPriceCache.get(stockSym)
+          if (entry) entry.quote.bid = value
+        } else if (tickType === 2 || tickType === 69) {
+          // ask
+          const entry = stockPriceCache.get(stockSym)
+          if (entry) entry.quote.ask = value
+        }
+        return
+      }
+
+      // Check option subscriptions
+      const optKey = streamingOptionReqs.get(id)
+      if (optKey) {
+        if (tickType === 1 || tickType === 68) {
+          // bid — store temporarily
+          const cur = optionQuoteCache[optKey]
+          if (!cur) optionQuoteCache[optKey] = { price: 0, ts: Date.now() }
+          ;(optionQuoteCache[optKey] as any)._bid = value
+        } else if (tickType === 2 || tickType === 69) {
+          // ask — compute mid
+          const cur = optionQuoteCache[optKey] as any
+          const bid = cur?._bid || 0
+          if (bid > 0 && value > 0) {
+            const mid = (bid + value) / 2
+            liveOptionPrices[optKey] = mid
+            optionQuoteCache[optKey] = { price: mid, ts: Date.now() }
+            emitUpdate()
+          }
+        } else if (tickType === 4 || tickType === 70) {
+          // last
+          liveOptionPrices[optKey] = value
+          optionQuoteCache[optKey] = { price: value, ts: Date.now() }
+          emitUpdate()
+        } else if (tickType === 9 || tickType === 75) {
+          // close — fallback
+          if (!liveOptionPrices[optKey]) {
+            liveOptionPrices[optKey] = value
+            optionQuoteCache[optKey] = { price: value, ts: Date.now() }
+            emitUpdate()
+          }
+        }
+      }
+    }
+    api.on(EventName.tickPrice, streamTickHandler)
+    console.log('[IB-Stream] Installed global tick handler')
+  }
+
+  // Subscribe to each symbol (skip already-subscribed)
+  const activeSymbols = new Set(streamingStockReqs.values())
+  for (const rawSym of symbols) {
+    const sym = rawSym.toUpperCase()
+    if (activeSymbols.has(sym)) continue
+
+    const reqId = getNextReqId()
+    streamingStockReqs.set(reqId, sym)
+
+    const contract: Contract = {
+      symbol: sym,
+      secType: SecType.STK,
+      exchange: 'SMART',
+      currency: 'USD'
+    }
+
+    api.reqMktData(reqId, contract, '', false, false) // snapshot=false → streaming
+    console.log(`[IB-Stream] Subscribed stock ${sym} (reqId: ${reqId})`)
+  }
+}
+
+/**
+ * Subscribe to streaming option quotes.
+ */
+export function subscribeOptionQuotes(
+  contracts: OptionQuoteRequest[],
+  callback: QuoteUpdateCallback
+): void {
+  const api = getIBApi()
+  if (!api) return
+
+  streamCallback = callback
+  api.reqMarketDataType(2)
+
+  // Install global tick handler if not already done
+  if (!streamTickHandler) {
+    // This shouldn't happen if subscribeStockQuotes is called first,
+    // but just in case:
+    subscribeStockQuotes([], callback)
+  }
+
+  const activeKeys = new Set(streamingOptionReqs.values())
+  for (const req of contracts) {
+    const key = optionKey(req)
+    if (activeKeys.has(key)) continue
+
+    const reqId = getNextReqId()
+    streamingOptionReqs.set(reqId, key)
+
+    const r = req.right.toUpperCase()
+    const contract: Contract = {
+      symbol: req.symbol.toUpperCase(),
+      secType: SecType.OPT,
+      exchange: 'SMART',
+      currency: 'USD',
+      lastTradeDateOrContractMonth: req.expiry,
+      strike: req.strike,
+      right: r === 'C' || r === 'CALL' ? OptionType.Call : OptionType.Put
+    }
+
+    api.reqMktData(reqId, contract, '', false, false) // streaming
+    console.log(`[IB-Stream] Subscribed option ${key} (reqId: ${reqId})`)
+  }
+}
+
+/**
+ * Unsubscribe all streaming quotes and clean up.
+ */
+export function unsubscribeAllQuotes(): void {
+  const api = getIBApi()
+
+  // Cancel all stock subscriptions
+  for (const [reqId, sym] of streamingStockReqs) {
+    try {
+      api?.cancelMktData(reqId)
+    } catch { /* ignore */ }
+    console.log(`[IB-Stream] Unsubscribed stock ${sym} (reqId: ${reqId})`)
+  }
+  streamingStockReqs.clear()
+
+  // Cancel all option subscriptions
+  for (const [reqId, key] of streamingOptionReqs) {
+    try {
+      api?.cancelMktData(reqId)
+    } catch { /* ignore */ }
+    console.log(`[IB-Stream] Unsubscribed option ${key} (reqId: ${reqId})`)
+  }
+  streamingOptionReqs.clear()
+
+  // Remove tick handler
+  if (streamTickHandler && api) {
+    api.off(EventName.tickPrice, streamTickHandler)
+  }
+  streamTickHandler = null
+  streamCallback = null
+  if (throttleTimer) {
+    clearTimeout(throttleTimer)
+    throttleTimer = null
+  }
+
+  // Clear live prices
+  Object.keys(liveStockPrices).forEach(k => delete liveStockPrices[k])
+  Object.keys(liveOptionPrices).forEach(k => delete liveOptionPrices[k])
+
+  console.log('[IB-Stream] All subscriptions cleared')
+}
+
+/**
+ * Get current live prices (for immediate reads without waiting for next tick).
+ */
+export function getLiveQuotes(): {
+  quotes: Record<string, number>
+  optionQuotes: Record<string, number>
+} {
+  return {
+    quotes: { ...liveStockPrices },
+    optionQuotes: { ...liveOptionPrices }
+  }
+}

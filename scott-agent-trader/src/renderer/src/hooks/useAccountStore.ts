@@ -67,7 +67,7 @@ interface AccountStore {
   refresh: () => void
 }
 
-const POLL_INTERVAL = 8000
+const POLL_INTERVAL = 2000
 
 export function useAccountStore(
   connected: boolean,
@@ -85,6 +85,7 @@ export function useAccountStore(
   const aliasRef = useRef<Record<string, string>>({})
   const fetchingRef = useRef(false)
   const hasDataRef = useRef(false)
+  const quoteCleanupRef = useRef<(() => void) | null>(null)
 
   // Clear old data and reload aliases when port changes
   useEffect(() => {
@@ -173,7 +174,8 @@ export function useAccountStore(
           })
       }
 
-      // Fetch last prices in background (non-blocking)
+      // --- Streaming quote subscription ---
+      // Build symbol lists from positions and subscribe to streaming data
       const stockSymbols = [
         ...new Set(
           positionData
@@ -181,29 +183,9 @@ export function useAccountStore(
             .map((p: PositionData) => p.symbol)
         )
       ]
-      if (stockSymbols.length > 0) {
-        window.ibApi
-          .getQuotes(stockSymbols)
-          .then((quoteData) => {
-            // Only update quotes that actually have a price (> 0)
-            setQuotes((prev) => {
-              const merged = { ...prev }
-              for (const [sym, price] of Object.entries(quoteData)) {
-                if ((price as number) > 0) merged[sym] = price as number
-              }
-              return merged
-            })
-          })
-          .catch(() => {
-            /* ignore quote errors */
-          })
-      }
-
-      // Fetch option quotes in background (non-blocking)
       const optionPositions = positionData.filter(
         (p: PositionData) => p.secType === 'OPT' && p.expiry && p.strike && p.right
       )
-      // De-duplicate by contract key
       const seen = new Set<string>()
       const optionContracts: Array<{
         symbol: string
@@ -223,21 +205,60 @@ export function useAccountStore(
           })
         }
       }
-      if (optionContracts.length > 0) {
-        window.ibApi
-          .getOptionQuotes(optionContracts)
-          .then((optQuoteData) => {
-            // Only update option quotes that actually have a price (> 0)
+      if (stockSymbols.length > 0 || optionContracts.length > 0) {
+        // Clean up previous listener before re-subscribing
+        if (quoteCleanupRef.current) {
+          quoteCleanupRef.current()
+          quoteCleanupRef.current = null
+        }
+        // Set up listener for streaming updates
+        const removeListener = window.ibApi.onQuoteUpdate((data) => {
+          if (data.quotes && Object.keys(data.quotes).length > 0) {
+            setQuotes((prev) => {
+              const merged = { ...prev }
+              for (const [sym, price] of Object.entries(data.quotes)) {
+                if ((price as number) > 0) merged[sym] = price as number
+              }
+              return merged
+            })
+          }
+          if (data.optionQuotes && Object.keys(data.optionQuotes).length > 0) {
             setOptionQuotes((prev) => {
               const merged = { ...prev }
-              for (const [key, price] of Object.entries(optQuoteData)) {
+              for (const [key, price] of Object.entries(data.optionQuotes)) {
                 if ((price as number) > 0) merged[key] = price as number
               }
               return merged
             })
+          }
+        })
+        quoteCleanupRef.current = removeListener
+
+        // Subscribe (this also returns an initial snapshot)
+        window.ibApi
+          .subscribeQuotes(stockSymbols, optionContracts)
+          .then((initial) => {
+            if (initial.quotes && Object.keys(initial.quotes).length > 0) {
+              setQuotes((prev) => {
+                const merged = { ...prev }
+                for (const [sym, price] of Object.entries(initial.quotes)) {
+                  if ((price as number) > 0) merged[sym] = price as number
+                }
+                return merged
+              })
+            }
+            if (initial.optionQuotes && Object.keys(initial.optionQuotes).length > 0) {
+              setOptionQuotes((prev) => {
+                const merged = { ...prev }
+                for (const [key, price] of Object.entries(initial.optionQuotes)) {
+                  if ((price as number) > 0) merged[key] = price as number
+                }
+                return merged
+              })
+            }
           })
           .catch(() => {
-            /* ignore option quote errors */
+            /* ignore subscribe errors */
           })
       }
     } catch (err: unknown) {
@@ -269,6 +290,12 @@ export function useAccountStore(
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
+      // Clean up streaming subscription
+      if (quoteCleanupRef.current) {
+        quoteCleanupRef.current()
+        quoteCleanupRef.current = null
+      }
+      window.ibApi.unsubscribeQuotes().catch(() => {})
     }
   }, [connected, fetchData])
 

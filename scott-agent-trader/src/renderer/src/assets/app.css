@@ -555,7 +555,7 @@ body {
 .positions-table th {
   text-align: center;
   white-space: nowrap;
-  color: #71717a;
+  color: #333;
   font-size: 13px;
   font-weight: 600;
   padding: 4px 6px;

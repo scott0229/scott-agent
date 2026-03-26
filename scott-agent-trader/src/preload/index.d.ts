@@ -244,6 +244,16 @@ interface IBApi {
 
   log: (...args: any[]) => void
 
+  // Streaming quotes
+  subscribeQuotes: (
+    symbols: string[],
+    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+  ) => Promise<{ quotes: Record<string, number>; optionQuotes: Record<string, number> }>
+  unsubscribeQuotes: () => Promise<void>
+  onQuoteUpdate: (
+    callback: (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }) => void
+  ) => () => void
+
   removeAllListeners: () => void
 }
 
