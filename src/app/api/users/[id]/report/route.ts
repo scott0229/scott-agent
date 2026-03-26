@@ -120,7 +120,8 @@ export async function GET(
 
         // 6. Get stock positions
         const { results: stockPositions } = await db.prepare(`
-            SELECT symbol, SUM(quantity) as quantity
+            SELECT symbol, SUM(quantity) as quantity,
+                ROUND(SUM(open_price * quantity) / SUM(quantity), 2) as avg_cost
             FROM STOCK_TRADES
             WHERE owner_id = ? AND year = ? AND status = 'Open'
             GROUP BY symbol

@@ -342,7 +342,8 @@ export default function AdminUsersPage() {
         // Stock positions
         if (data.stockPositions && data.stockPositions.length > 0) {
             data.stockPositions.forEach((pos: any) => {
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股\n`;
+                const avgCostStr = pos.avg_cost ? ` (均價 ${pos.avg_cost})` : '';
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}\n`;
             });
             report += `----------------------------------------\n`;
         }
