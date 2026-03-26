@@ -1630,7 +1630,13 @@ export default function AdminUsersPage() {
                 {userReports.size > 0 && (
                     <div className="mt-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {Array.from(userReports.entries()).map(([userId, { userName, report }]) => (
+                            {Array.from(userReports.entries())
+                                .sort(([aId], [bId]) => {
+                                    const aEquity = users.find(u => u.id === aId)?.current_net_equity || 0;
+                                    const bEquity = users.find(u => u.id === bId)?.current_net_equity || 0;
+                                    return bEquity - aEquity;
+                                })
+                                .map(([userId, { userName, report }]) => (
                                 <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="font-semibold text-sm">{userName}</h3>
