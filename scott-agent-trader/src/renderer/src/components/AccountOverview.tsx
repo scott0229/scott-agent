@@ -2165,8 +2165,18 @@ export default function AccountOverview({
                                 } else {
                                   desc = exec.symbol
                                 }
-                                const isAssignment =
+                                const isOptionExpiry =
                                   exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
+                                // Check if there's a matching stock trade at the strike price → assigned
+                                const isAssigned =
+                                  isOptionExpiry &&
+                                  executions.some(
+                                    (e) =>
+                                      e.account === exec.account &&
+                                      e.secType === 'STK' &&
+                                      e.symbol === exec.symbol &&
+                                      Math.abs(e.avgPrice - (exec.strike || 0)) < 0.01
+                                  )
                                 // Convert IB time (e.g. "20260218 18:14:12 Asia/Taipei") → US Eastern "05:14"
                                 const fmtTime = (() => {
                                   const m = exec.time.match(
@@ -2192,16 +2202,24 @@ export default function AccountOverview({
                                   <tr key={exec.execId}>
                                     <td className="pos-symbol">
                                       {desc}
-                                      {isAssignment && (
+                                      {isOptionExpiry && (
                                         <span
-                                          style={{
+                                          style={isAssigned ? {
+                                            color: '#fff',
+                                            backgroundColor: '#d35400',
+                                            fontWeight: 600,
+                                            marginLeft: 6,
+                                            fontSize: '1em',
+                                            padding: '4px 6px',
+                                            margin: '-4px 0 -4px 6px',
+                                          } : {
                                             color: '#1a6baa',
                                             fontWeight: 600,
                                             marginLeft: 6,
                                             fontSize: '0.92em'
                                           }}
                                         >
-                                          (到期)
+                                          {isAssigned ? '被行權' : '(到期)'}
                                         </span>
                                       )}
                                     </td>
@@ -2213,7 +2231,7 @@ export default function AccountOverview({
                                     >
                                       {exec.side === 'BOT' ? '買' : '賣'}
                                     </td>
-                                    <td>{exec.quantity}</td>
+                                    <td style={{ color: '#fff', fontWeight: 500, backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626' }}>{exec.quantity}</td>
                                     <td>{exec.avgPrice.toFixed(2)}</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
                                   </tr>
