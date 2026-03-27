@@ -565,6 +565,7 @@ body {
 .positions-table td {
   padding: 4px 6px;
   text-align: center;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .positions-table td.pos-symbol {

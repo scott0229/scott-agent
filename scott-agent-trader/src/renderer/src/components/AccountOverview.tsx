@@ -982,7 +982,7 @@ export default function AccountOverview({
                                         style={{
                                           padding: 0,
                                           height: '3px',
-                                          backgroundColor: '#f5f0eb'
+                                          backgroundColor: '#fff3c4'
                                         }}
                                       />
                                     </tr>
@@ -1529,7 +1529,7 @@ export default function AccountOverview({
                                                 style={{
                                                   padding: 0,
                                                   height: '3px',
-                                                  backgroundColor: '#f5f0eb'
+                                                  backgroundColor: '#fff3c4'
                                                 }}
                                               />
                                             </tr>
