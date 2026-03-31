@@ -833,9 +833,9 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
     api.on(EventName.execDetails, onExecDetails)
     api.on(EventName.execDetailsEnd, onExecDetailsEnd)
 
-    // Use US Eastern time for today's date
+    // Use US Eastern time for today's date (explicit timezone so IB doesn't misinterpret as UTC)
     const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const todayStr = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')}-00:00:00`
+    const todayStr = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')} 00:00:00 America/New_York`
     const filter: ExecutionFilter = { time: todayStr }
     api.reqExecutions(reqId, filter)
     console.log(`[IB] Requesting executions since ${todayStr}`)
