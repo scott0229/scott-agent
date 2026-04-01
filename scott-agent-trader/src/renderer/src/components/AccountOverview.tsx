@@ -1061,7 +1061,7 @@ export default function AccountOverview({
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="account-id">{g.name}</span>
+                        <span className="account-id">{gIdx + 1}. {g.name}</span>
                       </div>
                       {(() => {
                         const totalPnl = groupPositions.reduce((sum, pos) => {
