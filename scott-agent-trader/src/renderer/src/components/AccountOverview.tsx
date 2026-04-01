@@ -103,6 +103,7 @@ export default function AccountOverview({
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
   const [filterSymbol, setFilterSymbol] = useState('')
+  const [filterAccount, setFilterAccount] = useState('')
 
   const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
@@ -119,6 +120,8 @@ export default function AccountOverview({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
+  const [filterGroupIndex, setFilterGroupIndex] = useState('')
+  const [filterGroupSymbol, setFilterGroupSymbol] = useState('')
   const [showGroupNameInput, setShowGroupNameInput] = useState(false)
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
@@ -160,6 +163,7 @@ export default function AccountOverview({
   // Reset all filters and selections on reconnect
   useEffect(() => {
     setFilterSymbol('')
+    setFilterAccount('')
     setSelectMode(false)
     setSelectedPositions(new Set())
     setSelectedAccount(null)
@@ -174,6 +178,9 @@ export default function AccountOverview({
   // Reset filters when switching between 帳戶總覽 / 交易群組 tabs
   useEffect(() => {
     setFilterSymbol('')
+    setFilterAccount('')
+    setFilterGroupIndex('')
+    setFilterGroupSymbol('')
     setSelectMode(false)
     setSelectedPositions(new Set())
     setShowGroupNameInput(false)
@@ -218,8 +225,8 @@ export default function AccountOverview({
         return `${g.id}:${count}`
       })
       .join('|')
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}`
-  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions, checkModeGroups])
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}`
+  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions, checkModeGroups, filterGroupIndex, filterGroupSymbol])
 
   useEffect(() => {
     const grid = groupGridRef.current
@@ -491,6 +498,15 @@ export default function AccountOverview({
     )
   }, [positions])
 
+  const uniqueAccounts = useMemo(() => {
+    return accounts
+      .map((a) => ({
+        value: a.accountId,
+        label: (a.alias || a.accountId).replace(/\s*\(.*?\)/, '')
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [accounts])
+
   const getPositionsForAccount = (accountId: string): PositionData[] => {
     return positions
       .filter((p) => p.account === accountId)
@@ -590,6 +606,8 @@ export default function AccountOverview({
 
   // Filter accounts: when filters are active, only show accounts with matching positions
   const displayAccounts = sortedAccounts.filter((a) => {
+    // User filter: only show the selected account
+    if (filterAccount && a.accountId !== filterAccount) return false
     let acctPositions = positions.filter((p) => p.account === a.accountId)
     if (filterSymbol) acctPositions = acctPositions.filter((p) => p.symbol === filterSymbol)
     if (selectMode === 'STK') acctPositions = acctPositions.filter((p) => p.secType !== 'OPT')
@@ -603,8 +621,45 @@ export default function AccountOverview({
       <div>
         <div className="sort-bar">
           {groupViewMode ? (
-            <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-end' }}>
-              <button className="select-toggle-btn" onClick={() => setShowAddGroup(true)}>
+            <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '6px' }}>
+              <button
+                className="select-toggle-btn"
+                style={{ padding: '7px 9px' }}
+                title="重置篩選"
+                onClick={() => { setFilterGroupIndex(''); setFilterGroupSymbol('') }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473" />
+                  <path d="m16.5 3.5 5 5" />
+                  <path d="m21.5 3.5-5 5" />
+                </svg>
+              </button>
+              <CustomSelect
+                value={filterGroupIndex}
+                onChange={setFilterGroupIndex}
+                options={[
+                  { value: '', label: '全部編號' },
+                  ...symbolGroups.map((_, i) => ({ value: String(i), label: `${i + 1}` }))
+                ]}
+              />
+              <CustomSelect
+                value={filterGroupSymbol}
+                onChange={setFilterGroupSymbol}
+                options={[
+                  { value: '', label: '全部標的' },
+                  ...Array.from(new Set(symbolGroups.map((g) => g.symbol))).sort().map((s) => ({ value: s, label: s }))
+                ]}
+              />
+              <button className="select-toggle-btn" style={{ marginLeft: 'auto' }} onClick={() => setShowAddGroup(true)}>
                 ＋ 新增
               </button>
             </div>
@@ -617,6 +672,7 @@ export default function AccountOverview({
                   title="重置篩選"
                   onClick={() => {
                     setFilterSymbol('')
+                    setFilterAccount('')
                     setSelectMode(false)
                     setSelectedPositions(new Set())
                   }}
@@ -663,6 +719,17 @@ export default function AccountOverview({
                   options={[
                     { value: '', label: '全部標的' },
                     ...uniqueSymbols.map((s) => ({ value: s, label: s }))
+                  ]}
+                />
+                <CustomSelect
+                  value={filterAccount}
+                  onChange={(v) => {
+                    setFilterAccount(v)
+                    setSelectedPositions(new Set())
+                  }}
+                  options={[
+                    { value: '', label: '全部用戶' },
+                    ...uniqueAccounts
                   ]}
                 />
                 {selectMode && (
@@ -823,7 +890,7 @@ export default function AccountOverview({
           ) : (
             <div className="group-cards-grid" ref={groupGridRef}>
               {/* 未歸類標的 virtual group */}
-              {uncategorizedPositions.length > 0 && (() => {
+              {filterGroupIndex === '' && filterGroupSymbol === '' && uncategorizedPositions.length > 0 && (() => {
                 const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
                 const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
                 const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
@@ -999,6 +1066,8 @@ export default function AccountOverview({
                 )
               })()}
               {symbolGroups.map((g, gIdx) => {
+                if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
+                if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions
                   .filter((p) => groupPosKeys.has(posKey(p)))
