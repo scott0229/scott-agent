@@ -105,8 +105,17 @@ export default function AddGroupDialog({
         return true
       })
     }
-    return filtered
-  }, [positions, filterSymbol, filterRight])
+    return filtered.sort((a, b) => {
+      const aliasA = accounts.find((acc) => acc.accountId === a.account)?.alias || a.account
+      const aliasB = accounts.find((acc) => acc.accountId === b.account)?.alias || b.account
+      const cmp = aliasA.localeCompare(aliasB)
+      if (cmp !== 0) return cmp
+      // Stocks before options
+      if (a.secType === 'STK' && b.secType !== 'STK') return -1
+      if (a.secType !== 'STK' && b.secType === 'STK') return 1
+      return 0
+    })
+  }, [positions, filterSymbol, filterRight, accounts])
 
   const getAlias = useCallback(
     (accountId: string) => {
@@ -329,7 +338,7 @@ export default function AddGroupDialog({
                     readOnly
                     style={{ width: '14px', height: '14px', accentColor: '#2563eb' }}
                   />
-                  <span style={{ fontSize: '12px', color: '#888', minWidth: '80px' }}>
+                  <span style={{ fontSize: '13px', color: '#333', minWidth: '80px' }}>
                     {getAlias(pos.account)}
                   </span>
                   <span style={{ fontSize: '13px', fontWeight: 600, flex: 1 }}>
