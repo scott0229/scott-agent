@@ -549,7 +549,11 @@ export default function StrategiesPage() {
                             }
                         }
 
-                        return displayList.map((strategy) => {
+                        // Split into active and inactive
+                        const activeList = displayList.filter(s => s.hasOpenPositions && s.status !== '已結案');
+                        const inactiveList = displayList.filter(s => !s.hasOpenPositions || s.status === '已結案');
+
+                        const renderCard = (strategy: typeof displayList[0]) => {
                             const isStacked = groupByName && (groupCounts.get(strategy.name) || 0) > 1 && !expandedGroups.has(strategy.name);
                             return (
                                 <div key={strategy.id} className={`relative h-full max-h-[450px] w-full isolate ${groupByName ? 'mt-4' : ''}`}>
@@ -884,7 +888,23 @@ export default function StrategiesPage() {
                                 </Card>
                                 </div>
                             );
-                        });
+                        };
+
+                        return (
+                            <>
+                                {activeList.map(renderCard)}
+                                {inactiveList.length > 0 && (
+                                    <>
+                                        <div className="col-span-full flex items-center gap-3 my-2">
+                                            <div className="flex-1 border-t border-gray-300" />
+                                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">不活躍策略 ({inactiveList.length})</span>
+                                            <div className="flex-1 border-t border-gray-300" />
+                                        </div>
+                                        {inactiveList.map(renderCard)}
+                                    </>
+                                )}
+                            </>
+                        );
                     })()}
                 </div>
             )
