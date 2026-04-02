@@ -559,7 +559,7 @@ export default function StrategiesPage() {
                                             <div className="absolute top-[-16px] left-[16px] right-[16px] h-full bg-[#f1f3f5] border border-gray-200 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] -z-20" />
                                         </>
                                     )}
-                                    <Card className={`relative z-10 hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full overflow-hidden ${!strategy.hasOpenPositions ? 'bg-gray-100 opacity-75' : 'bg-white'} ${isStacked ? 'shadow-md border-gray-300' : ''}`}>
+                                    <Card className={`relative z-10 hover:shadow-lg transition-shadow p-0 gap-2 flex flex-col h-full overflow-hidden bg-white ${isStacked ? 'shadow-md border-gray-300' : ''}`}>
                                     <CardHeader className="px-4 pt-2 pb-0 shrink-0">
                                         {(() => {
                                             // Calculate total profit from stocks
