@@ -309,7 +309,7 @@ export default function StrategiesPage() {
     };
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
+        <div className="container mx-auto p-6 pb-16 space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
@@ -895,7 +895,7 @@ export default function StrategiesPage() {
                                 {activeList.map(renderCard)}
                                 {inactiveList.length > 0 && (
                                     <>
-                                        <div className="col-span-full flex items-center gap-3 my-2">
+                                        <div className="col-span-full flex items-center gap-3 my-6">
                                             <div className="flex-1 border-t border-gray-300" />
                                             <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">不活躍策略 ({inactiveList.length})</span>
                                             <div className="flex-1 border-t border-gray-300" />
