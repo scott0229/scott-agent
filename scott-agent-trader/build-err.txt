@@ -1,71 +1,52 @@
-  ??electron-builder  version=26.7.0 os=10.0.26200
-  ??loaded configuration  file=C:\Users\scott\my project\scott-agent\scott-agent-trader\electron-builder.yml
-  ??effective config  config=directories:
-  output: dist
-  buildResources: build
-appId: com.electron.app
-productName: scott-agent-trader
-files:
-  - filter:
-      - '!**/.vscode/*'
-      - '!src/*'
-      - '!electron.vite.config.{js,ts,mjs,cjs}'
-      - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-      - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-      - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
-asarUnpack:
-  - resources/**
-win:
-  executableName: scott-agent-trader
-  forceCodeSigning: false
-  signDll: false
-nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
-mac:
-  entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
-linux:
-  target:
-    - AppImage
-    - snap
-    - deb
-  maintainer: electronjs.org
-  category: Utility
-appImage:
-  artifactName: ${name}-${version}.${ext}
-npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
 
-  漼?Invalid configuration object. electron-builder 26.7.0 has been initialized using a configuration object that does not match the API schema.
- - configuration.win has an unknown property 'signDll'. These properties are valid:
-   object { appId?, artifactName?, asar?, asarUnpack?, azureSignOptions?, compression?, cscKeyPassword?, cscLink?, defaultArch?, detectUpdateChannel?, disableDefaultIgnoredFiles?, electronLanguages?, electronUpdaterCompatibility?, executableName?, extraFiles?, extraResources?, fileAssociations?, files?, forceCodeSigning?, generateUpdatesFilesForAllChannels?, icon?, legalTrademarks?, protocols?, publish?, releaseInfo?, requestedExecutionLevel?, signAndEditExecutable?, signExts?, signtoolOptions?, target?, verifyUpdateCodeSignature? }
-     How to fix:
-     1. Open https://www.electron.build/win
-     2. Search the option name on the page (or type in into Search to find across the docs).
-       * Not found? The option was deprecated or not exists (check spelling).
-       * Found? Check that the option in the appropriate place. e.g. "title" only in the "dmg", not in the root.
-  failedTask=build stackTrace=ValidationError: Invalid configuration object. electron-builder 26.7.0 has been initialized using a configuration object that does not match the API schema.
- - configuration.win has an unknown property 'signDll'. These properties are valid:
-   object { appId?, artifactName?, asar?, asarUnpack?, azureSignOptions?, compression?, cscKeyPassword?, cscLink?, defaultArch?, detectUpdateChannel?, disableDefaultIgnoredFiles?, electronLanguages?, electronUpdaterCompatibility?, executableName?, extraFiles?, extraResources?, fileAssociations?, files?, forceCodeSigning?, generateUpdatesFilesForAllChannels?, icon?, legalTrademarks?, protocols?, publish?, releaseInfo?, requestedExecutionLevel?, signAndEditExecutable?, signExts?, signtoolOptions?, target?, verifyUpdateCodeSignature? }
-     How to fix:
-     1. Open https://www.electron.build/win
-     2. Search the option name on the page (or type in into Search to find across the docs).
-       * Not found? The option was deprecated or not exists (check spelling).
-       * Found? Check that the option in the appropriate place. e.g. "title" only in the "dmg", not in the root.
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                at validate (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\@develar\schema-utils\dist\validate.js:86:11)
-    at validateConfiguration (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\util\config\config.ts:239:3)
-    at Packager.validateConfig (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\packager.ts:398:5)
-    at Packager.build (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\app-builder-lib\src\packager.ts:406:5)
-    at executeFinally (C:\Users\scott\my project\scott-agent\scott-agent-trader\node_modules\builder-util\src\promise.ts:12:14)
+> scott-agent-trader@1.1.50 build:win
+> npm run build && electron-builder --win
+
+
+> scott-agent-trader@1.1.50 build
+> npm run typecheck && electron-vite build
+
+
+> scott-agent-trader@1.1.50 typecheck
+> npm run typecheck:node && npm run typecheck:web
+
+
+> scott-agent-trader@1.1.50 typecheck:node
+> tsc --noEmit -p tsconfig.node.json --composite false
+
+
+> scott-agent-trader@1.1.50 typecheck:web
+> tsc --noEmit -p tsconfig.web.json --composite false
+
+[36mvite v7.3.1 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+[32m✓[39m 11 modules transformed.
+rendering chunks...
+[2mout/main/[22m[36mindex.js  [39m[1m[2m124.16 kB[22m[1m[22m
+[32m✓ built in 509ms[39m
+[36mvite v7.3.1 [32mbuilding ssr environment for production...[36m[39m
+transforming...
+[32m✓[39m 1 modules transformed.
+rendering chunks...
+[2mout/preload/[22m[36mindex.js  [39m[1m[2m5.34 kB[22m[1m[22m
+[32m✓ built in 27ms[39m
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 48 modules transformed.
+rendering chunks...
+[2m../../out/renderer/[22m[32mindex.html                 [39m[1m[2m  0.55 kB[22m[1m[22m
+[2m../../out/renderer/[22m[35massets/index-CD0kNDVQ.css  [39m[1m[2m 54.28 kB[22m[1m[22m
+[2m../../out/renderer/[22m[36massets/index-D8HBwIAc.js   [39m[1m[33m955.77 kB[39m[22m
+[32m✓ built in 1.29s[39m
+  • electron-builder  version=26.7.0 os=10.0.26200
+  • loaded configuration  file=C:\Users\scott\scott-agent\scott-agent-trader\electron-builder.yml
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=39.6.0 appOutDir=dist\win-unpacked
+  • searching for node modules  pm=npm searchDir=C:\Users\scott\scott-agent\scott-agent-trader
+(node:22820) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  • updating asar integrity executable resource  executablePath=dist\win-unpacked\scott-agent-trader.exe
+  • building        target=nsis file=dist\scott-agent-trader-1.1.50-setup.exe archs=x64 oneClick=true perMachine=false
+  • signing with signtool.exe  path=dist\scott-agent-trader-1.1.50-setup.__uninstaller.exe
+  • signing with signtool.exe  path=dist\scott-agent-trader-1.1.50-setup.exe
+  • building block map  blockMapFile=dist\scott-agent-trader-1.1.50-setup.exe.blockmap

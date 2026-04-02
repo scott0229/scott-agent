@@ -654,7 +654,7 @@ export default function StrategiesPage() {
 
                                                         return (
                                                             <div className="text-sm mt-0.5">
-                                                                {openStocks[0].symbol} 成本 {weightedCost.toFixed(2)} → 調整後成本 <span className="font-semibold text-foreground">{adjustedCost.toFixed(2)}</span>
+                                                                {openStocks[0].symbol} 成本 <span className="bg-yellow-100 px-1 rounded">{weightedCost.toFixed(2)}</span> → 扣除權利金後成本 <span className="font-semibold text-foreground bg-yellow-100 px-1 rounded">{adjustedCost.toFixed(2)}</span>
                                                             </div>
                                                         );
                                                     })()}
