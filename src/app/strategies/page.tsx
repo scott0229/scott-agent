@@ -607,7 +607,7 @@ export default function StrategiesPage() {
                                                             <div className="flex items-center gap-1.5 flex-wrap">
                                                                 {groupByName && (groupCounts.get(strategy.name) || 0) > 1 && (
                                                                     <span
-                                                                        className="relative top-[1px] inline-flex items-center justify-center bg-amber-200 text-amber-950 text-xs font-bold rounded-full min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-amber-300 transition-colors"
+                                                                        className="relative top-[1px] inline-flex items-center justify-center bg-amber-200 text-amber-950 text-xs font-bold rounded min-w-[22px] h-[22px] px-1.5 cursor-pointer hover:bg-amber-300 transition-colors"
                                                                         title="只顯示此策略群組"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
