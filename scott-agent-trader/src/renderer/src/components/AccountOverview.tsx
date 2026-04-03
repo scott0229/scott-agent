@@ -453,6 +453,8 @@ export default function AccountOverview({
     } else {
       setSelectedPositions(new Set())
       setSelectMode(mode)
+      // Reset by-symbol view since select mode only works in category view
+      setAcctViewBySymbol(false)
     }
   }
 
@@ -1564,7 +1566,7 @@ export default function AccountOverview({
                                           />
                                         </th>
                                       )}
-                                      <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
+                                      <th style={{ width: '14%', textAlign: 'left' }}></th>
                                       <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '10%' }}>持倉</th>
                                       <th style={{ width: '11%' }}>成本</th>
@@ -1605,7 +1607,7 @@ export default function AccountOverview({
                                           />
                                         </th>
                                       )}
-                                      <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                      <th style={{ width: '12%', textAlign: 'left' }}></th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>天數</th>
                                       <th style={{ width: '8%' }}>持倉</th>
@@ -1804,7 +1806,7 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left' }}>股票</th>
+                            <th style={{ textAlign: 'left' }}></th>
                             <th>持倉</th>
                             <th>成本</th>
                             <th>調整後</th>
@@ -1888,9 +1890,9 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
-                            <th style={{ width: '8%' }}>到期</th>
+                            <th style={{ width: '25%', textAlign: 'left' }}></th>
                             <th style={{ width: '8%' }}>持倉</th>
+                            <th style={{ width: '8%' }}>到期</th>
                             <th style={{ width: '11%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '11%' }}>盈虧</th>
@@ -1926,6 +1928,9 @@ export default function AccountOverview({
                                   )}
                                   {formatPositionSymbol(pos)}
                                 </td>
+                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
+                                  {pos.quantity.toLocaleString()}
+                                </td>
                                 {(() => {
                                   const days = pos.expiry
                                     ? Math.max(
@@ -1958,9 +1963,6 @@ export default function AccountOverview({
                                     </td>
                                   )
                                 })()}
-                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
-                                  {pos.quantity.toLocaleString()}
-                                </td>
                                 <td>{(pos.avgCost / 100).toFixed(2)}</td>
                                 {(() => {
                                   const key = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
