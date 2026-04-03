@@ -1013,7 +1013,7 @@ export default function AccountOverview({
                           <thead>
                             <tr>
                               <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
-                              <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
+                              <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                               <th style={{ width: '10%' }}>持倉</th>
                               <th style={{ width: '11%' }}>初始成本</th>
                               <th style={{ width: '11%' }}>調整後</th>
@@ -1548,7 +1548,7 @@ export default function AccountOverview({
                                         </th>
                                       )}
                                       <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
-                                      <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
+                                      <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '10%' }}>持倉</th>
                                       <th style={{ width: '11%' }}>初始成本</th>
                                       <th style={{ width: '11%' }}>調整後</th>
