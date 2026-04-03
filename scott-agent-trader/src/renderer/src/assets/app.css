@@ -798,8 +798,8 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .custom-select-option {
-  padding: 5px 10px;
-  font-size: 12px;
+  padding: 7px 12px;
+  font-size: 13px;
   cursor: pointer;
   color: var(--text-primary);
   transition: background 0.15s;

@@ -37,6 +37,7 @@ function App(): React.JSX.Element {
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
   const [operationModes, setOperationModes] = useState<Record<string, string>>({})
+  const [initialCosts, setInitialCosts] = useState<Record<string, number>>({})
   const {
     marginLimit,
     setMarginLimit,
@@ -127,6 +128,15 @@ function App(): React.JSX.Element {
           .then((res) => {
             if (res.returnRates && Object.keys(res.returnRates).length > 0) {
               setReturnRates(res.returnRates)
+            }
+          })
+          .catch(() => { })
+        // Auto-fetch initial costs (初始成本) from D1
+        window.ibApi
+          .getInitialCosts(accountIds, d1Target)
+          .then((res) => {
+            if (res.initialCosts && Object.keys(res.initialCosts).length > 0) {
+              setInitialCosts(res.initialCosts)
             }
           })
           .catch(() => { })
@@ -263,6 +273,7 @@ function App(): React.JSX.Element {
               accountTypes={accountTypes}
               returnRates={returnRates}
               operationModes={operationModes}
+              initialCosts={initialCosts}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

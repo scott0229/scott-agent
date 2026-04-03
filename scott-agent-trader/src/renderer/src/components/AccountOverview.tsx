@@ -68,6 +68,7 @@ interface AccountOverviewProps {
   returnRates?: Record<string, number | null>
   operationModes?: Record<string, string>
   onSetAccountType?: (accountId: string, type: string) => void
+  initialCosts?: Record<string, number>
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
   onAddSymbolGroup?: (group: SymbolGroup) => void
@@ -99,7 +100,8 @@ export default function AccountOverview({
   onDeleteSymbolGroup,
   onUpdateSymbolGroup,
   onReorderSymbolGroups,
-  groupViewMode = false
+  groupViewMode = false,
+  initialCosts = {}
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
   const [filterSymbol, setFilterSymbol] = useState('')
@@ -958,6 +960,11 @@ export default function AccountOverview({
                       <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
                         {pos.quantity.toLocaleString()}
                       </td>
+                      {!showDays && (() => {
+                        const icKey = `${pos.account}|${pos.symbol}`
+                        const ic = initialCosts[icKey]
+                        return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                      })()}
                       <td>{displayAvg.toFixed(2)}</td>
                       <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                       <td
@@ -1008,7 +1015,8 @@ export default function AccountOverview({
                               <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                               <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
                               <th style={{ width: '10%' }}>持倉</th>
-                              <th style={{ width: '13%' }}>均價</th>
+                              <th style={{ width: '11%' }}>初始成本</th>
+                              <th style={{ width: '11%' }}>調整後</th>
                               <th style={{ width: '13%' }}>現價</th>
                               <th style={{ width: '13%' }}>盈虧</th>
                             </tr>
@@ -1028,7 +1036,7 @@ export default function AccountOverview({
                               <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                               <th style={{ width: '8%' }}>天數</th>
                               <th style={{ width: '8%' }}>持倉</th>
-                              <th style={{ width: '11%' }}>均價</th>
+                              <th style={{ width: '11%' }}>調整後</th>
                               <th style={{ width: '11%' }}>現價</th>
                               <th style={{ width: '11%' }}>盈虧</th>
                             </tr>
@@ -1492,6 +1500,11 @@ export default function AccountOverview({
                               <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
                                 {pos.quantity.toLocaleString()}
                               </td>
+                              {!showDays && (() => {
+                                const icKey = `${pos.account}|${pos.symbol}`
+                                const ic = initialCosts[icKey]
+                                return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                              })()}
                               <td>{displayAvg.toFixed(2)}</td>
                               <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                               <td
@@ -1537,7 +1550,8 @@ export default function AccountOverview({
                                       <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                                       <th style={{ width: '28%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '10%' }}>持倉</th>
-                                      <th style={{ width: '13%' }}>均價</th>
+                                      <th style={{ width: '11%' }}>初始成本</th>
+                                      <th style={{ width: '11%' }}>調整後</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '13%' }}>盈虧</th>
                                     </tr>
@@ -1578,7 +1592,7 @@ export default function AccountOverview({
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>天數</th>
                                       <th style={{ width: '8%' }}>持倉</th>
-                                      <th style={{ width: '11%' }}>均價</th>
+                                      <th style={{ width: '11%' }}>調整後</th>
                                       <th style={{ width: '11%' }}>現價</th>
                                       <th style={{ width: '11%' }}>盈虧</th>
                                     </tr>
@@ -1774,7 +1788,8 @@ export default function AccountOverview({
                           <tr>
                             <th style={{ textAlign: 'left' }}>股票</th>
                             <th>持倉</th>
-                            <th>均價</th>
+                            <th>初始成本</th>
+                            <th>調整後</th>
                             <th>現價</th>
                             <th>盈虧</th>
                           </tr>
@@ -1812,6 +1827,11 @@ export default function AccountOverview({
                                 <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
                                   {pos.quantity.toLocaleString()}
                                 </td>
+                                {(() => {
+                                  const icKey = `${pos.account}|${pos.symbol}`
+                                  const ic = initialCosts[icKey]
+                                  return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                                })()}
                                 <td>{pos.avgCost.toFixed(2)}</td>
                                 <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
                                 {(() => {
@@ -1850,7 +1870,7 @@ export default function AccountOverview({
                             <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
                             <th style={{ width: '8%' }}>天數</th>
                             <th style={{ width: '8%' }}>持倉</th>
-                            <th style={{ width: '11%' }}>均價</th>
+                            <th style={{ width: '11%' }}>調整後</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '11%' }}>盈虧</th>
                           </tr>

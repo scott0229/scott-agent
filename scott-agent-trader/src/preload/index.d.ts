@@ -231,6 +231,12 @@ interface IBApi {
     d1Target?: string
   ) => Promise<{ accountTypes: Record<string, string>; operationModes: Record<string, string> }>
 
+  // Initial Costs (from STOCK_TRADES open_price)
+  getInitialCosts: (
+    accountIds: string[],
+    d1Target?: string
+  ) => Promise<{ initialCosts: Record<string, number> }>
+
   // Get distinct underlying symbols with missing underlying_price
   getMissingPriceSymbols: (
     target?: 'staging' | 'production'
