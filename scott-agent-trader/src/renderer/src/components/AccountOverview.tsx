@@ -161,6 +161,8 @@ export default function AccountOverview({
     y: number
     order: OpenOrderData
   } | null>(null)
+  // Toggle: false = separate STK/OPT sections, true = grouped by underlying symbol
+  const [acctViewBySymbol, setAcctViewBySymbol] = useState(false)
 
   // Reset all filters and selections on reconnect
   useEffect(() => {
@@ -868,6 +870,13 @@ export default function AccountOverview({
                   </button>
                   <button className="select-toggle-btn" onClick={() => setShowOptionOrder(true)}>
                     期權下單
+                  </button>
+                  <button
+                    className={`select-toggle-btn${acctViewBySymbol ? ' active' : ''}`}
+                    onClick={() => setAcctViewBySymbol((v) => !v)}
+                    title={acctViewBySymbol ? '切換為分類顯示' : '切換為標的分組'}
+                  >
+                    顯示切換
                   </button>
                 </>
               )}
@@ -1670,6 +1679,7 @@ export default function AccountOverview({
                   >
                     💡
                   </button>
+
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {operationModes?.[account.accountId] && (
                       <span className="account-type-label">
@@ -1786,8 +1796,8 @@ export default function AccountOverview({
                   </div>
                 )}
 
-                {/* Stock Positions */}
-                {selectMode !== 'OPT' &&
+                {/* Stock Positions (category view) */}
+                {!acctViewBySymbol && selectMode !== 'OPT' &&
                   getPositionsForAccount(account.accountId).filter((p) => p.secType !== 'OPT')
                     .length > 0 && (
                     <div className="positions-section">
@@ -1870,8 +1880,8 @@ export default function AccountOverview({
                     </div>
                   )}
 
-                {/* Option Positions */}
-                {selectMode !== 'STK' &&
+                {/* Option Positions (category view) */}
+                {!acctViewBySymbol && selectMode !== 'STK' &&
                   getPositionsForAccount(account.accountId).filter((p) => p.secType === 'OPT')
                     .length > 0 && (
                     <div className="positions-section">
@@ -1879,7 +1889,7 @@ export default function AccountOverview({
                         <thead>
                           <tr>
                             <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
-                            <th style={{ width: '8%' }}>天數</th>
+                            <th style={{ width: '8%' }}>到期</th>
                             <th style={{ width: '8%' }}>持倉</th>
                             <th style={{ width: '11%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
@@ -1986,6 +1996,156 @@ export default function AccountOverview({
                       </table>
                     </div>
                   )}
+
+                {/* By-underlying view */}
+                {acctViewBySymbol && !selectMode && (() => {
+                  const acctPositions = getPositionsForAccount(account.accountId)
+                  // Group by underlying symbol
+                  const symbolMap = new Map<string, { stk: PositionData[], opt: PositionData[] }>()
+                  for (const p of acctPositions) {
+                    if (!symbolMap.has(p.symbol)) symbolMap.set(p.symbol, { stk: [], opt: [] })
+                    const entry = symbolMap.get(p.symbol)!
+                    if (p.secType === 'OPT') entry.opt.push(p)
+                    else entry.stk.push(p)
+                  }
+                  const symbols = Array.from(symbolMap.keys()).sort((a, b) => {
+                    const getPriority = (sym: string) => {
+                      if (sym === 'QQQ') return 0
+                      if (sym === 'TQQQ') return 1
+                      if (sym === 'SQQQ') return 2
+                      const entry = symbolMap.get(sym)!
+                      const hasStk = entry.stk.length > 0
+                      const hasOpt = entry.opt.length > 0
+                      if (hasStk && hasOpt) return 10
+                      if (!hasStk && hasOpt) return 20
+                      if (hasStk && !hasOpt) return 30
+                      return 40
+                    }
+                    const priorityA = getPriority(a)
+                    const priorityB = getPriority(b)
+                    if (priorityA !== priorityB) return priorityA - priorityB
+                    return a.localeCompare(b)
+                  })
+                  if (symbols.length === 0) return null
+                  return symbols.map((sym) => {
+                    const { stk, opt } = symbolMap.get(sym)!
+                    // Compute total PnL for this underlying
+                    let totalPnl = 0
+                    for (const p of stk) {
+                      const icCost = initialCosts[`${p.account}|${p.symbol}`]
+                      const cb = icCost != null ? icCost : p.avgCost
+                      if (quotes[p.symbol]) totalPnl += (quotes[p.symbol] - cb) * p.quantity
+                    }
+                    for (const p of opt) {
+                      const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
+                      const lp = optionQuotes[key]
+                      if (lp != null && lp > 0) totalPnl += (lp - p.avgCost / 100) * p.quantity * 100
+                    }
+                    return (
+                      <div key={sym} className="positions-section" style={{ marginBottom: '6px' }}>
+                        <table className="positions-table" style={{ tableLayout: 'fixed' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '30%', textAlign: 'left' }}></th>
+                              <th style={{ width: '12%' }}>持倉</th>
+                              <th style={{ width: '12%' }}>到期</th>
+                              <th style={{ width: '15%' }}>均價</th>
+                              <th style={{ width: '15%' }}>現價</th>
+                              <th style={{ width: '16%' }}>盈虧</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stk.map((pos, idx) => {
+                              const icKey = `${pos.account}|${pos.symbol}`
+                              const ic = initialCosts[icKey]
+                              const costBasis = ic != null ? ic : pos.avgCost
+                              const stkPnl = quotes[pos.symbol]
+                                ? (quotes[pos.symbol] - costBasis) * pos.quantity
+                                : null
+                              return (
+                                <tr key={`stk-${idx}`}>
+                                  <td className="pos-symbol" style={{ width: '30%' }}>
+                                    {formatPositionSymbol(pos)}
+                                  </td>
+                                  <td style={{ width: '12%', color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
+                                    {pos.quantity.toLocaleString()}
+                                  </td>
+                                  <td style={{ width: '12%' }}> </td>
+                                  <td style={{ width: '15%' }}>{costBasis.toFixed(2)}</td>
+                                  <td style={{ width: '15%' }}>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
+                                  <td style={{
+                                    width: '16%',
+                                    ...(stkPnl != null ? {
+                                      color: '#fff',
+                                      fontWeight: 500,
+                                      backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                    } : {})
+                                  }}>
+                                    {stkPnl != null
+                                      ? stkPnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                      : '-'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                            {opt.map((pos, idx) => {
+                              const days = pos.expiry
+                                ? Math.max(0, Math.ceil(
+                                  (new Date(
+                                    pos.expiry.substring(0, 4) + '-' +
+                                    pos.expiry.substring(4, 6) + '-' +
+                                    pos.expiry.substring(6, 8) + 'T00:00:00'
+                                  ).getTime() - new Date().setHours(0, 0, 0, 0)) /
+                                  (1000 * 60 * 60 * 24)
+                                ))
+                                : null
+                              const oKey = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
+                              const lastPrice = optionQuotes[oKey]
+                              const avgUnit = pos.avgCost / 100
+                              const optPnl = lastPrice != null && lastPrice > 0
+                                ? (lastPrice - avgUnit) * pos.quantity * 100
+                                : null
+                              return (
+                                <tr key={`opt-${idx}`}>
+                                  <td className="pos-symbol" style={{ width: '30%' }}>
+                                    {formatPositionSymbol(pos)}
+                                  </td>
+                                  <td style={{ width: '12%', color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
+                                    {pos.quantity.toLocaleString()}
+                                  </td>
+                                  <td style={{
+                                    width: '12%',
+                                    ...(days === 0
+                                      ? { backgroundColor: '#fff0f0' }
+                                      : days === 1
+                                        ? { backgroundColor: '#e8f4fd' }
+                                        : {})
+                                  }}>
+                                    {days !== null ? days : '-'}
+                                  </td>
+                                  <td style={{ width: '15%' }}>{avgUnit.toFixed(2)}</td>
+                                  <td style={{ width: '15%' }}>{lastPrice != null && lastPrice > 0 ? lastPrice.toFixed(2) : '-'}</td>
+                                  <td style={{
+                                    width: '16%',
+                                    ...(optPnl != null ? {
+                                      color: '#fff',
+                                      fontWeight: 500,
+                                      backgroundColor: optPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                    } : {})
+                                  }}>
+                                    {optPnl != null
+                                      ? Math.round(optPnl).toLocaleString()
+                                      : '-'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  })
+                })()}
 
                 {/* Open Orders */}
                 {!selectMode &&
