@@ -76,11 +76,11 @@ export function SetInitialCostDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>設定初始成本</DialogTitle>
+                    <DialogTitle>設定成本</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="initial-cost">初始成本</Label>
+                        <Label htmlFor="initial-cost">成本</Label>
                         <Input
                             id="initial-cost"
                             type="number"

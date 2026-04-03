@@ -322,7 +322,7 @@ export default function NetEquityPage() {
                                                 </td>
                                             </tr>
                                             <tr className="border-t hover:bg-secondary/20 bg-white">
-                                                <td className="h-7 py-1 px-2">初始成本</td>
+                                                <td className="h-7 py-1 px-2">成本</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatMoney((user.initial_cost || 0) + (user.total_deposit || 0))}
                                                 </td>

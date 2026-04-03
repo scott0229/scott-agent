@@ -899,9 +899,11 @@ export default function AccountOverview({
                   const isOpt = pos.secType === 'OPT'
                   const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
                   const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                  const ic = initialCosts[`${pos.account}|${pos.symbol}`]
+                  const costBasis = !isOpt && ic != null ? ic : pos.avgCost
                   const pnl = isOpt
-                    ? (lp - pos.avgCost / 100) * pos.quantity * 100
-                    : (lp - pos.avgCost) * pos.quantity
+                    ? (lp - costBasis / 100) * pos.quantity * 100
+                    : (lp - costBasis) * pos.quantity
                   return sum + pnl
                 }, 0)
                 const renderUcRow = (
@@ -915,9 +917,11 @@ export default function AccountOverview({
                     ? (optionQuotes[key] ?? 0)
                     : (quotes[pos.symbol] ?? 0)
                   const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                  const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
+                  const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
                   const pnl = isOption
-                    ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
-                    : (lastPrice - pos.avgCost) * pos.quantity
+                    ? (lastPrice - costBasis / 100) * pos.quantity * 100
+                    : (lastPrice - costBasis) * pos.quantity
                   const days = pos.expiry
                     ? Math.max(
                       0,
@@ -1015,7 +1019,7 @@ export default function AccountOverview({
                               <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                               <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                               <th style={{ width: '10%' }}>持倉</th>
-                              <th style={{ width: '11%' }}>初始成本</th>
+                              <th style={{ width: '11%' }}>成本</th>
                               <th style={{ width: '11%' }}>調整後</th>
                               <th style={{ width: '13%' }}>現價</th>
                               <th style={{ width: '13%' }}>盈虧</th>
@@ -1036,7 +1040,7 @@ export default function AccountOverview({
                               <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                               <th style={{ width: '8%' }}>天數</th>
                               <th style={{ width: '8%' }}>持倉</th>
-                              <th style={{ width: '11%' }}>調整後</th>
+                              <th style={{ width: '11%' }}>均價</th>
                               <th style={{ width: '11%' }}>現價</th>
                               <th style={{ width: '11%' }}>盈虧</th>
                             </tr>
@@ -1146,9 +1150,11 @@ export default function AccountOverview({
                           const isOpt = pos.secType === 'OPT'
                           const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
                           const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                          const ic = initialCosts[`${pos.account}|${pos.symbol}`]
+                          const costBasis = !isOpt && ic != null ? ic : pos.avgCost
                           const pnl = isOpt
-                            ? (lp - pos.avgCost / 100) * pos.quantity * 100
-                            : (lp - pos.avgCost) * pos.quantity
+                            ? (lp - costBasis / 100) * pos.quantity * 100
+                            : (lp - costBasis) * pos.quantity
                           return sum + pnl
                         }, 0)
                         return (
@@ -1442,9 +1448,11 @@ export default function AccountOverview({
                             ? (optionQuotes[key] ?? 0)
                             : (quotes[pos.symbol] ?? 0)
                           const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                          const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
+                          const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
                           const pnl = isOption
-                            ? (lastPrice - pos.avgCost / 100) * pos.quantity * 100
-                            : (lastPrice - pos.avgCost) * pos.quantity
+                            ? (lastPrice - costBasis / 100) * pos.quantity * 100
+                            : (lastPrice - costBasis) * pos.quantity
                           const days = pos.expiry
                             ? Math.max(
                               0,
@@ -1550,7 +1558,7 @@ export default function AccountOverview({
                                       <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
                                       <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '10%' }}>持倉</th>
-                                      <th style={{ width: '11%' }}>初始成本</th>
+                                      <th style={{ width: '11%' }}>成本</th>
                                       <th style={{ width: '11%' }}>調整後</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '13%' }}>盈虧</th>
@@ -1592,7 +1600,7 @@ export default function AccountOverview({
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>天數</th>
                                       <th style={{ width: '8%' }}>持倉</th>
-                                      <th style={{ width: '11%' }}>調整後</th>
+                                      <th style={{ width: '11%' }}>均價</th>
                                       <th style={{ width: '11%' }}>現價</th>
                                       <th style={{ width: '11%' }}>盈虧</th>
                                     </tr>
@@ -1788,7 +1796,7 @@ export default function AccountOverview({
                           <tr>
                             <th style={{ textAlign: 'left' }}>股票</th>
                             <th>持倉</th>
-                            <th>初始成本</th>
+                            <th>成本</th>
                             <th>調整後</th>
                             <th>現價</th>
                             <th>盈虧</th>
@@ -1835,8 +1843,11 @@ export default function AccountOverview({
                                 <td>{pos.avgCost.toFixed(2)}</td>
                                 <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
                                 {(() => {
+                                  const icKey = `${pos.account}|${pos.symbol}`
+                                  const icCost = initialCosts[icKey]
+                                  const costBasis = icCost != null ? icCost : pos.avgCost
                                   const stkPnl = quotes[pos.symbol]
-                                    ? (quotes[pos.symbol] - pos.avgCost) * pos.quantity
+                                    ? (quotes[pos.symbol] - costBasis) * pos.quantity
                                     : null
                                   return (
                                     <td
@@ -1870,7 +1881,7 @@ export default function AccountOverview({
                             <th style={{ width: '25%', textAlign: 'left' }}>期權</th>
                             <th style={{ width: '8%' }}>天數</th>
                             <th style={{ width: '8%' }}>持倉</th>
-                            <th style={{ width: '11%' }}>調整後</th>
+                            <th style={{ width: '11%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '11%' }}>盈虧</th>
                           </tr>

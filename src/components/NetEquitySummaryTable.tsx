@@ -328,7 +328,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-slate-50/50 z-10 border-r">
                                     <RowToggleIcon rowKey="initialCost" visible={visibleRows.initialCost} />
-                                    初始成本
+                                    成本
                                 </td>
                                 {users.filter(isColumnVisible).map(user => (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
