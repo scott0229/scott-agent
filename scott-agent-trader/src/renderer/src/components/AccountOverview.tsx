@@ -1504,6 +1504,11 @@ export default function AccountOverview({
                               </td>
                               <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
                               {showDays && (
+                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
+                                  {pos.quantity.toLocaleString()}
+                                </td>
+                              )}
+                              {showDays && (
                                 <td
                                   style={
                                     days === 0
@@ -1516,15 +1521,17 @@ export default function AccountOverview({
                                   {days !== null ? days : '-'}
                                 </td>
                               )}
-                              <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
-                                {pos.quantity.toLocaleString()}
-                              </td>
+                              {!showDays && (
+                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
+                                  {pos.quantity.toLocaleString()}
+                                </td>
+                              )}
                               {!showDays && (() => {
                                 const icKey = `${pos.account}|${pos.symbol}`
                                 const ic = initialCosts[icKey]
-                                return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                                return <td>{ic != null ? ic.toFixed(2) : displayAvg.toFixed(2)}</td>
                               })()}
-                              <td>{displayAvg.toFixed(2)}</td>
+                              {showDays && <td>{displayAvg.toFixed(2)}</td>}
                               <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                               <td
                                 style={{
@@ -1570,7 +1577,6 @@ export default function AccountOverview({
                                       <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '10%' }}>持倉</th>
                                       <th style={{ width: '11%' }}>成本</th>
-                                      <th style={{ width: '11%' }}>調整後</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '13%' }}>盈虧</th>
                                     </tr>
@@ -1609,8 +1615,8 @@ export default function AccountOverview({
                                       )}
                                       <th style={{ width: '12%', textAlign: 'left' }}></th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                                      <th style={{ width: '8%' }}>天數</th>
                                       <th style={{ width: '8%' }}>持倉</th>
+                                      <th style={{ width: '8%' }}>到期</th>
                                       <th style={{ width: '11%' }}>均價</th>
                                       <th style={{ width: '11%' }}>現價</th>
                                       <th style={{ width: '11%' }}>盈虧</th>
