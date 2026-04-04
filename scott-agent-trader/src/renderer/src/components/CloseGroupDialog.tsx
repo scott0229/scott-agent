@@ -660,7 +660,7 @@ export default function CloseGroupDialog({
                             {q.ask.toFixed(2)}
                           </span>
                           <span className="quote-separator">|</span>
-                          <span className="roll-order-label">中間價</span>
+                          <span className="roll-order-label">中間價</span>{' '}
                           <span className="roll-order-value roll-order-mid">
                             {q.bid > 0 && q.ask > 0
                               ? ((q.bid + q.ask) / 2).toFixed(2)

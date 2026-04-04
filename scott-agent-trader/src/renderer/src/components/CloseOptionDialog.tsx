@@ -478,7 +478,7 @@ export default function CloseOptionDialog({
                         {quote.ask.toFixed(2)}
                       </span>
                       <span className="quote-separator">|</span>
-                      <span className="roll-order-label">中間價</span>
+                      <span className="roll-order-label">中間價</span>{' '}
                       <span className="roll-order-value roll-order-mid">
                         {quote.bid > 0 && quote.ask > 0
                           ? ((quote.bid + quote.ask) / 2).toFixed(2)

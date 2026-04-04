@@ -139,10 +139,15 @@ export default function RollOptionDialog({
   // Scroll strike dropdown to first checked item on open
   useEffect(() => {
     if (chain.strikeDropdownOpen && chain.strikeDropdownRef.current) {
+      // Save dialog body scroll position before scrollIntoView
+      const dialogBody = chain.strikeDropdownRef.current.closest('.roll-dialog-body')
+      const savedScroll = dialogBody?.scrollTop ?? 0
       const firstChecked = chain.strikeDropdownRef.current.querySelector('.roll-expiry-option.checked')
       if (firstChecked) {
-        firstChecked.scrollIntoView({ block: 'start' })
+        firstChecked.scrollIntoView({ block: 'nearest' })
       }
+      // Restore dialog body scroll position (scrollIntoView affects all ancestors)
+      if (dialogBody) dialogBody.scrollTop = savedScroll
     }
   }, [chain.strikeDropdownOpen])
 
@@ -459,7 +464,7 @@ export default function RollOptionDialog({
                 style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
               />
               <span style={{ background: '#fff9db', padding: '2px 8px', borderRadius: 4 }}>
-                <span className="roll-order-label">中間價</span>
+                <span className="roll-order-label">中間價</span>{' '}
                 <span className="roll-order-value roll-order-mid">
                   {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
                 </span>

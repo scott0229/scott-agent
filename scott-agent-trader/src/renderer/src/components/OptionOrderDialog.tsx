@@ -431,7 +431,7 @@ export default function OptionOrderDialog({
             <span
               style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
             />
-            <span className="roll-order-label">中間價</span>
+            <span className="roll-order-label">中間價</span>{' '}
             <span className="roll-order-value roll-order-mid">
               {selGreek && selGreek.bid > 0 && selGreek.ask > 0
                 ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)

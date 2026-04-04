@@ -108,6 +108,7 @@ export default function AccountOverview({
   const [filterAccount, setFilterAccount] = useState('')
 
   const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
+  const [filterRight, setFilterRight] = useState<'' | 'C' | 'P'>('')
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
 
@@ -168,6 +169,7 @@ export default function AccountOverview({
   useEffect(() => {
     setFilterSymbol('')
     setFilterAccount('')
+    setFilterRight('')
     setSelectMode(false)
     setSelectedPositions(new Set())
     setSelectedAccount(null)
@@ -183,6 +185,7 @@ export default function AccountOverview({
   useEffect(() => {
     setFilterSymbol('')
     setFilterAccount('')
+    setFilterRight('')
     setFilterGroupIndex('')
     setFilterGroupSymbol('')
     setSelectMode(false)
@@ -450,9 +453,11 @@ export default function AccountOverview({
     if (selectMode === mode) {
       setSelectedPositions(new Set())
       setSelectMode(false)
+      setFilterRight('')
     } else {
       setSelectedPositions(new Set())
       setSelectMode(mode)
+      setFilterRight('')
       // Reset by-symbol view since select mode only works in category view
       setAcctViewBySymbol(false)
     }
@@ -517,6 +522,7 @@ export default function AccountOverview({
     return positions
       .filter((p) => p.account === accountId)
       .filter((p) => !filterSymbol || p.symbol === filterSymbol)
+      .filter((p) => !filterRight || p.secType !== 'OPT' || p.right === filterRight || p.right === (filterRight === 'C' ? 'CALL' : 'PUT'))
 
       .sort((a, b) => {
         const symbolPriority: Record<string, number> = { QQQ: 1, QLD: 2, TQQQ: 3 }
@@ -618,7 +624,8 @@ export default function AccountOverview({
     if (filterSymbol) acctPositions = acctPositions.filter((p) => p.symbol === filterSymbol)
     if (selectMode === 'STK') acctPositions = acctPositions.filter((p) => p.secType !== 'OPT')
     if (selectMode === 'OPT') acctPositions = acctPositions.filter((p) => p.secType === 'OPT')
-    if (filterSymbol || selectMode) return acctPositions.length > 0
+    if (filterRight) acctPositions = acctPositions.filter((p) => p.secType !== 'OPT' || p.right === filterRight || p.right === (filterRight === 'C' ? 'CALL' : 'PUT'))
+    if (filterSymbol || selectMode || filterRight) return acctPositions.length > 0
     return true
   })
 
@@ -727,6 +734,20 @@ export default function AccountOverview({
                     ...uniqueSymbols.map((s) => ({ value: s, label: s }))
                   ]}
                 />
+                {selectMode === 'OPT' && (
+                  <CustomSelect
+                    value={filterRight}
+                    onChange={(v) => {
+                      setFilterRight(v as '' | 'C' | 'P')
+                      setSelectedPositions(new Set())
+                    }}
+                    options={[
+                      { value: '', label: 'CALL / PUT' },
+                      { value: 'C', label: 'CALL' },
+                      { value: 'P', label: 'PUT' }
+                    ]}
+                  />
+                )}
                 <CustomSelect
                   value={filterAccount}
                   onChange={(v) => {
@@ -1485,18 +1506,16 @@ export default function AccountOverview({
                           const isChecked = currentCheckedSet.has(pk)
                           return (
                             <tr key={idx}>
-                              {checkModeGroups.has(g.id) && (
-                                <td style={{ width: '28px', padding: '0 4px', textAlign: 'center' }}>
+                              <td style={{ fontSize: '13px', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined, whiteSpace: 'nowrap' }}>
+                                {checkModeGroups.has(g.id) && (
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => toggleCheck(pk)}
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                    style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '6px', verticalAlign: 'middle' }}
                                   />
-                                </td>
-                              )}
-                              <td style={{ fontSize: '13px', textAlign: 'left' }}>
+                                )}
                                 {(
                                   accounts.find((a) => a.accountId === pos.account)?.alias ||
                                   pos.account
@@ -1552,8 +1571,8 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      {checkModeGroups.has(g.id) && (
-                                        <th style={{ width: '28px', padding: '0 4px' }}>
+                                      <th style={{ width: '12%', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined }}>
+                                        {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
                                             checked={stkPos.length > 0 && stkPos.every((p) => currentCheckedSet.has(posKey(p)))}
@@ -1569,14 +1588,13 @@ export default function AccountOverview({
                                               })
                                             }}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                            style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '4px', verticalAlign: 'middle' }}
                                           />
-                                        </th>
-                                      )}
-                                      <th style={{ width: '14%', textAlign: 'left' }}></th>
-                                      <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
-                                      <th style={{ width: '10%' }}>持倉</th>
-                                      <th style={{ width: '11%' }}>成本</th>
+                                        )}
+                                      </th>
+                                      <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
+                                      <th style={{ width: '11%' }}>持倉</th>
+                                      <th style={{ width: '12%' }}>成本</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '13%' }}>盈虧</th>
                                     </tr>
@@ -1592,8 +1610,8 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      {checkModeGroups.has(g.id) && (
-                                        <th style={{ width: '28px', padding: '0 4px' }}>
+                                      <th style={{ width: '12%', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined }}>
+                                        {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
                                             checked={optPos.length > 0 && optPos.every((p) => currentCheckedSet.has(posKey(p)))}
@@ -1609,11 +1627,10 @@ export default function AccountOverview({
                                               })
                                             }}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ cursor: 'pointer', accentColor: '#2563eb' }}
+                                            style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '4px', verticalAlign: 'middle' }}
                                           />
-                                        </th>
-                                      )}
-                                      <th style={{ width: '12%', textAlign: 'left' }}></th>
+                                        )}
+                                      </th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                       <th style={{ width: '8%' }}>持倉</th>
                                       <th style={{ width: '8%' }}>到期</th>
@@ -1634,7 +1651,7 @@ export default function AccountOverview({
                                           {needsSep && (
                                             <tr>
                                               <td
-                                                colSpan={checkModeGroups.has(g.id) ? 8 : 7}
+                                                colSpan={7}
                                                 style={{
                                                   padding: 0,
                                                   height: '3px',
