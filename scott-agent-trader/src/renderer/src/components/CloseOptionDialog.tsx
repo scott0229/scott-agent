@@ -45,6 +45,7 @@ interface CloseOptionPreview {
     qty: number
     price: number
     value: number
+    avgCost: number
   }[]
   totalValue: number
 }
@@ -241,7 +242,8 @@ export default function CloseOptionDialog({
           action,
           qty,
           price,
-          value
+          value,
+          avgCost: posInfo.avgCost
         })
         totalValue += value
       }
@@ -353,7 +355,7 @@ export default function CloseOptionDialog({
       {isOpen && (
         <div className="tif-dropdown-menu">
           <div
-            className={`tif-dropdown-option${tif === 'DAY' ? ' selected' : ''}`}
+            className={`tif-dropdown-item${tif === 'DAY' ? ' active' : ''}`}
             onClick={() => {
               setTif('DAY')
               setOpen(false)
@@ -362,7 +364,7 @@ export default function CloseOptionDialog({
             DAY
           </div>
           <div
-            className={`tif-dropdown-option${tif === 'GTC' ? ' selected' : ''}`}
+            className={`tif-dropdown-item${tif === 'GTC' ? ' active' : ''}`}
             onClick={() => {
               setTif('GTC')
               setOpen(false)
@@ -394,7 +396,7 @@ export default function CloseOptionDialog({
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
       <div
         className="stock-order-dialog"
-        style={{ maxWidth: '900px' }}
+        style={{ maxWidth: '650px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="stock-order-dialog-header">
@@ -417,74 +419,52 @@ export default function CloseOptionDialog({
             const actionColor = firstPos && firstPos.quantity < 0 ? '#1a6b3a' : '#8b1a1a'
 
             return (
-              <div key={key} className="order-form" style={{ marginBottom: '20px' }}>
+              <div key={key} className="order-form" style={{ marginBottom: '16px' }}>
                 <div
-                  style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}
+                  style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', fontSize: '13px', whiteSpace: 'nowrap' }}
                 >
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        gap: '8px',
-                        alignItems: 'center',
-                        width: '220px'
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, fontSize: '13px', color: actionColor }}>
-                        {action}
-                      </span>
-                      <span style={{ fontWeight: 600, fontSize: '13px' }}>{c.label}</span>
-                    </span>
-                    <span className="roll-order-label">限價</span>
-                    <input
-                      type="number"
-                      value={prices[key] || ''}
-                      onChange={(e) =>
-                        setPrices((prev) => ({
-                          ...prev,
-                          [key]: e.target.value
-                        }))
-                      }
-                      className="input-field"
-                      style={{ width: '90px' }}
-                      step="0.01"
-                      placeholder="0.00"
-                    />
-                    {renderTifDropdown(
-                      key,
-                      tif,
-                      outsideRth,
-                      tifOpen === key,
-                      (v) => setTifs((prev) => ({ ...prev, [key]: v })),
-                      (v) => setOutsideRths((prev) => ({ ...prev, [key]: v })),
-                      (v) => setTifOpen(v ? key : null)
-                    )}
-                  </div>
+                  <span>{action}</span>
+                  <span>{c.label}</span>
                   {quote && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '6px',
-                        alignItems: 'center',
-                        fontSize: 13,
-                        flex: '0 0 auto'
-                      }}
-                    >
-                      <span className="roll-order-value roll-order-bid">
-                        {quote.bid.toFixed(2)}
-                      </span>
+                    <>
                       <span className="quote-separator">|</span>
-                      <span className="roll-order-value roll-order-ask">
-                        {quote.ask.toFixed(2)}
-                      </span>
+                      <span className="roll-order-label">買價</span>
+                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
                       <span className="quote-separator">|</span>
-                      <span className="roll-order-label">中間價</span>{' '}
+                      <span className="roll-order-label">賣價</span>
+                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="quote-separator">|</span>
+                      <span className="roll-order-label">中間價</span>
                       <span className="roll-order-value roll-order-mid">
                         {quote.bid > 0 && quote.ask > 0
                           ? ((quote.bid + quote.ask) / 2).toFixed(2)
                           : quote.last.toFixed(2)}
                       </span>
-                    </div>
+                    </>
+                  )}
+                  <span className="quote-separator">|</span>
+                  <input
+                    type="number"
+                    value={prices[key] || ''}
+                    onChange={(e) =>
+                      setPrices((prev) => ({
+                        ...prev,
+                        [key]: e.target.value
+                      }))
+                    }
+                    className="input-field"
+                    style={{ width: '65px', fontSize: '12px', height: '28px', padding: '4px 8px' }}
+                    step="0.01"
+                    placeholder="限價"
+                  />
+                  {renderTifDropdown(
+                    key,
+                    tif,
+                    outsideRth,
+                    tifOpen === key,
+                    (v) => setTifs((prev) => ({ ...prev, [key]: v })),
+                    (v) => setOutsideRths((prev) => ({ ...prev, [key]: v })),
+                    (v) => setTifOpen(v ? key : null)
                   )}
                 </div>
               </div>
@@ -497,18 +477,18 @@ export default function CloseOptionDialog({
               <table className="allocation-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '22%', textAlign: 'left' }}>帳號</th>
-                    <th style={{ width: '10%' }}>淨值</th>
-                    <th style={{ width: '10%' }}>現金</th>
-                    <th style={{ width: '8%' }}>方向</th>
-                    <th style={{ width: '18%' }}>期權</th>
-                    <th style={{ width: '10%' }}>價格</th>
-                    <th style={{ width: '10%' }}>數量</th>
-                    {step === 'done' && <th style={{ width: '10%' }}>狀態</th>}
+                    <th style={{ width: '24px', paddingRight: 0 }}></th>
+                    <th style={{ textAlign: 'left', width: '100px' }}>帳號</th>
+                    <th style={{ width: '50px' }}>方向</th>
+                    <th style={{ width: '140px' }}>期權</th>
+                    <th>價格</th>
+                    <th style={{ width: '80px' }}>數量</th>
+                    <th>盈虧</th>
+                    {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
                 <>
-                  {displayPreviews.map((p) => {
+                  {displayPreviews.map((p, pIdx) => {
                     const acct = accounts.find((a) => a.accountId === p.accountId)
                     if (!acct) return null
                     const rowCount = p.orders.length
@@ -524,38 +504,31 @@ export default function CloseOptionDialog({
                           )
                           const overrideKey = `${order.optKey}:${p.accountId}`
                           return (
-                            <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '44px' }}>
+                            <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '32px' }}>
                               {idx === 0 && (
                                 <>
                                   <td
                                     rowSpan={rowCount}
                                     style={{
-                                      fontWeight: 'bold',
-                                      textAlign: 'left',
-                                      borderBottom: '1px solid #b0b0b0'
+                                      textAlign: 'right',
+                                      borderBottom: '1px solid #b0b0b0',
+                                      paddingRight: '4px'
                                     }}
                                   >
-                                    {p.alias}
-                                  </td>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{ borderBottom: '1px solid #b0b0b0' }}
-                                  >
-                                    {acct.netLiquidation.toLocaleString('en-US', {
-                                      maximumFractionDigits: 0
-                                    })}
+                                    {`${pIdx + 1}.`}
                                   </td>
                                   <td
                                     rowSpan={rowCount}
                                     style={{
+                                      fontWeight: 'normal',
+                                      textAlign: 'left',
                                       borderBottom: '1px solid #b0b0b0',
-                                      ...(acct.totalCashValue < 0 ? { color: '#8b1a1a' } : {})
+                                      paddingLeft: '4px'
                                     }}
                                   >
-                                    {acct.totalCashValue.toLocaleString('en-US', {
-                                      maximumFractionDigits: 0
-                                    })}
+                                    {p.alias}
                                   </td>
+
                                 </>
                               )}
                               <td
@@ -569,13 +542,13 @@ export default function CloseOptionDialog({
                               <td
                                 style={{
                                   fontSize: '0.93em',
-                                  paddingTop: '8px',
-                                  paddingBottom: '8px'
+                                  padding: '4px 6px',
+                                  textAlign: 'center'
                                 }}
                               >
                                 {order.label}
                               </td>
-                              <td style={{ paddingTop: '8px', paddingBottom: '8px' }}>
+                              <td style={{ padding: '4px 6px' }}>
                                 {prices[order.optKey] || '-'}
                               </td>
                               <td>
@@ -596,6 +569,9 @@ export default function CloseOptionDialog({
                                 ) : (
                                   order.qty.toLocaleString()
                                 )}
+                              </td>
+                              <td style={(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
+                                {(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
                               </td>
                               {step === 'done' && (
                                 <td style={{ fontSize: '11px' }}>

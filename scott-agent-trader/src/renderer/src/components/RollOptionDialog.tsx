@@ -282,7 +282,6 @@ export default function RollOptionDialog({
     if (userEditedPriceRef.current) return
     if (spreadPrices) {
       setLimitPrice(spreadPrices.mid.toFixed(2))
-      userEditedPriceRef.current = true
     }
   }, [spreadPrices])
 
@@ -438,57 +437,48 @@ export default function RollOptionDialog({
           )}
 
           {/* Order entry section */}
-          <div className="roll-order-section">
-            {/* Quotes on the left */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '6px',
-                alignItems: 'center',
-                fontSize: 13,
-                flex: '0 0 auto'
-              }}
-            >
+          <div className="roll-order-section" style={{ flexDirection: 'column', gap: '6px', alignItems: 'stretch' }}>
+            {/* Row 1: Roll direction */}
+            {targetExpiry && targetStrike !== null && targetRight !== null && positions.length > 0 && (() => {
+              const curExp = positions[0].expiry || ''
+              const daysDiff = curExp && targetExpiry
+                ? Math.round((new Date(targetExpiry.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).getTime() - new Date(curExp.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).getTime()) / 86400000)
+                : null
+              const curRight = positions[0].right === 'C' || positions[0].right === 'CALL' ? 'C' : 'P'
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, gap: '6px', color: '#333' }}>
+                  <span>展期{daysDiff !== null ? `${daysDiff}天` : ''}</span>
+                  <span>
+                    {symbol} {formatExpiry(curExp)}{' '}
+                    {Number.isInteger(positions[0].strike) ? positions[0].strike : (positions[0].strike || 0).toFixed(1)}{curRight}
+                  </span>
+                  <span>→</span>
+                  <span>
+                    {symbol} {formatExpiry(targetExpiry)}{' '}
+                    {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}{targetRight}
+                  </span>
+                </div>
+              )
+            })()}
+            {/* Row 2: Spread prices + limit */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13 }}>
               <span className="roll-order-label">買價</span>
               <span className="roll-order-value roll-order-bid">
                 {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
               </span>
-              <span
-                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-              />
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
               <span className="roll-order-label">賣價</span>
               <span className="roll-order-value roll-order-ask">
                 {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
               </span>
-              <span
-                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-              />
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
               <span style={{ background: '#fff9db', padding: '2px 8px', borderRadius: 4 }}>
                 <span className="roll-order-label">中間價</span>{' '}
                 <span className="roll-order-value roll-order-mid">
                   {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
                 </span>
               </span>
-            </div>
-
-            {/* Contract summary + limit price pushed to right */}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {/* Selected contract summary */}
-              {targetExpiry && targetStrike !== null && targetRight !== null && (
-                <span style={{ fontSize: 13, color: '#333', fontWeight: 500 }}>
-                  {positions.length > 0 && positions[0].quantity < 0 ? (
-                    <span style={{ color: '#b91c1c', marginRight: 6 }}>賣出</span>
-                  ) : (
-                    <span style={{ color: '#15803d', marginRight: 6 }}>買入</span>
-                  )}{' '}
-                  {symbol} {formatExpiry(targetExpiry)}{' '}
-                  {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}{' '}
-                  {targetRight === 'C' ? 'CALL' : 'PUT'}
-                </span>
-              )}
-              <span
-                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-              />
+              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
               <span className="roll-order-label">限價</span>
               <div className="roll-limit-wrapper" ref={limitInputRef}>
                 <input
@@ -518,33 +508,30 @@ export default function RollOptionDialog({
                         curMid !== null && targetMid !== null ? curMid - targetMid : null
                       const displayVal = liveSpread
                       const rightLabel = pos.right === 'C' ? 'C' : pos.right === 'P' ? 'P' : ''
-                      const closePrefix = pos.quantity < 0 ? '+' : '-'
-                      const openPrefix = pos.quantity < 0 ? '-' : '+'
                       const strikeStr = Number.isInteger(pos.strike)
                         ? pos.strike
                         : (pos.strike || 0).toFixed(1)
-                      const currentDesc = `${closePrefix}${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr}${rightLabel}`
+                      const currentDesc = `${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr}${rightLabel}`
                       const targetDesc =
                         targetExpiry && targetStrike !== null && targetRight
-                          ? `${openPrefix}${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
+                          ? `${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
                           : '-'
 
                       return (
                         <tr key={idx}>
                           <td
                             style={{
-                              color: '#999',
+                              color: '#333',
                               textAlign: 'center',
                               width: '1px',
                               whiteSpace: 'nowrap'
                             }}
                           >{`${idx + 1}.`}</td>
-                          <td style={{ fontWeight: 'bold' }}>{getAlias(pos.account)}</td>
+                          <td>{getAlias(pos.account)}</td>
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {Math.abs(pos.quantity)}口
                           </td>
-                          <td>{currentDesc}</td>
-                          <td style={{ backgroundColor: '#e0f2fe' }}>{targetDesc}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{currentDesc} → {targetDesc}</td>
                           <td
                             className={
                               displayVal !== null && !isNaN(displayVal as number)

@@ -1358,7 +1358,7 @@ input[type='number']::-webkit-outer-spin-button {
 .roll-dialog {
   background: #ffffff;
   border-radius: 12px;
-  width: 760px;
+  width: 680px;
   min-height: 76vh;
   max-height: 76vh;
   display: flex;
@@ -1402,7 +1402,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .roll-dialog-body {
-  padding: 16px 20px;
+  padding: 16px 12px;
   overflow-y: auto;
   flex: 1;
 }
@@ -1486,7 +1486,7 @@ input[type='number']::-webkit-outer-spin-button {
 
 .roll-chain-table {
   width: 100%;
-  min-width: 700px;
+  min-width: 500px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px;
@@ -1531,7 +1531,7 @@ input[type='number']::-webkit-outer-spin-button {
 
 .roll-chain-desc-header {
   text-align: center;
-  width: 100px;
+  width: 80px;
   background: #eee !important;
 }
 
@@ -1597,7 +1597,7 @@ input[type='number']::-webkit-outer-spin-button {
 
 /* Data cells */
 .roll-chain-cell {
-  padding: 2px 6px;
+  padding: 2px 4px;
   text-align: center;
   cursor: pointer;
   transition: background 0.1s;
@@ -1646,7 +1646,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .roll-dialog-table-wrapper {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .roll-dialog-table {
@@ -1682,7 +1682,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .roll-positions-table {
-  table-layout: fixed;
+  width: auto;
 }
 
 .roll-positions-table th:nth-child(1),
@@ -1693,12 +1693,12 @@ input[type='number']::-webkit-outer-spin-button {
 
 .roll-positions-table th:nth-child(2),
 .roll-positions-table td:nth-child(2) {
-  width: 18%;
+  width: 100px;
 }
 
 .roll-positions-table th:nth-child(3),
 .roll-positions-table td:nth-child(3) {
-  width: 50px;
+  width: 40px;
   text-align: center !important;
   padding-left: 0;
   padding-right: 0;
@@ -1706,25 +1706,18 @@ input[type='number']::-webkit-outer-spin-button {
 
 .roll-positions-table th:nth-child(4),
 .roll-positions-table td:nth-child(4) {
-  width: 28%;
+  width: auto;
 }
 
 .roll-positions-table th:nth-child(5),
 .roll-positions-table td:nth-child(5) {
-  width: 28%;
-}
-
-.roll-positions-table th:nth-child(6),
-.roll-positions-table td:nth-child(6) {
-  width: 12%;
-  text-align: center;
+  width: 90px;
+  text-align: right;
 }
 
 .roll-positions-table td {
   padding: 4px 10px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .spread-positive {
@@ -2293,7 +2286,7 @@ input[type='number']::-webkit-outer-spin-button {
 .stock-order-dialog .allocation-table td {
   white-space: nowrap;
   font-size: 13px;
-  padding: 8px 6px;
+  padding: 4px 6px;
   text-align: center;
   line-height: 1.2;
 }
@@ -2307,7 +2300,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .stock-order-dialog .allocation-table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
 }
 

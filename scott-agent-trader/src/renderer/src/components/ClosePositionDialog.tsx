@@ -14,7 +14,7 @@ interface ClosePositionDialogProps {
 interface ClosePreview {
   accountId: string
   alias: string
-  sells: { symbol: string; qty: number; price: number; value: number }[]
+  sells: { symbol: string; qty: number; price: number; value: number; avgCost: number }[]
   totalSellValue: number
 }
 
@@ -157,7 +157,7 @@ export default function ClosePositionDialog({
           sellQtyOverrides[overrideKey] !== undefined ? sellQtyOverrides[overrideKey] : posInfo.qty
         const price = parseFloat(sellPrices[symbol] || '') || quotes[symbol] || posInfo.avgCost
         const value = qty * price
-        sells.push({ symbol, qty, price, value })
+        sells.push({ symbol, qty, price, value, avgCost: posInfo.avgCost })
         totalSellValue += value
       }
 
@@ -306,7 +306,7 @@ export default function ClosePositionDialog({
 
   return (
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
-      <div className="stock-order-dialog transfer-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="stock-order-dialog" style={{ maxWidth: '650px' }} onClick={(e) => e.stopPropagation()}>
         <div className="stock-order-dialog-header">
           <h2>股票平倉</h2>
           <button className="settings-close-btn" onClick={handleClose}>
@@ -323,65 +323,49 @@ export default function ClosePositionDialog({
                 key={`sell-${sym}`}
                 style={sym !== sourceSymbols[0] ? { marginTop: '8px' } : undefined}
               >
-                <div className="form-row">
-                  <div className="form-group" style={{ flex: '0 0 auto' }}>
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '13px',
-                        color: '#8b1a1a',
-                        padding: '6px 0'
-                      }}
-                    >
-                      賣出
-                    </span>
-                  </div>
-                  <div className="form-group" style={{ flex: '0 0 80px' }}>
-                    <input
-                      type="text"
-                      value={sym}
-                      className="input-field"
-                      disabled
-                      style={{ textTransform: 'uppercase' }}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <input
-                      type="number"
-                      value={sellPrices[sym] || ''}
-                      onChange={(e) =>
-                        setSellPrices((prev) => ({ ...prev, [sym]: e.target.value }))
-                      }
-                      placeholder="限價"
-                      step="0.01"
-                      className="input-field"
-                      disabled={step !== 'preview'}
-                    />
-                  </div>
-                  <div className="form-group" style={{ flex: '0 0 auto' }}>
-                    {renderTifDropdown(
-                      sym,
-                      sellTifs[sym] || 'DAY',
-                      (v) => setSellTifs((prev) => ({ ...prev, [sym]: v })),
-                      sellOutsideRths[sym] || false,
-                      (v) => setSellOutsideRths((prev) => ({ ...prev, [sym]: v })),
-                      sellTifOpen === sym,
-                      (v) => setSellTifOpen(v ? sym : null)
-                    )}
-                  </div>
+                <div
+                  style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', fontSize: '13px', whiteSpace: 'nowrap' }}
+                >
+                  <span>賣出</span>
+                  <span>{sym}</span>
                   {quote && (
-                    <div className="quote-display" style={{ flex: '0 0 auto', fontSize: 13 }}>
-                      <span className="quote-bid">{quote.bid.toFixed(2)}</span>
+                    <>
                       <span className="quote-separator">|</span>
-                      <span className="quote-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="roll-order-label">買價</span>
+                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
                       <span className="quote-separator">|</span>
-                      <span className="quote-label" style={{ fontWeight: 400 }}>
-                        最後價
+                      <span className="roll-order-label">賣價</span>
+                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="quote-separator">|</span>
+                      <span className="roll-order-label">中間價</span>
+                      <span className="roll-order-value roll-order-mid">
+                        {quote.bid > 0 && quote.ask > 0
+                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                          : quote.last.toFixed(2)}
                       </span>
-                      <span className="quote-last" style={{ color: '#1d4ed8' }}>
-                        {quote.last.toFixed(2)}
-                      </span>
-                    </div>
+                    </>
+                  )}
+                  <span className="quote-separator">|</span>
+                  <input
+                    type="number"
+                    value={sellPrices[sym] || ''}
+                    onChange={(e) =>
+                      setSellPrices((prev) => ({ ...prev, [sym]: e.target.value }))
+                    }
+                    className="input-field"
+                    style={{ width: '65px', fontSize: '12px', height: '28px', padding: '4px 8px' }}
+                    step="0.01"
+                    placeholder="限價"
+                    disabled={step !== 'preview'}
+                  />
+                  {renderTifDropdown(
+                    sym,
+                    sellTifs[sym] || 'DAY',
+                    (v) => setSellTifs((prev) => ({ ...prev, [sym]: v })),
+                    sellOutsideRths[sym] || false,
+                    (v) => setSellOutsideRths((prev) => ({ ...prev, [sym]: v })),
+                    sellTifOpen === sym,
+                    (v) => setSellTifOpen(v ? sym : null)
                   )}
                 </div>
               </div>
@@ -394,19 +378,20 @@ export default function ClosePositionDialog({
               <table className="allocation-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '22%', textAlign: 'left' }}>帳號</th>
-                    <th style={{ width: '10%' }}>淨值</th>
-                    <th style={{ width: '10%' }}>現金</th>
-                    <th style={{ width: '10%' }}>新潛在融資</th>
-                    <th style={{ width: '7%' }}>方向</th>
-                    <th style={{ width: '8%' }}>標的</th>
-                    <th style={{ width: '10%' }}>價格</th>
-                    <th style={{ width: '10%' }}>數量</th>
-                    {step === 'done' && <th style={{ width: '10%' }}>狀態</th>}
+                    <th style={{ width: '24px', paddingRight: 0 }}></th>
+                    <th style={{ textAlign: 'left' }}>帳號</th>
+
+                    <th>新潛在融資</th>
+                    <th>方向</th>
+                    <th>標的</th>
+                    <th>價格</th>
+                    <th>盈虧</th>
+                    <th>數量</th>
+                    {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
                 <>
-                  {(step === 'preview' ? previews : confirmedPreviews).map((p) => {
+                  {(step === 'preview' ? previews : confirmedPreviews).map((p, pIdx) => {
                     const acct = accounts.find((a) => a.accountId === p.accountId)
                     if (!acct) return null
                     const rowCount = p.sells.length
@@ -424,38 +409,31 @@ export default function ClosePositionDialog({
                           )
                           const overrideKey = `${sell.symbol}:${p.accountId}`
                           return (
-                            <tr key={`${p.accountId}-sell-${sell.symbol}`}>
+                            <tr key={`${p.accountId}-sell-${sell.symbol}`} style={{ height: '32px' }}>
                               {idx === 0 && (
                                 <>
                                   <td
                                     rowSpan={rowCount}
                                     style={{
-                                      fontWeight: 'bold',
-                                      textAlign: 'left',
-                                      borderBottom: '1px solid #b0b0b0'
+                                      textAlign: 'right',
+                                      borderBottom: '1px solid #b0b0b0',
+                                      paddingRight: '4px'
                                     }}
                                   >
-                                    {p.alias}
-                                  </td>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{ borderBottom: '1px solid #b0b0b0' }}
-                                  >
-                                    {acct.netLiquidation.toLocaleString('en-US', {
-                                      maximumFractionDigits: 0
-                                    })}
+                                    {`${pIdx + 1}.`}
                                   </td>
                                   <td
                                     rowSpan={rowCount}
                                     style={{
+                                      fontWeight: 'normal',
+                                      textAlign: 'left',
                                       borderBottom: '1px solid #b0b0b0',
-                                      ...(acct.totalCashValue < 0 ? { color: '#8b1a1a' } : {})
+                                      paddingLeft: '4px'
                                     }}
                                   >
-                                    {acct.totalCashValue.toLocaleString('en-US', {
-                                      maximumFractionDigits: 0
-                                    })}
+                                    {p.alias}
                                   </td>
+
                                   {(() => {
                                     if (acct.netLiquidation <= 0)
                                       return (
@@ -498,6 +476,9 @@ export default function ClosePositionDialog({
                               <td style={{ color: '#8b1a1a', fontWeight: 'bold' }}>賣出</td>
                               <td>{sell.symbol}</td>
                               <td>{sellPrices[sell.symbol] || '-'}</td>
+                              <td style={(() => { const sp = parseFloat(sellPrices[sell.symbol] || '0'); const pnl = (sp - sell.avgCost) * sell.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
+                                {(() => { const sp = parseFloat(sellPrices[sell.symbol] || '0'); const pnl = (sp - sell.avgCost) * sell.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
+                              </td>
                               <td>
                                 {step === 'preview' ? (
                                   <input
