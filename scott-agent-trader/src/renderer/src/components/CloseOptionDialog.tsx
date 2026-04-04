@@ -480,10 +480,10 @@ export default function CloseOptionDialog({
                     <th style={{ width: '24px', paddingRight: 0 }}></th>
                     <th style={{ textAlign: 'left', width: '100px' }}>帳號</th>
                     <th style={{ width: '50px' }}>方向</th>
-                    <th style={{ width: '140px' }}>期權</th>
+                    <th style={{ width: '170px' }}>期權</th>
                     <th>價格</th>
-                    <th style={{ width: '80px' }}>數量</th>
                     <th>盈虧</th>
+                    <th style={{ width: '110px', textAlign: 'center' }}>數量</th>
                     {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
@@ -551,7 +551,10 @@ export default function CloseOptionDialog({
                               <td style={{ padding: '4px 6px' }}>
                                 {prices[order.optKey] || '-'}
                               </td>
-                              <td>
+                              <td style={(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
+                                {(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
                                 {step === 'preview' ? (
                                   <input
                                     type="number"
@@ -564,14 +567,11 @@ export default function CloseOptionDialog({
                                       }))
                                     }}
                                     className="input-field"
-                                    style={{ width: '70px', textAlign: 'center' }}
+                                    style={{ width: '90px', textAlign: 'center', margin: '0 12px' }}
                                   />
                                 ) : (
                                   order.qty.toLocaleString()
                                 )}
-                              </td>
-                              <td style={(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
-                                {(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
                               </td>
                               {step === 'done' && (
                                 <td style={{ fontSize: '11px' }}>

@@ -450,12 +450,12 @@ export default function RollOptionDialog({
                   <span>展期{daysDiff !== null ? `${daysDiff}天` : ''}</span>
                   <span>
                     {symbol} {formatExpiry(curExp)}{' '}
-                    {Number.isInteger(positions[0].strike) ? positions[0].strike : (positions[0].strike || 0).toFixed(1)}{curRight}
+                    {Number.isInteger(Number(positions[0].strike)) ? Number(positions[0].strike) : (Number(positions[0].strike) || 0).toFixed(1)}{curRight}
                   </span>
                   <span>→</span>
                   <span>
                     {symbol} {formatExpiry(targetExpiry)}{' '}
-                    {Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}{targetRight}
+                    {Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}{targetRight}
                   </span>
                 </div>
               )
@@ -508,13 +508,13 @@ export default function RollOptionDialog({
                         curMid !== null && targetMid !== null ? curMid - targetMid : null
                       const displayVal = liveSpread
                       const rightLabel = pos.right === 'C' ? 'C' : pos.right === 'P' ? 'P' : ''
-                      const strikeStr = Number.isInteger(pos.strike)
-                        ? pos.strike
-                        : (pos.strike || 0).toFixed(1)
+                      const strikeStr = Number.isInteger(Number(pos.strike))
+                        ? Number(pos.strike)
+                        : (Number(pos.strike) || 0).toFixed(1)
                       const currentDesc = `${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr}${rightLabel}`
                       const targetDesc =
                         targetExpiry && targetStrike !== null && targetRight
-                          ? `${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
+                          ? `${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
                           : '-'
 
                       return (
@@ -609,7 +609,7 @@ export default function RollOptionDialog({
             {submitting
               ? '下單中...'
               : targetExpiry && targetStrike !== null && targetRight
-                ? `確認展期 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(targetStrike) ? targetStrike : targetStrike.toFixed(1)}${targetRight}`
+                ? `確認展期 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight}`
                 : '確認展期'}
           </button>
         </div>

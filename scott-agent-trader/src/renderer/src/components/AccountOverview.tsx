@@ -125,7 +125,7 @@ export default function AccountOverview({
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [filterGroupIndex, setFilterGroupIndex] = useState('')
   const [filterGroupSymbol, setFilterGroupSymbol] = useState('')
-  const [showGroupNameInput, setShowGroupNameInput] = useState(false)
+
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
   // Which groups have check mode active (checkboxes visible)
@@ -147,7 +147,7 @@ export default function AccountOverview({
     }[]
     targetSymbol: string
   } | null>(null)
-  const [groupNameInput, setGroupNameInput] = useState('')
+
   // Inline editing state: tracks which cell is being edited
   const [editingCell, setEditingCell] = useState<{
     orderId: number
@@ -190,7 +190,6 @@ export default function AccountOverview({
     setFilterGroupSymbol('')
     setSelectMode(false)
     setSelectedPositions(new Set())
-    setShowGroupNameInput(false)
     setGroupChecked({})
     setCheckModeGroups(new Set())
   }, [groupViewMode])
@@ -477,14 +476,6 @@ export default function AccountOverview({
     })
   }, [selectedPositions, positions])
 
-  const canCreateGroup = useMemo(() => {
-    if (selectMode !== 'OPT' || selectedPositions.size === 0) return false
-    const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
-    if (selected.length === 0) return false
-    if (!selected.every((p) => p.secType === 'OPT')) return false
-    const symbol = selected[0].symbol
-    return selected.every((p) => p.symbol === symbol)
-  }, [selectMode, selectedPositions, positions])
 
   const canCloseOptions = useMemo(() => {
     if (selectedPositions.size === 0) return false
@@ -569,7 +560,8 @@ export default function AccountOverview({
       const yy = pos.expiry.substring(2, 4)
       const month = months[parseInt(pos.expiry.substring(4, 6)) - 1]
       const day = pos.expiry.substring(6, 8)
-      const strike = Number.isInteger(pos.strike) ? pos.strike.toString() : pos.strike.toFixed(1)
+      const numStrike = Number(pos.strike) || 0
+      const strike = Number.isInteger(numStrike) ? numStrike.toString() : numStrike.toFixed(1)
       const right = pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
       return `${pos.symbol} ${month}${day}'${yy} ${strike}${right}`
     }
@@ -797,85 +789,7 @@ export default function AccountOverview({
                     轉倉
                   </button>
                 )}
-                {selectMode === 'OPT' && canCreateGroup && !showGroupNameInput && (
-                  <button
-                    className="select-toggle-btn"
-                    onClick={() => {
-                      setShowGroupNameInput(true)
-                      setGroupNameInput('')
-                    }}
-                  >
-                    建立群組
-                  </button>
-                )}
-                {showGroupNameInput && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <input
-                      type="text"
-                      value={groupNameInput}
-                      onChange={(e) => setGroupNameInput(e.target.value)}
-                      placeholder="輸入群組名稱"
-                      autoFocus
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: '12px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        width: '120px'
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && groupNameInput.trim()) {
-                          const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
-                          const symbol = selected[0]?.symbol || ''
-                          const group: SymbolGroup = {
-                            id: crypto.randomUUID(),
-                            name: groupNameInput.trim(),
-                            symbol,
-                            posKeys: selected.map((p) => posKey(p)),
-                            createdAt: Date.now()
-                          }
-                          onAddSymbolGroup?.(group)
-                          setSelectedPositions(new Set())
-                          setShowGroupNameInput(false)
-                          setGroupNameInput('')
-                        } else if (e.key === 'Escape') {
-                          setShowGroupNameInput(false)
-                          setGroupNameInput('')
-                        }
-                      }}
-                    />
-                    <button
-                      className="select-toggle-btn"
-                      onClick={() => {
-                        if (!groupNameInput.trim()) return
-                        const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
-                        const symbol = selected[0]?.symbol || ''
-                        const group: SymbolGroup = {
-                          id: crypto.randomUUID(),
-                          name: groupNameInput.trim(),
-                          symbol,
-                          posKeys: selected.map((p) => posKey(p)),
-                          createdAt: Date.now()
-                        }
-                        onAddSymbolGroup?.(group)
-                        setSelectedPositions(new Set())
-                        setShowGroupNameInput(false)
-                        setGroupNameInput('')
-                      }}
-                    >
-                      確認
-                    </button>
-                    <button
-                      className="select-toggle-btn"
-                      onClick={() => {
-                        setShowGroupNameInput(false)
-                        setGroupNameInput('')
-                      }}
-                    >
-                      取消
-                    </button>
-                  </div>
-                )}
+
                 {selectMode === 'STK' && canTransferStocks && (
                   <button className="select-toggle-btn" onClick={() => setShowCloseDialog(true)}>
                     平倉
@@ -1363,13 +1277,7 @@ export default function AccountOverview({
                                 轉倉{checkedLabel}
                               </button>
                             )}
-                            <button
-                              className="select-toggle-btn"
-                              style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                              onClick={() => { setGroupKeys(); setShowCloseGroupDialog(true) }}
-                            >
-                              平倉{checkedLabel}
-                            </button>
+
                           </>
                         )
                       })()}
@@ -2175,11 +2083,8 @@ export default function AccountOverview({
                 {/* Open Orders */}
                 {!selectMode &&
                   openOrders.filter((o) => o.account === account.accountId).length > 0 && (
-                    <div
-                      className="positions-section order-section"
-                      style={{ backgroundColor: '#fffbe6' }}
-                    >
-                      <table className="positions-table">
+                    <div className="positions-section order-section">
+                      <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                         <thead>
                           <tr>
                             <th style={{ width: '35%', textAlign: 'left' }}>委託</th>

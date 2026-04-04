@@ -82,7 +82,7 @@ body {
   outline: none;
   transition: border-color 0.2s;
   gap: 6px;
-  height: 28px;
+  height: 32px;
   box-sizing: border-box;
 }
 

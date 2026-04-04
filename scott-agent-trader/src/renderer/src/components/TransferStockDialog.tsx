@@ -606,18 +606,19 @@ export default function TransferStockDialog({
               <table className="allocation-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '22%', textAlign: 'left' }}>帳號</th>
-                    <th style={{ width: '12%' }}>淨值</th>
-                    <th style={{ width: '12%' }}>現金</th>
-                    <th style={{ width: '7%' }}>方向</th>
-                    <th style={{ width: '8%' }}>標的</th>
-                    <th style={{ width: '10%' }}>價格</th>
-                    <th style={{ width: '12%' }}>數量</th>
-                    {step === 'done' && <th style={{ width: '12%' }}>狀態</th>}
+                    <th style={{ width: '24px', paddingRight: 0 }}></th>
+                    <th style={{ textAlign: 'left' }}>帳號</th>
+                    <th>淨值</th>
+                    <th>現金</th>
+                    <th>方向</th>
+                    <th>標的</th>
+                    <th>價格</th>
+                    <th>數量</th>
+                    {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
                 <>
-                  {(step === 'preview' ? previews : confirmedPreviews).map((p) => {
+                  {(step === 'preview' ? previews : confirmedPreviews).map((p, pIdx) => {
                     const acct = accounts.find((a) => a.accountId === p.accountId)
                     if (!acct) return null
                     const displayTargetSymbol =
@@ -643,9 +644,20 @@ export default function TransferStockDialog({
                                   <td
                                     rowSpan={rowCount}
                                     style={{
-                                      fontWeight: 'bold',
+                                      textAlign: 'right',
+                                      borderBottom: '1px solid #b0b0b0',
+                                      paddingRight: '4px'
+                                    }}
+                                  >
+                                    {`${pIdx + 1}.`}
+                                  </td>
+                                  <td
+                                    rowSpan={rowCount}
+                                    style={{
+                                      fontWeight: 'normal',
                                       textAlign: 'left',
-                                      borderBottom: '1px solid #b0b0b0'
+                                      borderBottom: '1px solid #b0b0b0',
+                                      paddingLeft: '4px'
                                     }}
                                   >
                                     {p.alias}
