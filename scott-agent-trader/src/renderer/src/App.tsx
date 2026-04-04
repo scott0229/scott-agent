@@ -113,7 +113,10 @@ function App(): React.JSX.Element {
           .getAccountTypes(accountIds, d1Target)
           .then((res) => {
             if (res.accountTypes && Object.keys(res.accountTypes).length > 0) {
-              for (const [accountId, type] of Object.entries(res.accountTypes) as [string, string][]) {
+              for (const [accountId, type] of Object.entries(res.accountTypes) as [
+                string,
+                string
+              ][]) {
                 setAccountType(accountId, type)
               }
             }
@@ -121,7 +124,7 @@ function App(): React.JSX.Element {
               setOperationModes(res.operationModes)
             }
           })
-          .catch(() => { })
+          .catch(() => {})
         // Auto-fetch return rates (報酬率) from D1
         window.ibApi
           .getReturnRates(accountIds, d1Target)
@@ -130,7 +133,7 @@ function App(): React.JSX.Element {
               setReturnRates(res.returnRates)
             }
           })
-          .catch(() => { })
+          .catch(() => {})
         // Auto-fetch initial costs (初始成本) from D1
         window.ibApi
           .getInitialCosts(accountIds, d1Target)
@@ -139,7 +142,7 @@ function App(): React.JSX.Element {
               setInitialCosts(res.initialCosts)
             }
           })
-          .catch(() => { })
+          .catch(() => {})
       })
       .catch(() => {
         setAccountGroupLabel(null)
@@ -183,7 +186,14 @@ function App(): React.JSX.Element {
   const groupTabCount = useMemo(() => {
     const allGroupedKeys = new Set<string>()
     symbolGroups.forEach((g) => g.posKeys.forEach((k) => allGroupedKeys.add(k)))
-    const posKeyFn = (p: { account: string; symbol: string; secType: string; expiry?: string; strike?: number; right?: string }): string =>
+    const posKeyFn = (p: {
+      account: string
+      symbol: string
+      secType: string
+      expiry?: string
+      strike?: number
+      right?: string
+    }): string =>
       `${p.account}|${p.symbol}|${p.secType}|${p.expiry || ''}|${p.strike || ''}|${p.right || ''}`
     const hasUncategorized = visiblePositions.some((p) => !allGroupedKeys.has(posKeyFn(p)))
     return symbolGroups.length + (hasUncategorized ? 1 : 0)

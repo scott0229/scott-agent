@@ -24,9 +24,7 @@ export default function PriceSyncDialog({
   const [rows, setRows] = useState<RowState[]>(
     symbols.map((s) => ({ symbol: s, phase: 'upload' as const, status: 'pending' as SymbolStatus }))
   )
-  const [phase, setPhase] = useState<'upload' | 'backfill-discover' | 'backfill' | 'done'>(
-    'upload'
-  )
+  const [phase, setPhase] = useState<'upload' | 'backfill-discover' | 'backfill' | 'done'>('upload')
   const [uploadDone, setUploadDone] = useState(0)
   const [uploadTotal] = useState(symbols.length)
   const [backfillDone, setBackfillDone] = useState(0)
@@ -42,9 +40,7 @@ export default function PriceSyncDialog({
       // === Phase 1: Upload ===
       const uploadOne = async (sym: string, i: number): Promise<void> => {
         if (cancelledRef.current) return
-        setRows((prev) =>
-          prev.map((r, idx) => (idx === i ? { ...r, status: 'loading' } : r))
-        )
+        setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: 'loading' } : r)))
         try {
           const result = await window.ibApi.uploadSymbol(sym, d1Target)
           if (cancelledRef.current) return
@@ -110,10 +106,7 @@ export default function PriceSyncDialog({
           prev.map((r, idx) => (idx === globalIdx ? { ...r, status: 'loading' } : r))
         )
         try {
-          const result = await window.ibApi.backfillUnderlyingPrice(
-            backfillSymbols[i],
-            d1Target
-          )
+          const result = await window.ibApi.backfillUnderlyingPrice(backfillSymbols[i], d1Target)
           if (cancelledRef.current) break
           setRows((prev) =>
             prev.map((r, idx) =>
@@ -136,9 +129,7 @@ export default function PriceSyncDialog({
           if (cancelledRef.current) break
           const msg = e instanceof Error ? e.message : String(e)
           setRows((prev) =>
-            prev.map((r, idx) =>
-              idx === globalIdx ? { ...r, status: 'error', error: msg } : r
-            )
+            prev.map((r, idx) => (idx === globalIdx ? { ...r, status: 'error', error: msg } : r))
           )
         }
       }
@@ -199,9 +190,7 @@ export default function PriceSyncDialog({
               <span className="upload-dialog-status">
                 {it.status === 'pending' && <span className="status-pending">—</span>}
                 {it.status === 'loading' && <span className="status-spinner">⏳</span>}
-                {it.status === 'done' && (
-                  <span className="status-done">✓ {it.detail}</span>
-                )}
+                {it.status === 'done' && <span className="status-done">✓ {it.detail}</span>}
                 {it.status === 'error' && (
                   <span className="status-error" title={it.error}>
                     ✗ {it.error ?? '失敗'}

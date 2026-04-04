@@ -593,12 +593,19 @@ body {
 }
 
 /* Order row hover effect */
-.order-section .positions-table tbody tr {
+.order-section .positions-table tbody tr,
+.pos-hoverable-row {
   transition: background-color 0.15s;
+  cursor: default; /* Make sure it doesn't default to pointer unless selectable-row */
+}
+.order-section .positions-table tbody tr {
   cursor: pointer;
 }
 
-.order-section .positions-table tbody tr:hover {
+.pos-hoverable-row:hover,
+.order-section .positions-table tbody tr:hover,
+.pos-hoverable-row.force-active,
+.order-section .positions-table tbody tr.force-active {
   background-color: #fff3c4;
 }
 
@@ -1359,7 +1366,6 @@ input[type='number']::-webkit-outer-spin-button {
   background: #ffffff;
   border-radius: 12px;
   width: 680px;
-  min-height: 76vh;
   max-height: 76vh;
   display: flex;
   flex-direction: column;
@@ -1476,7 +1482,6 @@ input[type='number']::-webkit-outer-spin-button {
 
 /* Multi-expiry chain table */
 .roll-chain-multi {
-  min-height: 325px;
   max-height: 325px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -2242,11 +2247,13 @@ input[type='number']::-webkit-outer-spin-button {
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   padding: 4px 0;
-  min-width: 120px;
+  min-width: 70px;
 }
 
 .order-context-menu-item {
-  padding: 8px 16px;
+  padding: 3px 8px;
+  text-align: center;
+  line-height: 1.2;
   font-size: 13px;
   cursor: pointer;
   color: #333;
@@ -2254,7 +2261,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .order-context-menu-item:hover {
-  background: #f0f0f0;
+  background: #fff3c4;
 }
 
 /* Stock Order Dialog */

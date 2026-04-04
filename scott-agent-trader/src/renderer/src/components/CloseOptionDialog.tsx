@@ -416,12 +416,18 @@ export default function CloseOptionDialog({
               (p) => p.secType === 'OPT' && optionKey(p) === key
             )
             const action = firstPos && firstPos.quantity < 0 ? '買入' : '賣出'
-            const actionColor = firstPos && firstPos.quantity < 0 ? '#1a6b3a' : '#8b1a1a'
 
             return (
               <div key={key} className="order-form" style={{ marginBottom: '16px' }}>
                 <div
-                  style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', fontSize: '13px', whiteSpace: 'nowrap' }}
+                  style={{
+                    display: 'flex',
+                    gap: '4px',
+                    alignItems: 'center',
+                    flexWrap: 'nowrap',
+                    fontSize: '13px',
+                    whiteSpace: 'nowrap'
+                  }}
                 >
                   <span>{action}</span>
                   <span>{c.label}</span>
@@ -429,10 +435,14 @@ export default function CloseOptionDialog({
                     <>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">買價</span>
-                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
+                      <span className="roll-order-value roll-order-bid">
+                        {quote.bid.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">賣價</span>
-                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="roll-order-value roll-order-ask">
+                        {quote.ask.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">中間價</span>
                       <span className="roll-order-value roll-order-mid">
@@ -453,7 +463,7 @@ export default function CloseOptionDialog({
                       }))
                     }
                     className="input-field"
-                    style={{ width: '65px', fontSize: '12px', height: '28px', padding: '4px 8px' }}
+                    style={{ width: '65px', fontSize: '12px' }}
                     step="0.01"
                     placeholder="限價"
                   />
@@ -528,7 +538,6 @@ export default function CloseOptionDialog({
                                   >
                                     {p.alias}
                                   </td>
-
                                 </>
                               )}
                               <td
@@ -548,11 +557,30 @@ export default function CloseOptionDialog({
                               >
                                 {order.label}
                               </td>
-                              <td style={{ padding: '4px 6px' }}>
-                                {prices[order.optKey] || '-'}
-                              </td>
-                              <td style={(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
-                                {(() => { const sp = parseFloat(prices[order.optKey] || '0') * 100; const pnl = order.action === 'SELL' ? (sp - order.avgCost) * order.qty : (order.avgCost - sp) * order.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
+                              <td style={{ padding: '4px 6px' }}>{prices[order.optKey] || '-'}</td>
+                              <td
+                                style={(() => {
+                                  const sp = parseFloat(prices[order.optKey] || '0') * 100
+                                  const pnl =
+                                    order.action === 'SELL'
+                                      ? (sp - order.avgCost) * order.qty
+                                      : (order.avgCost - sp) * order.qty
+                                  if (pnl === 0) return {}
+                                  return pnl >= 0
+                                    ? { background: '#0d7a35', color: '#fff' }
+                                    : { background: '#dc2626', color: '#fff' }
+                                })()}
+                              >
+                                {(() => {
+                                  const sp = parseFloat(prices[order.optKey] || '0') * 100
+                                  const pnl =
+                                    order.action === 'SELL'
+                                      ? (sp - order.avgCost) * order.qty
+                                      : (order.avgCost - sp) * order.qty
+                                  return pnl !== 0
+                                    ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                    : '-'
+                                })()}
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 {step === 'preview' ? (
@@ -593,29 +621,12 @@ export default function CloseOptionDialog({
           <div className="confirm-buttons" style={{ marginTop: '16px' }}>
             {step === 'preview' && (
               <button
-                className="btn btn-primary"
-                disabled={totalQty === 0 || Object.values(prices).some((p) => !p)}
-                onClick={() => {
-                  setConfirmedPreviews(previews)
-                  setStep('confirm')
-                }}
+                className="btn btn-danger"
+                disabled={submitting || totalQty === 0 || Object.values(prices).some((p) => !p)}
+                onClick={handleSubmit}
               >
-                預覽下單
+                {submitting ? '下單中...' : '確認平倉'}
               </button>
-            )}
-            {step === 'confirm' && (
-              <>
-                <button className="btn btn-danger" disabled={submitting} onClick={handleSubmit}>
-                  {submitting ? '下單中...' : '確認平倉'}
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  disabled={submitting}
-                  onClick={() => setStep('preview')}
-                >
-                  返回修改
-                </button>
-              </>
             )}
             {step === 'done' && (
               <button className="btn btn-secondary" onClick={handleClose}>

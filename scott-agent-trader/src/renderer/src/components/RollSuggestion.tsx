@@ -78,7 +78,10 @@ export default function RollSuggestion({
   // Extract unique option groups from positions: {symbol, expiry, right, strikes[]}
   // Memoize to avoid creating a new array reference every render
   const optPositions = useMemo(
-    () => positions.filter((p) => p.secType === 'OPT' && p.expiry && p.right && p.strike && p.quantity < 0),
+    () =>
+      positions.filter(
+        (p) => p.secType === 'OPT' && p.expiry && p.right && p.strike && p.quantity < 0
+      ),
     [positions]
   )
 
@@ -118,8 +121,6 @@ export default function RollSuggestion({
       }
       groups.get(key)!.strikes.add(p.strike!)
     }
-
-
 
     const fetchSuggestions = async (): Promise<void> => {
       setLoading(true)
@@ -257,14 +258,11 @@ export default function RollSuggestion({
     return () => clearInterval(intervalId)
   }, [connected, optPositions])
 
-
-
   if (optPositions.length === 0) return null
   if (!connected) return null
 
   return (
     <div className="positions-section" style={{ marginTop: '12px' }}>
-
       {loading && <div style={{ color: '#aaa', padding: '4px 8px' }}>載入中...</div>}
       {error && <div style={{ color: '#dc2626', padding: '4px 8px' }}>{error}</div>}
       {!loading && !error && suggestions.length === 0 && (
@@ -325,11 +323,13 @@ export default function RollSuggestion({
                         color: '#374151',
                         whiteSpace: 'nowrap' as const
                       }}
-                      onClick={() => onExecute({
-                        expiry: s.expiry,
-                        strike: s.strike,
-                        right: s.right as 'C' | 'P'
-                      })}
+                      onClick={() =>
+                        onExecute({
+                          expiry: s.expiry,
+                          strike: s.strike,
+                          right: s.right as 'C' | 'P'
+                        })
+                      }
                     >
                       執行
                     </button>

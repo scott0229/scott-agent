@@ -26,8 +26,18 @@ export interface OptionGreek {
 
 export function formatExpiry(expiry: string): string {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
   ]
   const year = expiry.substring(2, 4)
   const month = months[parseInt(expiry.substring(4, 6)) - 1]
@@ -120,7 +130,7 @@ export function useOptionChain({
         if (stockPriceSymbolRef.current !== sym) return
         if (cached) setStockPrice(cached)
       })
-      .catch(() => { })
+      .catch(() => {})
     window.ibApi
       .getStockQuote(sym)
       .then((q) => {
@@ -128,7 +138,7 @@ export function useOptionChain({
         const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
         if (price) setStockPrice(price)
       })
-      .catch(() => { })
+      .catch(() => {})
 
     window.ibApi
       .getOptionChain(sym)
@@ -299,7 +309,7 @@ export function useOptionChain({
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => { })
+        .catch(() => {})
     })
   }, [displayExpirations, displayStrikes, symbol])
 
@@ -319,7 +329,7 @@ export function useOptionChain({
             const price = q.last > 0 ? q.last : q.bid > 0 && q.ask > 0 ? (q.bid + q.ask) / 2 : null
             if (price && !cancelled) setStockPrice(price)
           })
-          .catch(() => { })
+          .catch(() => {})
       )
 
       for (const exp of displayExpirations) {
@@ -343,7 +353,7 @@ export function useOptionChain({
                 return newEntries.length > 0 ? [...updated, ...newEntries] : updated
               })
             })
-            .catch(() => { })
+            .catch(() => {})
         )
       }
       await Promise.all(promises)

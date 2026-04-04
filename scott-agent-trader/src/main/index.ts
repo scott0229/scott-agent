@@ -20,8 +20,21 @@ import {
   setupNextOrderIdListener,
   setupOrderStatusListener
 } from './ib/orders'
-import { requestOptionChain, requestOptionGreeks, cancelOptionGreeksSubscriptions } from './ib/options'
-import { getStockQuote, getQuotes, getOptionQuotes, getCachedStockPrice, subscribeStockQuotes, subscribeOptionQuotes, unsubscribeAllQuotes, getLiveQuotes } from './ib/quotes'
+import {
+  requestOptionChain,
+  requestOptionGreeks,
+  cancelOptionGreeksSubscriptions
+} from './ib/options'
+import {
+  getStockQuote,
+  getQuotes,
+  getOptionQuotes,
+  getCachedStockPrice,
+  subscribeStockQuotes,
+  subscribeOptionQuotes,
+  unsubscribeAllQuotes,
+  getLiveQuotes
+} from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
@@ -127,7 +140,9 @@ function setupIpcHandlers(): void {
           console.warn(`[prefetch] ✗ chain ${symbol}:`, err)
         }
       }
-      console.log(`[prefetch] Done chains in ${Date.now() - t0}ms: ${chainOk} ok, ${chainFail} failed`)
+      console.log(
+        `[prefetch] Done chains in ${Date.now() - t0}ms: ${chainOk} ok, ${chainFail} failed`
+      )
 
       // Also prefetch stock prices in parallel
       console.log(`[prefetch] Prefetching stock prices for ${tradableSymbols.length} symbols...`)
@@ -211,7 +226,10 @@ function setupIpcHandlers(): void {
       symbols: string[],
       optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
     ) => {
-      const pushUpdate = (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }): void => {
+      const pushUpdate = (data: {
+        quotes: Record<string, number>
+        optionQuotes: Record<string, number>
+      }): void => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('ib:quoteUpdate', data)
         }
@@ -227,7 +245,9 @@ function setupIpcHandlers(): void {
         subscribeOptionQuotes(optionContracts, pushUpdate)
       }
 
-      console.log(`[IPC] subscribeQuotes: ${symbols.length} stocks, ${optionContracts.length} options`)
+      console.log(
+        `[IPC] subscribeQuotes: ${symbols.length} stocks, ${optionContracts.length} options`
+      )
       return getLiveQuotes()
     }
   )
@@ -276,12 +296,13 @@ function setupIpcHandlers(): void {
     'ib:getOptionGreeks',
     async (_event, symbol: string, expiry: string, strikes: number[], exchange?: string) => {
       const result = await requestOptionGreeks(symbol, expiry, strikes, exchange)
-      const withData = result.filter(g => g.bid > 0 || g.ask > 0 || g.last > 0 || g.delta !== 0)
-      console.log(`[IPC] getOptionGreeks → ${symbol} ${expiry}: ${result.length} items, ${withData.length} with data`)
+      const withData = result.filter((g) => g.bid > 0 || g.ask > 0 || g.last > 0 || g.delta !== 0)
+      console.log(
+        `[IPC] getOptionGreeks → ${symbol} ${expiry}: ${result.length} items, ${withData.length} with data`
+      )
       return result
     }
   )
-
 
   ipcMain.handle('ib:cancelOptionGreeksSubscriptions', async (_event, symbol: string) => {
     cancelOptionGreeksSubscriptions(symbol)
@@ -498,30 +519,27 @@ function setupIpcHandlers(): void {
   ]
 
   // Fetch the list of symbols the web app needs stock prices for
-  ipcMain.handle(
-    'prices:getNeededSymbols',
-    async (_event, target?: 'staging' | 'production') => {
-      const effectiveTarget = target || 'staging'
-      const t = UPLOAD_TARGETS.find((t) => t.label === effectiveTarget) || UPLOAD_TARGETS[0]
-      try {
-        const url = `${t.neededSymbols}?group=${encodeURIComponent(detectedGroup)}`
-        console.log(`[getNeededSymbols] url=${url}`)
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${t.apiKey}` }
-        })
-        if (!res.ok) {
-          console.warn(`[getNeededSymbols] error: ${res.status}`)
-          return []
-        }
-        const json = (await res.json()) as { symbols?: string[] }
-        console.log(`[getNeededSymbols] symbols=`, json.symbols)
-        return json.symbols || []
-      } catch (err) {
-        console.error(`[getNeededSymbols] catch:`, err)
+  ipcMain.handle('prices:getNeededSymbols', async (_event, target?: 'staging' | 'production') => {
+    const effectiveTarget = target || 'staging'
+    const t = UPLOAD_TARGETS.find((t) => t.label === effectiveTarget) || UPLOAD_TARGETS[0]
+    try {
+      const url = `${t.neededSymbols}?group=${encodeURIComponent(detectedGroup)}`
+      console.log(`[getNeededSymbols] url=${url}`)
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${t.apiKey}` }
+      })
+      if (!res.ok) {
+        console.warn(`[getNeededSymbols] error: ${res.status}`)
         return []
       }
+      const json = (await res.json()) as { symbols?: string[] }
+      console.log(`[getNeededSymbols] symbols=`, json.symbols)
+      return json.symbols || []
+    } catch (err) {
+      console.error(`[getNeededSymbols] catch:`, err)
+      return []
     }
-  )
+  })
 
   ipcMain.handle(
     'prices:uploadSymbol',
@@ -659,9 +677,7 @@ function setupIpcHandlers(): void {
                     const m = t.substring(4, 6)
                     const d = t.substring(6, 8)
                     const rest = t.substring(9) // "HH:mm:ss"
-                    barSec = Math.floor(
-                      new Date(`${y}-${m}-${d}T${rest}Z`).getTime() / 1000
-                    )
+                    barSec = Math.floor(new Date(`${y}-${m}-${d}T${rest}Z`).getTime() / 1000)
                   } else {
                     barSec = Math.floor(new Date(t).getTime() / 1000)
                   }
@@ -868,7 +884,9 @@ function setupIpcHandlers(): void {
                 if (spacedMatch) {
                   // Treat as naive UTC (matches how open_date is stored)
                   barSec = Math.floor(
-                    new Date(`${spacedMatch[1]}-${spacedMatch[2]}-${spacedMatch[3]}T${spacedMatch[4]}Z`).getTime() / 1000
+                    new Date(
+                      `${spacedMatch[1]}-${spacedMatch[2]}-${spacedMatch[3]}T${spacedMatch[4]}Z`
+                    ).getTime() / 1000
                   )
                 } else if (/^\d{8}\s/.test(ts)) {
                   // Format: "20260306  10:06:17" — dense date

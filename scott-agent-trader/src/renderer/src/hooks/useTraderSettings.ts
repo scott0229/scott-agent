@@ -59,9 +59,7 @@ export function useTraderSettings() {
       typeof data.settings.symbol_prefetch === 'object' &&
       !Array.isArray(data.settings.symbol_prefetch)
     ) {
-      setSymbolPrefetchState(
-        data.settings.symbol_prefetch as Record<string, boolean>
-      )
+      setSymbolPrefetchState(data.settings.symbol_prefetch as Record<string, boolean>)
     }
     if (data.settings.d1_target === 'staging' || data.settings.d1_target === 'production') {
       setD1TargetState(data.settings.d1_target)

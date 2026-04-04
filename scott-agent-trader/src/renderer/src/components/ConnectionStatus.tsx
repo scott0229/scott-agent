@@ -26,7 +26,6 @@ function savePort(port: string): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ConnectionStatusProps {}
 
 export default function ConnectionStatus(_props: ConnectionStatusProps): React.JSX.Element {

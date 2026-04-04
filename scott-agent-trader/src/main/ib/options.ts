@@ -262,10 +262,7 @@ export function cancelOptionGreeksSubscriptions(symbol: string): void {
       keysToRemove.push(key)
       if (api) {
         api.removeListener(EventName.tickPrice, sub.listeners.onTickPrice)
-        api.removeListener(
-          EventName.tickOptionComputation,
-          sub.listeners.onTickOptionComputation
-        )
+        api.removeListener(EventName.tickOptionComputation, sub.listeners.onTickOptionComputation)
         api.removeListener(EventName.error, sub.listeners.onError)
         for (const reqId of sub.reqIds.keys()) {
           try {
@@ -342,7 +339,9 @@ export function requestOptionGreeks(
 
     if (missingStrikes.length > 0) {
       // Expand the subscription with missing strikes
-      console.log(`[IB] Expanding subscription ${symbol} ${expiry}: +${missingStrikes.length} strikes`)
+      console.log(
+        `[IB] Expanding subscription ${symbol} ${expiry}: +${missingStrikes.length} strikes`
+      )
       const expandPromise = _expandSubscription(existingSub, cacheKey, missingStrikes, exchange)
       return expandPromise.then(() => {
         const results = getSubscriptionResults(existingSub)
@@ -363,13 +362,10 @@ export function requestOptionGreeks(
   }
 
   // If subscription is pending (being set up), queue behind it
-  const queued = greeksQueue.then(() =>
-    _requestOptionGreeksImpl(symbol, expiry, strikes, exchange)
-  )
+  const queued = greeksQueue.then(() => _requestOptionGreeksImpl(symbol, expiry, strikes, exchange))
   greeksQueue = queued.catch(() => {})
   return queued
 }
-
 
 /** Expand an existing streaming subscription with additional strikes */
 async function _expandSubscription(
@@ -395,9 +391,16 @@ async function _expandSubscription(
         strike,
         right,
         expiry: sub.expiry,
-        bid: 0, ask: 0, last: 0,
-        delta: 0, gamma: 0, theta: 0, vega: 0,
-        impliedVol: 0, openInterest: 0, modelPrice: 0
+        bid: 0,
+        ask: 0,
+        last: 0,
+        delta: 0,
+        gamma: 0,
+        theta: 0,
+        vega: 0,
+        impliedVol: 0,
+        openInterest: 0,
+        modelPrice: 0
       })
       newReqIds.push([reqId, info])
     }
@@ -497,9 +500,7 @@ async function _requestOptionGreeksImpl(
     const fallback = chainCached.params.find((p) => p.expirations.includes(expiry))
     const matched = preferred || fallback
     if (matched) tradingClass = matched.tradingClass
-    console.log(
-      `[IB] Resolved tradingClass for expiry ${expiry}: ${tradingClass ?? 'none'}`
-    )
+    console.log(`[IB] Resolved tradingClass for expiry ${expiry}: ${tradingClass ?? 'none'}`)
   }
 
   // Use delayed-frozen (type 4) for model-computed greeks (delta, gamma, theta, vega)
@@ -686,7 +687,9 @@ async function _requestOptionGreeksImpl(
       pendingSubscriptions.delete(cacheKey)
       const results = getSubscriptionResults(subscription)
       const withData = results.filter((r) => r.bid > 0 || r.ask > 0 || r.delta !== 0).length
-      console.log(`[IB] Streaming ${reason}: ${withData}/${results.length} have data, ${errorReqIds.size} errors`)
+      console.log(
+        `[IB] Streaming ${reason}: ${withData}/${results.length} have data, ${errorReqIds.size} errors`
+      )
       setGreeksCache(cacheKey, results)
       resolve(results)
     }

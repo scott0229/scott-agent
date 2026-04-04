@@ -1,7 +1,7 @@
 import React from 'react'
 import { useState, useEffect, useMemo, useRef } from 'react'
 
-import type { AccountData, PositionData } from '../hooks/useAccountStore'
+import type { AccountData } from '../hooks/useAccountStore'
 import { useOptionChain, formatExpiry, formatPrice } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
 
@@ -9,18 +9,28 @@ interface OptionOrderDialogProps {
   open: boolean
   onClose: () => void
   accounts: AccountData[]
-  positions: PositionData[]
   /** Pre-fill symbol when opened from a context (e.g. clicking a symbol) */
   initialSymbol?: string
+  /** Pre-fill account when opened from a context */
+  initialAccountId?: string
+  /** Pre-fill right (CALL/PUT) when opened from a context */
+  initialRight?: 'C' | 'P'
 }
 
 export default function OptionOrderDialog({
   open,
   onClose,
-  accounts,
-  positions,
-  initialSymbol = 'QQQ'
+  accounts: allAccounts,
+  initialSymbol = 'QQQ',
+  initialAccountId,
+  initialRight
 }: OptionOrderDialogProps): React.JSX.Element | null {
+  // ── Filter accounts if initialAccountId is provided ──────────────────────
+  const accounts = useMemo(() => {
+    if (!initialAccountId) return allAccounts
+    return allAccounts.filter((a) => a.accountId === initialAccountId)
+  }, [allAccounts, initialAccountId])
+
   // ── Symbol ──────────────────────────────────────────────────────────────
   const [symbol, setSymbol] = useState(initialSymbol)
   const [symbolInput, setSymbolInput] = useState(initialSymbol)
@@ -31,7 +41,7 @@ export default function OptionOrderDialog({
   // ── Order selection ──────────────────────────────────────────────────────
   const [selExpiry, setSelExpiry] = useState('')
   const [selStrike, setSelStrike] = useState<number | null>(null)
-  const [selRight, setSelRight] = useState<'C' | 'P' | null>(null)
+  const [selRight, setSelRight] = useState<'C' | 'P' | null>(initialRight || null)
   const [action, setAction] = useState<'BUY' | 'SELL'>('SELL')
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false)
 
@@ -52,6 +62,9 @@ export default function OptionOrderDialog({
   const [submitting, setSubmitting] = useState(false)
   const [orderSubmitted, setOrderSubmitted] = useState(false)
 
+  // ── Master Quantity ──────────────────────────────────────────────────────
+  const [masterQty, setMasterQty] = useState('')
+
   // ── Reset on open ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return
@@ -60,17 +73,20 @@ export default function OptionOrderDialog({
     setSymbolInput(sym)
     setSelExpiry('')
     setSelStrike(null)
-    setSelRight(null)
+    setSelRight(initialRight || null)
     setLimitPrice('')
     setLimitDropdownOpen(false)
     chain.setErrorMsg('')
     setAction('SELL')
     const initQty: Record<string, string> = {}
+    const initChecked: Record<string, boolean> = {}
     accounts.forEach((a) => {
       initQty[a.accountId] = ''
+      if (accounts.length === 1) initChecked[a.accountId] = true
     })
     setQtys(initQty)
-    setCheckedAccounts({})
+    setMasterQty('')
+    setCheckedAccounts(initChecked)
     setOrderStatuses({})
     setOrderSubmitted(false)
     userEditedPriceRef.current = false
@@ -79,6 +95,7 @@ export default function OptionOrderDialog({
     } else {
       chain.resetChain()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   // ── Selected greek ────────────────────────────────────────────────────────
@@ -112,7 +129,7 @@ export default function OptionOrderDialog({
   // ── Close limit dropdown on outside click ─────────────────────────────────
   useEffect(() => {
     if (!limitDropdownOpen) return
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent): void => {
       if (limitInputRef.current && !limitInputRef.current.contains(e.target as Node)) {
         setLimitDropdownOpen(false)
       }
@@ -172,7 +189,7 @@ export default function OptionOrderDialog({
         statusMap[r.account] = '已送出'
       })
       setOrderStatuses((prev) => ({ ...prev, ...statusMap }))
-    } catch (err: unknown) {
+    } catch {
       const errMap: Record<string, string> = {}
       Object.keys(accountQuantities).forEach((id) => {
         errMap[id] = '失敗'
@@ -199,7 +216,7 @@ export default function OptionOrderDialog({
       >
         {/* Header */}
         <div className="roll-dialog-header">
-          <h3>期權下單</h3>
+          <h3>{initialAccountId ? `期權下單 ${getAlias(initialAccountId)}` : '期權下單'}</h3>
           <button className="roll-dialog-close" onClick={onClose}>
             ✕
           </button>
@@ -327,7 +344,9 @@ export default function OptionOrderDialog({
                   )}
                 </div>
               ) : (
-                <button className="roll-expiry-dropdown-btn" disabled style={{ opacity: 0.5 }}>載入中…</button>
+                <button className="roll-expiry-dropdown-btn" disabled style={{ opacity: 0.5 }}>
+                  載入中…
+                </button>
               )}
               {chain.dataReady && chain.availableStrikes.length > 0 && (
                 <div className="roll-expiry-selector">
@@ -355,7 +374,11 @@ export default function OptionOrderDialog({
                           ;(
                             chain.strikeDropdownRef as React.MutableRefObject<HTMLDivElement | null>
                           ).current = el
-                          if (el && !chain.strikeScrolledRef.current && chain.selectedStrikes.length > 0) {
+                          if (
+                            el &&
+                            !chain.strikeScrolledRef.current &&
+                            chain.selectedStrikes.length > 0
+                          ) {
                             chain.strikeScrolledRef.current = true
                             const sortedSel = [...chain.selectedStrikes].sort((a, b) => a - b)
                             const firstIdx = chain.availableStrikes.indexOf(sortedSel[0])
@@ -417,47 +440,28 @@ export default function OptionOrderDialog({
 
           {/* Limit price row */}
           <div className="roll-order-section">
-            <span className="roll-order-label">買價</span>
-            <span className="roll-order-value roll-order-bid">
-              {selGreek ? formatPrice(selGreek.bid) : '-'}
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-            />
-            <span className="roll-order-label">賣價</span>
-            <span className="roll-order-value roll-order-ask">
-              {selGreek ? formatPrice(selGreek.ask) : '-'}
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-            />
-            <span className="roll-order-label">中間價</span>{' '}
-            <span className="roll-order-value roll-order-mid">
-              {selGreek && selGreek.bid > 0 && selGreek.ask > 0
-                ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
-                : '-'}
-            </span>
-
-            {/* Selected contract summary + limit price pushed to right */}
             {selExpiry && selStrike !== null && selRight !== null && (
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 13,
-                  color: '#333',
-                  fontWeight: 500
-                }}
-              >
-                {action === 'BUY' ? (
-                  <span style={{ color: '#15803d', fontWeight: 600 }}>買入</span>
-                ) : (
-                  <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣出</span>
-                )}
-                <span>
-                  {symbol} {formatExpiry(selExpiry)} {selStrike} {selRight === 'C' ? 'CALL' : 'PUT'}
+              <>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13,
+                    color: '#333',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {action === 'BUY' ? (
+                    <span style={{ color: '#15803d', fontWeight: 600 }}>買</span>
+                  ) : (
+                    <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣</span>
+                  )}
+                  <span style={{ whiteSpace: 'nowrap' }}>
+                    {symbol} {formatExpiry(selExpiry)} {selStrike}{' '}
+                    {selRight === 'C' ? 'CALL' : 'PUT'}
+                  </span>
                 </span>
                 <span
                   style={{
@@ -468,11 +472,54 @@ export default function OptionOrderDialog({
                     margin: '0 6px'
                   }}
                 />
-                <span className="roll-order-label">限價</span>
+              </>
+            )}
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+              買
+            </span>
+            <span className="roll-order-value roll-order-bid" style={{ whiteSpace: 'nowrap' }}>
+              {selGreek ? formatPrice(selGreek.bid) : '-'}
+            </span>
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+              賣
+            </span>
+            <span className="roll-order-value roll-order-ask" style={{ whiteSpace: 'nowrap' }}>
+              {selGreek ? formatPrice(selGreek.ask) : '-'}
+            </span>
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+              中間
+            </span>{' '}
+            <span className="roll-order-value roll-order-mid" style={{ whiteSpace: 'nowrap' }}>
+              {selGreek && selGreek.bid > 0 && selGreek.ask > 0
+                ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
+                : '-'}
+            </span>
+            {selExpiry && selStrike !== null && selRight !== null && (
+              <>
+                <span
+                  style={{
+                    width: 1,
+                    height: 16,
+                    background: '#ccc',
+                    flexShrink: 0,
+                    margin: '0 6px'
+                  }}
+                />
+                <span style={{ marginRight: 'auto' }} />
+                <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+                  限價
+                </span>
                 <div className="roll-limit-wrapper" ref={limitInputRef}>
                   <input
                     type="text"
                     className="roll-order-input"
+                    style={{ width: 55, padding: '2px 6px' }}
                     value={limitPrice}
                     onChange={(e) => {
                       userEditedPriceRef.current = true
@@ -481,224 +528,219 @@ export default function OptionOrderDialog({
                     placeholder="0.00"
                   />
                 </div>
-              </span>
+
+                <span style={{ marginLeft: 12, whiteSpace: 'nowrap' }} className="roll-order-label">
+                  口數
+                </span>
+                <div className="roll-limit-wrapper">
+                  <input
+                    type="number"
+                    min={0}
+                    className="roll-order-input"
+                    style={{ width: 45, padding: '2px 6px' }}
+                    value={masterQty}
+                    onChange={(e) => {
+                      setMasterQty(e.target.value)
+                      const newQtys = { ...qtys }
+                      sortedAccounts.forEach((a) => {
+                        newQtys[a.accountId] = e.target.value
+                      })
+                      setQtys(newQtys)
+                    }}
+                    placeholder=""
+                  />
+                </div>
+                <div style={{ width: 12, flexShrink: 0 }}></div>
+              </>
             )}
           </div>
 
           {/* Account quantity table */}
-          <div className="roll-dialog-table-wrapper">
-            <table className="roll-dialog-table roll-positions-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 30 }}></th>
-                  <th style={{ width: 200 }}>帳戶</th>
-                  <th style={{ width: 90, textAlign: 'center' }}>現金</th>
-                  <th style={{ width: 90, textAlign: 'center' }}>潛在融資</th>
-                  <th style={{ width: 90, textAlign: 'center' }}>新潛在融資</th>
-                  <th style={{ width: 90, textAlign: 'center' }}>成本基礎</th>
-                  <th style={{ textAlign: 'center', width: 90 }}>口數</th>
-                  <th style={{ textAlign: 'center', width: 70 }}>狀態</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedAccounts.map((acct) => {
-                  const qty = qtys[acct.accountId] ?? ''
-                  const qtyNum = parseInt(qty) || 0
-                  return (
-                    <tr key={acct.accountId} style={{ height: 36 }}>
-                      <td style={{ textAlign: 'center', width: '30px' }}>
-                        <input
-                          type="checkbox"
-                          checked={checkedAccounts[acct.accountId] === true}
-                          onChange={(e) =>
+          {!initialAccountId && (
+            <div className="roll-dialog-table-wrapper">
+              <table className="roll-dialog-table roll-positions-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 30 }}></th>
+                    <th style={{ width: 200 }}>帳戶</th>
+                    <th style={{ width: 90, textAlign: 'center' }}>現金</th>
+                    <th style={{ width: 90, textAlign: 'center' }}>成本基礎</th>
+                    <th style={{ textAlign: 'center', width: 90 }}>口數</th>
+                    <th style={{ textAlign: 'center', width: 70 }}>狀態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedAccounts.map((acct) => {
+                    const qty = qtys[acct.accountId] ?? ''
+                    return (
+                      <tr key={acct.accountId} style={{ height: 36 }}>
+                        <td style={{ textAlign: 'center', width: '30px' }}>
+                          <input
+                            type="checkbox"
+                            checked={checkedAccounts[acct.accountId] === true}
+                            onChange={(e) =>
+                              setCheckedAccounts((prev) => ({
+                                ...prev,
+                                [acct.accountId]: e.target.checked
+                              }))
+                            }
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
+                        <td
+                          style={{
+                            fontWeight: 'bold',
+                            overflow: 'visible',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() =>
                             setCheckedAccounts((prev) => ({
                               ...prev,
-                              [acct.accountId]: e.target.checked
+                              [acct.accountId]: !prev[acct.accountId]
                             }))
                           }
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </td>
-                      <td
-                        style={{
-                          fontWeight: 'bold',
-                          overflow: 'visible',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer'
-                        }}
-                        onClick={() =>
-                          setCheckedAccounts((prev) => ({
-                            ...prev,
-                            [acct.accountId]: !prev[acct.accountId]
-                          }))
-                        }
-                      >
-                        {getAlias(acct.accountId)}
-                      </td>
-                      <td
-                        style={{
-                          fontSize: 13,
-                          whiteSpace: 'nowrap',
-                          textAlign: 'center',
-                          color: acct.totalCashValue < 0 ? '#8b1a1a' : undefined
-                        }}
-                      >
-                        {acct.totalCashValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                      </td>
-                      <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                        {(() => {
-                          if (!acct.netLiquidation || acct.netLiquidation <= 0) return '-'
-                          const shortPutNotional = positions
-                            .filter(
-                              (p) =>
-                                p.account === acct.accountId &&
-                                p.secType === 'OPT' &&
-                                (p.right === 'P' || p.right === 'PUT') &&
-                                p.quantity < 0
-                            )
-                            .reduce(
-                              (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                              0
-                            )
-                          return (
-                            (acct.grossPositionValue + shortPutNotional) /
-                            acct.netLiquidation
-                          ).toFixed(2)
-                        })()}
-                      </td>
-                      <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                        {(() => {
-                          if (
-                            !acct.netLiquidation ||
-                            acct.netLiquidation <= 0 ||
-                            !selStrike ||
-                            qtyNum <= 0
-                          )
-                            return '-'
-                          const shortPutNotional = positions
-                            .filter(
-                              (p) =>
-                                p.account === acct.accountId &&
-                                p.secType === 'OPT' &&
-                                (p.right === 'P' || p.right === 'PUT') &&
-                                p.quantity < 0
-                            )
-                            .reduce(
-                              (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                              0
-                            )
-                          let newShortPutNotional = shortPutNotional
-                          let newGrossPositionValue = acct.grossPositionValue
-                          if (action === 'SELL' && selRight === 'P') {
-                            newShortPutNotional += selStrike * 100 * qtyNum
-                          } else if (action === 'BUY') {
-                            const price = parseFloat(limitPrice) || 0
-                            newGrossPositionValue += price * 100 * qtyNum
-                          }
-                          return (
-                            (newGrossPositionValue + newShortPutNotional) /
-                            acct.netLiquidation
-                          ).toFixed(2)
-                        })()}
-                      </td>
-                      <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                        {(() => {
-                          const price = parseFloat(limitPrice)
-                          if (!price || price <= 0) return '-'
-                          const cost = price * 100
-                          return action === 'SELL' ? (-cost).toFixed(2) : cost.toFixed(2)
-                        })()}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {checkedAccounts[acct.accountId] === true && (
-                          <input
-                            type="number"
-                            min={0}
-                            value={qty}
-                            onChange={(e) =>
-                              setQtys((prev) => ({ ...prev, [acct.accountId]: e.target.value }))
-                            }
-                            className="input-field input-small"
-                            style={{ height: 24, padding: '2px 8px', textAlign: 'center' }}
-                          />
-                        )}
-                      </td>
-                      <td
-                        style={{
-                          textAlign: 'center',
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color:
-                            orderStatuses[acct.accountId] === '已送出'
-                              ? '#15803d'
-                              : orderStatuses[acct.accountId] === '失敗'
-                                ? '#b91c1c'
-                                : orderStatuses[acct.accountId] === '送出中...'
-                                  ? '#b45309'
-                                  : '#666'
-                        }}
-                      >
-                        {orderStatuses[acct.accountId] || ''}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                        >
+                          {getAlias(acct.accountId)}
+                        </td>
+                        <td
+                          style={{
+                            fontSize: 13,
+                            whiteSpace: 'nowrap',
+                            textAlign: 'center',
+                            color: acct.totalCashValue < 0 ? '#8b1a1a' : undefined
+                          }}
+                        >
+                          {acct.totalCashValue.toLocaleString('en-US', {
+                            maximumFractionDigits: 0
+                          })}
+                        </td>
+                        <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                          {(() => {
+                            const price = parseFloat(limitPrice)
+                            if (!price || price <= 0) return '-'
+                            const cost = price * 100
+                            return action === 'SELL' ? (-cost).toFixed(2) : cost.toFixed(2)
+                          })()}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {checkedAccounts[acct.accountId] === true && (
+                            <input
+                              type="number"
+                              min={0}
+                              value={qty}
+                              onChange={(e) =>
+                                setQtys((prev) => ({ ...prev, [acct.accountId]: e.target.value }))
+                              }
+                              className="input-field input-small"
+                              style={{ height: 24, padding: '2px 8px', textAlign: 'center' }}
+                            />
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            textAlign: 'center',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color:
+                              orderStatuses[acct.accountId] === '已送出'
+                                ? '#15803d'
+                                : orderStatuses[acct.accountId] === '失敗'
+                                  ? '#b91c1c'
+                                  : orderStatuses[acct.accountId] === '送出中...'
+                                    ? '#b45309'
+                                    : '#666'
+                          }}
+                        >
+                          {orderStatuses[acct.accountId] || ''}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="roll-dialog-footer">
-          <button
-            className="roll-dialog-cancel"
-            onClick={() => {
-              setSelExpiry('')
-              setSelStrike(null)
-              setSelRight(null)
-              setLimitPrice('')
-              const initQty: Record<string, string> = {}
-              accounts.forEach((a) => {
-                initQty[a.accountId] = ''
-              })
-              setQtys(initQty)
-              setCheckedAccounts({})
-              setOrderStatuses({})
-              setOrderSubmitted(false)
-            }}
-          >
-            取消
-          </button>
-          <button
-            className="roll-dialog-confirm"
-            disabled={orderSubmitted ? false : !canSubmit || submitting}
-            onClick={
-              orderSubmitted
-                ? () => {
-                  setSelExpiry('')
-                  setSelStrike(null)
-                  setSelRight(null)
-                  setLimitPrice('')
-                  const initQty: Record<string, string> = {}
-                  accounts.forEach((a) => {
-                    initQty[a.accountId] = ''
-                  })
-                  setQtys(initQty)
-                  setCheckedAccounts({})
-                  setOrderStatuses({})
-                  setOrderSubmitted(false)
-                }
-                : handleSubmit
-            }
-          >
-            {submitting
-              ? '下單中...'
-              : orderSubmitted
-                ? '重新下單'
-                : selExpiry && selStrike !== null && selRight !== null
-                  ? `確認下單 (${action === 'BUY' ? '買' : '賣'}) ${symbol} ${formatExpiry(selExpiry)} ${selStrike}${selRight === 'C' ? 'C' : 'P'}`
-                  : '確認下單'}
-          </button>
+        <div
+          className="roll-dialog-footer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: initialAccountId ? 'space-between' : 'flex-end'
+          }}
+        >
+          {initialAccountId && orderStatuses[initialAccountId] && (
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color:
+                  orderStatuses[initialAccountId] === '已送出'
+                    ? '#15803d'
+                    : orderStatuses[initialAccountId] === '失敗'
+                      ? '#b91c1c'
+                      : orderStatuses[initialAccountId] === '送出中...'
+                        ? '#b45309'
+                        : '#666'
+              }}
+            >
+              狀態: {orderStatuses[initialAccountId]}
+            </span>
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            <button
+              className="roll-dialog-cancel"
+              onClick={() => {
+                setSelExpiry('')
+                setSelStrike(null)
+                setSelRight(null)
+                setLimitPrice('')
+                const initQty: Record<string, string> = {}
+                accounts.forEach((a) => {
+                  initQty[a.accountId] = ''
+                })
+                setQtys(initQty)
+                setCheckedAccounts({})
+                setOrderStatuses({})
+                setOrderSubmitted(false)
+              }}
+            >
+              取消
+            </button>
+            <button
+              className="roll-dialog-confirm"
+              disabled={orderSubmitted ? false : !canSubmit || submitting}
+              onClick={
+                orderSubmitted
+                  ? () => {
+                      setSelExpiry('')
+                      setSelStrike(null)
+                      setSelRight(null)
+                      setLimitPrice('')
+                      const initQty: Record<string, string> = {}
+                      accounts.forEach((a) => {
+                        initQty[a.accountId] = ''
+                      })
+                      setQtys(initQty)
+                      setCheckedAccounts({})
+                      setOrderStatuses({})
+                      setOrderSubmitted(false)
+                    }
+                  : handleSubmit
+              }
+            >
+              {submitting
+                ? '下單中...'
+                : orderSubmitted
+                  ? '重新下單'
+                  : selExpiry && selStrike !== null && selRight !== null
+                    ? `確認下單 (${action === 'BUY' ? '買' : '賣'}) ${symbol} ${formatExpiry(selExpiry)} ${selStrike}${selRight === 'C' ? 'C' : 'P'}`
+                    : '確認下單'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

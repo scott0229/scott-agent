@@ -238,9 +238,7 @@ interface IBApi {
   ) => Promise<{ initialCosts: Record<string, number> }>
 
   // Get distinct underlying symbols with missing underlying_price
-  getMissingPriceSymbols: (
-    target?: 'staging' | 'production'
-  ) => Promise<string[]>
+  getMissingPriceSymbols: (target?: 'staging' | 'production') => Promise<string[]>
 
   // Backfill underlying_price for one symbol (1-sec precision)
   backfillUnderlyingPrice: (
@@ -257,7 +255,10 @@ interface IBApi {
   ) => Promise<{ quotes: Record<string, number>; optionQuotes: Record<string, number> }>
   unsubscribeQuotes: () => Promise<void>
   onQuoteUpdate: (
-    callback: (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }) => void
+    callback: (data: {
+      quotes: Record<string, number>
+      optionQuotes: Record<string, number>
+    }) => void
   ) => () => void
 
   removeAllListeners: () => void

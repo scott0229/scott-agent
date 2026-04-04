@@ -2,11 +2,7 @@ import React from 'react'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
-import {
-  useOptionChain,
-  formatExpiry,
-  mergeGreek
-} from '../hooks/useOptionChain'
+import { useOptionChain, formatExpiry, mergeGreek } from '../hooks/useOptionChain'
 import type { OptionGreek } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
 
@@ -81,6 +77,11 @@ export default function RollOptionDialog({
     [accts]
   )
 
+  // Single account check
+  const isSingleAccount = useMemo(() => {
+    return new Set(positions.map((p) => p.account)).size === 1
+  }, [positions])
+
   // Available expirations (only after current positions' expiry)
   const maxCurrentExpiry = useMemo(
     () => currentCombos.reduce((max, c) => (c.expiry > max ? c.expiry : max), ''),
@@ -142,7 +143,9 @@ export default function RollOptionDialog({
       // Save dialog body scroll position before scrollIntoView
       const dialogBody = chain.strikeDropdownRef.current.closest('.roll-dialog-body')
       const savedScroll = dialogBody?.scrollTop ?? 0
-      const firstChecked = chain.strikeDropdownRef.current.querySelector('.roll-expiry-option.checked')
+      const firstChecked = chain.strikeDropdownRef.current.querySelector(
+        '.roll-expiry-option.checked'
+      )
       if (firstChecked) {
         firstChecked.scrollIntoView({ block: 'nearest' })
       }
@@ -183,7 +186,7 @@ export default function RollOptionDialog({
             return newEntries.length > 0 ? [...updated, ...newEntries] : updated
           })
         })
-        .catch(() => { })
+        .catch(() => {})
     })
   }, [fetchKey, greeksFetched])
 
@@ -220,7 +223,7 @@ export default function RollOptionDialog({
                 return newEntries.length > 0 ? [...updated, ...newEntries] : updated
               })
             })
-            .catch(() => { })
+            .catch(() => {})
         )
       }
       await Promise.all(promises)
@@ -267,12 +270,8 @@ export default function RollOptionDialog({
     const curGreek = findCurrentGreek(pos0)
     if (!curGreek) return null
     const isShort = pos0.quantity < 0
-    const spreadBid = isShort
-      ? curGreek.ask - targetGreek.bid
-      : targetGreek.ask - curGreek.bid
-    const spreadAsk = isShort
-      ? curGreek.bid - targetGreek.ask
-      : targetGreek.bid - curGreek.ask
+    const spreadBid = isShort ? curGreek.ask - targetGreek.bid : targetGreek.ask - curGreek.bid
+    const spreadAsk = isShort ? curGreek.bid - targetGreek.ask : targetGreek.bid - curGreek.ask
     const spreadMid = (spreadBid + spreadAsk) / 2
     return { bid: spreadBid, ask: spreadAsk, mid: spreadMid }
   }, [targetGreek, positions, findCurrentGreek])
@@ -310,7 +309,14 @@ export default function RollOptionDialog({
     setTargetExpiry(best.expiry)
     setTargetStrike(best.strike)
     setTargetRight(best.right as 'C' | 'P')
-  }, [chain.allGreeks, targetExpiry, targetStrike, positions, chain.displayExpirations, initialTarget])
+  }, [
+    chain.allGreeks,
+    targetExpiry,
+    targetStrike,
+    positions,
+    chain.displayExpirations,
+    initialTarget
+  ])
 
   if (!open) return null
 
@@ -320,7 +326,10 @@ export default function RollOptionDialog({
     <div className="roll-dialog-overlay" onClick={onClose}>
       <div className="roll-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="roll-dialog-header">
-          <h3>{symbol} 批次展期</h3>
+          <h3>
+            {symbol} 展期
+            {isSingleAccount && positions.length > 0 ? ` ${getAlias(positions[0].account)}` : ''}
+          </h3>
           <button className="roll-dialog-close" onClick={onClose}>
             ✕
           </button>
@@ -330,7 +339,8 @@ export default function RollOptionDialog({
           {chain.errorMsg && <div className="roll-dialog-error">{chain.errorMsg}</div>}
 
           {/* Selectors row */}
-          {chain.dataReady && (chain.availableExpirations.length > 0 || chain.availableStrikes.length > 0) ? (
+          {chain.dataReady &&
+          (chain.availableExpirations.length > 0 || chain.availableStrikes.length > 0) ? (
             <div className="roll-selectors-row">
               {/* Expiry date selector */}
               {chain.availableExpirations.length > 0 && (
@@ -418,7 +428,9 @@ export default function RollOptionDialog({
             </div>
           ) : (
             <div className="roll-selectors-row" style={{ opacity: 0.5 }}>
-              <button className="roll-expiry-dropdown-btn" disabled>載入中…</button>
+              <button className="roll-expiry-dropdown-btn" disabled>
+                載入中…
+              </button>
             </div>
           )}
 
@@ -437,66 +449,110 @@ export default function RollOptionDialog({
           )}
 
           {/* Order entry section */}
-          <div className="roll-order-section" style={{ flexDirection: 'column', gap: '6px', alignItems: 'stretch' }}>
+          <div className="roll-order-section" style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
             {/* Row 1: Roll direction */}
-            {targetExpiry && targetStrike !== null && targetRight !== null && positions.length > 0 && (() => {
-              const curExp = positions[0].expiry || ''
-              const daysDiff = curExp && targetExpiry
-                ? Math.round((new Date(targetExpiry.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).getTime() - new Date(curExp.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')).getTime()) / 86400000)
-                : null
-              const curRight = positions[0].right === 'C' || positions[0].right === 'CALL' ? 'C' : 'P'
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, gap: '6px', color: '#333' }}>
-                  <span>展期{daysDiff !== null ? `${daysDiff}天` : ''}</span>
-                  <span>
-                    {symbol} {formatExpiry(curExp)}{' '}
-                    {Number.isInteger(Number(positions[0].strike)) ? Number(positions[0].strike) : (Number(positions[0].strike) || 0).toFixed(1)}{curRight}
-                  </span>
-                  <span>→</span>
-                  <span>
-                    {symbol} {formatExpiry(targetExpiry)}{' '}
-                    {Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}{targetRight}
-                  </span>
-                </div>
-              )
-            })()}
+            {targetExpiry &&
+              targetStrike !== null &&
+              targetRight !== null &&
+              positions.length > 0 &&
+              (() => {
+                return (
+                  <>
+                    <span style={{ whiteSpace: 'nowrap', color: '#333', fontSize: 13 }}>
+                      → {symbol} {formatExpiry(targetExpiry)}{' '}
+                      {Number.isInteger(Number(targetStrike))
+                        ? Number(targetStrike)
+                        : Number(targetStrike).toFixed(1)}
+                      {targetRight}
+                    </span>
+                  </>
+                )
+              })()}
             {/* Row 2: Spread prices + limit */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 13 }}>
-              <span className="roll-order-label">買價</span>
-              <span className="roll-order-value roll-order-bid">
-                {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
-              </span>
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
-              <span className="roll-order-label">賣價</span>
-              <span className="roll-order-value roll-order-ask">
-                {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
-              </span>
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
-              <span style={{ background: '#fff9db', padding: '2px 8px', borderRadius: 4 }}>
-                <span className="roll-order-label">中間價</span>{' '}
-                <span className="roll-order-value roll-order-mid">
-                  {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
-                </span>
-              </span>
-              <span style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }} />
-              <span className="roll-order-label">限價</span>
-              <div className="roll-limit-wrapper" ref={limitInputRef}>
-                <input
-                  type="text"
-                  className="roll-order-input"
-                  value={limitPrice}
-                  onChange={(e) => {
-                    userEditedPriceRef.current = true
-                    setLimitPrice(e.target.value)
+            {targetExpiry &&
+              targetStrike !== null &&
+              targetRight !== null &&
+              positions.length > 0 && (
+                <span
+                  style={{
+                    width: 1,
+                    height: 16,
+                    background: '#ccc',
+                    flexShrink: 0,
+                    margin: '0 6px'
                   }}
-                  placeholder="0.00"
                 />
-              </div>
+              )}
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+              買
+            </span>
+            <span className="roll-order-value roll-order-bid">
+              {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
+            </span>
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
+            <span className="roll-order-label">賣</span>
+            <span className="roll-order-value roll-order-ask">
+              {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
+            </span>
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
+            <span
+              style={{
+                background: '#fff9db',
+                padding: '2px 8px',
+                borderRadius: 4,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <span className="roll-order-label">中間</span>{' '}
+              <span className="roll-order-value roll-order-mid">
+                {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
+              </span>
+            </span>
+            <span
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+            />
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+              限價
+            </span>
+            <div className="roll-limit-wrapper" ref={limitInputRef}>
+              <input
+                type="text"
+                className="roll-order-input"
+                style={{ width: 55, padding: '2px 6px' }}
+                value={limitPrice}
+                onChange={(e) => {
+                  userEditedPriceRef.current = true
+                  setLimitPrice(e.target.value)
+                }}
+                placeholder="0.00"
+              />
             </div>
+
+            {isSingleAccount && (
+              <>
+                <span style={{ marginLeft: 12, whiteSpace: 'nowrap' }} className="roll-order-label">
+                  口數
+                </span>
+                <div className="roll-limit-wrapper">
+                  <input
+                    type="text"
+                    readOnly
+                    className="roll-order-input"
+                    style={{ width: 45, padding: '2px 6px' }}
+                    value={positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)}
+                  />
+                </div>
+                <div style={{ width: 12, flexShrink: 0 }}></div>
+              </>
+            )}
           </div>
 
           {/* Positions table */}
-          {positions.length > 0 && (
+          {!isSingleAccount && positions.length > 0 && (
             <>
               <div className="roll-dialog-table-wrapper">
                 <table className="roll-dialog-table roll-positions-table">
@@ -531,7 +587,9 @@ export default function RollOptionDialog({
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {Math.abs(pos.quantity)}口
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{currentDesc} → {targetDesc}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {currentDesc} → {targetDesc}
+                          </td>
                           <td
                             className={
                               displayVal !== null && !isNaN(displayVal as number)

@@ -56,7 +56,10 @@ const ibApi = {
     ipcRenderer.invoke('ib:subscribeQuotes', symbols, optionContracts),
   unsubscribeQuotes: (): Promise<void> => ipcRenderer.invoke('ib:unsubscribeQuotes'),
   onQuoteUpdate: (
-    callback: (data: { quotes: Record<string, number>; optionQuotes: Record<string, number> }) => void
+    callback: (data: {
+      quotes: Record<string, number>
+      optionQuotes: Record<string, number>
+    }) => void
   ): (() => void) => {
     const handler = (_event: any, data: any): void => callback(data)
     ipcRenderer.on('ib:quoteUpdate', handler)
@@ -122,15 +125,11 @@ const ibApi = {
     ipcRenderer.invoke('prices:uploadSymbol', symbol, target),
 
   // Get symbols the web app needs stock prices for
-  getNeededSymbols: (
-    target?: 'staging' | 'production'
-  ): Promise<string[]> =>
+  getNeededSymbols: (target?: 'staging' | 'production'): Promise<string[]> =>
     ipcRenderer.invoke('prices:getNeededSymbols', target),
 
   // Get list of underlying symbols with missing underlying_price
-  getMissingPriceSymbols: (
-    target?: 'staging' | 'production'
-  ): Promise<string[]> =>
+  getMissingPriceSymbols: (target?: 'staging' | 'production'): Promise<string[]> =>
     ipcRenderer.invoke('prices:getMissingPriceSymbols', target),
 
   // Backfill underlying_price for one symbol (1-sec precision)

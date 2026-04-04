@@ -47,7 +47,9 @@ export default function OptionChainTable({
                 <td>買價</td>
                 <td>賣價</td>
                 <td>最後價</td>
-                <td className="roll-chain-expiry-label" style={{ opacity: 0.4 }}>載入中…</td>
+                <td className="roll-chain-expiry-label" style={{ opacity: 0.4 }}>
+                  載入中…
+                </td>
                 <td>買價</td>
                 <td>賣價</td>
                 <td>最後價</td>
@@ -55,15 +57,39 @@ export default function OptionChainTable({
               </tr>
               {Array.from({ length: 10 }, (_, i) => (
                 <tr key={`skeleton-${i}`}>
-                  <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-call chain-bid" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-call chain-ask" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-strike" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-put chain-bid" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-put chain-ask" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>-</td>
-                  <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>-</td>
+                  <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td
+                    className="roll-chain-cell roll-chain-call chain-bid"
+                    style={{ opacity: 0.3 }}
+                  >
+                    -
+                  </td>
+                  <td
+                    className="roll-chain-cell roll-chain-call chain-ask"
+                    style={{ opacity: 0.3 }}
+                  >
+                    -
+                  </td>
+                  <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td className="roll-chain-strike" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td className="roll-chain-cell roll-chain-put chain-bid" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td className="roll-chain-cell roll-chain-put chain-ask" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
+                  <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
                 </tr>
               ))}
             </>

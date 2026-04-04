@@ -327,10 +327,31 @@ export default function OptionOrderForm({
       ) : (
         (() => {
           // Build greeksByExpiry map from flat greeks array
-          const greeksByExpiry = new Map<string, Map<string, { strike: number; right: 'C' | 'P'; expiry: string; bid: number; ask: number; last: number; delta: number; gamma: number; theta: number; vega: number; impliedVol: number; openInterest: number }>>()
+          const greeksByExpiry = new Map<
+            string,
+            Map<
+              string,
+              {
+                strike: number
+                right: 'C' | 'P'
+                expiry: string
+                bid: number
+                ask: number
+                last: number
+                delta: number
+                gamma: number
+                theta: number
+                vega: number
+                impliedVol: number
+                openInterest: number
+              }
+            >
+          >()
           greeks.forEach((g) => {
             if (!greeksByExpiry.has(selectedExpiry)) greeksByExpiry.set(selectedExpiry, new Map())
-            greeksByExpiry.get(selectedExpiry)!.set(`${g.strike}_${g.right}`, { ...g, expiry: selectedExpiry })
+            greeksByExpiry
+              .get(selectedExpiry)!
+              .set(`${g.strike}_${g.right}`, { ...g, expiry: selectedExpiry })
           })
           const strikes = [...new Set(greeks.map((g) => g.strike))].sort((a, b) => a - b)
           return (

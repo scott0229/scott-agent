@@ -299,14 +299,13 @@ export default function ClosePositionDialog({
     </div>
   )
 
-  const confirmedSourceSymbols =
-    step === 'preview'
-      ? sourceSymbols
-      : [...new Set(confirmedPreviews.flatMap((p) => p.sells.map((s) => s.symbol)))]
-
   return (
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
-      <div className="stock-order-dialog" style={{ maxWidth: '650px' }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="stock-order-dialog"
+        style={{ maxWidth: '650px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="stock-order-dialog-header">
           <h2>股票平倉</h2>
           <button className="settings-close-btn" onClick={handleClose}>
@@ -324,7 +323,14 @@ export default function ClosePositionDialog({
                 style={sym !== sourceSymbols[0] ? { marginTop: '8px' } : undefined}
               >
                 <div
-                  style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', fontSize: '13px', whiteSpace: 'nowrap' }}
+                  style={{
+                    display: 'flex',
+                    gap: '4px',
+                    alignItems: 'center',
+                    flexWrap: 'nowrap',
+                    fontSize: '13px',
+                    whiteSpace: 'nowrap'
+                  }}
                 >
                   <span>賣出</span>
                   <span>{sym}</span>
@@ -332,10 +338,14 @@ export default function ClosePositionDialog({
                     <>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">買價</span>
-                      <span className="roll-order-value roll-order-bid">{quote.bid.toFixed(2)}</span>
+                      <span className="roll-order-value roll-order-bid">
+                        {quote.bid.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">賣價</span>
-                      <span className="roll-order-value roll-order-ask">{quote.ask.toFixed(2)}</span>
+                      <span className="roll-order-value roll-order-ask">
+                        {quote.ask.toFixed(2)}
+                      </span>
                       <span className="quote-separator">|</span>
                       <span className="roll-order-label">中間價</span>
                       <span className="roll-order-value roll-order-mid">
@@ -349,11 +359,9 @@ export default function ClosePositionDialog({
                   <input
                     type="number"
                     value={sellPrices[sym] || ''}
-                    onChange={(e) =>
-                      setSellPrices((prev) => ({ ...prev, [sym]: e.target.value }))
-                    }
+                    onChange={(e) => setSellPrices((prev) => ({ ...prev, [sym]: e.target.value }))}
                     className="input-field"
-                    style={{ width: '65px', fontSize: '12px', height: '28px', padding: '4px 8px' }}
+                    style={{ width: '65px', fontSize: '12px' }}
                     step="0.01"
                     placeholder="限價"
                     disabled={step !== 'preview'}
@@ -409,7 +417,10 @@ export default function ClosePositionDialog({
                           )
                           const overrideKey = `${sell.symbol}:${p.accountId}`
                           return (
-                            <tr key={`${p.accountId}-sell-${sell.symbol}`} style={{ height: '32px' }}>
+                            <tr
+                              key={`${p.accountId}-sell-${sell.symbol}`}
+                              style={{ height: '32px' }}
+                            >
                               {idx === 0 && (
                                 <>
                                   <td
@@ -476,8 +487,23 @@ export default function ClosePositionDialog({
                               <td style={{ color: '#8b1a1a', fontWeight: 'bold' }}>賣出</td>
                               <td>{sell.symbol}</td>
                               <td>{sellPrices[sell.symbol] || '-'}</td>
-                              <td style={(() => { const sp = parseFloat(sellPrices[sell.symbol] || '0'); const pnl = (sp - sell.avgCost) * sell.qty; if (pnl === 0) return {}; return pnl >= 0 ? { background: '#0d7a35', color: '#fff' } : { background: '#dc2626', color: '#fff' }; })()}>
-                                {(() => { const sp = parseFloat(sellPrices[sell.symbol] || '0'); const pnl = (sp - sell.avgCost) * sell.qty; return pnl !== 0 ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '-'; })()}
+                              <td
+                                style={(() => {
+                                  const sp = parseFloat(sellPrices[sell.symbol] || '0')
+                                  const pnl = (sp - sell.avgCost) * sell.qty
+                                  if (pnl === 0) return {}
+                                  return pnl >= 0
+                                    ? { background: '#0d7a35', color: '#fff' }
+                                    : { background: '#dc2626', color: '#fff' }
+                                })()}
+                              >
+                                {(() => {
+                                  const sp = parseFloat(sellPrices[sell.symbol] || '0')
+                                  const pnl = (sp - sell.avgCost) * sell.qty
+                                  return pnl !== 0
+                                    ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                    : '-'
+                                })()}
                               </td>
                               <td>
                                 {step === 'preview' ? (
@@ -518,27 +544,16 @@ export default function ClosePositionDialog({
           <div className="confirm-buttons" style={{ marginTop: '16px' }}>
             {step === 'preview' && (
               <button
-                className="btn btn-primary"
-                disabled={totalSellQty === 0 || Object.values(sellPrices).some((p) => !p)}
-                onClick={() => {
-                  setConfirmedPreviews(previews)
-                  setStep('confirm')
-                }}
+                className="btn btn-danger"
+                disabled={
+                  submitting || totalSellQty === 0 || Object.values(sellPrices).some((p) => !p)
+                }
+                onClick={handleSubmit}
               >
-                預覽下單
+                {submitting
+                  ? '下單中...'
+                  : `確認平倉 (賣出 ${sourceSymbols.join(', ')}，金額 $${previews.reduce((s, p) => s + p.totalSellValue, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
               </button>
-            )}
-            {step === 'confirm' && (
-              <>
-                <button className="btn btn-danger" disabled={submitting} onClick={handleSubmit}>
-                  {submitting
-                    ? '下單中...'
-                    : `確認平倉 (賣出 ${confirmedSourceSymbols.join(', ')}，金額 $${confirmedPreviews.reduce((s, p) => s + p.totalSellValue, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
-                </button>
-                <button className="btn btn-secondary" onClick={() => setStep('preview')}>
-                  返回修改
-                </button>
-              </>
             )}
             {step === 'done' && (
               <button className="btn btn-secondary" onClick={handleClose}>

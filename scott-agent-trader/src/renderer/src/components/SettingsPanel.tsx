@@ -70,7 +70,6 @@ export default function SettingsPanel({
   const [showAccounts, setShowAccounts] = useState(true)
   const [showD1, setShowD1] = useState(true)
 
-
   if (!open) return null
 
   const sorted = [...accounts].sort((a, b) => (b.netLiquidation || 0) - (a.netLiquidation || 0))
@@ -191,7 +190,7 @@ export default function SettingsPanel({
                   >
                     <input
                       type="checkbox"
-                      checked={sym ? (symbolPrefetch[sym] !== false) : false}
+                      checked={sym ? symbolPrefetch[sym] !== false : false}
                       disabled={!sym}
                       onChange={(e) => sym && onSetSymbolPrefetch(sym, e.target.checked)}
                     />

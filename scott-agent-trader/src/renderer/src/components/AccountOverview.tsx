@@ -32,11 +32,11 @@ function formatOptionLabel(
 ): string {
   const exp = expiry
     ? (() => {
-      const yy = expiry.slice(2, 4)
-      const mm = parseInt(expiry.slice(4, 6), 10) - 1
-      const dd = expiry.slice(6, 8).replace(/^0/, '')
-      return `${MONTHS[mm]}${dd}'${yy}`
-    })()
+        const yy = expiry.slice(2, 4)
+        const mm = parseInt(expiry.slice(4, 6), 10) - 1
+        const dd = expiry.slice(6, 8).replace(/^0/, '')
+        return `${MONTHS[mm]}${dd}'${yy}`
+      })()
     : ''
   const r = right === 'C' || right === 'CALL' ? 'C' : 'P'
   return `${symbol} ${exp} ${strike || ''}${r}`
@@ -51,7 +51,11 @@ function getTradingDate(): { dateStr: string; month: number; day: number } {
   const y = et.getFullYear()
   const m = et.getMonth() + 1
   const d = et.getDate()
-  return { dateStr: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`, month: m, day: d }
+  return {
+    dateStr: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+    month: m,
+    day: d
+  }
 }
 
 interface AccountOverviewProps {
@@ -162,6 +166,22 @@ export default function AccountOverview({
     y: number
     order: OpenOrderData
   } | null>(null)
+  // Context menu state for option positions
+  const [optContextMenu, setOptContextMenu] = useState<{
+    x: number
+    y: number
+    pos: PositionData
+  } | null>(null)
+  const [stkContextMenu, setStkContextMenu] = useState<{
+    x: number
+    y: number
+    pos: PositionData
+  } | null>(null)
+  const [optOrderInitialSymbol, setOptOrderInitialSymbol] = useState('QQQ')
+  const [optOrderInitialAccountId, setOptOrderInitialAccountId] = useState<string | undefined>(
+    undefined
+  )
+  const [optOrderInitialRight, setOptOrderInitialRight] = useState<'C' | 'P' | undefined>(undefined)
   // Toggle: false = separate STK/OPT sections, true = grouped by underlying symbol
   const [acctViewBySymbol, setAcctViewBySymbol] = useState(false)
 
@@ -232,7 +252,15 @@ export default function AccountOverview({
       })
       .join('|')
     return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}`
-  }, [groupViewMode, symbolGroups, positions, uncategorizedPositions, checkModeGroups, filterGroupIndex, filterGroupSymbol])
+  }, [
+    groupViewMode,
+    symbolGroups,
+    positions,
+    uncategorizedPositions,
+    checkModeGroups,
+    filterGroupIndex,
+    filterGroupSymbol
+  ])
 
   useEffect(() => {
     const grid = groupGridRef.current
@@ -278,7 +306,10 @@ export default function AccountOverview({
       replacements.set(posKey(oldPos), posKey(newPos))
     }
     // All new positions found → update groups
-    console.log('[ROLL] All new positions detected, updating groups', Object.fromEntries(replacements))
+    console.log(
+      '[ROLL] All new positions detected, updating groups',
+      Object.fromEntries(replacements)
+    )
     for (const g of symbolGroups) {
       if (!g.posKeys.some((k) => replacements.has(k))) continue
       const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
@@ -337,7 +368,7 @@ export default function AccountOverview({
       )
       if (opsInGroup.length === 0) continue
 
-      let newKeys = g.posKeys.filter((k) => !vanishedKeys.has(k))
+      const newKeys = g.posKeys.filter((k) => !vanishedKeys.has(k))
       for (const op of opsInGroup) {
         if (op.targetShares > 0) {
           newKeys.push(`${op.account}|${targetSymbol}|STK|||`)
@@ -375,6 +406,30 @@ export default function AccountOverview({
       window.removeEventListener('mousedown', handler)
     }
   }, [contextMenu])
+
+  useEffect(() => {
+    if (!optContextMenu) return undefined
+    const handler = (): void => setOptContextMenu(null)
+    const id = requestAnimationFrame(() => {
+      window.addEventListener('mousedown', handler)
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('mousedown', handler)
+    }
+  }, [optContextMenu])
+
+  useEffect(() => {
+    if (!stkContextMenu) return undefined
+    const handler = (): void => setStkContextMenu(null)
+    const id = requestAnimationFrame(() => {
+      window.addEventListener('mousedown', handler)
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('mousedown', handler)
+    }
+  }, [stkContextMenu])
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -476,7 +531,6 @@ export default function AccountOverview({
     })
   }, [selectedPositions, positions])
 
-
   const canCloseOptions = useMemo(() => {
     if (selectedPositions.size === 0) return false
     const selected = positions.filter((p) => selectedPositions.has(posKey(p)))
@@ -513,7 +567,13 @@ export default function AccountOverview({
     return positions
       .filter((p) => p.account === accountId)
       .filter((p) => !filterSymbol || p.symbol === filterSymbol)
-      .filter((p) => !filterRight || p.secType !== 'OPT' || p.right === filterRight || p.right === (filterRight === 'C' ? 'CALL' : 'PUT'))
+      .filter(
+        (p) =>
+          !filterRight ||
+          p.secType !== 'OPT' ||
+          p.right === filterRight ||
+          p.right === (filterRight === 'C' ? 'CALL' : 'PUT')
+      )
 
       .sort((a, b) => {
         const symbolPriority: Record<string, number> = { QQQ: 1, QLD: 2, TQQQ: 3 }
@@ -616,7 +676,13 @@ export default function AccountOverview({
     if (filterSymbol) acctPositions = acctPositions.filter((p) => p.symbol === filterSymbol)
     if (selectMode === 'STK') acctPositions = acctPositions.filter((p) => p.secType !== 'OPT')
     if (selectMode === 'OPT') acctPositions = acctPositions.filter((p) => p.secType === 'OPT')
-    if (filterRight) acctPositions = acctPositions.filter((p) => p.secType !== 'OPT' || p.right === filterRight || p.right === (filterRight === 'C' ? 'CALL' : 'PUT'))
+    if (filterRight)
+      acctPositions = acctPositions.filter(
+        (p) =>
+          p.secType !== 'OPT' ||
+          p.right === filterRight ||
+          p.right === (filterRight === 'C' ? 'CALL' : 'PUT')
+      )
     if (filterSymbol || selectMode || filterRight) return acctPositions.length > 0
     return true
   })
@@ -631,7 +697,10 @@ export default function AccountOverview({
                 className="select-toggle-btn"
                 style={{ padding: '7px 9px' }}
                 title="重置篩選"
-                onClick={() => { setFilterGroupIndex(''); setFilterGroupSymbol('') }}
+                onClick={() => {
+                  setFilterGroupIndex('')
+                  setFilterGroupSymbol('')
+                }}
               >
                 <svg
                   width="16"
@@ -661,10 +730,16 @@ export default function AccountOverview({
                 onChange={setFilterGroupSymbol}
                 options={[
                   { value: '', label: '全部標的' },
-                  ...Array.from(new Set(symbolGroups.map((g) => g.symbol))).sort().map((s) => ({ value: s, label: s }))
+                  ...Array.from(new Set(symbolGroups.map((g) => g.symbol)))
+                    .sort()
+                    .map((s) => ({ value: s, label: s }))
                 ]}
               />
-              <button className="select-toggle-btn" style={{ marginLeft: 'auto' }} onClick={() => setShowAddGroup(true)}>
+              <button
+                className="select-toggle-btn"
+                style={{ marginLeft: 'auto' }}
+                onClick={() => setShowAddGroup(true)}
+              >
                 ＋ 新增
               </button>
             </div>
@@ -746,10 +821,7 @@ export default function AccountOverview({
                     setFilterAccount(v)
                     setSelectedPositions(new Set())
                   }}
-                  options={[
-                    { value: '', label: '全部用戶' },
-                    ...uniqueAccounts
-                  ]}
+                  options={[{ value: '', label: '全部用戶' }, ...uniqueAccounts]}
                 />
                 {selectMode && (
                   <button
@@ -838,191 +910,199 @@ export default function AccountOverview({
           ) : (
             <div className="group-cards-grid" ref={groupGridRef}>
               {/* 未歸類標的 virtual group */}
-              {filterGroupIndex === '' && filterGroupSymbol === '' && uncategorizedPositions.length > 0 && (() => {
-                const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
-                const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
-                const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
-                  const isOpt = pos.secType === 'OPT'
-                  const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                  const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
-                  const ic = initialCosts[`${pos.account}|${pos.symbol}`]
-                  const costBasis = !isOpt && ic != null ? ic : pos.avgCost
-                  const pnl = isOpt
-                    ? (lp - costBasis / 100) * pos.quantity * 100
-                    : (lp - costBasis) * pos.quantity
-                  return sum + pnl
-                }, 0)
-                const renderUcRow = (
-                  pos: PositionData,
-                  idx: number,
-                  showDays: boolean
-                ): React.ReactNode => {
-                  const isOption = pos.secType === 'OPT'
-                  const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                  const lastPrice = isOption
-                    ? (optionQuotes[key] ?? 0)
-                    : (quotes[pos.symbol] ?? 0)
-                  const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
-                  const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
-                  const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
-                  const pnl = isOption
-                    ? (lastPrice - costBasis / 100) * pos.quantity * 100
-                    : (lastPrice - costBasis) * pos.quantity
-                  const days = pos.expiry
-                    ? Math.max(
-                      0,
-                      Math.ceil(
-                        (new Date(
-                          pos.expiry.substring(0, 4) +
-                          '-' +
-                          pos.expiry.substring(4, 6) +
-                          '-' +
-                          pos.expiry.substring(6, 8) +
-                          'T00:00:00'
-                        ).getTime() -
-                          new Date().setHours(0, 0, 0, 0)) /
-                        (1000 * 60 * 60 * 24)
-                      )
-                    )
-                    : null
-                  return (
-                    <tr key={idx}>
-                      <td style={{ fontSize: '13px', textAlign: 'left' }}>
-                        {(
-                          accounts.find((a) => a.accountId === pos.account)?.alias ||
-                          pos.account
-                        ).replace(/\s*\(.*?\)/, '')}
-                      </td>
-                      <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
-                      {showDays && (
-                        <td
-                          style={
-                            days === 0
-                              ? { backgroundColor: '#fff0f0' }
-                              : days === 1
-                                ? { backgroundColor: '#e8f4fd' }
-                                : undefined
-                          }
-                        >
-                          {days !== null ? days : '-'}
+              {filterGroupIndex === '' &&
+                filterGroupSymbol === '' &&
+                uncategorizedPositions.length > 0 &&
+                (() => {
+                  const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
+                  const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
+                  const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
+                    const isOpt = pos.secType === 'OPT'
+                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                    const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                    const ic = initialCosts[`${pos.account}|${pos.symbol}`]
+                    const costBasis = !isOpt && ic != null ? ic : pos.avgCost
+                    const pnl = isOpt
+                      ? (lp - costBasis / 100) * pos.quantity * 100
+                      : (lp - costBasis) * pos.quantity
+                    return sum + pnl
+                  }, 0)
+                  const renderUcRow = (
+                    pos: PositionData,
+                    idx: number,
+                    showDays: boolean
+                  ): React.ReactNode => {
+                    const isOption = pos.secType === 'OPT'
+                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                    const lastPrice = isOption
+                      ? (optionQuotes[key] ?? 0)
+                      : (quotes[pos.symbol] ?? 0)
+                    const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                    const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
+                    const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
+                    const pnl = isOption
+                      ? (lastPrice - costBasis / 100) * pos.quantity * 100
+                      : (lastPrice - costBasis) * pos.quantity
+                    const days = pos.expiry
+                      ? Math.max(
+                          0,
+                          Math.ceil(
+                            (new Date(
+                              pos.expiry.substring(0, 4) +
+                                '-' +
+                                pos.expiry.substring(4, 6) +
+                                '-' +
+                                pos.expiry.substring(6, 8) +
+                                'T00:00:00'
+                            ).getTime() -
+                              new Date().setHours(0, 0, 0, 0)) /
+                              (1000 * 60 * 60 * 24)
+                          )
+                        )
+                      : null
+                    return (
+                      <tr key={idx}>
+                        <td style={{ fontSize: '13px', textAlign: 'left' }}>
+                          {(
+                            accounts.find((a) => a.accountId === pos.account)?.alias || pos.account
+                          ).replace(/\s*\(.*?\)/, '')}
                         </td>
+                        <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                        {showDays && (
+                          <td
+                            style={
+                              days === 0
+                                ? { backgroundColor: '#fff0f0' }
+                                : days === 1
+                                  ? { backgroundColor: '#e8f4fd' }
+                                  : undefined
+                            }
+                          >
+                            {days !== null ? days : '-'}
+                          </td>
+                        )}
+                        <td
+                          style={{
+                            color: '#fff',
+                            fontWeight: 500,
+                            backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626'
+                          }}
+                        >
+                          {pos.quantity.toLocaleString()}
+                        </td>
+                        {!showDays &&
+                          (() => {
+                            const icKey = `${pos.account}|${pos.symbol}`
+                            const ic = initialCosts[icKey]
+                            return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                          })()}
+                        <td>{displayAvg.toFixed(2)}</td>
+                        <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                        <td
+                          style={{
+                            color: '#fff',
+                            fontWeight: 500,
+                            backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
+                          }}
+                        >
+                          {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                        </td>
+                      </tr>
+                    )
+                  }
+                  return (
+                    <div className="account-card">
+                      <div
+                        className="account-header"
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="account-id" style={{ color: '#2563eb' }}>
+                            未歸類標的
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            marginLeft: 'auto',
+                            marginRight: '12px',
+                            color: ucTotalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                          }}
+                        >
+                          {ucTotalPnl >= 0 ? '+' : ''}
+                          {Math.round(ucTotalPnl).toLocaleString()}
+                        </span>
+                      </div>
+                      {ucStkPos.length > 0 && (
+                        <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
+                          <table className="positions-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
+                                <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
+                                <th style={{ width: '10%' }}>持倉</th>
+                                <th style={{ width: '11%' }}>成本</th>
+                                <th style={{ width: '11%' }}>調整後</th>
+                                <th style={{ width: '13%' }}>現價</th>
+                                <th style={{ width: '13%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
-                      <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
-                        {pos.quantity.toLocaleString()}
-                      </td>
-                      {!showDays && (() => {
-                        const icKey = `${pos.account}|${pos.symbol}`
-                        const ic = initialCosts[icKey]
-                        return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
-                      })()}
-                      <td>{displayAvg.toFixed(2)}</td>
-                      <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
-                      <td
-                        style={{
-                          color: '#fff',
-                          fontWeight: 500,
-                          backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
-                        }}
-                      >
-                        {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                      </td>
-                    </tr>
-                  )
-                }
-                return (
-                  <div
-                    className="account-card"
-                  >
-                    <div
-                      className="account-header"
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="account-id" style={{ color: '#2563eb' }}>未歸類標的</span>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '14px',
-                          fontWeight: 600,
-                          marginLeft: 'auto',
-                          marginRight: '12px',
-                          color: ucTotalPnl >= 0 ? '#1a6b3a' : '#c0392b'
-                        }}
-                      >
-                        {ucTotalPnl >= 0 ? '+' : ''}
-                        {Math.round(ucTotalPnl).toLocaleString()}
-                      </span>
+                      {ucOptPos.length > 0 && (
+                        <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
+                          <table className="positions-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
+                                <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                                <th style={{ width: '8%' }}>天數</th>
+                                <th style={{ width: '8%' }}>持倉</th>
+                                <th style={{ width: '11%' }}>均價</th>
+                                <th style={{ width: '11%' }}>現價</th>
+                                <th style={{ width: '11%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ucOptPos.map((pos, idx) => {
+                                const prevPos = idx > 0 ? ucOptPos[idx - 1] : null
+                                const needsSep =
+                                  prevPos &&
+                                  (prevPos.expiry !== pos.expiry || prevPos.strike !== pos.strike)
+                                return (
+                                  <React.Fragment key={idx}>
+                                    {needsSep && (
+                                      <tr>
+                                        <td
+                                          colSpan={7}
+                                          style={{
+                                            padding: 0,
+                                            height: '3px',
+                                            backgroundColor: '#fff3c4'
+                                          }}
+                                        />
+                                      </tr>
+                                    )}
+                                    {renderUcRow(pos, idx, true)}
+                                  </React.Fragment>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                    {ucStkPos.length > 0 && (
-                      <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
-                        <table className="positions-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
-                              <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
-                              <th style={{ width: '10%' }}>持倉</th>
-                              <th style={{ width: '11%' }}>成本</th>
-                              <th style={{ width: '11%' }}>調整後</th>
-                              <th style={{ width: '13%' }}>現價</th>
-                              <th style={{ width: '13%' }}>盈虧</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {ucOptPos.length > 0 && (
-                      <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
-                        <table className="positions-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                              <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                              <th style={{ width: '8%' }}>天數</th>
-                              <th style={{ width: '8%' }}>持倉</th>
-                              <th style={{ width: '11%' }}>均價</th>
-                              <th style={{ width: '11%' }}>現價</th>
-                              <th style={{ width: '11%' }}>盈虧</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ucOptPos.map((pos, idx) => {
-                              const prevPos = idx > 0 ? ucOptPos[idx - 1] : null
-                              const needsSep =
-                                prevPos &&
-                                (prevPos.expiry !== pos.expiry ||
-                                  prevPos.strike !== pos.strike)
-                              return (
-                                <React.Fragment key={idx}>
-                                  {needsSep && (
-                                    <tr>
-                                      <td
-                                        colSpan={7}
-                                        style={{
-                                          padding: 0,
-                                          height: '3px',
-                                          backgroundColor: '#fff3c4'
-                                        }}
-                                      />
-                                    </tr>
-                                  )}
-                                  {renderUcRow(pos, idx, true)}
-                                </React.Fragment>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
+                  )
+                })()}
               {symbolGroups.map((g, gIdx) => {
                 if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
@@ -1055,22 +1135,22 @@ export default function AccountOverview({
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
                       e.dataTransfer.setData('text/plain', String(gIdx))
-                        ; (e.currentTarget as HTMLElement).style.opacity = '0.4'
+                      ;(e.currentTarget as HTMLElement).style.opacity = '0.4'
                     }}
                     onDragEnd={(e) => {
-                      ; (e.currentTarget as HTMLElement).style.opacity = '1'
+                      ;(e.currentTarget as HTMLElement).style.opacity = '1'
                     }}
                     onDragOver={(e) => {
                       e.preventDefault()
                       e.dataTransfer.dropEffect = 'move'
-                        ; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #2563eb'
                     }}
                     onDragLeave={(e) => {
-                      ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
                     }}
                     onDrop={(e) => {
                       e.preventDefault()
-                        ; (e.currentTarget as HTMLElement).style.boxShadow = ''
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = ''
                       const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10)
                       if (isNaN(fromIdx) || fromIdx === gIdx) return
                       const next = [...symbolGroups]
@@ -1088,7 +1168,18 @@ export default function AccountOverview({
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ backgroundColor: '#dcfce7', padding: '2px 6px', borderRadius: '3px', fontWeight: 600, fontSize: '14px', color: '#333' }}>{gIdx + 1}.</span>
+                        <span
+                          style={{
+                            backgroundColor: '#dcfce7',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            fontWeight: 600,
+                            fontSize: '14px',
+                            color: '#333'
+                          }}
+                        >
+                          {gIdx + 1}.
+                        </span>
                         <span className="account-id">{g.name}</span>
                       </div>
                       {(() => {
@@ -1163,7 +1254,12 @@ export default function AccountOverview({
                       </div>
                     </div>
                     <div
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px 0' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '4px 12px 0'
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {(() => {
@@ -1184,10 +1280,7 @@ export default function AccountOverview({
                         if (allOpt) {
                           const rights = new Set(
                             effectivePositions.map((p) =>
-                              (p.right || '')
-                                .toUpperCase()
-                                .replace('CALL', 'C')
-                                .replace('PUT', 'P')
+                              (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')
                             )
                           )
                           const symbols = new Set(effectivePositions.map((p) => p.symbol))
@@ -1197,8 +1290,15 @@ export default function AccountOverview({
                               {canRoll && (
                                 <button
                                   className="select-toggle-btn"
-                                  style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                  onClick={() => { setGroupKeys(); setShowRollDialog(true) }}
+                                  style={{
+                                    fontSize: '13px',
+                                    padding: '2px 10px',
+                                    lineHeight: '1.4'
+                                  }}
+                                  onClick={() => {
+                                    setGroupKeys()
+                                    setShowRollDialog(true)
+                                  }}
                                 >
                                   展期{checkedLabel}
                                 </button>
@@ -1206,7 +1306,10 @@ export default function AccountOverview({
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setGroupKeys(); setShowCloseOptionDialog(true) }}
+                                onClick={() => {
+                                  setGroupKeys()
+                                  setShowCloseOptionDialog(true)
+                                }}
                               >
                                 平倉{checkedLabel}
                               </button>
@@ -1219,14 +1322,20 @@ export default function AccountOverview({
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setGroupKeys(); setShowTransferDialog(true) }}
+                                onClick={() => {
+                                  setGroupKeys()
+                                  setShowTransferDialog(true)
+                                }}
                               >
                                 轉倉{checkedLabel}
                               </button>
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setGroupKeys(); setShowCloseDialog(true) }}
+                                onClick={() => {
+                                  setGroupKeys()
+                                  setShowCloseDialog(true)
+                                }}
                               >
                                 平倉{checkedLabel}
                               </button>
@@ -1246,7 +1355,10 @@ export default function AccountOverview({
                           (() => {
                             const rights = new Set(
                               optPositions.map((p) =>
-                                (p.right || '').toUpperCase().replace('CALL', 'C').replace('PUT', 'P')
+                                (p.right || '')
+                                  .toUpperCase()
+                                  .replace('CALL', 'C')
+                                  .replace('PUT', 'P')
                               )
                             )
                             const symbols = new Set(optPositions.map((p) => p.symbol))
@@ -1263,7 +1375,10 @@ export default function AccountOverview({
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setOptKeys(); setShowRollDialog(true) }}
+                                onClick={() => {
+                                  setOptKeys()
+                                  setShowRollDialog(true)
+                                }}
                               >
                                 展期{checkedLabel}
                               </button>
@@ -1272,12 +1387,14 @@ export default function AccountOverview({
                               <button
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
-                                onClick={() => { setStkKeys(); setShowTransferDialog(true) }}
+                                onClick={() => {
+                                  setStkKeys()
+                                  setShowTransferDialog(true)
+                                }}
                               >
                                 轉倉{checkedLabel}
                               </button>
                             )}
-
                           </>
                         )
                       })()}
@@ -1338,7 +1455,10 @@ export default function AccountOverview({
                           cursor: 'pointer',
                           userSelect: 'none',
                           marginLeft: 'auto',
-                          backgroundColor: (() => { const td = getTradingDate(); return g.completedDate === td.dateStr ? '#dcfce7' : undefined })(),
+                          backgroundColor: (() => {
+                            const td = getTradingDate()
+                            return g.completedDate === td.dateStr ? '#dcfce7' : undefined
+                          })(),
                           padding: '2px 6px',
                           borderRadius: '4px'
                         }}
@@ -1357,7 +1477,10 @@ export default function AccountOverview({
                           }}
                           style={{ accentColor: '#22c55e', cursor: 'pointer' }}
                         />
-                        {(() => { const td = getTradingDate(); return `今日 (${td.month}/${td.day}) 已完成操作` })()}
+                        {(() => {
+                          const td = getTradingDate()
+                          return `今日 (${td.month}/${td.day}) 已完成操作`
+                        })()}
                       </label>
                     </div>
                     {groupPositions.length === 0 ? (
@@ -1395,33 +1518,45 @@ export default function AccountOverview({
                             : (lastPrice - costBasis) * pos.quantity
                           const days = pos.expiry
                             ? Math.max(
-                              0,
-                              Math.ceil(
-                                (new Date(
-                                  pos.expiry.substring(0, 4) +
-                                  '-' +
-                                  pos.expiry.substring(4, 6) +
-                                  '-' +
-                                  pos.expiry.substring(6, 8) +
-                                  'T00:00:00'
-                                ).getTime() -
-                                  new Date().setHours(0, 0, 0, 0)) /
-                                (1000 * 60 * 60 * 24)
+                                0,
+                                Math.ceil(
+                                  (new Date(
+                                    pos.expiry.substring(0, 4) +
+                                      '-' +
+                                      pos.expiry.substring(4, 6) +
+                                      '-' +
+                                      pos.expiry.substring(6, 8) +
+                                      'T00:00:00'
+                                  ).getTime() -
+                                    new Date().setHours(0, 0, 0, 0)) /
+                                    (1000 * 60 * 60 * 24)
+                                )
                               )
-                            )
                             : null
                           const pk = posKey(pos)
                           const isChecked = currentCheckedSet.has(pk)
                           return (
                             <tr key={idx}>
-                              <td style={{ fontSize: '13px', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined, whiteSpace: 'nowrap' }}>
+                              <td
+                                style={{
+                                  fontSize: '13px',
+                                  textAlign: 'left',
+                                  paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined,
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
                                 {checkModeGroups.has(g.id) && (
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => toggleCheck(pk)}
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '6px', verticalAlign: 'middle' }}
+                                    style={{
+                                      cursor: 'pointer',
+                                      accentColor: '#2563eb',
+                                      marginRight: '6px',
+                                      verticalAlign: 'middle'
+                                    }}
                                   />
                                 )}
                                 {(
@@ -1431,7 +1566,13 @@ export default function AccountOverview({
                               </td>
                               <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
                               {showDays && (
-                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
+                                <td
+                                  style={{
+                                    color: '#fff',
+                                    fontWeight: 500,
+                                    backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626'
+                                  }}
+                                >
                                   {pos.quantity.toLocaleString()}
                                 </td>
                               )}
@@ -1449,15 +1590,24 @@ export default function AccountOverview({
                                 </td>
                               )}
                               {!showDays && (
-                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626' }}>
+                                <td
+                                  style={{
+                                    color: '#fff',
+                                    fontWeight: 500,
+                                    backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626'
+                                  }}
+                                >
                                   {pos.quantity.toLocaleString()}
                                 </td>
                               )}
-                              {!showDays && (() => {
-                                const icKey = `${pos.account}|${pos.symbol}`
-                                const ic = initialCosts[icKey]
-                                return <td>{ic != null ? ic.toFixed(2) : displayAvg.toFixed(2)}</td>
-                              })()}
+                              {!showDays &&
+                                (() => {
+                                  const icKey = `${pos.account}|${pos.symbol}`
+                                  const ic = initialCosts[icKey]
+                                  return (
+                                    <td>{ic != null ? ic.toFixed(2) : displayAvg.toFixed(2)}</td>
+                                  )
+                                })()}
                               {showDays && <td>{displayAvg.toFixed(2)}</td>}
                               <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
                               <td
@@ -1479,13 +1629,24 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      <th style={{ width: '12%', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined }}>
+                                      <th
+                                        style={{
+                                          width: '12%',
+                                          textAlign: 'left',
+                                          paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined
+                                        }}
+                                      >
                                         {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
-                                            checked={stkPos.length > 0 && stkPos.every((p) => currentCheckedSet.has(posKey(p)))}
+                                            checked={
+                                              stkPos.length > 0 &&
+                                              stkPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                            }
                                             onChange={() => {
-                                              const allChecked = stkPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                              const allChecked = stkPos.every((p) =>
+                                                currentCheckedSet.has(posKey(p))
+                                              )
                                               setGroupChecked((prev) => {
                                                 const cur = new Set(prev[g.id] || [])
                                                 stkPos.forEach((p) => {
@@ -1496,7 +1657,12 @@ export default function AccountOverview({
                                               })
                                             }}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '4px', verticalAlign: 'middle' }}
+                                            style={{
+                                              cursor: 'pointer',
+                                              accentColor: '#2563eb',
+                                              marginRight: '4px',
+                                              verticalAlign: 'middle'
+                                            }}
                                           />
                                         )}
                                       </th>
@@ -1518,13 +1684,24 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      <th style={{ width: '12%', textAlign: 'left', paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined }}>
+                                      <th
+                                        style={{
+                                          width: '12%',
+                                          textAlign: 'left',
+                                          paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined
+                                        }}
+                                      >
                                         {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
-                                            checked={optPos.length > 0 && optPos.every((p) => currentCheckedSet.has(posKey(p)))}
+                                            checked={
+                                              optPos.length > 0 &&
+                                              optPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                            }
                                             onChange={() => {
-                                              const allChecked = optPos.every((p) => currentCheckedSet.has(posKey(p)))
+                                              const allChecked = optPos.every((p) =>
+                                                currentCheckedSet.has(posKey(p))
+                                              )
                                               setGroupChecked((prev) => {
                                                 const cur = new Set(prev[g.id] || [])
                                                 optPos.forEach((p) => {
@@ -1535,7 +1712,12 @@ export default function AccountOverview({
                                               })
                                             }}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ cursor: 'pointer', accentColor: '#2563eb', marginRight: '4px', verticalAlign: 'middle' }}
+                                            style={{
+                                              cursor: 'pointer',
+                                              accentColor: '#2563eb',
+                                              marginRight: '4px',
+                                              verticalAlign: 'middle'
+                                            }}
                                           />
                                         )}
                                       </th>
@@ -1580,7 +1762,6 @@ export default function AccountOverview({
                         )
                       })()
                     )}
-
                   </div>
                 )
               })}
@@ -1601,7 +1782,9 @@ export default function AccountOverview({
                 }
               >
                 <div className="account-header">
-                  <span className="account-id">{(account.alias || account.accountId).replace(/\s*\(.*?\)/, '')}</span>
+                  <span className="account-id">
+                    {(account.alias || account.accountId).replace(/\s*\(.*?\)/, '')}
+                  </span>
                   <button
                     className="ai-advisor-btn"
                     title="AI 交易建議"
@@ -1620,14 +1803,26 @@ export default function AccountOverview({
                       </span>
                     )}
                     <span className="account-type-label">
-                      {TRADING_TYPE_OPTIONS.find(o => o.value === (accountTypes?.[account.accountId] || 'reg_t'))?.label || ''}
+                      {TRADING_TYPE_OPTIONS.find(
+                        (o) => o.value === (accountTypes?.[account.accountId] || 'reg_t')
+                      )?.label || ''}
                     </span>
                     {(() => {
                       const rate = returnRates?.[account.accountId]
                       if (rate === undefined) return null
-                      if (rate === null) return <span className="account-type-label" style={{ color: '#888' }}>報酬率 --</span>
+                      if (rate === null)
+                        return (
+                          <span className="account-type-label" style={{ color: '#888' }}>
+                            報酬率 --
+                          </span>
+                        )
                       const sign = rate >= 0 ? '+' : ''
-                      return <span className="account-type-label" style={{ fontWeight: 600 }}>報酬率 {sign}{rate.toFixed(2)}%</span>
+                      return (
+                        <span className="account-type-label" style={{ fontWeight: 600 }}>
+                          報酬率 {sign}
+                          {rate.toFixed(2)}%
+                        </span>
+                      )
                     })()}
                   </div>
                 </div>
@@ -1696,19 +1891,19 @@ export default function AccountOverview({
                       const potentialMargin =
                         account.netLiquidation > 0
                           ? (account.grossPositionValue +
-                            positions
-                              .filter(
-                                (p) =>
-                                  p.account === account.accountId &&
-                                  p.secType === 'OPT' &&
-                                  (p.right === 'P' || p.right === 'PUT') &&
-                                  p.quantity < 0
-                              )
-                              .reduce(
-                                (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                                0
-                              )) /
-                          account.netLiquidation
+                              positions
+                                .filter(
+                                  (p) =>
+                                    p.account === account.accountId &&
+                                    p.secType === 'OPT' &&
+                                    (p.right === 'P' || p.right === 'PUT') &&
+                                    p.quantity < 0
+                                )
+                                .reduce(
+                                  (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                                  0
+                                )) /
+                            account.netLiquidation
                           : null
                       return (
                         <div
@@ -1730,7 +1925,8 @@ export default function AccountOverview({
                 )}
 
                 {/* Stock Positions (category view) */}
-                {!acctViewBySymbol && selectMode !== 'OPT' &&
+                {!acctViewBySymbol &&
+                  selectMode !== 'OPT' &&
                   getPositionsForAccount(account.accountId).filter((p) => p.secType !== 'OPT')
                     .length > 0 && (
                     <div className="positions-section">
@@ -1751,16 +1947,25 @@ export default function AccountOverview({
                             .map((pos, idx) => (
                               <tr
                                 key={idx}
-                                className={
+                                className={`pos-hoverable-row ${
+                                  stkContextMenu && posKey(stkContextMenu.pos) === posKey(pos)
+                                    ? 'force-active'
+                                    : ''
+                                } ${
                                   selectMode === 'STK'
                                     ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}`
                                     : ''
-                                }
+                                }`}
                                 onClick={
                                   selectMode === 'STK'
                                     ? () => togglePosition(posKey(pos))
                                     : undefined
                                 }
+                                onContextMenu={(e) => {
+                                  e.preventDefault()
+                                  setSelectedPositions(new Set([posKey(pos)]))
+                                  setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                }}
                                 style={selectMode === 'STK' ? { cursor: 'pointer' } : undefined}
                               >
                                 <td className="pos-symbol">
@@ -1775,7 +1980,13 @@ export default function AccountOverview({
                                   )}
                                   {formatPositionSymbol(pos)}
                                 </td>
-                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
+                                <td
+                                  style={{
+                                    color: '#fff',
+                                    fontWeight: 500,
+                                    backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626'
+                                  }}
+                                >
                                   {pos.quantity.toLocaleString()}
                                 </td>
                                 {(() => {
@@ -1794,14 +2005,20 @@ export default function AccountOverview({
                                     : null
                                   return (
                                     <td
-                                      style={stkPnl != null ? {
-                                        color: '#fff',
-                                        fontWeight: 500,
-                                        backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
-                                      } : undefined}
+                                      style={
+                                        stkPnl != null
+                                          ? {
+                                              color: '#fff',
+                                              fontWeight: 500,
+                                              backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                            }
+                                          : undefined
+                                      }
                                     >
                                       {stkPnl != null
-                                        ? stkPnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                        ? stkPnl.toLocaleString('en-US', {
+                                            maximumFractionDigits: 0
+                                          })
                                         : '-'}
                                     </td>
                                   )
@@ -1814,7 +2031,8 @@ export default function AccountOverview({
                   )}
 
                 {/* Option Positions (category view) */}
-                {!acctViewBySymbol && selectMode !== 'STK' &&
+                {!acctViewBySymbol &&
+                  selectMode !== 'STK' &&
                   getPositionsForAccount(account.accountId).filter((p) => p.secType === 'OPT')
                     .length > 0 && (
                     <div className="positions-section">
@@ -1835,16 +2053,25 @@ export default function AccountOverview({
                             .map((pos, idx) => (
                               <tr
                                 key={idx}
-                                className={
+                                className={`pos-hoverable-row ${
+                                  optContextMenu && posKey(optContextMenu.pos) === posKey(pos)
+                                    ? 'force-active'
+                                    : ''
+                                } ${
                                   selectMode === 'OPT'
                                     ? `selectable-row${selectedPositions.has(posKey(pos)) ? ' selected' : ''}`
                                     : ''
-                                }
+                                }`}
                                 onClick={
                                   selectMode === 'OPT'
                                     ? () => togglePosition(posKey(pos))
                                     : undefined
                                 }
+                                onContextMenu={(e) => {
+                                  e.preventDefault()
+                                  setSelectedPositions(new Set([posKey(pos)]))
+                                  setOptContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                }}
                                 style={selectMode === 'OPT' ? { cursor: 'pointer' } : undefined}
                               >
                                 <td className="pos-symbol">
@@ -1859,26 +2086,32 @@ export default function AccountOverview({
                                   )}
                                   {formatPositionSymbol(pos)}
                                 </td>
-                                <td style={{ color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
+                                <td
+                                  style={{
+                                    color: '#fff',
+                                    fontWeight: 500,
+                                    backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626'
+                                  }}
+                                >
                                   {pos.quantity.toLocaleString()}
                                 </td>
                                 {(() => {
                                   const days = pos.expiry
                                     ? Math.max(
-                                      0,
-                                      Math.ceil(
-                                        (new Date(
-                                          pos.expiry.substring(0, 4) +
-                                          '-' +
-                                          pos.expiry.substring(4, 6) +
-                                          '-' +
-                                          pos.expiry.substring(6, 8) +
-                                          'T00:00:00'
-                                        ).getTime() -
-                                          new Date().setHours(0, 0, 0, 0)) /
-                                        (1000 * 60 * 60 * 24)
+                                        0,
+                                        Math.ceil(
+                                          (new Date(
+                                            pos.expiry.substring(0, 4) +
+                                              '-' +
+                                              pos.expiry.substring(4, 6) +
+                                              '-' +
+                                              pos.expiry.substring(6, 8) +
+                                              'T00:00:00'
+                                          ).getTime() -
+                                            new Date().setHours(0, 0, 0, 0)) /
+                                            (1000 * 60 * 60 * 24)
+                                        )
                                       )
-                                    )
                                     : null
                                   return (
                                     <td
@@ -1931,154 +2164,309 @@ export default function AccountOverview({
                   )}
 
                 {/* By-underlying view */}
-                {acctViewBySymbol && !selectMode && (() => {
-                  const acctPositions = getPositionsForAccount(account.accountId)
-                  // Group by underlying symbol
-                  const symbolMap = new Map<string, { stk: PositionData[], opt: PositionData[] }>()
-                  for (const p of acctPositions) {
-                    if (!symbolMap.has(p.symbol)) symbolMap.set(p.symbol, { stk: [], opt: [] })
-                    const entry = symbolMap.get(p.symbol)!
-                    if (p.secType === 'OPT') entry.opt.push(p)
-                    else entry.stk.push(p)
-                  }
-                  const symbols = Array.from(symbolMap.keys()).sort((a, b) => {
-                    const getPriority = (sym: string) => {
-                      if (sym === 'QQQ') return 0
-                      if (sym === 'TQQQ') return 1
-                      if (sym === 'SQQQ') return 2
-                      const entry = symbolMap.get(sym)!
-                      const hasStk = entry.stk.length > 0
-                      const hasOpt = entry.opt.length > 0
-                      if (hasStk && hasOpt) return 10
-                      if (!hasStk && hasOpt) return 20
-                      if (hasStk && !hasOpt) return 30
-                      return 40
+                {acctViewBySymbol &&
+                  !selectMode &&
+                  (() => {
+                    const acctPositions = getPositionsForAccount(account.accountId)
+                    // Group by underlying symbol
+                    const symbolMap = new Map<
+                      string,
+                      { stk: PositionData[]; opt: PositionData[] }
+                    >()
+                    for (const p of acctPositions) {
+                      if (!symbolMap.has(p.symbol)) symbolMap.set(p.symbol, { stk: [], opt: [] })
+                      const entry = symbolMap.get(p.symbol)!
+                      if (p.secType === 'OPT') entry.opt.push(p)
+                      else entry.stk.push(p)
                     }
-                    const priorityA = getPriority(a)
-                    const priorityB = getPriority(b)
-                    if (priorityA !== priorityB) return priorityA - priorityB
-                    return a.localeCompare(b)
-                  })
-                  if (symbols.length === 0) return null
-                  return symbols.map((sym) => {
-                    const { stk, opt } = symbolMap.get(sym)!
-                    // Compute total PnL for this underlying
-                    let totalPnl = 0
-                    for (const p of stk) {
-                      const icCost = initialCosts[`${p.account}|${p.symbol}`]
-                      const cb = icCost != null ? icCost : p.avgCost
-                      if (quotes[p.symbol]) totalPnl += (quotes[p.symbol] - cb) * p.quantity
+                    const symbols = Array.from(symbolMap.keys()).sort((a, b) => {
+                      const getPriority = (sym: string) => {
+                        if (sym === 'QQQ') return 0
+                        if (sym === 'TQQQ') return 1
+                        if (sym === 'SQQQ') return 2
+                        const entry = symbolMap.get(sym)!
+                        const hasStk = entry.stk.length > 0
+                        const hasOpt = entry.opt.length > 0
+                        if (hasStk && hasOpt) return 10
+                        if (!hasStk && hasOpt) return 20
+                        if (hasStk && !hasOpt) return 30
+                        return 40
+                      }
+                      const priorityA = getPriority(a)
+                      const priorityB = getPriority(b)
+                      if (priorityA !== priorityB) return priorityA - priorityB
+                      return a.localeCompare(b)
+                    })
+                    if (symbols.length === 0) return null
+                    const elements: React.JSX.Element[] = []
+                    const standaloneStocks: PositionData[] = []
+
+                    symbols.forEach((sym) => {
+                      const { stk, opt } = symbolMap.get(sym)!
+                      if (opt.length === 0 && stk.length > 0) {
+                        standaloneStocks.push(...stk)
+                        return
+                      }
+
+                      // Compute total PnL for this underlying
+                      let totalPnl = 0
+                      for (const p of stk) {
+                        const icCost = initialCosts[`${p.account}|${p.symbol}`]
+                        const cb = icCost != null ? icCost : p.avgCost
+                        if (quotes[p.symbol]) totalPnl += (quotes[p.symbol] - cb) * p.quantity
+                      }
+                      for (const p of opt) {
+                        const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
+                        const lp = optionQuotes[key]
+                        if (lp != null && lp > 0)
+                          totalPnl += (lp - p.avgCost / 100) * p.quantity * 100
+                      }
+                      elements.push(
+                        <div
+                          key={sym}
+                          className="positions-section"
+                          style={{ marginBottom: '6px' }}
+                        >
+                          <table className="positions-table" style={{ tableLayout: 'fixed' }}>
+                            <thead>
+                              <tr>
+                                <th style={{ width: '30%', textAlign: 'left' }}></th>
+                                <th style={{ width: '12%' }}>持倉</th>
+                                <th style={{ width: '12%' }}>到期</th>
+                                <th style={{ width: '15%' }}>均價</th>
+                                <th style={{ width: '15%' }}>現價</th>
+                                <th style={{ width: '16%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stk.map((pos, idx) => {
+                                const icKey = `${pos.account}|${pos.symbol}`
+                                const ic = initialCosts[icKey]
+                                const costBasis = ic != null ? ic : pos.avgCost
+                                const stkPnl = quotes[pos.symbol]
+                                  ? (quotes[pos.symbol] - costBasis) * pos.quantity
+                                  : null
+                                return (
+                                  <tr
+                                    key={`stk-${idx}`}
+                                    className={`pos-hoverable-row ${stkContextMenu && posKey(stkContextMenu.pos) === posKey(pos) ? 'force-active' : ''}`}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault()
+                                      setSelectedPositions(new Set([posKey(pos)]))
+                                      setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                    }}
+                                  >
+                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                      {formatPositionSymbol(pos)}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '12%',
+                                        color: '#fff',
+                                        fontWeight: 500,
+                                        backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626'
+                                      }}
+                                    >
+                                      {pos.quantity.toLocaleString()}
+                                    </td>
+                                    <td style={{ width: '12%' }}> </td>
+                                    <td style={{ width: '15%' }}>{costBasis.toFixed(2)}</td>
+                                    <td style={{ width: '15%' }}>
+                                      {quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '16%',
+                                        ...(stkPnl != null
+                                          ? {
+                                              color: '#fff',
+                                              fontWeight: 500,
+                                              backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                            }
+                                          : {})
+                                      }}
+                                    >
+                                      {stkPnl != null
+                                        ? stkPnl.toLocaleString('en-US', {
+                                            maximumFractionDigits: 0
+                                          })
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                              {opt.map((pos, idx) => {
+                                const days = pos.expiry
+                                  ? Math.max(
+                                      0,
+                                      Math.ceil(
+                                        (new Date(
+                                          pos.expiry.substring(0, 4) +
+                                            '-' +
+                                            pos.expiry.substring(4, 6) +
+                                            '-' +
+                                            pos.expiry.substring(6, 8) +
+                                            'T00:00:00'
+                                        ).getTime() -
+                                          new Date().setHours(0, 0, 0, 0)) /
+                                          (1000 * 60 * 60 * 24)
+                                      )
+                                    )
+                                  : null
+                                const oKey = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
+                                const lastPrice = optionQuotes[oKey]
+                                const avgUnit = pos.avgCost / 100
+                                const optPnl =
+                                  lastPrice != null && lastPrice > 0
+                                    ? (lastPrice - avgUnit) * pos.quantity * 100
+                                    : null
+                                return (
+                                  <tr
+                                    key={`opt-${idx}`}
+                                    className={`pos-hoverable-row ${optContextMenu && posKey(optContextMenu.pos) === posKey(pos) ? 'force-active' : ''}`}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault()
+                                      setSelectedPositions(new Set([posKey(pos)]))
+                                      setOptContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                    }}
+                                  >
+                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                      {formatPositionSymbol(pos)}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '12%',
+                                        color: '#fff',
+                                        fontWeight: 500,
+                                        backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626'
+                                      }}
+                                    >
+                                      {pos.quantity.toLocaleString()}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '12%',
+                                        ...(days === 0
+                                          ? { backgroundColor: '#fff0f0' }
+                                          : days === 1
+                                            ? { backgroundColor: '#e8f4fd' }
+                                            : {})
+                                      }}
+                                    >
+                                      {days !== null ? days : '-'}
+                                    </td>
+                                    <td style={{ width: '15%' }}>{avgUnit.toFixed(2)}</td>
+                                    <td style={{ width: '15%' }}>
+                                      {lastPrice != null && lastPrice > 0
+                                        ? lastPrice.toFixed(2)
+                                        : '-'}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '16%',
+                                        ...(optPnl != null
+                                          ? {
+                                              color: '#fff',
+                                              fontWeight: 500,
+                                              backgroundColor: optPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                            }
+                                          : {})
+                                      }}
+                                    >
+                                      {optPnl != null ? Math.round(optPnl).toLocaleString() : '-'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    })
+
+                    if (standaloneStocks.length > 0) {
+                      elements.push(
+                        <div
+                          key="standalone-stocks"
+                          className="positions-section"
+                          style={{ marginBottom: '6px' }}
+                        >
+                          <table className="positions-table" style={{ tableLayout: 'fixed' }}>
+                            <thead>
+                              <tr>
+                                <th style={{ width: '30%', textAlign: 'left' }}></th>
+                                <th style={{ width: '12%' }}>持倉</th>
+                                <th style={{ width: '12%' }}>到期</th>
+                                <th style={{ width: '15%' }}>均價</th>
+                                <th style={{ width: '15%' }}>現價</th>
+                                <th style={{ width: '16%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {standaloneStocks.map((pos, idx) => {
+                                const icKey = `${pos.account}|${pos.symbol}`
+                                const ic = initialCosts[icKey]
+                                const costBasis = ic != null ? ic : pos.avgCost
+                                const stkPnl = quotes[pos.symbol]
+                                  ? (quotes[pos.symbol] - costBasis) * pos.quantity
+                                  : null
+                                return (
+                                  <tr
+                                    key={`stk-standalone-${idx}`}
+                                    className={`pos-hoverable-row ${stkContextMenu && posKey(stkContextMenu.pos) === posKey(pos) ? 'force-active' : ''}`}
+                                    onContextMenu={(e) => {
+                                      e.preventDefault()
+                                      setSelectedPositions(new Set([posKey(pos)]))
+                                      setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                    }}
+                                  >
+                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                      {formatPositionSymbol(pos)}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '12%',
+                                        color: '#fff',
+                                        fontWeight: 500,
+                                        backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626'
+                                      }}
+                                    >
+                                      {pos.quantity.toLocaleString()}
+                                    </td>
+                                    <td style={{ width: '12%' }}> </td>
+                                    <td style={{ width: '15%' }}>{costBasis.toFixed(2)}</td>
+                                    <td style={{ width: '15%' }}>
+                                      {quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}
+                                    </td>
+                                    <td
+                                      style={{
+                                        width: '16%',
+                                        ...(stkPnl != null
+                                          ? {
+                                              color: '#fff',
+                                              fontWeight: 500,
+                                              backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
+                                            }
+                                          : {})
+                                      }}
+                                    >
+                                      {stkPnl != null
+                                        ? stkPnl.toLocaleString('en-US', {
+                                            maximumFractionDigits: 0
+                                          })
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
                     }
-                    for (const p of opt) {
-                      const key = `${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
-                      const lp = optionQuotes[key]
-                      if (lp != null && lp > 0) totalPnl += (lp - p.avgCost / 100) * p.quantity * 100
-                    }
-                    return (
-                      <div key={sym} className="positions-section" style={{ marginBottom: '6px' }}>
-                        <table className="positions-table" style={{ tableLayout: 'fixed' }}>
-                          <thead>
-                            <tr>
-                              <th style={{ width: '30%', textAlign: 'left' }}></th>
-                              <th style={{ width: '12%' }}>持倉</th>
-                              <th style={{ width: '12%' }}>到期</th>
-                              <th style={{ width: '15%' }}>均價</th>
-                              <th style={{ width: '15%' }}>現價</th>
-                              <th style={{ width: '16%' }}>盈虧</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {stk.map((pos, idx) => {
-                              const icKey = `${pos.account}|${pos.symbol}`
-                              const ic = initialCosts[icKey]
-                              const costBasis = ic != null ? ic : pos.avgCost
-                              const stkPnl = quotes[pos.symbol]
-                                ? (quotes[pos.symbol] - costBasis) * pos.quantity
-                                : null
-                              return (
-                                <tr key={`stk-${idx}`}>
-                                  <td className="pos-symbol" style={{ width: '30%' }}>
-                                    {formatPositionSymbol(pos)}
-                                  </td>
-                                  <td style={{ width: '12%', color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
-                                    {pos.quantity.toLocaleString()}
-                                  </td>
-                                  <td style={{ width: '12%' }}> </td>
-                                  <td style={{ width: '15%' }}>{costBasis.toFixed(2)}</td>
-                                  <td style={{ width: '15%' }}>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
-                                  <td style={{
-                                    width: '16%',
-                                    ...(stkPnl != null ? {
-                                      color: '#fff',
-                                      fontWeight: 500,
-                                      backgroundColor: stkPnl >= 0 ? '#1a6b3a' : '#dc2626'
-                                    } : {})
-                                  }}>
-                                    {stkPnl != null
-                                      ? stkPnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                      : '-'}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                            {opt.map((pos, idx) => {
-                              const days = pos.expiry
-                                ? Math.max(0, Math.ceil(
-                                  (new Date(
-                                    pos.expiry.substring(0, 4) + '-' +
-                                    pos.expiry.substring(4, 6) + '-' +
-                                    pos.expiry.substring(6, 8) + 'T00:00:00'
-                                  ).getTime() - new Date().setHours(0, 0, 0, 0)) /
-                                  (1000 * 60 * 60 * 24)
-                                ))
-                                : null
-                              const oKey = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
-                              const lastPrice = optionQuotes[oKey]
-                              const avgUnit = pos.avgCost / 100
-                              const optPnl = lastPrice != null && lastPrice > 0
-                                ? (lastPrice - avgUnit) * pos.quantity * 100
-                                : null
-                              return (
-                                <tr key={`opt-${idx}`}>
-                                  <td className="pos-symbol" style={{ width: '30%' }}>
-                                    {formatPositionSymbol(pos)}
-                                  </td>
-                                  <td style={{ width: '12%', color: '#fff', fontWeight: 500, backgroundColor: pos.quantity > 0 ? '#1a6b3a' : '#dc2626' }}>
-                                    {pos.quantity.toLocaleString()}
-                                  </td>
-                                  <td style={{
-                                    width: '12%',
-                                    ...(days === 0
-                                      ? { backgroundColor: '#fff0f0' }
-                                      : days === 1
-                                        ? { backgroundColor: '#e8f4fd' }
-                                        : {})
-                                  }}>
-                                    {days !== null ? days : '-'}
-                                  </td>
-                                  <td style={{ width: '15%' }}>{avgUnit.toFixed(2)}</td>
-                                  <td style={{ width: '15%' }}>{lastPrice != null && lastPrice > 0 ? lastPrice.toFixed(2) : '-'}</td>
-                                  <td style={{
-                                    width: '16%',
-                                    ...(optPnl != null ? {
-                                      color: '#fff',
-                                      fontWeight: 500,
-                                      backgroundColor: optPnl >= 0 ? '#1a6b3a' : '#dc2626'
-                                    } : {})
-                                  }}>
-                                    {optPnl != null
-                                      ? Math.round(optPnl).toLocaleString()
-                                      : '-'}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )
-                  })
-                })()}
+
+                    return elements
+                  })()}
 
                 {/* Open Orders */}
                 {!selectMode &&
@@ -2125,6 +2513,11 @@ export default function AccountOverview({
                               return (
                                 <tr
                                   key={order.orderId}
+                                  className={
+                                    contextMenu?.order.orderId === order.orderId
+                                      ? 'force-active'
+                                      : ''
+                                  }
                                   onContextMenu={(e) => {
                                     e.preventDefault()
                                     if (order.status !== 'PendingCancel')
@@ -2145,7 +2538,7 @@ export default function AccountOverview({
                                     onDoubleClick={() => startEdit(order, 'quantity')}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                      editingCell.field === 'quantity' ? (
+                                    editingCell.field === 'quantity' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -2183,7 +2576,7 @@ export default function AccountOverview({
                                     }}
                                   >
                                     {editingCell?.orderId === order.orderId &&
-                                      editingCell.field === 'price' ? (
+                                    editingCell.field === 'price' ? (
                                       <input
                                         ref={editInputRef}
                                         type="number"
@@ -2311,11 +2704,11 @@ export default function AccountOverview({
                                     for (const l of legs) {
                                       const exp = l.expiry
                                         ? (() => {
-                                          const yy = l.expiry.slice(2, 4)
-                                          const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                          const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                          return `${MONTHS[mm]}${dd}'${yy}`
-                                        })()
+                                            const yy = l.expiry.slice(2, 4)
+                                            const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                            const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                            return `${MONTHS[mm]}${dd}'${yy}`
+                                          })()
                                         : ''
                                       const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
                                       const sign = l.side === 'BOT' ? '+' : '-'
@@ -2395,20 +2788,24 @@ export default function AccountOverview({
                                       {desc}
                                       {isOptionExpiry && (
                                         <span
-                                          style={isAssigned ? {
-                                            color: '#fff',
-                                            backgroundColor: '#d35400',
-                                            fontWeight: 600,
-                                            marginLeft: 6,
-                                            fontSize: '1em',
-                                            padding: '4px 6px',
-                                            margin: '-4px 0 -4px 6px',
-                                          } : {
-                                            color: '#1a6baa',
-                                            fontWeight: 600,
-                                            marginLeft: 6,
-                                            fontSize: '0.92em'
-                                          }}
+                                          style={
+                                            isAssigned
+                                              ? {
+                                                  color: '#fff',
+                                                  backgroundColor: '#d35400',
+                                                  fontWeight: 600,
+                                                  marginLeft: 6,
+                                                  fontSize: '1em',
+                                                  padding: '4px 6px',
+                                                  margin: '-4px 0 -4px 6px'
+                                                }
+                                              : {
+                                                  color: '#1a6baa',
+                                                  fontWeight: 600,
+                                                  marginLeft: 6,
+                                                  fontSize: '0.92em'
+                                                }
+                                          }
                                         >
                                           {isAssigned ? '被行權' : '(到期)'}
                                         </span>
@@ -2422,7 +2819,15 @@ export default function AccountOverview({
                                     >
                                       {exec.side === 'BOT' ? '買' : '賣'}
                                     </td>
-                                    <td style={{ color: '#fff', fontWeight: 500, backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626' }}>{exec.quantity}</td>
+                                    <td
+                                      style={{
+                                        color: '#fff',
+                                        fontWeight: 500,
+                                        backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626'
+                                      }}
+                                    >
+                                      {exec.quantity}
+                                    </td>
                                     <td>{exec.avgPrice.toFixed(2)}</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
                                   </tr>
@@ -2445,7 +2850,6 @@ export default function AccountOverview({
         }}
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
-
         onRollComplete={(rolledPositions, target) => {
           // Store intent: will be applied once IB confirms the fill via position updates
           setPendingRollUpdate({ rolledPositions, target })
@@ -2506,7 +2910,9 @@ export default function AccountOverview({
         open={showOptionOrder}
         onClose={() => setShowOptionOrder(false)}
         accounts={accounts}
-        positions={positions}
+        initialSymbol={optOrderInitialSymbol}
+        initialAccountId={optOrderInitialAccountId}
+        initialRight={optOrderInitialRight}
       />
       <CloseOptionDialog
         open={showCloseOptionDialog}
@@ -2551,6 +2957,65 @@ export default function AccountOverview({
             }}
           >
             取消委託
+          </div>
+        </div>
+      )}
+
+      {/* Context menu for Option Position */}
+      {optContextMenu && (
+        <div
+          className="order-context-menu"
+          style={{ position: 'fixed', top: optContextMenu.y, left: optContextMenu.x, zIndex: 9999 }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="order-context-menu-item"
+            onClick={() => {
+              setOptContextMenu(null)
+              setShowRollDialog(true)
+            }}
+          >
+            展期
+          </div>
+          <div
+            className="order-context-menu-item"
+            onClick={() => {
+              setOptContextMenu(null)
+              setShowCloseOptionDialog(true)
+            }}
+          >
+            平倉
+          </div>
+        </div>
+      )}
+
+      {/* Context menu for Stock Position */}
+      {stkContextMenu && (
+        <div
+          className="order-context-menu"
+          style={{ position: 'fixed', top: stkContextMenu.y, left: stkContextMenu.x, zIndex: 9999 }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div
+            className="order-context-menu-item"
+            onClick={() => {
+              setOptOrderInitialSymbol(stkContextMenu.pos.symbol)
+              setOptOrderInitialAccountId(stkContextMenu.pos.account)
+              setOptOrderInitialRight(undefined)
+              setStkContextMenu(null)
+              setShowOptionOrder(true)
+            }}
+          >
+            賣期權
+          </div>
+          <div
+            className="order-context-menu-item"
+            onClick={() => {
+              setStkContextMenu(null)
+              setShowCloseDialog(true)
+            }}
+          >
+            平倉
           </div>
         </div>
       )}

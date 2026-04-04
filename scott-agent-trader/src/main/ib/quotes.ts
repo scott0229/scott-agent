@@ -232,7 +232,9 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
   if (cached && Date.now() - cached.fetchedAt < STOCK_CACHE_TTL_MS) {
     const q = cached.quote
     if (q.last > 0 || q.bid > 0 || q.ask > 0) {
-      console.log(`[IB] Stock quote cache hit for ${sym} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`)
+      console.log(
+        `[IB] Stock quote cache hit for ${sym} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`
+      )
       return q
     }
   }
@@ -514,7 +516,9 @@ export function unsubscribeAllQuotes(): void {
   for (const [reqId, sym] of streamingStockReqs) {
     try {
       api?.cancelMktData(reqId)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     console.log(`[IB-Stream] Unsubscribed stock ${sym} (reqId: ${reqId})`)
   }
   streamingStockReqs.clear()
@@ -523,7 +527,9 @@ export function unsubscribeAllQuotes(): void {
   for (const [reqId, key] of streamingOptionReqs) {
     try {
       api?.cancelMktData(reqId)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     console.log(`[IB-Stream] Unsubscribed option ${key} (reqId: ${reqId})`)
   }
   streamingOptionReqs.clear()
@@ -540,8 +546,8 @@ export function unsubscribeAllQuotes(): void {
   }
 
   // Clear live prices
-  Object.keys(liveStockPrices).forEach(k => delete liveStockPrices[k])
-  Object.keys(liveOptionPrices).forEach(k => delete liveOptionPrices[k])
+  Object.keys(liveStockPrices).forEach((k) => delete liveStockPrices[k])
+  Object.keys(liveOptionPrices).forEach((k) => delete liveOptionPrices[k])
 
   console.log('[IB-Stream] All subscriptions cleared')
 }

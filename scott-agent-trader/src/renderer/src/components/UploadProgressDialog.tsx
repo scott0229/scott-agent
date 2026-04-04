@@ -77,7 +77,9 @@ export default function UploadProgressDialog({
   useEffect(() => {
     if (finished && onComplete) {
       const timer = setTimeout(() => onComplete(), 1500)
-      return (): void => { clearTimeout(timer) }
+      return (): void => {
+        clearTimeout(timer)
+      }
     }
     return undefined
   }, [finished, onComplete])

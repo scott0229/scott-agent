@@ -42,9 +42,14 @@ api.on(EventName.connected, () => {
   api.on(EventName.tickPrice, (reqId, tickType, value) => {
     console.log(`[tickPrice] reqId ${reqId}, tickType ${tickType}, value ${value}`)
   })
-  api.on(EventName.tickOptionComputation, (reqId, field, impliedVol, delta, optPrice, pvD, gamma, vega, theta) => {
-    console.log(`[tickOption] reqId ${reqId}, field ${field}, IV ${impliedVol}, d ${delta}, p ${optPrice}`)
-  })
+  api.on(
+    EventName.tickOptionComputation,
+    (reqId, field, impliedVol, delta, optPrice, pvD, gamma, vega, theta) => {
+      console.log(
+        `[tickOption] reqId ${reqId}, field ${field}, IV ${impliedVol}, d ${delta}, p ${optPrice}`
+      )
+    }
+  )
   api.on(EventName.tickSnapshotEnd, (reqId) => {
     console.log(`[tickSnapshotEnd] reqId ${reqId}`)
     resolved++

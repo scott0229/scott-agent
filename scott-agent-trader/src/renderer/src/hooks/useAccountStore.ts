@@ -124,7 +124,16 @@ export function useAccountStore(
         window.ibApi.getOpenOrders().catch(() => [] as OpenOrderData[]),
         window.ibApi.getExecutions().catch(() => [] as ExecutionDataItem[])
       ])
-      console.log('[fetchData] accounts:', accountData.length, 'positions:', positionData.length, 'orders:', orderData.length, 'execs:', execData.length)
+      console.log(
+        '[fetchData] accounts:',
+        accountData.length,
+        'positions:',
+        positionData.length,
+        'orders:',
+        orderData.length,
+        'execs:',
+        execData.length
+      )
 
       // Apply known aliases immediately (from cache or previous fetch)
       const accountIds = accountData.map((a: AccountData) => a.accountId)

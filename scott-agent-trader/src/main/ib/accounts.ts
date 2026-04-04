@@ -249,7 +249,9 @@ function requestAccountSummaryRaw(reqId: number, group: string): Promise<Account
       api.cancelAccountSummary(reqId)
       if (summaryItems.length > 0) {
         const accounts = Array.from(buildAccountMap(summaryItems).values())
-        console.log(`[IB] Account summary timeout (partial): ${accounts.length} accounts, ${summaryItems.length} items`)
+        console.log(
+          `[IB] Account summary timeout (partial): ${accounts.length} accounts, ${summaryItems.length} items`
+        )
         resolve(accounts)
       } else {
         console.log('[IB] Account summary timeout: no data received')
