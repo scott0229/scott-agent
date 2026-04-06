@@ -614,7 +614,7 @@ body {
   padding: 6px 10px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  border-radius: 2px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -905,6 +905,7 @@ input[type='number']::-webkit-outer-spin-button {
   height: 24px;
   padding: 2px 6px;
   font-size: 13px;
+  border-radius: 2px;
 }
 
 .text-right {
@@ -1366,7 +1367,7 @@ input[type='number']::-webkit-outer-spin-button {
   background: #ffffff;
   border-radius: 12px;
   width: 680px;
-  max-height: 76vh;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
@@ -1737,7 +1738,7 @@ input[type='number']::-webkit-outer-spin-button {
 .roll-order-section {
   padding: 10px 20px;
   border: 1px solid #ccc;
-  border-radius: 6px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1827,7 +1828,7 @@ input[type='number']::-webkit-outer-spin-button {
 .roll-order-input {
   background: #ffffff;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 4px 14px;
   font-size: 13px;
   font-family: 'SF Mono', 'Consolas', monospace;

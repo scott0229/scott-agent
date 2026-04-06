@@ -74,19 +74,12 @@ export default function CloseOptionDialog({
 
   // Per-contract price inputs, keyed by optionKey
   const [prices, setPrices] = useState<Record<string, string>>({})
-  // Per-contract TIF
-  const [tifs, setTifs] = useState<Record<string, 'DAY' | 'GTC'>>({})
-  const [outsideRths, setOutsideRths] = useState<Record<string, boolean>>({})
   // Quotes for option contracts
   const [optQuotes, setOptQuotes] = useState<
     Record<string, { bid: number; ask: number; last: number }>
   >({})
   // Quantity overrides keyed by "optKey:accountId"
-  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({})
-  // TIF dropdown open
-  const [tifOpen, setTifOpen] = useState<string | null>(null)
-
-  // Derive unique option contracts from selected positions
+  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({})  // Derive unique option contracts from selected positions
   const uniqueContracts = useMemo(() => {
     const map = new Map<
       string,
@@ -126,16 +119,7 @@ export default function CloseOptionDialog({
     return map
   }, [selectedPositions])
 
-  // Close TIF dropdowns on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent): void => {
-      const target = e.target as HTMLElement
-      if (target.closest('.tif-dropdown')) return
-      setTifOpen(null)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+
 
   // Fetch option quotes + auto-refresh
   useEffect(() => {
@@ -298,7 +282,7 @@ export default function CloseOptionDialog({
             expiry: c.expiry,
             strike: c.strike,
             right: (c.right === 'C' || c.right === 'CALL' ? 'C' : 'P') as 'C' | 'P',
-            outsideRth: outsideRths[key] || false
+            outsideRth: false
           }
           const results = await window.ibApi.placeOptionBatchOrders(request, allocations)
           allResults.push(
@@ -318,14 +302,12 @@ export default function CloseOptionDialog({
     } finally {
       setSubmitting(false)
     }
-  }, [previews, uniqueContracts, prices, outsideRths])
+  }, [previews, uniqueContracts, prices])
 
   const handleClose = useCallback(() => {
     setStep('preview')
     setOrderResults([])
     setPrices({})
-    setTifs({})
-    setOutsideRths({})
     setOptQuotes({})
     setQtyOverrides({})
     setSubmitting(false)
@@ -333,60 +315,7 @@ export default function CloseOptionDialog({
     onClose()
   }, [onClose])
 
-  // TIF dropdown renderer
-  const renderTifDropdown = (
-    _key: string,
-    tif: 'DAY' | 'GTC',
-    outsideRth: boolean,
-    isOpen: boolean,
-    setTif: (v: 'DAY' | 'GTC') => void,
-    setOutsideRthVal: (v: boolean) => void,
-    setOpen: (v: boolean) => void
-  ): React.JSX.Element => (
-    <div className="tif-dropdown">
-      <button
-        type="button"
-        className={`tif-dropdown-trigger${outsideRth ? ' has-extras' : ''}`}
-        onClick={() => setOpen(!isOpen)}
-      >
-        {tif}
-        <span className="tif-dropdown-arrow">▾</span>
-      </button>
-      {isOpen && (
-        <div className="tif-dropdown-menu">
-          <div
-            className={`tif-dropdown-item${tif === 'DAY' ? ' active' : ''}`}
-            onClick={() => {
-              setTif('DAY')
-              setOpen(false)
-            }}
-          >
-            DAY
-          </div>
-          <div
-            className={`tif-dropdown-item${tif === 'GTC' ? ' active' : ''}`}
-            onClick={() => {
-              setTif('GTC')
-              setOpen(false)
-            }}
-          >
-            GTC
-          </div>
-          <div
-            className="tif-dropdown-checkbox"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setOutsideRthVal(!outsideRth)
-            }}
-          >
-            <input type="checkbox" checked={outsideRth} readOnly />
-            非常規時間
-          </div>
-        </div>
-      )}
-    </div>
-  )
+
 
   if (!open) return null
 
@@ -396,7 +325,7 @@ export default function CloseOptionDialog({
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
       <div
         className="stock-order-dialog"
-        style={{ maxWidth: '650px' }}
+        style={{ maxWidth: '760px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="stock-order-dialog-header">
@@ -406,226 +335,189 @@ export default function CloseOptionDialog({
           </button>
         </div>
         <div className="stock-order-dialog-body">
-          {/* Per-contract price/TIF row */}
-          {uniqueContracts.map(([key, c]) => {
-            const quote = optQuotes[key]
-            const tif = tifs[key] || 'DAY'
-            const outsideRth = outsideRths[key] || false
-            // Determine action from first position
-            const firstPos = selectedPositions.find(
-              (p) => p.secType === 'OPT' && optionKey(p) === key
-            )
-            const action = firstPos && firstPos.quantity < 0 ? '買入' : '賣出'
-
-            return (
-              <div key={key} className="order-form" style={{ marginBottom: '16px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '4px',
-                    alignItems: 'center',
-                    flexWrap: 'nowrap',
-                    fontSize: '13px',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <span>{action}</span>
-                  <span>{c.label}</span>
-                  {quote && (
-                    <>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">買價</span>
-                      <span className="roll-order-value roll-order-bid">
-                        {quote.bid.toFixed(2)}
-                      </span>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">賣價</span>
-                      <span className="roll-order-value roll-order-ask">
-                        {quote.ask.toFixed(2)}
-                      </span>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">中間價</span>
-                      <span className="roll-order-value roll-order-mid">
-                        {quote.bid > 0 && quote.ask > 0
-                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
-                          : quote.last.toFixed(2)}
-                      </span>
-                    </>
-                  )}
-                  <span className="quote-separator">|</span>
-                  <input
-                    type="number"
-                    value={prices[key] || ''}
-                    onChange={(e) =>
-                      setPrices((prev) => ({
-                        ...prev,
-                        [key]: e.target.value
-                      }))
-                    }
-                    className="input-field"
-                    style={{ width: '65px', fontSize: '12px' }}
-                    step="0.01"
-                    placeholder="限價"
-                  />
-                  {renderTifDropdown(
-                    key,
-                    tif,
-                    outsideRth,
-                    tifOpen === key,
-                    (v) => setTifs((prev) => ({ ...prev, [key]: v })),
-                    (v) => setOutsideRths((prev) => ({ ...prev, [key]: v })),
-                    (v) => setTifOpen(v ? key : null)
-                  )}
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Preview table */}
+          {/* Unified table with quotes + positions */}
           {displayPreviews.length > 0 && (
             <div className="allocation-section">
               <table className="allocation-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '24px', paddingRight: 0 }}></th>
+                    <th style={{ width: '30px' }}></th>
                     <th style={{ textAlign: 'left', width: '100px' }}>帳號</th>
-                    <th style={{ width: '50px' }}>方向</th>
-                    <th style={{ width: '170px' }}>期權</th>
-                    <th>價格</th>
-                    <th>盈虧</th>
-                    <th style={{ width: '110px', textAlign: 'center' }}>數量</th>
+                    <th style={{ textAlign: 'left' }}>標的</th>
+                    <th>報價</th>
+                    <th>限價</th>
+                    <th style={{ width: '90px', textAlign: 'center' }}>數量</th>
+                    <th style={{ width: '80px' }}>盈虧</th>
                     {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
-                <>
-                  {displayPreviews.map((p, pIdx) => {
+                {(() => {
+                  let globalRowIdx = 0
+                  return uniqueContracts.map(([key], cIdx) => {
+                  const quote = optQuotes[key]
+                  const contractPreviews = displayPreviews.filter((p) =>
+                    p.orders.some((o) => o.optKey === key)
+                  )
+                  const allRows: React.ReactNode[] = []
+                  contractPreviews.forEach((p) => {
                     const acct = accounts.find((a) => a.accountId === p.accountId)
-                    if (!acct) return null
-                    const rowCount = p.orders.length
-                    const isLast = displayPreviews.indexOf(p) === displayPreviews.length - 1
-                    return (
-                      <tbody
-                        key={p.accountId}
-                        style={isLast ? undefined : { borderBottom: '2px solid #e5e7eb' }}
-                      >
-                        {p.orders.map((order, idx) => {
-                          const orderResult = orderResults.find(
-                            (r) => r.account === p.accountId && r.symbol === order.label
-                          )
-                          const overrideKey = `${order.optKey}:${p.accountId}`
-                          return (
-                            <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '32px' }}>
-                              {idx === 0 && (
-                                <>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{
-                                      textAlign: 'right',
-                                      borderBottom: '1px solid #b0b0b0',
-                                      paddingRight: '4px'
-                                    }}
-                                  >
-                                    {`${pIdx + 1}.`}
-                                  </td>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{
-                                      fontWeight: 'normal',
-                                      textAlign: 'left',
-                                      borderBottom: '1px solid #b0b0b0',
-                                      paddingLeft: '4px'
-                                    }}
-                                  >
-                                    {p.alias}
-                                  </td>
-                                </>
-                              )}
+                    if (!acct) return
+                    const contractOrders = p.orders.filter((o) => o.optKey === key)
+                    const rowCount = contractOrders.length
+                    contractOrders.forEach((order, idx) => {
+                      const orderResult = orderResults.find(
+                        (r) => r.account === p.accountId && r.symbol === order.label
+                      )
+                      const overrideKey = `${order.optKey}:${p.accountId}`
+                      globalRowIdx++
+                      allRows.push(
+                        <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '32px' }}>
+                          {idx === 0 && (
+                            <>
                               <td
+                                rowSpan={rowCount}
                                 style={{
-                                  color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a',
-                                  fontWeight: 'bold'
+                                  textAlign: 'right',
+                                  borderBottom: '1px solid #b0b0b0',
+                                  fontSize: 12
                                 }}
                               >
-                                {order.action === 'BUY' ? '買入' : '賣出'}
+                                {`${globalRowIdx}.`}
                               </td>
                               <td
+                                rowSpan={rowCount}
                                 style={{
-                                  fontSize: '0.93em',
-                                  padding: '4px 6px',
-                                  textAlign: 'center'
+                                  fontWeight: 'normal',
+                                  textAlign: 'left',
+                                  borderBottom: '1px solid #b0b0b0',
+                                  paddingLeft: '4px'
                                 }}
                               >
-                                {order.label}
+                                {p.alias}
                               </td>
-                              <td style={{ padding: '4px 6px' }}>{prices[order.optKey] || '-'}</td>
-                              <td
-                                style={(() => {
-                                  const sp = parseFloat(prices[order.optKey] || '0') * 100
-                                  const pnl =
-                                    order.action === 'SELL'
-                                      ? (sp - order.avgCost) * order.qty
-                                      : (order.avgCost - sp) * order.qty
-                                  if (pnl === 0) return {}
-                                  return pnl >= 0
-                                    ? { background: '#0d7a35', color: '#fff' }
-                                    : { background: '#dc2626', color: '#fff' }
-                                })()}
-                              >
-                                {(() => {
-                                  const sp = parseFloat(prices[order.optKey] || '0') * 100
-                                  const pnl =
-                                    order.action === 'SELL'
-                                      ? (sp - order.avgCost) * order.qty
-                                      : (order.avgCost - sp) * order.qty
-                                  return pnl !== 0
-                                    ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                    : '-'
-                                })()}
-                              </td>
-                              <td style={{ textAlign: 'center' }}>
-                                {step === 'preview' ? (
-                                  <input
-                                    type="number"
-                                    value={order.qty}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value) || 0
-                                      setQtyOverrides((prev) => ({
-                                        ...prev,
-                                        [overrideKey]: val
-                                      }))
-                                    }}
-                                    className="input-field"
-                                    style={{ width: '90px', textAlign: 'center', margin: '0 12px' }}
-                                  />
-                                ) : (
-                                  order.qty.toLocaleString()
-                                )}
-                              </td>
-                              {step === 'done' && (
-                                <td style={{ fontSize: '11px' }}>
-                                  {orderResult ? orderResult.status : '-'}
-                                </td>
-                              )}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    )
-                  })}
-                </>
+                            </>
+                          )}
+                          <td
+                            style={{
+                              textAlign: 'left',
+                              fontWeight: 'bold',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <span style={{ color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>
+                              {order.action === 'BUY' ? '+' : '-'}
+                            </span>
+                            {' '}
+                            <span style={{ fontWeight: 'normal', fontSize: 12 }}>{order.label}</span>
+                          </td>
+                          <td style={{ fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13, whiteSpace: 'nowrap' }}>
+                            <span style={{ color: '#15803d' }}>{quote ? quote.bid.toFixed(2) : '-'}</span>
+                            {' / '}
+                            <span style={{ color: '#b91c1c' }}>{quote ? quote.ask.toFixed(2) : '-'}</span>
+                            {' / '}
+                            <span style={{ background: '#fff9db', padding: '1px 6px', borderRadius: 3, color: '#1d4ed8' }}>
+                              {quote && quote.bid > 0 && quote.ask > 0
+                                ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                                : quote ? quote.last.toFixed(2) : '-'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                            {step === 'preview' ? (
+                              <input
+                                type="number"
+                                value={prices[order.optKey] || ''}
+                                onChange={(e) =>
+                                  setPrices((prev) => ({
+                                    ...prev,
+                                    [order.optKey]: e.target.value
+                                  }))
+                                }
+                                className="input-field"
+                                style={{ width: '70px', textAlign: 'center', fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13 }}
+                                step="0.01"
+                                placeholder="0.00"
+                              />
+                            ) : (
+                              <span style={{ fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13 }}>
+                                {prices[order.optKey] || '-'}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {step === 'preview' ? (
+                              <input
+                                type="number"
+                                value={order.qty}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0
+                                  setQtyOverrides((prev) => ({
+                                    ...prev,
+                                    [overrideKey]: val
+                                  }))
+                                }}
+                                className="input-field"
+                                style={{ width: '70px', textAlign: 'center' }}
+                              />
+                            ) : (
+                              order.qty.toLocaleString()
+                            )}
+                          </td>
+                          <td
+                            style={(() => {
+                              const sp = parseFloat(prices[order.optKey] || '0') * 100
+                              const pnl =
+                                order.action === 'SELL'
+                                  ? (sp - order.avgCost) * order.qty
+                                  : (order.avgCost - sp) * order.qty
+                              if (pnl === 0) return { width: '80px' }
+                              return pnl >= 0
+                                ? { width: '80px', background: '#0d7a35', color: '#fff' }
+                                : { width: '80px', background: '#dc2626', color: '#fff' }
+                            })()}
+                          >
+                            {(() => {
+                              const sp = parseFloat(prices[order.optKey] || '0') * 100
+                              const pnl =
+                                order.action === 'SELL'
+                                  ? (sp - order.avgCost) * order.qty
+                                  : (order.avgCost - sp) * order.qty
+                              return pnl !== 0
+                                ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                : '-'
+                            })()}
+                          </td>
+                          {step === 'done' && (
+                            <td style={{ fontSize: '11px' }}>
+                              {orderResult ? orderResult.status : '-'}
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })
+                  })
+                  return (
+                    <tbody
+                      key={key}
+                      style={cIdx < uniqueContracts.length - 1 ? { borderBottom: '2px solid #e5e7eb' } : undefined}
+                    >
+                      {allRows}
+                    </tbody>
+                  )
+                })
+                })()}
               </table>
             </div>
           )}
 
           {/* Action buttons */}
-          <div className="confirm-buttons" style={{ marginTop: '16px' }}>
+          <div className="confirm-buttons" style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
             {step === 'preview' && (
               <button
                 className="btn btn-danger"
                 disabled={submitting || totalQty === 0 || Object.values(prices).some((p) => !p)}
                 onClick={handleSubmit}
               >
-                {submitting ? '下單中...' : '確認平倉'}
+                {submitting ? '下單中...' : `確認平倉 (${totalQty})`}
               </button>
             )}
             {step === 'done' && (

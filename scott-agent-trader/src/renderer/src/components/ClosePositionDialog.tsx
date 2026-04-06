@@ -33,7 +33,7 @@ export default function ClosePositionDialog({
   onClose,
   selectedPositions,
   accounts,
-  positions,
+  positions: _positions,
   quotes
 }: ClosePositionDialogProps): React.JSX.Element | null {
   const [submitting, setSubmitting] = useState(false)
@@ -43,16 +43,11 @@ export default function ClosePositionDialog({
 
   // Per-symbol sell state
   const [sellPrices, setSellPrices] = useState<Record<string, string>>({})
-  const [sellTifs, setSellTifs] = useState<Record<string, 'DAY' | 'GTC'>>({})
-  const [sellOutsideRths, setSellOutsideRths] = useState<Record<string, boolean>>({})
   const [sellQuotes, setSellQuotes] = useState<
     Record<string, { bid: number; ask: number; last: number }>
   >({})
   // sellQtyOverrides keyed by "symbol:accountId"
   const [sellQtyOverrides, setSellQtyOverrides] = useState<Record<string, number>>({})
-
-  // TIF dropdown open states (per-symbol for sell)
-  const [sellTifOpen, setSellTifOpen] = useState<string | null>(null)
 
   // Derive unique source symbols
   const sourceSymbols = useMemo(() => {
@@ -83,17 +78,6 @@ export default function ClosePositionDialog({
     }
     return map
   }, [selectedPositions])
-
-  // Close TIF dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent): void => {
-      const target = e.target as HTMLElement
-      if (target.closest('.tif-dropdown')) return
-      setSellTifOpen(null)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   // Fetch sell quotes for all source symbols + auto-refresh
   useEffect(() => {
@@ -142,7 +126,7 @@ export default function ClosePositionDialog({
     }
   }, [])
 
-  // Calculate preview for each account (sell only, no buy)
+  // Calculate preview for each account (sell only)
   const previews = useMemo((): ClosePreview[] => {
     const result: ClosePreview[] = []
 
@@ -206,8 +190,8 @@ export default function ClosePositionDialog({
             orderType: 'LMT' as const,
             limitPrice: parseFloat(sellPrices[sym] || '0'),
             totalQuantity: totalQtyForSymbol,
-            outsideRth: sellOutsideRths[sym] || false,
-            tif: sellTifs[sym] || 'DAY'
+            outsideRth: false,
+            tif: 'DAY' as const
           }
           const sellResults = await window.ibApi.placeBatchOrders(sellRequest, sellAllocations)
           allResults.push(...sellResults.map((r: OrderResult) => ({ ...r, symbol: sym })))
@@ -222,88 +206,28 @@ export default function ClosePositionDialog({
     } finally {
       setSubmitting(false)
     }
-  }, [previews, sourceSymbols, sellPrices, sellTifs, sellOutsideRths])
+  }, [previews, sourceSymbols, sellPrices])
 
   const handleClose = useCallback(() => {
     setSellPrices({})
-    setSellTifs({})
-    setSellOutsideRths({})
     setSellQuotes({})
     setSellQtyOverrides({})
     setOrderResults([])
     setStep('preview')
     setConfirmedPreviews([])
     setSubmitting(false)
-    setSellTifOpen(null)
     onClose()
   }, [onClose])
 
   if (!open) return null
 
-  const renderTifDropdown = (
-    _sym: string | null,
-    tif: 'DAY' | 'GTC',
-    setTif: (v: 'DAY' | 'GTC') => void,
-    outsideRth: boolean,
-    setOutsideRth: (v: boolean) => void,
-    isOpen: boolean,
-    setIsOpen: (v: boolean) => void
-  ): React.JSX.Element => (
-    <div
-      className="tif-dropdown"
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={`tif-dropdown-trigger${outsideRth ? ' has-extras' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={step !== 'preview'}
-      >
-        {outsideRth ? <span className="tif-indicator" /> : null}
-        {tif}
-        <span className="tif-dropdown-arrow">▾</span>
-      </button>
-      {isOpen && (
-        <div className="tif-dropdown-menu">
-          <div
-            className={`tif-dropdown-item${tif === 'DAY' ? ' active' : ''}`}
-            onClick={() => {
-              setTif('DAY')
-            }}
-          >
-            DAY
-          </div>
-          <div
-            className={`tif-dropdown-item${tif === 'GTC' ? ' active' : ''}`}
-            onClick={() => {
-              setTif('GTC')
-            }}
-          >
-            GTC
-          </div>
-          <div className="tif-dropdown-separator" />
-          <div
-            className="tif-dropdown-checkbox"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setOutsideRth(!outsideRth)
-            }}
-          >
-            <input type="checkbox" checked={outsideRth} readOnly />
-            非常規時間
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  const displayPreviews = step === 'preview' ? previews : confirmedPreviews
 
   return (
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
       <div
         className="stock-order-dialog"
-        style={{ maxWidth: '650px' }}
+        style={{ maxWidth: '760px' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="stock-order-dialog-header">
@@ -313,235 +237,219 @@ export default function ClosePositionDialog({
           </button>
         </div>
         <div className="stock-order-dialog-body">
-          {/* Sell rows: one per source symbol */}
-          {sourceSymbols.map((sym) => {
-            const quote = sellQuotes[sym]
-            return (
-              <div
-                className="order-form"
-                key={`sell-${sym}`}
-                style={sym !== sourceSymbols[0] ? { marginTop: '8px' } : undefined}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '4px',
-                    alignItems: 'center',
-                    flexWrap: 'nowrap',
-                    fontSize: '13px',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <span>賣出</span>
-                  <span>{sym}</span>
-                  {quote && (
-                    <>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">買價</span>
-                      <span className="roll-order-value roll-order-bid">
-                        {quote.bid.toFixed(2)}
-                      </span>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">賣價</span>
-                      <span className="roll-order-value roll-order-ask">
-                        {quote.ask.toFixed(2)}
-                      </span>
-                      <span className="quote-separator">|</span>
-                      <span className="roll-order-label">中間價</span>
-                      <span className="roll-order-value roll-order-mid">
-                        {quote.bid > 0 && quote.ask > 0
-                          ? ((quote.bid + quote.ask) / 2).toFixed(2)
-                          : quote.last.toFixed(2)}
-                      </span>
-                    </>
-                  )}
-                  <span className="quote-separator">|</span>
-                  <input
-                    type="number"
-                    value={sellPrices[sym] || ''}
-                    onChange={(e) => setSellPrices((prev) => ({ ...prev, [sym]: e.target.value }))}
-                    className="input-field"
-                    style={{ width: '65px', fontSize: '12px' }}
-                    step="0.01"
-                    placeholder="限價"
-                    disabled={step !== 'preview'}
-                  />
-                  {renderTifDropdown(
-                    sym,
-                    sellTifs[sym] || 'DAY',
-                    (v) => setSellTifs((prev) => ({ ...prev, [sym]: v })),
-                    sellOutsideRths[sym] || false,
-                    (v) => setSellOutsideRths((prev) => ({ ...prev, [sym]: v })),
-                    sellTifOpen === sym,
-                    (v) => setSellTifOpen(v ? sym : null)
-                  )}
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Preview table (sell only, no buy row) */}
-          {(step === 'preview' ? previews : confirmedPreviews).length > 0 && (
+          {/* Unified table */}
+          {displayPreviews.length > 0 && (
             <div className="allocation-section">
               <table className="allocation-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '24px', paddingRight: 0 }}></th>
-                    <th style={{ textAlign: 'left' }}>帳號</th>
-
-                    <th>新潛在融資</th>
-                    <th>方向</th>
-                    <th>標的</th>
-                    <th>價格</th>
-                    <th>盈虧</th>
-                    <th>數量</th>
+                    <th style={{ width: '30px' }}></th>
+                    <th style={{ textAlign: 'left', width: '100px' }}>帳號</th>
+                    <th style={{ textAlign: 'left' }}>標的</th>
+                    <th style={{ width: '150px' }}>報價</th>
+                    <th style={{ width: '100px' }}>限價</th>
+                    <th style={{ width: '100px', textAlign: 'center' }}>數量</th>
+                    <th style={{ width: '80px' }}>盈虧</th>
                     {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
-                <>
-                  {(step === 'preview' ? previews : confirmedPreviews).map((p, pIdx) => {
-                    const acct = accounts.find((a) => a.accountId === p.accountId)
-                    if (!acct) return null
-                    const rowCount = p.sells.length
-                    const isLast =
-                      (step === 'preview' ? previews : confirmedPreviews).indexOf(p) ===
-                      (step === 'preview' ? previews : confirmedPreviews).length - 1
+                {(() => {
+                  let globalRowIdx = 0
+                  return sourceSymbols.map((sym, cIdx) => {
+                    const quote = sellQuotes[sym]
+                    const symPreviews = displayPreviews.filter((p) =>
+                      p.sells.some((s) => s.symbol === sym)
+                    )
+                    const allRows: React.ReactNode[] = []
+                    symPreviews.forEach((p) => {
+                      const acct = accounts.find((a) => a.accountId === p.accountId)
+                      if (!acct) return
+                      const symSells = p.sells.filter((s) => s.symbol === sym)
+                      const rowCount = symSells.length
+                      symSells.forEach((sell, idx) => {
+                        const sellResult = orderResults.find(
+                          (r) => r.account === p.accountId && r.symbol === sell.symbol
+                        )
+                        const overrideKey = `${sell.symbol}:${p.accountId}`
+                        globalRowIdx++
+                        allRows.push(
+                          <tr
+                            key={`${p.accountId}-${sell.symbol}`}
+                            style={{ height: '32px' }}
+                          >
+                            {idx === 0 && (
+                              <>
+                                <td
+                                  rowSpan={rowCount}
+                                  style={{
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #b0b0b0',
+                                    fontSize: 12
+                                  }}
+                                >
+                                  {`${globalRowIdx}.`}
+                                </td>
+                                <td
+                                  rowSpan={rowCount}
+                                  style={{
+                                    fontWeight: 'normal',
+                                    textAlign: 'left',
+                                    borderBottom: '1px solid #b0b0b0',
+                                    paddingLeft: '4px'
+                                  }}
+                                >
+                                  {p.alias}
+                                </td>
+                              </>
+                            )}
+                            <td
+                              style={{
+                                textAlign: 'left',
+                                fontWeight: 'bold',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span
+                                style={{ color: '#8b1a1a', fontWeight: 'bold' }}
+                              >
+                                -
+                              </span>
+                              {' '}
+                              <span style={{ fontWeight: 'normal', fontSize: 12 }}>
+                                {sell.symbol}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                fontFamily: "'SF Mono','Consolas',monospace",
+                                fontSize: 13,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span style={{ color: '#15803d' }}>
+                                {quote ? quote.bid.toFixed(2) : '-'}
+                              </span>
+                              {' / '}
+                              <span style={{ color: '#b91c1c' }}>
+                                {quote ? quote.ask.toFixed(2) : '-'}
+                              </span>
+                              {' / '}
+                              <span
+                                style={{
+                                  background: '#fff9db',
+                                  padding: '1px 6px',
+                                  borderRadius: 3,
+                                  color: '#1d4ed8'
+                                }}
+                              >
+                                {quote && quote.bid > 0 && quote.ask > 0
+                                  ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                                  : quote
+                                    ? quote.last.toFixed(2)
+                                    : '-'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              {step === 'preview' ? (
+                                <input
+                                  type="number"
+                                  value={sellPrices[sell.symbol] || ''}
+                                  onChange={(e) =>
+                                    setSellPrices((prev) => ({
+                                      ...prev,
+                                      [sell.symbol]: e.target.value
+                                    }))
+                                  }
+                                  className="input-field"
+                                  style={{
+                                    width: '70px',
+                                    textAlign: 'center',
+                                    fontFamily: "'SF Mono','Consolas',monospace",
+                                    fontSize: 13
+                                  }}
+                                  step="0.01"
+                                  placeholder="0.00"
+                                />
+                              ) : (
+                                <span
+                                  style={{
+                                    fontFamily: "'SF Mono','Consolas',monospace",
+                                    fontSize: 13
+                                  }}
+                                >
+                                  {sellPrices[sell.symbol] || '-'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {step === 'preview' ? (
+                                <input
+                                  type="number"
+                                  value={sell.qty}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0
+                                    setSellQtyOverrides((prev) => ({
+                                      ...prev,
+                                      [overrideKey]: val
+                                    }))
+                                  }}
+                                  className="input-field"
+                                  style={{ width: '70px', textAlign: 'center' }}
+                                />
+                              ) : (
+                                sell.qty.toLocaleString()
+                              )}
+                            </td>
+                            <td
+                              style={(() => {
+                                const sp = parseFloat(sellPrices[sell.symbol] || '0')
+                                const pnl = (sp - sell.avgCost) * sell.qty
+                                if (pnl === 0) return { width: '80px' }
+                                return pnl >= 0
+                                  ? { width: '80px', background: '#0d7a35', color: '#fff' }
+                                  : { width: '80px', background: '#dc2626', color: '#fff' }
+                              })()}
+                            >
+                              {(() => {
+                                const sp = parseFloat(sellPrices[sell.symbol] || '0')
+                                const pnl = (sp - sell.avgCost) * sell.qty
+                                return pnl !== 0
+                                  ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                  : '-'
+                              })()}
+                            </td>
+                            {step === 'done' && (
+                              <td style={{ fontSize: '11px' }}>
+                                {sellResult ? sellResult.status : '-'}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })
+                    })
                     return (
                       <tbody
-                        key={p.accountId}
-                        style={isLast ? undefined : { borderBottom: '2px solid #e5e7eb' }}
+                        key={sym}
+                        style={
+                          cIdx < sourceSymbols.length - 1
+                            ? { borderBottom: '2px solid #e5e7eb' }
+                            : undefined
+                        }
                       >
-                        {p.sells.map((sell, idx) => {
-                          const sellResult = orderResults.find(
-                            (r) => r.account === p.accountId && r.symbol === sell.symbol
-                          )
-                          const overrideKey = `${sell.symbol}:${p.accountId}`
-                          return (
-                            <tr
-                              key={`${p.accountId}-sell-${sell.symbol}`}
-                              style={{ height: '32px' }}
-                            >
-                              {idx === 0 && (
-                                <>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{
-                                      textAlign: 'right',
-                                      borderBottom: '1px solid #b0b0b0',
-                                      paddingRight: '4px'
-                                    }}
-                                  >
-                                    {`${pIdx + 1}.`}
-                                  </td>
-                                  <td
-                                    rowSpan={rowCount}
-                                    style={{
-                                      fontWeight: 'normal',
-                                      textAlign: 'left',
-                                      borderBottom: '1px solid #b0b0b0',
-                                      paddingLeft: '4px'
-                                    }}
-                                  >
-                                    {p.alias}
-                                  </td>
-
-                                  {(() => {
-                                    if (acct.netLiquidation <= 0)
-                                      return (
-                                        <td
-                                          rowSpan={rowCount}
-                                          style={{ borderBottom: '1px solid #b0b0b0' }}
-                                        >
-                                          無融資
-                                        </td>
-                                      )
-                                    const putCost = positions
-                                      .filter(
-                                        (pos) =>
-                                          pos.account === acct.accountId &&
-                                          pos.secType === 'OPT' &&
-                                          (pos.right === 'P' || pos.right === 'PUT') &&
-                                          pos.quantity < 0
-                                      )
-                                      .reduce(
-                                        (sum, pos) =>
-                                          sum + (pos.strike || 0) * 100 * Math.abs(pos.quantity),
-                                        0
-                                      )
-                                    const newGPV = Math.max(
-                                      0,
-                                      acct.grossPositionValue - p.totalSellValue
-                                    )
-                                    const newLeverage = (newGPV + putCost) / acct.netLiquidation
-                                    return (
-                                      <td
-                                        rowSpan={rowCount}
-                                        style={{ borderBottom: '1px solid #b0b0b0' }}
-                                      >
-                                        {newLeverage > 0 ? newLeverage.toFixed(2) : '無融資'}
-                                      </td>
-                                    )
-                                  })()}
-                                </>
-                              )}
-                              <td style={{ color: '#8b1a1a', fontWeight: 'bold' }}>賣出</td>
-                              <td>{sell.symbol}</td>
-                              <td>{sellPrices[sell.symbol] || '-'}</td>
-                              <td
-                                style={(() => {
-                                  const sp = parseFloat(sellPrices[sell.symbol] || '0')
-                                  const pnl = (sp - sell.avgCost) * sell.qty
-                                  if (pnl === 0) return {}
-                                  return pnl >= 0
-                                    ? { background: '#0d7a35', color: '#fff' }
-                                    : { background: '#dc2626', color: '#fff' }
-                                })()}
-                              >
-                                {(() => {
-                                  const sp = parseFloat(sellPrices[sell.symbol] || '0')
-                                  const pnl = (sp - sell.avgCost) * sell.qty
-                                  return pnl !== 0
-                                    ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                    : '-'
-                                })()}
-                              </td>
-                              <td>
-                                {step === 'preview' ? (
-                                  <input
-                                    type="number"
-                                    value={sell.qty}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value) || 0
-                                      setSellQtyOverrides((prev) => ({
-                                        ...prev,
-                                        [overrideKey]: val
-                                      }))
-                                    }}
-                                    className="input-field"
-                                    style={{ width: '80px', textAlign: 'center' }}
-                                  />
-                                ) : (
-                                  sell.qty.toLocaleString()
-                                )}
-                              </td>
-                              {step === 'done' && (
-                                <td style={{ fontSize: '11px' }}>
-                                  {sellResult ? sellResult.status : '-'}
-                                </td>
-                              )}
-                            </tr>
-                          )
-                        })}
+                        {allRows}
                       </tbody>
                     )
-                  })}
-                </>
+                  })
+                })()}
               </table>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="confirm-buttons" style={{ marginTop: '16px' }}>
+          {/* Action buttons */}
+          <div
+            className="confirm-buttons"
+            style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}
+          >
             {step === 'preview' && (
               <button
                 className="btn btn-danger"
@@ -550,9 +458,7 @@ export default function ClosePositionDialog({
                 }
                 onClick={handleSubmit}
               >
-                {submitting
-                  ? '下單中...'
-                  : `確認平倉 (賣出 ${sourceSymbols.join(', ')}，金額 $${previews.reduce((s, p) => s + p.totalSellValue, 0).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
+                {submitting ? '下單中...' : `確認平倉 (${totalSellQty})`}
               </button>
             )}
             {step === 'done' && (

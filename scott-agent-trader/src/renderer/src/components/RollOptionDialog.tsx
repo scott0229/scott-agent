@@ -112,6 +112,7 @@ export default function RollOptionDialog({
   const limitInputRef = useRef<HTMLInputElement>(null)
   const userEditedPriceRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
+  const [rollQty, setRollQty] = useState('')
 
   // ── Reset on open ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -124,6 +125,7 @@ export default function RollOptionDialog({
     setGreeksFetched(false)
     setLimitPrice('')
     userEditedPriceRef.current = false
+    setRollQty(String(snappedPositions.current.reduce((sum, p) => sum + Math.abs(p.quantity), 0)))
 
     chain.fetchChain(symbol)
   }, [open, symbol])
@@ -449,7 +451,7 @@ export default function RollOptionDialog({
           )}
 
           {/* Order entry section */}
-          <div className="roll-order-section" style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
+          <div className="roll-order-section" style={{ overflowX: 'hidden', flexWrap: 'nowrap' }}>
             {/* Row 1: Roll direction */}
             {targetExpiry &&
               targetStrike !== null &&
@@ -515,14 +517,14 @@ export default function RollOptionDialog({
             <span
               style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
             />
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+            <span className="roll-order-label" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>
               限價
             </span>
             <div className="roll-limit-wrapper" ref={limitInputRef}>
               <input
                 type="text"
                 className="roll-order-input"
-                style={{ width: 55, padding: '2px 6px' }}
+                style={{ width: 55, padding: '2px 6px', fontSize: 12 }}
                 value={limitPrice}
                 onChange={(e) => {
                   userEditedPriceRef.current = true
@@ -534,16 +536,16 @@ export default function RollOptionDialog({
 
             {isSingleAccount && (
               <>
-                <span style={{ marginLeft: 12, whiteSpace: 'nowrap' }} className="roll-order-label">
+                <span style={{ marginLeft: 12, whiteSpace: 'nowrap', fontSize: 12 }} className="roll-order-label">
                   口數
                 </span>
                 <div className="roll-limit-wrapper">
                   <input
-                    type="text"
-                    readOnly
+                    type="number"
                     className="roll-order-input"
-                    style={{ width: 45, padding: '2px 6px' }}
-                    value={positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)}
+                    style={{ width: 45, padding: '2px 6px', fontSize: 12 }}
+                    value={rollQty}
+                    onChange={(e) => setRollQty(e.target.value)}
                   />
                 </div>
                 <div style={{ width: 12, flexShrink: 0 }}></div>
@@ -624,15 +626,21 @@ export default function RollOptionDialog({
               targetStrike === null ||
               targetRight === null ||
               !limitPrice ||
+              !rollQty ||
               submitting
             }
             onClick={async () => {
-              if (!targetExpiry || targetStrike === null || targetRight === null || !limitPrice)
+              if (!targetExpiry || targetStrike === null || targetRight === null || !limitPrice || !rollQty)
                 return
               setSubmitting(true)
               try {
+                const totalPosQty = positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)
+                const targetTotalQty = parseInt(rollQty, 10) || 0
+                const multiplier = totalPosQty > 0 ? targetTotalQty / totalPosQty : 1
+
                 for (const pos of positions) {
-                  const qty = Math.abs(pos.quantity)
+                  const originalQty = Math.abs(pos.quantity)
+                  const qty = positions.length === 1 ? targetTotalQty : Math.round(originalQty * multiplier) || 1
                   const isShort = pos.quantity < 0
                   const closeAction = isShort ? 'BUY' : 'SELL'
                   await window.ibApi.placeRollOrder(
