@@ -304,7 +304,7 @@ export default function AdminUsersPage() {
 
     const formatUserReport = (data: any) => {
         const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
-        const formatPercent = (val: number) => `${(val * 100).toFixed(2)}%`;
+        const formatPercent = (val: number) => `${(val * 100).toFixed(1)}%`;
 
         let report = '';
         if (data.lastUpdateDate) {
