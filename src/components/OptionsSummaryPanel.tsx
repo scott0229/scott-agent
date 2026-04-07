@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 
 interface UserStats {
     month: string;
@@ -37,6 +38,7 @@ interface OptionsSummaryPanelProps {
 
 export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     if (!users || users.length === 0) return null;
+    const { settings } = useAdminSettings();
 
     // Column visibility state
     const [columnVisibility, setColumnVisibility] = useState<{
@@ -164,7 +166,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const quarterCallPremium = quarterStats.reduce((s, stat) => s + stat.call_profit, 0);
 
         // QX Target - Use initial cost instead of current equity
-        const annualTarget = Math.round(initialCost * 0.04);
+        const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100));
         const quarterTarget = Math.round(annualTarget / 4);
 
         // Annual Premium

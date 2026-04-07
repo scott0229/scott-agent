@@ -308,6 +308,26 @@ export function UserProfileMenu() {
                                 </div>
                             )}
 
+                            {/* Premium Target - Admin Only */}
+                            {user.role === 'admin' && (
+                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                    <Label htmlFor="premium-target">權利金目標</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id="premium-target"
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            max="100"
+                                            value={settings.premiumTargetPercent}
+                                            onChange={(e) => updateSetting('premiumTargetPercent', parseFloat(e.target.value) || 0)}
+                                            className="w-24"
+                                        />
+                                        <span className="text-sm text-muted-foreground">%</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="col-span-full">
                                 <div className="grid gap-3">
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">

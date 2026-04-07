@@ -6,11 +6,12 @@ interface AdminSettings {
     showTradeCode: boolean;
     showPhone: boolean;
     showEmail: boolean;
+    premiumTargetPercent: number;
 }
 
 interface AdminSettingsContextType {
     settings: AdminSettings;
-    updateSetting: (key: keyof AdminSettings, value: boolean) => void;
+    updateSetting: (key: keyof AdminSettings, value: boolean | number) => void;
 }
 
 const STORAGE_KEY = 'scott-agent-admin-settings';
@@ -19,6 +20,7 @@ const defaultSettings: AdminSettings = {
     showTradeCode: true,
     showPhone: true,
     showEmail: true,
+    premiumTargetPercent: 4,
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);
@@ -39,7 +41,7 @@ function loadSettings(): AdminSettings {
 export function AdminSettingsProvider({ children }: { children: ReactNode }) {
     const [settings, setSettings] = useState<AdminSettings>(loadSettings);
 
-    const updateSetting = (key: keyof AdminSettings, value: boolean) => {
+    const updateSetting = (key: keyof AdminSettings, value: boolean | number) => {
         setSettings(prev => {
             const next = { ...prev, [key]: value };
             if (typeof window !== 'undefined') {

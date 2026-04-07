@@ -208,7 +208,8 @@ export async function GET(
 
         // Calculate targets - Use initial cost instead of current equity
         const initialCost = (user.initial_cost || 0) + totalDeposit;
-        const annualTarget = Math.round(initialCost * 0.04);
+        const premiumTargetPercent = parseFloat(req.nextUrl.searchParams.get('premiumTargetPercent') || '4');
+        const annualTarget = Math.round(initialCost * (premiumTargetPercent / 100));
         const quarterlyTarget = Math.round(annualTarget / 4);
 
         // 8. Get margin rate
