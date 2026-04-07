@@ -319,6 +319,21 @@ export default function AdminUsersPage() {
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
+        report += `----------------------------------------\n`;
+        report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
+        report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
+        report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
+        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
+        report += `----------------------------------------\n`;
+
+        // Stock positions
+        if (data.stockPositions && data.stockPositions.length > 0) {
+            data.stockPositions.forEach((pos: any) => {
+                const avgCostStr = pos.avg_cost ? ` (均價 ${pos.avg_cost})` : '';
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}\n`;
+            });
+            report += `----------------------------------------\n`;
+        }
 
         // Calculate daily premium using user's start_date
         const countWeekdays = (start: Date): number => {
@@ -337,34 +352,16 @@ export default function AdminUsersPage() {
             : new Date(new Date().getFullYear(), 0, 1);
         const tradingDays = countWeekdays(userStartDate);
         const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
-        report += `每日權利金 : ${formatMoney(dailyPremium)}\n`;
+
+        // Premium section
         report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
-        report += `----------------------------------------\n`;
-        report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
-        report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
-        report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
-        report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
-        report += `----------------------------------------\n`;
-
-        // Stock positions
-        if (data.stockPositions && data.stockPositions.length > 0) {
-            data.stockPositions.forEach((pos: any) => {
-                const avgCostStr = pos.avg_cost ? ` (均價 ${pos.avg_cost})` : '';
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}\n`;
-            });
-            report += `----------------------------------------\n`;
-        }
-
-        // Quarterly premium
+        report += `日權利金 : $${formatMoney(dailyPremium)}\n`;
         report += `季-累積權利金 : $${formatMoney(data.quarterlyPremium)}\n`;
         const quarterlyPercent = settings.premiumTargetPercent / 4;
         const quarterlyPercentStr = quarterlyPercent % 1 === 0 ? quarterlyPercent.toString() : quarterlyPercent.toFixed(1).replace(/\.0$/, '');
-        report += `季-${quarterlyPercentStr}%目標權利金 : $${formatMoney(data.quarterlyTarget)}\n`;
-        report += `----------------------------------------\n`;
-
-        // Annual premium
+        report += `季-${quarterlyPercentStr}%目標 : $${formatMoney(data.quarterlyTarget)}\n`;
         report += `年-累積權利金 : $${formatMoney(data.annualPremium)}\n`;
-        report += `年-${settings.premiumTargetPercent}%目標權利金 : $${formatMoney(data.annualTarget)}\n`;
+        report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
 
         // Open options
