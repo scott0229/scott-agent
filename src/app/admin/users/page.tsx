@@ -312,7 +312,6 @@ export default function AdminUsersPage() {
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
-        report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
 
         // Calculate daily premium using user's start_date
         const countWeekdays = (start: Date): number => {
@@ -332,6 +331,7 @@ export default function AdminUsersPage() {
         const tradingDays = countWeekdays(userStartDate);
         const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
         report += `每日權利金 : ${formatMoney(dailyPremium)}\n`;
+        report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
@@ -1688,7 +1688,7 @@ export default function AdminUsersPage() {
                                     </div>
                                     <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                         {report.split('\n').map((line, i, arr) => {
-                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :');
+                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('權利金率 :');
                                             return (
                                                 <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
                                                     {line}{i < arr.length - 1 ? '\n' : ''}
