@@ -206,6 +206,13 @@ export default function AdminUsersPage() {
         fetchUsers();
     }, [selectedYear]); // Add selectedYear dependency
 
+    // Re-fetch reports when premium target changes
+    useEffect(() => {
+        if (users.length > 0) {
+            fetchAllReports(users);
+        }
+    }, [settings.premiumTargetPercent]);
+
     // Fetch all user reports for cards
     const fetchAllReports = async (usersList: User[]) => {
         const nonAdminUsers = usersList.filter(u => u.email !== 'admin');
