@@ -1686,7 +1686,16 @@ export default function AdminUsersPage() {
                                             </Button>
                                         </div>
                                     </div>
-                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">{report}</pre>
+                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
+                                        {report.split('\n').map((line, i, arr) => {
+                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :');
+                                            return (
+                                                <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
+                                                    {line}{i < arr.length - 1 ? '\n' : ''}
+                                                </span>
+                                            );
+                                        })}
+                                    </pre>
                                 </div>
                             ))}
                         </div>
