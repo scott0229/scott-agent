@@ -44,6 +44,12 @@ function formatOptionLabel(
 
 function formatAccountName(name: string): string {
   if (!name) return ''
+  // 優先抓取類似 origin.568, loan.300, profit.967 的代號
+  const aliasMatch = name.match(/([a-zA-Z]+\.\d+)/)
+  if (aliasMatch) {
+    return aliasMatch[1]
+  }
+
   const match = name.match(/\((.*?)\)/)
   if (match && match[1]) {
     return match[1].trim()
@@ -1048,8 +1054,8 @@ export default function AccountOverview({
                         </span>
                       </div>
                       {ucStkPos.length > 0 && (
-                        <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
-                          <table className="positions-table">
+                        <div className="positions-section">
+                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                             <thead>
                               <tr>
                                 <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
@@ -1068,8 +1074,8 @@ export default function AccountOverview({
                         </div>
                       )}
                       {ucOptPos.length > 0 && (
-                        <div className="positions-section" style={{ backgroundColor: '#fffbe6' }}>
-                          <table className="positions-table">
+                        <div className="positions-section">
+                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                             <thead>
                               <tr>
                                 <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
