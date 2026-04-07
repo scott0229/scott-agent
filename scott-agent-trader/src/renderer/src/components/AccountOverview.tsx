@@ -183,7 +183,7 @@ export default function AccountOverview({
   )
   const [optOrderInitialRight, setOptOrderInitialRight] = useState<'C' | 'P' | undefined>(undefined)
   // Toggle: false = separate STK/OPT sections, true = grouped by underlying symbol
-  const [acctViewBySymbol, setAcctViewBySymbol] = useState(false)
+  const [acctViewBySymbol, setAcctViewBySymbol] = useState(true)
 
   // Reset all filters and selections on reconnect
   useEffect(() => {

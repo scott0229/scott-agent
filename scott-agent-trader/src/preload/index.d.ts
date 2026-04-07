@@ -133,6 +133,8 @@ interface IBApi {
     }>
   >
   onOrderStatus: (callback: (update: any) => void) => () => void
+  onOpenOrderUpdate: (callback: (order: OpenOrder) => void) => () => void
+  onExecutionUpdate: (callback: (exec: ExecutionData) => void) => () => void
 
   // Options
   getOptionChain: (symbol: string) => Promise<OptionChainParams[]>

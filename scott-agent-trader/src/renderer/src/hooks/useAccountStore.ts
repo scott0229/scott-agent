@@ -68,6 +68,7 @@ interface AccountStore {
 }
 
 const POLL_INTERVAL = 2000
+const HISTORY_POLL_INTERVAL = 10000
 
 export function useAccountStore(
   connected: boolean,
@@ -81,13 +82,17 @@ export function useAccountStore(
   const [openOrders, setOpenOrders] = useState<OpenOrderData[]>([])
   const [executions, setExecutions] = useState<ExecutionDataItem[]>([])
   const [loading, setLoading] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const intervalAssetsRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const intervalHistoryRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const aliasRef = useRef<Record<string, string>>({})
-  const fetchingRef = useRef(false)
+  const fetchingAssetsRef = useRef(false)
+  const fetchingHistoryRef = useRef(false)
   const hasDataRef = useRef(false)
   const quoteCleanupRef = useRef<(() => void) | null>(null)
+  const lastOrderUpdateRef = useRef<Record<number, number>>({})
 
-  // Clear old data and reload aliases when port changes
   useEffect(() => {
     setAccounts([])
     setPositions([])
@@ -105,43 +110,26 @@ export function useAccountStore(
           onAliasUpdate?.(cached)
         }
       })
-      .catch(() => {
-        /* ignore */
-      })
+      .catch(() => {})
   }, [port])
 
-  const fetchData = useCallback(async () => {
+  const fetchAssets = useCallback(async () => {
     if (!connected) return
-    // Skip if a previous fetch is still in progress
-    if (fetchingRef.current) return
-    fetchingRef.current = true
+    if (fetchingAssetsRef.current) return
+    fetchingAssetsRef.current = true
 
     if (!hasDataRef.current) setLoading(true)
     try {
-      const [accountData, positionData, orderData, execData] = await Promise.all([
+      const [accountData, positionData] = await Promise.all([
         window.ibApi.getAccountSummary().catch(() => [] as AccountData[]),
-        window.ibApi.getPositions().catch(() => [] as PositionData[]),
-        window.ibApi.getOpenOrders().catch(() => [] as OpenOrderData[]),
-        window.ibApi.getExecutions().catch(() => [] as ExecutionDataItem[])
+        window.ibApi.getPositions().catch(() => [] as PositionData[])
       ])
-      console.log(
-        '[fetchData] accounts:',
-        accountData.length,
-        'positions:',
-        positionData.length,
-        'orders:',
-        orderData.length,
-        'execs:',
-        execData.length
-      )
 
-      // Apply known aliases immediately (from cache or previous fetch)
       const accountIds = accountData.map((a: AccountData) => a.accountId)
       const withAliases = accountData.map((a: AccountData) => ({
         ...a,
         alias: aliasRef.current[a.accountId] || a.alias
       }))
-      // Merge accounts so partial responses don't remove existing cards
       if (withAliases.length > 0) {
         setAccounts((prev) => {
           const merged = new Map(prev.map((a) => [a.accountId, a]))
@@ -149,22 +137,16 @@ export function useAccountStore(
           return Array.from(merged.values())
         })
       }
-      // Merge positions: keep previous entries for accounts not in this response
       if (positionData.length > 0) {
         setPositions((prev) => {
           const incomingAccounts = new Set(positionData.map((p: PositionData) => p.account))
-          // Keep positions from accounts NOT in this response (they may have timed out)
           const kept = prev.filter((p) => !incomingAccounts.has(p.account))
           return [...kept, ...positionData]
         })
       }
-      setOpenOrders(orderData)
-      setExecutions(execData)
       hasDataRef.current = true
       setLoading(false)
 
-      // Always fetch fresh aliases in background
-      // (server-side in-memory cache prevents redundant IB API calls)
       if (accountIds.length > 0) {
         window.ibApi
           .getAccountAliases(accountIds, port)
@@ -178,13 +160,9 @@ export function useAccountStore(
               }))
             )
           })
-          .catch(() => {
-            /* ignore alias errors */
-          })
+          .catch(() => {})
       }
 
-      // --- Streaming quote subscription ---
-      // Build symbol lists from positions and subscribe to streaming data
       const stockSymbols = [
         ...new Set(
           positionData
@@ -215,12 +193,10 @@ export function useAccountStore(
         }
       }
       if (stockSymbols.length > 0 || optionContracts.length > 0) {
-        // Clean up previous listener before re-subscribing
         if (quoteCleanupRef.current) {
           quoteCleanupRef.current()
           quoteCleanupRef.current = null
         }
-        // Set up listener for streaming updates
         const removeListener = window.ibApi.onQuoteUpdate((data) => {
           if (data.quotes && Object.keys(data.quotes).length > 0) {
             setQuotes((prev) => {
@@ -243,7 +219,6 @@ export function useAccountStore(
         })
         quoteCleanupRef.current = removeListener
 
-        // Subscribe (this also returns an initial snapshot)
         window.ibApi
           .subscribeQuotes(stockSymbols, optionContracts)
           .then((initial) => {
@@ -266,26 +241,112 @@ export function useAccountStore(
               })
             }
           })
-          .catch(() => {
-            /* ignore subscribe errors */
-          })
+          .catch(() => {})
       }
     } catch (err: unknown) {
-      console.error('Failed to fetch account data:', err)
+      console.error('Failed to fetch account assets data:', err)
       setLoading(false)
     } finally {
-      fetchingRef.current = false
+      fetchingAssetsRef.current = false
     }
   }, [connected, port])
 
-  // Start/stop polling based on connection
+  const fetchHistory = useCallback(async () => {
+    if (!connected) return
+    if (fetchingHistoryRef.current) return
+    fetchingHistoryRef.current = true
+    try {
+      const [orderData, execData] = await Promise.all([
+        window.ibApi.getOpenOrders().catch(() => [] as OpenOrderData[]),
+        window.ibApi.getExecutions().catch(() => [] as ExecutionDataItem[])
+      ])
+      // Use merging assignment to cleanly update array and intelligently preserve recent locally updated stream data
+      setOpenOrders((prev) => {
+        const now = Date.now()
+        const mergedMap = new Map<number, OpenOrderData>()
+
+        for (const o of orderData) {
+          mergedMap.set(o.orderId, o)
+        }
+
+        for (const po of prev) {
+          const lastUpdate = lastOrderUpdateRef.current[po.orderId] || 0
+          if (now - lastUpdate < 10000) {
+            mergedMap.set(po.orderId, { ...mergedMap.get(po.orderId), ...po })
+          }
+        }
+
+        return Array.from(mergedMap.values()).sort((a, b) => b.orderId - a.orderId)
+      })
+      setExecutions(execData)
+    } catch (err) {
+      console.error('Failed to fetch history:', err)
+    } finally {
+      fetchingHistoryRef.current = false
+    }
+  }, [connected])
+
+  useEffect(() => {
+    if (!connected) return
+
+    // Setup streaming listener for Open Orders
+    const removeOrder = window.ibApi.onOpenOrderUpdate((newOrder: OpenOrderData) => {
+      console.log('[Streaming] received openOrder:', newOrder)
+      lastOrderUpdateRef.current[newOrder.orderId] = Date.now()
+      setOpenOrders((prev) => {
+        const existingIdx = prev.findIndex((o) => o.orderId === newOrder.orderId)
+        if (existingIdx >= 0) {
+          const next = [...prev]
+          next[existingIdx] = newOrder
+          return next
+        }
+        return [newOrder, ...prev]
+      })
+    })
+
+    // Setup streaming listener for Order Status
+    const removeStatus = window.ibApi.onOrderStatus(
+      (update: { orderId: number; status: string }) => {
+        console.log('[Streaming] received orderStatus:', update)
+        lastOrderUpdateRef.current[update.orderId] = Date.now()
+        setOpenOrders((prev) => {
+          const existingIdx = prev.findIndex((o) => o.orderId === update.orderId)
+          if (existingIdx >= 0) {
+            const next = [...prev]
+            next[existingIdx] = { ...next[existingIdx], status: update.status }
+            return next
+          }
+          return prev
+        })
+      }
+    )
+
+    // Setup streaming listener for Executions
+    const removeExec = window.ibApi.onExecutionUpdate((newExec: ExecutionDataItem) => {
+      console.log('[Streaming] received execution:', newExec)
+      setExecutions((prev) => {
+        if (prev.some((e) => e.execId === newExec.execId)) return prev
+        return [newExec, ...prev]
+      })
+    })
+
+    return () => {
+      removeOrder()
+      removeStatus()
+      removeExec()
+    }
+  }, [connected])
+
   useEffect(() => {
     if (connected) {
-      fetchData()
-      intervalRef.current = setInterval(fetchData, POLL_INTERVAL)
+      fetchAssets()
+      fetchHistory()
+      intervalAssetsRef.current = setInterval(fetchAssets, POLL_INTERVAL)
+      intervalHistoryRef.current = setInterval(fetchHistory, HISTORY_POLL_INTERVAL)
     } else {
       hasDataRef.current = false
-      fetchingRef.current = false
+      fetchingAssetsRef.current = false
+      fetchingHistoryRef.current = false
       setAccounts([])
       setPositions([])
       setQuotes({})
@@ -295,18 +356,26 @@ export function useAccountStore(
     }
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
+      if (intervalAssetsRef.current) {
+        clearInterval(intervalAssetsRef.current)
+        intervalAssetsRef.current = null
       }
-      // Clean up streaming subscription
+      if (intervalHistoryRef.current) {
+        clearInterval(intervalHistoryRef.current)
+        intervalHistoryRef.current = null
+      }
       if (quoteCleanupRef.current) {
         quoteCleanupRef.current()
         quoteCleanupRef.current = null
       }
       window.ibApi.unsubscribeQuotes().catch(() => {})
     }
-  }, [connected, fetchData])
+  }, [connected, fetchAssets, fetchHistory])
+
+  const refresh = useCallback(() => {
+    fetchAssets()
+    fetchHistory()
+  }, [fetchAssets, fetchHistory])
 
   return {
     accounts,
@@ -316,6 +385,6 @@ export function useAccountStore(
     openOrders,
     executions,
     loading,
-    refresh: fetchData
+    refresh
   }
 }

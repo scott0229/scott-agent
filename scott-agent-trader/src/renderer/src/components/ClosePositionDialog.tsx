@@ -18,28 +18,14 @@ interface ClosePreview {
   totalSellValue: number
 }
 
-interface OrderResult {
-  orderId: number
-  account: string
-  status: string
-  filled: number
-  remaining: number
-  avgFillPrice: number
-  symbol: string
-}
-
 export default function ClosePositionDialog({
   open,
   onClose,
   selectedPositions,
   accounts,
-  positions: _positions,
   quotes
 }: ClosePositionDialogProps): React.JSX.Element | null {
   const [submitting, setSubmitting] = useState(false)
-  const [orderResults, setOrderResults] = useState<OrderResult[]>([])
-  const [step, setStep] = useState<'preview' | 'confirm' | 'done'>('preview')
-  const [confirmedPreviews, setConfirmedPreviews] = useState<ClosePreview[]>([])
 
   // Per-symbol sell state
   const [sellPrices, setSellPrices] = useState<Record<string, string>>({})
@@ -110,22 +96,6 @@ export default function ClosePositionDialog({
     }
   }, [sourceSymbols, quotes]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for order status updates
-  useEffect(() => {
-    const unsubscribe = window.ibApi.onOrderStatus((update: OrderResult) => {
-      setOrderResults((prev) =>
-        prev.map((r) =>
-          r.orderId === update.orderId
-            ? { ...r, ...update, account: r.account, symbol: r.symbol }
-            : r
-        )
-      )
-    })
-    return () => {
-      unsubscribe()
-    }
-  }, [])
-
   // Calculate preview for each account (sell only)
   const previews = useMemo((): ClosePreview[] => {
     const result: ClosePreview[] = []
@@ -170,8 +140,6 @@ export default function ClosePositionDialog({
     setSubmitting(true)
 
     try {
-      const allResults: OrderResult[] = []
-
       // Place sell orders per source symbol
       for (const sym of sourceSymbols) {
         const sellAllocations: Record<string, number> = {}
@@ -189,39 +157,35 @@ export default function ClosePositionDialog({
             action: 'SELL' as const,
             orderType: 'LMT' as const,
             limitPrice: parseFloat(sellPrices[sym] || '0'),
-            totalQuantity: totalQtyForSymbol,
-            outsideRth: false,
-            tif: 'DAY' as const
+            totalQuantity: totalQtyForSymbol
           }
-          const sellResults = await window.ibApi.placeBatchOrders(sellRequest, sellAllocations)
-          allResults.push(...sellResults.map((r: OrderResult) => ({ ...r, symbol: sym })))
+          await window.ibApi.placeBatchOrders(sellRequest, sellAllocations)
         }
       }
 
-      setOrderResults(allResults)
-      setStep('done')
+      setSellPrices({})
+      setSellQuotes({})
+      setSellQtyOverrides({})
+      onClose()
     } catch (err) {
       console.error('Close position order failed:', err)
       alert('平倉下單失敗: ' + String(err))
     } finally {
       setSubmitting(false)
     }
-  }, [previews, sourceSymbols, sellPrices])
+  }, [previews, sourceSymbols, sellPrices, onClose])
 
   const handleClose = useCallback(() => {
     setSellPrices({})
     setSellQuotes({})
     setSellQtyOverrides({})
-    setOrderResults([])
-    setStep('preview')
-    setConfirmedPreviews([])
     setSubmitting(false)
     onClose()
   }, [onClose])
 
   if (!open) return null
 
-  const displayPreviews = step === 'preview' ? previews : confirmedPreviews
+  const displayPreviews = previews
 
   return (
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
@@ -250,7 +214,6 @@ export default function ClosePositionDialog({
                     <th style={{ width: '100px' }}>限價</th>
                     <th style={{ width: '100px', textAlign: 'center' }}>數量</th>
                     <th style={{ width: '80px' }}>盈虧</th>
-                    {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
                 {(() => {
@@ -267,16 +230,10 @@ export default function ClosePositionDialog({
                       const symSells = p.sells.filter((s) => s.symbol === sym)
                       const rowCount = symSells.length
                       symSells.forEach((sell, idx) => {
-                        const sellResult = orderResults.find(
-                          (r) => r.account === p.accountId && r.symbol === sell.symbol
-                        )
                         const overrideKey = `${sell.symbol}:${p.accountId}`
                         globalRowIdx++
                         allRows.push(
-                          <tr
-                            key={`${p.accountId}-${sell.symbol}`}
-                            style={{ height: '32px' }}
-                          >
+                          <tr key={`${p.accountId}-${sell.symbol}`} style={{ height: '32px' }}>
                             {idx === 0 && (
                               <>
                                 <td
@@ -309,12 +266,7 @@ export default function ClosePositionDialog({
                                 whiteSpace: 'nowrap'
                               }}
                             >
-                              <span
-                                style={{ color: '#8b1a1a', fontWeight: 'bold' }}
-                              >
-                                -
-                              </span>
-                              {' '}
+                              <span style={{ color: '#8b1a1a', fontWeight: 'bold' }}>-</span>{' '}
                               <span style={{ fontWeight: 'normal', fontSize: 12 }}>
                                 {sell.symbol}
                               </span>
@@ -350,55 +302,40 @@ export default function ClosePositionDialog({
                               </span>
                             </td>
                             <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                              {step === 'preview' ? (
-                                <input
-                                  type="number"
-                                  value={sellPrices[sell.symbol] || ''}
-                                  onChange={(e) =>
-                                    setSellPrices((prev) => ({
-                                      ...prev,
-                                      [sell.symbol]: e.target.value
-                                    }))
-                                  }
-                                  className="input-field"
-                                  style={{
-                                    width: '70px',
-                                    textAlign: 'center',
-                                    fontFamily: "'SF Mono','Consolas',monospace",
-                                    fontSize: 13
-                                  }}
-                                  step="0.01"
-                                  placeholder="0.00"
-                                />
-                              ) : (
-                                <span
-                                  style={{
-                                    fontFamily: "'SF Mono','Consolas',monospace",
-                                    fontSize: 13
-                                  }}
-                                >
-                                  {sellPrices[sell.symbol] || '-'}
-                                </span>
-                              )}
+                              <input
+                                type="number"
+                                value={sellPrices[sell.symbol] || ''}
+                                onChange={(e) =>
+                                  setSellPrices((prev) => ({
+                                    ...prev,
+                                    [sell.symbol]: e.target.value
+                                  }))
+                                }
+                                className="input-field"
+                                style={{
+                                  width: '70px',
+                                  textAlign: 'center',
+                                  fontFamily: "'SF Mono','Consolas',monospace",
+                                  fontSize: 13
+                                }}
+                                step="0.01"
+                                placeholder="0.00"
+                              />
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {step === 'preview' ? (
-                                <input
-                                  type="number"
-                                  value={sell.qty}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0
-                                    setSellQtyOverrides((prev) => ({
-                                      ...prev,
-                                      [overrideKey]: val
-                                    }))
-                                  }}
-                                  className="input-field"
-                                  style={{ width: '70px', textAlign: 'center' }}
-                                />
-                              ) : (
-                                sell.qty.toLocaleString()
-                              )}
+                              <input
+                                type="number"
+                                value={sell.qty}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0
+                                  setSellQtyOverrides((prev) => ({
+                                    ...prev,
+                                    [overrideKey]: val
+                                  }))
+                                }}
+                                className="input-field"
+                                style={{ width: '70px', textAlign: 'center' }}
+                              />
                             </td>
                             <td
                               style={(() => {
@@ -418,11 +355,6 @@ export default function ClosePositionDialog({
                                   : '-'
                               })()}
                             </td>
-                            {step === 'done' && (
-                              <td style={{ fontSize: '11px' }}>
-                                {sellResult ? sellResult.status : '-'}
-                              </td>
-                            )}
                           </tr>
                         )
                       })
@@ -444,29 +376,31 @@ export default function ClosePositionDialog({
               </table>
             </div>
           )}
+        </div>
 
-          {/* Action buttons */}
-          <div
-            className="confirm-buttons"
-            style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}
+        {/* Action buttons */}
+        <div
+          className="stock-order-dialog-footer confirm-buttons"
+          style={{
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border-color)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            background: 'var(--bg-primary)',
+            borderRadius: '0 0 12px 12px'
+          }}
+        >
+          <button className="btn btn-secondary" onClick={handleClose}>
+            取消
+          </button>
+          <button
+            className="btn btn-danger"
+            disabled={submitting || totalSellQty === 0 || Object.values(sellPrices).some((p) => !p)}
+            onClick={handleSubmit}
           >
-            {step === 'preview' && (
-              <button
-                className="btn btn-danger"
-                disabled={
-                  submitting || totalSellQty === 0 || Object.values(sellPrices).some((p) => !p)
-                }
-                onClick={handleSubmit}
-              >
-                {submitting ? '下單中...' : `確認平倉 (${totalSellQty})`}
-              </button>
-            )}
-            {step === 'done' && (
-              <button className="btn btn-secondary" onClick={handleClose}>
-                關閉
-              </button>
-            )}
-          </div>
+            {submitting ? '下單中...' : `確認平倉 (${totalSellQty})`}
+          </button>
         </div>
       </div>
     </div>

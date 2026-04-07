@@ -536,7 +536,10 @@ export default function RollOptionDialog({
 
             {isSingleAccount && (
               <>
-                <span style={{ marginLeft: 12, whiteSpace: 'nowrap', fontSize: 12 }} className="roll-order-label">
+                <span
+                  style={{ marginLeft: 12, whiteSpace: 'nowrap', fontSize: 12 }}
+                  className="roll-order-label"
+                >
                   口數
                 </span>
                 <div className="roll-limit-wrapper">
@@ -630,7 +633,13 @@ export default function RollOptionDialog({
               submitting
             }
             onClick={async () => {
-              if (!targetExpiry || targetStrike === null || targetRight === null || !limitPrice || !rollQty)
+              if (
+                !targetExpiry ||
+                targetStrike === null ||
+                targetRight === null ||
+                !limitPrice ||
+                !rollQty
+              )
                 return
               setSubmitting(true)
               try {
@@ -640,7 +649,10 @@ export default function RollOptionDialog({
 
                 for (const pos of positions) {
                   const originalQty = Math.abs(pos.quantity)
-                  const qty = positions.length === 1 ? targetTotalQty : Math.round(originalQty * multiplier) || 1
+                  const qty =
+                    positions.length === 1
+                      ? targetTotalQty
+                      : Math.round(originalQty * multiplier) || 1
                   const isShort = pos.quantity < 0
                   const closeAction = isShort ? 'BUY' : 'SELL'
                   await window.ibApi.placeRollOrder(

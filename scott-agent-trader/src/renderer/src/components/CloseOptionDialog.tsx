@@ -50,27 +50,13 @@ interface CloseOptionPreview {
   totalValue: number
 }
 
-interface OrderResult {
-  orderId: number
-  account: string
-  status: string
-  filled: number
-  remaining: number
-  avgFillPrice: number
-  symbol: string
-}
-
 export default function CloseOptionDialog({
   open,
   onClose,
   selectedPositions,
-  accounts,
-  positions: _positions
+  accounts
 }: CloseOptionDialogProps): React.JSX.Element | null {
   const [submitting, setSubmitting] = useState(false)
-  const [orderResults, setOrderResults] = useState<OrderResult[]>([])
-  const [step, setStep] = useState<'preview' | 'confirm' | 'done'>('preview')
-  const [confirmedPreviews, setConfirmedPreviews] = useState<CloseOptionPreview[]>([])
 
   // Per-contract price inputs, keyed by optionKey
   const [prices, setPrices] = useState<Record<string, string>>({})
@@ -79,7 +65,7 @@ export default function CloseOptionDialog({
     Record<string, { bid: number; ask: number; last: number }>
   >({})
   // Quantity overrides keyed by "optKey:accountId"
-  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({})  // Derive unique option contracts from selected positions
+  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({})
   const uniqueContracts = useMemo(() => {
     const map = new Map<
       string,
@@ -118,8 +104,6 @@ export default function CloseOptionDialog({
     }
     return map
   }, [selectedPositions])
-
-
 
   // Fetch option quotes + auto-refresh
   useEffect(() => {
@@ -176,22 +160,6 @@ export default function CloseOptionDialog({
       }
     }
   }, [uniqueContracts, optQuotes]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Listen for order status updates
-  useEffect(() => {
-    const unsubscribe = window.ibApi.onOrderStatus((update: OrderResult) => {
-      setOrderResults((prev) =>
-        prev.map((r) =>
-          r.orderId === update.orderId
-            ? { ...r, ...update, account: r.account, symbol: r.symbol }
-            : r
-        )
-      )
-    })
-    return () => {
-      unsubscribe()
-    }
-  }, [])
 
   // Calculate preview
   const previews = useMemo((): CloseOptionPreview[] => {
@@ -254,8 +222,6 @@ export default function CloseOptionDialog({
     setSubmitting(true)
 
     try {
-      const allResults: OrderResult[] = []
-
       // Place orders per unique option contract
       for (const [key, c] of uniqueContracts) {
         const allocations: Record<string, number> = {}
@@ -281,45 +247,35 @@ export default function CloseOptionDialog({
             totalQuantity: totalQtyForContract,
             expiry: c.expiry,
             strike: c.strike,
-            right: (c.right === 'C' || c.right === 'CALL' ? 'C' : 'P') as 'C' | 'P',
-            outsideRth: false
+            right: (c.right === 'C' || c.right === 'CALL' ? 'C' : 'P') as 'C' | 'P'
           }
-          const results = await window.ibApi.placeOptionBatchOrders(request, allocations)
-          allResults.push(
-            ...results.map((r: OrderResult) => ({
-              ...r,
-              symbol: c.label
-            }))
-          )
+          await window.ibApi.placeOptionBatchOrders(request, allocations)
         }
       }
 
-      setOrderResults(allResults)
-      setStep('done')
+      setPrices({})
+      setOptQuotes({})
+      setQtyOverrides({})
+      onClose()
     } catch (err) {
       console.error('Close option order failed:', err)
       alert('期權平倉下單失敗: ' + String(err))
     } finally {
       setSubmitting(false)
     }
-  }, [previews, uniqueContracts, prices])
+  }, [previews, uniqueContracts, prices, onClose])
 
   const handleClose = useCallback(() => {
-    setStep('preview')
-    setOrderResults([])
     setPrices({})
     setOptQuotes({})
     setQtyOverrides({})
     setSubmitting(false)
-    setConfirmedPreviews([])
     onClose()
   }, [onClose])
 
-
-
   if (!open) return null
 
-  const displayPreviews = step === 'preview' ? previews : confirmedPreviews
+  const displayPreviews = previews
 
   return (
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
@@ -348,81 +304,101 @@ export default function CloseOptionDialog({
                     <th>限價</th>
                     <th style={{ width: '90px', textAlign: 'center' }}>數量</th>
                     <th style={{ width: '80px' }}>盈虧</th>
-                    {step === 'done' && <th>狀態</th>}
                   </tr>
                 </thead>
                 {(() => {
                   let globalRowIdx = 0
                   return uniqueContracts.map(([key], cIdx) => {
-                  const quote = optQuotes[key]
-                  const contractPreviews = displayPreviews.filter((p) =>
-                    p.orders.some((o) => o.optKey === key)
-                  )
-                  const allRows: React.ReactNode[] = []
-                  contractPreviews.forEach((p) => {
-                    const acct = accounts.find((a) => a.accountId === p.accountId)
-                    if (!acct) return
-                    const contractOrders = p.orders.filter((o) => o.optKey === key)
-                    const rowCount = contractOrders.length
-                    contractOrders.forEach((order, idx) => {
-                      const orderResult = orderResults.find(
-                        (r) => r.account === p.accountId && r.symbol === order.label
-                      )
-                      const overrideKey = `${order.optKey}:${p.accountId}`
-                      globalRowIdx++
-                      allRows.push(
-                        <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '32px' }}>
-                          {idx === 0 && (
-                            <>
-                              <td
-                                rowSpan={rowCount}
+                    const quote = optQuotes[key]
+                    const contractPreviews = displayPreviews.filter((p) =>
+                      p.orders.some((o) => o.optKey === key)
+                    )
+                    const allRows: React.ReactNode[] = []
+                    contractPreviews.forEach((p) => {
+                      const acct = accounts.find((a) => a.accountId === p.accountId)
+                      if (!acct) return
+                      const contractOrders = p.orders.filter((o) => o.optKey === key)
+                      const rowCount = contractOrders.length
+                      contractOrders.forEach((order, idx) => {
+                        const overrideKey = `${order.optKey}:${p.accountId}`
+                        globalRowIdx++
+                        allRows.push(
+                          <tr key={`${p.accountId}-${order.optKey}`} style={{ height: '32px' }}>
+                            {idx === 0 && (
+                              <>
+                                <td
+                                  rowSpan={rowCount}
+                                  style={{
+                                    textAlign: 'right',
+                                    borderBottom: '1px solid #b0b0b0',
+                                    fontSize: 12
+                                  }}
+                                >
+                                  {`${globalRowIdx}.`}
+                                </td>
+                                <td
+                                  rowSpan={rowCount}
+                                  style={{
+                                    fontWeight: 'normal',
+                                    textAlign: 'left',
+                                    borderBottom: '1px solid #b0b0b0',
+                                    paddingLeft: '4px'
+                                  }}
+                                >
+                                  {p.alias}
+                                </td>
+                              </>
+                            )}
+                            <td
+                              style={{
+                                textAlign: 'left',
+                                fontWeight: 'bold',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span
                                 style={{
-                                  textAlign: 'right',
-                                  borderBottom: '1px solid #b0b0b0',
-                                  fontSize: 12
+                                  color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a',
+                                  fontWeight: 'bold'
                                 }}
                               >
-                                {`${globalRowIdx}.`}
-                              </td>
-                              <td
-                                rowSpan={rowCount}
+                                {order.action === 'BUY' ? '+' : '-'}
+                              </span>{' '}
+                              <span style={{ fontWeight: 'normal', fontSize: 12 }}>
+                                {order.label}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                fontFamily: "'SF Mono','Consolas',monospace",
+                                fontSize: 13,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span style={{ color: '#15803d' }}>
+                                {quote ? quote.bid.toFixed(2) : '-'}
+                              </span>
+                              {' / '}
+                              <span style={{ color: '#b91c1c' }}>
+                                {quote ? quote.ask.toFixed(2) : '-'}
+                              </span>
+                              {' / '}
+                              <span
                                 style={{
-                                  fontWeight: 'normal',
-                                  textAlign: 'left',
-                                  borderBottom: '1px solid #b0b0b0',
-                                  paddingLeft: '4px'
+                                  background: '#fff9db',
+                                  padding: '1px 6px',
+                                  borderRadius: 3,
+                                  color: '#1d4ed8'
                                 }}
                               >
-                                {p.alias}
-                              </td>
-                            </>
-                          )}
-                          <td
-                            style={{
-                              textAlign: 'left',
-                              fontWeight: 'bold',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <span style={{ color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a', fontWeight: 'bold' }}>
-                              {order.action === 'BUY' ? '+' : '-'}
-                            </span>
-                            {' '}
-                            <span style={{ fontWeight: 'normal', fontSize: 12 }}>{order.label}</span>
-                          </td>
-                          <td style={{ fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13, whiteSpace: 'nowrap' }}>
-                            <span style={{ color: '#15803d' }}>{quote ? quote.bid.toFixed(2) : '-'}</span>
-                            {' / '}
-                            <span style={{ color: '#b91c1c' }}>{quote ? quote.ask.toFixed(2) : '-'}</span>
-                            {' / '}
-                            <span style={{ background: '#fff9db', padding: '1px 6px', borderRadius: 3, color: '#1d4ed8' }}>
-                              {quote && quote.bid > 0 && quote.ask > 0
-                                ? ((quote.bid + quote.ask) / 2).toFixed(2)
-                                : quote ? quote.last.toFixed(2) : '-'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '4px 6px', textAlign: 'center' }}>
-                            {step === 'preview' ? (
+                                {quote && quote.bid > 0 && quote.ask > 0
+                                  ? ((quote.bid + quote.ask) / 2).toFixed(2)
+                                  : quote
+                                    ? quote.last.toFixed(2)
+                                    : '-'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
                               <input
                                 type="number"
                                 value={prices[order.optKey] || ''}
@@ -433,18 +409,17 @@ export default function CloseOptionDialog({
                                   }))
                                 }
                                 className="input-field"
-                                style={{ width: '70px', textAlign: 'center', fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13 }}
+                                style={{
+                                  width: '70px',
+                                  textAlign: 'center',
+                                  fontFamily: "'SF Mono','Consolas',monospace",
+                                  fontSize: 13
+                                }}
                                 step="0.01"
                                 placeholder="0.00"
                               />
-                            ) : (
-                              <span style={{ fontFamily: "'SF Mono','Consolas',monospace", fontSize: 13 }}>
-                                {prices[order.optKey] || '-'}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {step === 'preview' ? (
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
                               <input
                                 type="number"
                                 value={order.qty}
@@ -458,74 +433,83 @@ export default function CloseOptionDialog({
                                 className="input-field"
                                 style={{ width: '70px', textAlign: 'center' }}
                               />
-                            ) : (
-                              order.qty.toLocaleString()
-                            )}
-                          </td>
-                          <td
-                            style={(() => {
-                              const sp = parseFloat(prices[order.optKey] || '0') * 100
-                              const pnl =
-                                order.action === 'SELL'
-                                  ? (sp - order.avgCost) * order.qty
-                                  : (order.avgCost - sp) * order.qty
-                              if (pnl === 0) return { width: '80px' }
-                              return pnl >= 0
-                                ? { width: '80px', background: '#0d7a35', color: '#fff' }
-                                : { width: '80px', background: '#dc2626', color: '#fff' }
-                            })()}
-                          >
-                            {(() => {
-                              const sp = parseFloat(prices[order.optKey] || '0') * 100
-                              const pnl =
-                                order.action === 'SELL'
-                                  ? (sp - order.avgCost) * order.qty
-                                  : (order.avgCost - sp) * order.qty
-                              return pnl !== 0
-                                ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                                : '-'
-                            })()}
-                          </td>
-                          {step === 'done' && (
-                            <td style={{ fontSize: '11px' }}>
-                              {orderResult ? orderResult.status : '-'}
                             </td>
-                          )}
-                        </tr>
-                      )
+                            <td
+                              style={(() => {
+                                const sp = parseFloat(prices[order.optKey] || '0') * 100
+                                const pnl =
+                                  order.action === 'SELL'
+                                    ? (sp - order.avgCost) * order.qty
+                                    : (order.avgCost - sp) * order.qty
+                                if (pnl === 0) return { width: '80px' }
+                                return pnl >= 0
+                                  ? { width: '80px', background: '#0d7a35', color: '#fff' }
+                                  : { width: '80px', background: '#dc2626', color: '#fff' }
+                              })()}
+                            >
+                              {(() => {
+                                const sp = parseFloat(prices[order.optKey] || '0') * 100
+                                const pnl =
+                                  order.action === 'SELL'
+                                    ? (sp - order.avgCost) * order.qty
+                                    : (order.avgCost - sp) * order.qty
+                                return pnl !== 0
+                                  ? pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                                  : '-'
+                              })()}
+                            </td>
+                          </tr>
+                        )
+                      })
                     })
+                    return (
+                      <tbody
+                        key={key}
+                        style={
+                          cIdx < uniqueContracts.length - 1
+                            ? { borderBottom: '2px solid #e5e7eb' }
+                            : undefined
+                        }
+                      >
+                        {allRows}
+                      </tbody>
+                    )
                   })
-                  return (
-                    <tbody
-                      key={key}
-                      style={cIdx < uniqueContracts.length - 1 ? { borderBottom: '2px solid #e5e7eb' } : undefined}
-                    >
-                      {allRows}
-                    </tbody>
-                  )
-                })
                 })()}
               </table>
             </div>
           )}
+        </div>
 
-          {/* Action buttons */}
-          <div className="confirm-buttons" style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-            {step === 'preview' && (
-              <button
-                className="btn btn-danger"
-                disabled={submitting || totalQty === 0 || Object.values(prices).some((p) => !p)}
-                onClick={handleSubmit}
-              >
-                {submitting ? '下單中...' : `確認平倉 (${totalQty})`}
-              </button>
-            )}
-            {step === 'done' && (
-              <button className="btn btn-secondary" onClick={handleClose}>
-                關閉
-              </button>
-            )}
-          </div>
+        {/* Action buttons */}
+        <div
+          className="stock-order-dialog-footer confirm-buttons"
+          style={{
+            padding: '16px 20px',
+            borderTop: '1px solid var(--border-color)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            background: 'var(--bg-primary)',
+            borderRadius: '0 0 12px 12px'
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            取消
+          </button>
+
+          <button
+            className="btn btn-danger"
+            disabled={submitting || totalQty === 0 || Object.values(prices).some((p) => !p)}
+            onClick={handleSubmit}
+          >
+            {submitting ? '下單中...' : `確認平倉 (${totalQty})`}
+          </button>
         </div>
       </div>
     </div>

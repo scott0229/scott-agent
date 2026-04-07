@@ -841,3 +841,85 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
     console.log(`[IB] Requesting executions since ${todayStr}`)
   })
 }
+
+// ── Streaming Listeners ─────────────────────────────────────────
+
+export function setupOpenOrderListener(callback: (order: OpenOrder) => void): void {
+  const api = getIBApi()
+  if (!api) return
+
+  api.on(
+    EventName.openOrder,
+    (orderId: number, contract: Contract, order: Order, orderState: any) => {
+      const status = orderState?.status || 'Unknown'
+
+      const comboLegs =
+        contract.secType === 'BAG'
+          ? ((contract as any).comboLegs as ComboLeg[] | undefined)?.map((leg) => ({
+              conId: leg.conId ?? 0,
+              ratio: leg.ratio ?? 1,
+              action:
+                typeof leg.action === 'string' ? leg.action : leg.action === 1 ? 'BUY' : 'SELL',
+              exchange: (leg.exchange as string) || 'SMART'
+            }))
+          : undefined
+
+      const orderEntry: OpenOrder = {
+        orderId,
+        account: order.account || '',
+        symbol: contract.symbol || '',
+        secType: contract.secType || '',
+        action: order.action || '',
+        quantity:
+          typeof order.totalQuantity === 'number'
+            ? order.totalQuantity
+            : Number(order.totalQuantity) || 0,
+        orderType: order.orderType || '',
+        limitPrice: order.lmtPrice || 0,
+        status,
+        expiry: contract.lastTradeDateOrContractMonth || undefined,
+        strike: contract.strike || undefined,
+        right: contract.right || undefined,
+        comboDescription:
+          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined,
+        comboLegs
+      }
+
+      callback(orderEntry)
+    }
+  )
+}
+
+export function setupExecDetailsListener(callback: (exec: ExecutionData) => void): void {
+  const api = getIBApi()
+  if (!api) return
+
+  api.on(EventName.execDetails, (_reqId: number, contract: Contract, execution: Execution) => {
+    callback({
+      execId: execution.execId || '',
+      orderId: execution.orderId || 0,
+      account: execution.acctNumber || '',
+      symbol: contract.symbol || '',
+      secType: contract.secType || '',
+      side: execution.side || '',
+      quantity: execution.shares || 0,
+      price: execution.price || 0,
+      avgPrice: execution.avgPrice || 0,
+      time: execution.time || '',
+      expiry: contract.lastTradeDateOrContractMonth || undefined,
+      strike: contract.strike || undefined,
+      right: contract.right || undefined,
+      comboDescription:
+        contract.secType === 'BAG' && (contract as any).comboLegsDescription
+          ? (contract as any).comboLegsDescription
+          : undefined
+    })
+  })
+}
+
+export function requestAutoOpenOrders(bAutoBind: boolean): void {
+  const api = getIBApi()
+  if (!api) return
+  api.reqAutoOpenOrders(bAutoBind)
+  console.log(`[IB] reqAutoOpenOrders(${bAutoBind})`)
+}

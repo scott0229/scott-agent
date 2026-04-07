@@ -35,6 +35,20 @@ const ibApi = {
       ipcRenderer.removeListener('ib:orderStatus', handler)
     }
   },
+  onOpenOrderUpdate: (callback: (order: any) => void): (() => void) => {
+    const handler = (_event: any, order: any): void => callback(order)
+    ipcRenderer.on('ib:openOrderUpdate', handler)
+    return () => {
+      ipcRenderer.removeListener('ib:openOrderUpdate', handler)
+    }
+  },
+  onExecutionUpdate: (callback: (exec: any) => void): (() => void) => {
+    const handler = (_event: any, exec: any): void => callback(exec)
+    ipcRenderer.on('ib:executionUpdate', handler)
+    return () => {
+      ipcRenderer.removeListener('ib:executionUpdate', handler)
+    }
+  },
 
   // Quotes
   getStockQuote: (symbol: string): Promise<{ bid: number; ask: number; last: number }> =>
@@ -145,6 +159,8 @@ const ibApi = {
   removeAllListeners: (): void => {
     ipcRenderer.removeAllListeners('ib:connectionStatus')
     ipcRenderer.removeAllListeners('ib:orderStatus')
+    ipcRenderer.removeAllListeners('ib:openOrderUpdate')
+    ipcRenderer.removeAllListeners('ib:executionUpdate')
     ipcRenderer.removeAllListeners('ib:quoteUpdate')
   }
 }

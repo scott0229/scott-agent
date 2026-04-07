@@ -18,7 +18,10 @@ import {
   requestExecutions,
   requestOpenOrders,
   setupNextOrderIdListener,
-  setupOrderStatusListener
+  setupOrderStatusListener,
+  setupOpenOrderListener,
+  setupExecDetailsListener,
+  requestAutoOpenOrders
 } from './ib/orders'
 import {
   requestOptionChain,
@@ -168,9 +171,29 @@ function setupIpcHandlers(): void {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('ib:connectionStatus', state)
     }
-    // Prefetch option chains on connect
+
+    // Setup streaming listeners once per connection
     if (state.status === 'connected') {
       prefetchOptionChains()
+
+      // Auto-bind open orders and start pushing updates
+      requestAutoOpenOrders(true)
+
+      setupOpenOrderListener((order) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ib:openOrderUpdate', order)
+        }
+      })
+      setupOrderStatusListener((update) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ib:orderStatus', update)
+        }
+      })
+      setupExecDetailsListener((exec) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ib:executionUpdate', exec)
+        }
+      })
     }
   })
 
