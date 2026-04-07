@@ -42,6 +42,15 @@ function formatOptionLabel(
   return `${symbol} ${exp} ${strike || ''}${r}`
 }
 
+function formatAccountName(name: string): string {
+  if (!name) return ''
+  const match = name.match(/\((.*?)\)/)
+  if (match && match[1]) {
+    return match[1].trim()
+  }
+  return name.replace(/\s*\(.*?\)/, '').trim()
+}
+
 /** Returns current "trading date" (YYYY-MM-DD) with day boundary at 4:00 AM ET */
 function getTradingDate(): { dateStr: string; month: number; day: number } {
   const now = new Date()
@@ -230,12 +239,12 @@ export default function AccountOverview({
           const strikeComp = (a.strike || 0) - (b.strike || 0)
           if (strikeComp !== 0) return strikeComp
         }
-        const aAlias = (
+        const aAlias = formatAccountName(
           accounts.find((x) => x.accountId === a.account)?.alias || a.account
-        ).replace(/\s*\(.*?\)/, '')
-        const bAlias = (
+        )
+        const bAlias = formatAccountName(
           accounts.find((x) => x.accountId === b.account)?.alias || b.account
-        ).replace(/\s*\(.*?\)/, '')
+        )
         return aAlias.localeCompare(bAlias)
       })
   }, [groupViewMode, symbolGroups, positions, accounts])
@@ -558,7 +567,7 @@ export default function AccountOverview({
     return accounts
       .map((a) => ({
         value: a.accountId,
-        label: (a.alias || a.accountId).replace(/\s*\(.*?\)/, '')
+        label: formatAccountName(a.alias || a.accountId)
       }))
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [accounts])
@@ -963,9 +972,9 @@ export default function AccountOverview({
                     return (
                       <tr key={idx}>
                         <td style={{ fontSize: '13px', textAlign: 'left' }}>
-                          {(
+                          {formatAccountName(
                             accounts.find((a) => a.accountId === pos.account)?.alias || pos.account
-                          ).replace(/\s*\(.*?\)/, '')}
+                          )}
                         </td>
                         <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
                         {showDays && (
@@ -1118,12 +1127,12 @@ export default function AccountOverview({
                       const strikeComp = (a.strike || 0) - (b.strike || 0)
                       if (strikeComp !== 0) return strikeComp
                     }
-                    const aAlias = (
+                    const aAlias = formatAccountName(
                       accounts.find((x) => x.accountId === a.account)?.alias || a.account
-                    ).replace(/\s*\(.*?\)/, '')
-                    const bAlias = (
+                    )
+                    const bAlias = formatAccountName(
                       accounts.find((x) => x.accountId === b.account)?.alias || b.account
-                    ).replace(/\s*\(.*?\)/, '')
+                    )
                     return aAlias.localeCompare(bAlias)
                   })
                 return (
@@ -1559,10 +1568,10 @@ export default function AccountOverview({
                                     }}
                                   />
                                 )}
-                                {(
+                                {formatAccountName(
                                   accounts.find((a) => a.accountId === pos.account)?.alias ||
                                   pos.account
-                                ).replace(/\s*\(.*?\)/, '')}
+                                )}
                               </td>
                               <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
                               {showDays && (
@@ -1783,7 +1792,7 @@ export default function AccountOverview({
               >
                 <div className="account-header">
                   <span className="account-id">
-                    {(account.alias || account.accountId).replace(/\s*\(.*?\)/, '')}
+                    {formatAccountName(account.alias || account.accountId)}
                   </span>
                   <button
                     className="ai-advisor-btn"
