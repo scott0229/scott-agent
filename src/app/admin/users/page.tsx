@@ -357,12 +357,14 @@ export default function AdminUsersPage() {
 
         // Quarterly premium
         report += `季-累積權利金 : $${formatMoney(data.quarterlyPremium)}\n`;
-        report += `季-目標權利金 : $${formatMoney(data.quarterlyTarget)}\n`;
+        const quarterlyPercent = settings.premiumTargetPercent / 4;
+        const quarterlyPercentStr = quarterlyPercent % 1 === 0 ? quarterlyPercent.toString() : quarterlyPercent.toFixed(1).replace(/\.0$/, '');
+        report += `季-${quarterlyPercentStr}%目標權利金 : $${formatMoney(data.quarterlyTarget)}\n`;
         report += `----------------------------------------\n`;
 
         // Annual premium
         report += `年-累積權利金 : $${formatMoney(data.annualPremium)}\n`;
-        report += `年-目標權利金 : $${formatMoney(data.annualTarget)}\n`;
+        report += `年-${settings.premiumTargetPercent}%目標權利金 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
 
         // Open options
