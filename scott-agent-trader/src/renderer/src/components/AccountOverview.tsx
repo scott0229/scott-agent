@@ -2245,12 +2245,12 @@ export default function AccountOverview({
                           <table className="positions-table" style={{ tableLayout: 'fixed' }}>
                             <thead>
                               <tr>
-                                <th style={{ width: '30%', textAlign: 'left' }}></th>
+                                <th style={{ width: '32%', textAlign: 'left' }}></th>
                                 <th style={{ width: '12%' }}>持倉</th>
                                 <th style={{ width: '12%' }}>到期</th>
                                 <th style={{ width: '15%' }}>均價</th>
                                 <th style={{ width: '15%' }}>現價</th>
-                                <th style={{ width: '16%' }}>盈虧</th>
+                                <th style={{ width: '14%' }}>盈虧</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -2271,7 +2271,7 @@ export default function AccountOverview({
                                       setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
                                     }}
                                   >
-                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                    <td className="pos-symbol" style={{ width: '32%' }}>
                                       {formatPositionSymbol(pos)}
                                     </td>
                                     <td
@@ -2291,7 +2291,7 @@ export default function AccountOverview({
                                     </td>
                                     <td
                                       style={{
-                                        width: '16%',
+                                        width: '14%',
                                         ...(stkPnl != null
                                           ? {
                                               color: '#fff',
@@ -2345,7 +2345,7 @@ export default function AccountOverview({
                                       setOptContextMenu({ x: e.clientX, y: e.clientY, pos })
                                     }}
                                   >
-                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                    <td className="pos-symbol" style={{ width: '32%' }}>
                                       {formatPositionSymbol(pos)}
                                     </td>
                                     <td
@@ -2378,7 +2378,7 @@ export default function AccountOverview({
                                     </td>
                                     <td
                                       style={{
-                                        width: '16%',
+                                        width: '14%',
                                         ...(optPnl != null
                                           ? {
                                               color: '#fff',
@@ -2409,12 +2409,12 @@ export default function AccountOverview({
                           <table className="positions-table" style={{ tableLayout: 'fixed' }}>
                             <thead>
                               <tr>
-                                <th style={{ width: '30%', textAlign: 'left' }}></th>
+                                <th style={{ width: '32%', textAlign: 'left' }}></th>
                                 <th style={{ width: '12%' }}>持倉</th>
                                 <th style={{ width: '12%' }}>到期</th>
                                 <th style={{ width: '15%' }}>均價</th>
                                 <th style={{ width: '15%' }}>現價</th>
-                                <th style={{ width: '16%' }}>盈虧</th>
+                                <th style={{ width: '14%' }}>盈虧</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -2435,7 +2435,7 @@ export default function AccountOverview({
                                       setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
                                     }}
                                   >
-                                    <td className="pos-symbol" style={{ width: '30%' }}>
+                                    <td className="pos-symbol" style={{ width: '32%' }}>
                                       {formatPositionSymbol(pos)}
                                     </td>
                                     <td
@@ -2455,7 +2455,7 @@ export default function AccountOverview({
                                     </td>
                                     <td
                                       style={{
-                                        width: '16%',
+                                        width: '14%',
                                         ...(stkPnl != null
                                           ? {
                                               color: '#fff',
