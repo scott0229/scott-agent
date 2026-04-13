@@ -21,6 +21,10 @@ interface SettingsPanelProps {
   connected: boolean
   fetchingSymbols: boolean
   onSyncPrices: () => void
+  showOperationMode: boolean
+  onSetShowOperationMode: (v: boolean) => void
+  showAccountType: boolean
+  onSetShowAccountType: (v: boolean) => void
 }
 
 function SectionHeader({
@@ -59,7 +63,11 @@ export default function SettingsPanel({
   onSetD1Target,
   connected,
   fetchingSymbols,
-  onSyncPrices
+  onSyncPrices,
+  showOperationMode,
+  onSetShowOperationMode,
+  showAccountType,
+  onSetShowAccountType
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
   useEffect(() => {
@@ -207,6 +215,16 @@ export default function SettingsPanel({
           />
           {showAccounts && (
             <div className="settings-account-list">
+              <div style={{ borderBottom: '1px solid #eee', paddingBottom: 12, marginBottom: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer', marginBottom: 8 }}>
+                  <input type="checkbox" checked={showOperationMode} onChange={e => onSetShowOperationMode(e.target.checked)} />
+                  顯示操作偏好
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showAccountType} onChange={e => onSetShowAccountType(e.target.checked)} />
+                  顯示帳戶類型
+                </label>
+              </div>
               {sorted.map((acct) => {
                 const isHidden = hiddenAccounts.has(acct.accountId)
                 return (

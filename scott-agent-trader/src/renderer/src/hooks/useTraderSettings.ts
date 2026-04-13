@@ -27,6 +27,8 @@ export function useTraderSettings() {
   const [symbolPrefetch, setSymbolPrefetchState] = useState<Record<string, boolean>>({})
   const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
+  const [showOperationMode, setShowOperationModeState] = useState<boolean>(true)
+  const [showAccountType, setShowAccountTypeState] = useState<boolean>(true)
   const fetchedRef = useRef(false)
   const settingsLoadedRef = useRef(false)
   const d1TargetRef = useRef(d1Target)
@@ -67,6 +69,12 @@ export function useTraderSettings() {
     if (Array.isArray(data.settings.symbol_groups)) {
       setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
     }
+    if (typeof data.settings.show_operation_mode === 'boolean') {
+      setShowOperationModeState(data.settings.show_operation_mode)
+    }
+    if (typeof data.settings.show_account_type === 'boolean') {
+      setShowAccountTypeState(data.settings.show_account_type)
+    }
   }, [])
 
   // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
@@ -102,7 +110,9 @@ export function useTraderSettings() {
     window.ibApi.putSettings('account_types', accountTypes, d1Target).catch(() => {})
     window.ibApi.putSettings('symbol_prefetch', symbolPrefetch, d1Target).catch(() => {})
     window.ibApi.putSettings('d1_target', d1Target, d1Target).catch(() => {})
-  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolPrefetch, d1Target])
+    window.ibApi.putSettings('show_operation_mode', showOperationMode, d1Target).catch(() => {})
+    window.ibApi.putSettings('show_account_type', showAccountType, d1Target).catch(() => {})
+  }, [marginLimit, watchSymbols, accountAliases, accountTypes, symbolPrefetch, d1Target, showOperationMode, showAccountType])
 
   const setMarginLimit = useCallback((v: number) => {
     setMarginLimitState(v)
@@ -182,6 +192,9 @@ export function useTraderSettings() {
     window.ibApi.putSettings('symbol_groups', reordered, d1TargetRef.current).catch(() => {})
   }, [])
 
+  const setShowOperationMode = useCallback((v: boolean) => setShowOperationModeState(v), [])
+  const setShowAccountType = useCallback((v: boolean) => setShowAccountTypeState(v), [])
+
   return {
     marginLimit,
     setMarginLimit,
@@ -200,6 +213,10 @@ export function useTraderSettings() {
     deleteSymbolGroup,
     updateSymbolGroup,
     reorderSymbolGroups,
+    showOperationMode,
+    setShowOperationMode,
+    showAccountType,
+    setShowAccountType,
 
     refetchSettings,
     saveAllSettings

@@ -55,6 +55,10 @@ function App(): React.JSX.Element {
     deleteSymbolGroup,
     updateSymbolGroup,
     reorderSymbolGroups,
+    showOperationMode,
+    setShowOperationMode,
+    showAccountType,
+    setShowAccountType,
     refetchSettings,
     saveAllSettings
   } = useTraderSettings()
@@ -292,6 +296,8 @@ function App(): React.JSX.Element {
               onUpdateSymbolGroup={updateSymbolGroup}
               onReorderSymbolGroups={reorderSymbolGroups}
               groupViewMode={activeTab === 'groups'}
+              showOperationMode={showOperationMode}
+              showAccountType={showAccountType}
             />
           )}
           {activeTab === 'option' && (
@@ -318,6 +324,10 @@ function App(): React.JSX.Element {
         onSetD1Target={setD1Target}
         connected={connected}
         fetchingSymbols={fetchingSymbols}
+        showOperationMode={showOperationMode}
+        onSetShowOperationMode={setShowOperationMode}
+        showAccountType={showAccountType}
+        onSetShowAccountType={setShowAccountType}
         onSyncPrices={async () => {
           setFetchingSymbols(true)
           try {

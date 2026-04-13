@@ -95,6 +95,8 @@ interface AccountOverviewProps {
   onUpdateSymbolGroup?: (group: SymbolGroup) => void
   onReorderSymbolGroups?: (groups: SymbolGroup[]) => void
   groupViewMode?: boolean
+  showOperationMode?: boolean
+  showAccountType?: boolean
 }
 
 const posKey = (pos: PositionData): string =>
@@ -120,7 +122,9 @@ export default function AccountOverview({
   onUpdateSymbolGroup,
   onReorderSymbolGroups,
   groupViewMode = false,
-  initialCosts = {}
+  initialCosts = {},
+  showOperationMode = true,
+  showAccountType = true
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
   const [filterSymbol, setFilterSymbol] = useState('')
@@ -1812,16 +1816,20 @@ export default function AccountOverview({
                   </button>
 
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    {operationModes?.[account.accountId] && (
+                    {showOperationMode && operationModes?.[account.accountId] && (
                       <span className="account-type-label">
                         {operationModes[account.accountId]}
                       </span>
                     )}
-                    <span className="account-type-label">
-                      {TRADING_TYPE_OPTIONS.find(
-                        (o) => o.value === (accountTypes?.[account.accountId] || 'reg_t')
-                      )?.label || ''}
-                    </span>
+                    {showAccountType && TRADING_TYPE_OPTIONS.find(
+                         (o) => o.value === (accountTypes?.[account.accountId] || 'reg_t')
+                       )?.label && (
+                      <span className="account-type-label">
+                        {TRADING_TYPE_OPTIONS.find(
+                          (o) => o.value === (accountTypes?.[account.accountId] || 'reg_t')
+                        )?.label}
+                      </span>
+                    )}
                     {(() => {
                       const rate = returnRates?.[account.accountId]
                       if (rate === undefined) return null
