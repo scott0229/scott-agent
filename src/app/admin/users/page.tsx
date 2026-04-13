@@ -1645,7 +1645,7 @@ export default function AdminUsersPage() {
                                 .map(([userId, { userName, report }]) => (
                                 <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-2">
-                                        <h3 className="font-semibold text-sm">{userName}</h3>
+                                        <h3 className="font-semibold text-sm">{userName} 每日報告</h3>
                                         <div className="flex gap-0.5">
                                             <Button
                                                 variant="ghost"
