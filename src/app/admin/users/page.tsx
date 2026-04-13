@@ -2045,7 +2045,7 @@ export default function AdminUsersPage() {
                                                 <tr className="bg-muted">
                                                     <th className="text-left p-1.5">操作</th>
                                                     <th className="text-left p-1.5">標的</th>
-                                                    <th className="text-right p-1.5">口數</th>
+                                                    <th className="text-center p-1.5">口數</th>
                                                     <th className="text-left p-1.5">類型</th>
                                                     <th className="text-right p-1.5">行權價</th>
                                                     <th className="text-right p-1.5">到期日</th>
@@ -2059,7 +2059,7 @@ export default function AdminUsersPage() {
                                                             <span className="text-blue-600">同步持倉</span>
                                                         </td>
                                                         <td className="p-1.5 font-mono">{pos.underlying}</td>
-                                                        <td className="text-right p-1.5 font-mono">{pos.quantity}</td>
+                                                        <td className="text-center p-1.5 font-mono">{pos.quantity}</td>
                                                         <td className="p-1.5">
                                                             <span className={pos.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
                                                                 {pos.type}
@@ -2081,7 +2081,7 @@ export default function AdminUsersPage() {
                                                 <tr className="bg-muted">
                                                     <th className="text-left p-1.5">操作</th>
                                                     <th className="text-left p-1.5">標的</th>
-                                                    <th className="text-right p-1.5">口數</th>
+                                                    <th className="text-center p-1.5">口數</th>
                                                     <th className="text-left p-1.5">類型</th>
                                                     <th className="text-right p-1.5">行權價</th>
                                                     <th className="text-right p-1.5">到期日</th>
@@ -2103,7 +2103,7 @@ export default function AdminUsersPage() {
                                                             {opt.action === 'skip_close' && <span className="text-muted-foreground">平倉(跳過)</span>}
                                                         </td>
                                                         <td className="p-1.5 font-mono">{opt.underlying}</td>
-                                                        <td className="text-right p-1.5 font-mono">{opt.quantity}</td>
+                                                        <td className="text-center p-1.5 font-mono">{opt.quantity}</td>
                                                         <td className="p-1.5">
                                                             <span className={opt.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
                                                                 {opt.type}
