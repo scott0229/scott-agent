@@ -461,6 +461,22 @@ export async function POST(request: NextRequest) {
                 remainingQty: number; // specialized for simulation
             }> = [];
 
+            // Pre-compute existing trade counts for accurate duplicate detection
+            const previewExistingCounts = new Map<string, number>();
+            {
+                const existingOpenOpts = await db.prepare(
+                    `SELECT underlying, strike_price, to_date, type, open_date, COUNT(*) as cnt
+                     FROM OPTIONS WHERE owner_id = ? AND year = ?
+                     GROUP BY underlying, strike_price, to_date, type, open_date`
+                ).bind(userResult.id, parsed.year).all<{
+                    underlying: string; strike_price: number; to_date: number; type: string; open_date: number; cnt: number;
+                }>();
+                for (const row of existingOpenOpts.results) {
+                    const key = `${row.underlying}|${row.strike_price}|${row.to_date}|${row.type}|${row.open_date}`;
+                    previewExistingCounts.set(key, row.cnt);
+                }
+            }
+
             for (const opt of parsed.optionTrades) {
                 if (opt.tradeAction !== 'O') {
                     // Handle Close / Assign trades preview
@@ -525,14 +541,16 @@ export async function POST(request: NextRequest) {
                     continue;
                 }
 
-                // Open trade logic (unchanged)
-                // Check for existing option with same key fields
-                const existingOpt = await db.prepare(
-                    `SELECT id FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND open_date = ? AND year = ? LIMIT 1`
-                ).bind(userResult.id, opt.underlying, opt.strikePrice, opt.toDate, opt.type, opt.openDate, parsed.year).first<{ id: number }>();
+                // Open trade: count-based duplicate check
+                const previewKey = `${opt.underlying}|${opt.strikePrice}|${opt.toDate}|${opt.type}|${opt.openDate}`;
+                const previewExCount = previewExistingCounts.get(previewKey) || 0;
+                const isDuplicate = previewExCount > 0;
+                if (isDuplicate) {
+                    previewExistingCounts.set(previewKey, previewExCount - 1);
+                }
 
                 // Add to local inventory for simulation (if it's a new trade)
-                if (!existingOpt) {
+                if (!isDuplicate) {
                     localOpenTrades.push({
                         underlying: opt.underlying,
                         strikePrice: opt.strikePrice,
@@ -544,7 +562,7 @@ export async function POST(request: NextRequest) {
                 }
 
                 optionActions.push({
-                    action: existingOpt ? 'skip_exists' : 'add',
+                    action: isDuplicate ? 'skip_exists' : 'add',
                     underlying: opt.underlying,
                     type: opt.type,
                     strikePrice: opt.strikePrice,
@@ -768,6 +786,24 @@ export async function POST(request: NextRequest) {
 
         // Sync option trades: Handle Open and Close trades
         const optionsSync = { added: 0, skipped: 0, closed: 0, closedSkipped: 0 };
+
+        // Pre-compute existing Open trade counts BEFORE processing, so that
+        // records inserted earlier in this batch don't cause false-positive duplicate skips.
+        const openTradeExistingCounts = new Map<string, number>();
+        if (parsed.optionTrades.some(t => t.tradeAction === 'O')) {
+            const existingOpenOpts = await db.prepare(
+                `SELECT underlying, strike_price, to_date, type, open_date, COUNT(*) as cnt
+                 FROM OPTIONS WHERE owner_id = ? AND year = ?
+                 GROUP BY underlying, strike_price, to_date, type, open_date`
+            ).bind(userResult.id, parsed.year).all<{
+                underlying: string; strike_price: number; to_date: number; type: string; open_date: number; cnt: number;
+            }>();
+            for (const row of existingOpenOpts.results) {
+                const key = `${row.underlying}|${row.strike_price}|${row.to_date}|${row.type}|${row.open_date}`;
+                openTradeExistingCounts.set(key, row.cnt);
+            }
+        }
+
         if (parsed.optionTrades.length > 0) {
             for (const opt of parsed.optionTrades) {
                 if (opt.tradeAction !== 'O') {
@@ -903,12 +939,12 @@ export async function POST(request: NextRequest) {
                 }
 
                 // --- Handle OPEN Trades ---
-                // Check for duplicate
-                const existingOpt = await db.prepare(
-                    `SELECT id FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND open_date = ? AND year = ? LIMIT 1`
-                ).bind(userResult.id, opt.underlying, opt.strikePrice, opt.toDate, opt.type, opt.openDate, parsed.year).first<{ id: number }>();
-
-                if (existingOpt) {
+                // Count-based duplicate check: use pre-computed map to avoid
+                // matching records inserted earlier in this same batch
+                const openKey = `${opt.underlying}|${opt.strikePrice}|${opt.toDate}|${opt.type}|${opt.openDate}`;
+                const preExistingCount = openTradeExistingCounts.get(openKey) || 0;
+                if (preExistingCount > 0) {
+                    openTradeExistingCounts.set(openKey, preExistingCount - 1);
                     optionsSync.skipped++;
                     continue;
                 }
