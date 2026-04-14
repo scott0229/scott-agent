@@ -341,14 +341,14 @@ export default function AddGroupDialog({
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
             <button
               className={`select-toggle-btn ${!isAutoMode ? 'active' : ''}`}
-              style={{ flex: 1, padding: '8px', fontSize: '14px', borderRadius: '6px' }}
+              style={{ flex: 1, padding: '8px', fontSize: '13px', borderRadius: '6px' }}
               onClick={() => setIsAutoMode(false)}
             >
               手動選擇標的
             </button>
             <button
               className={`select-toggle-btn ${isAutoMode ? 'active' : ''}`}
-              style={{ flex: 1, padding: '8px', fontSize: '14px', borderRadius: '6px' }}
+              style={{ flex: 1, padding: '8px', fontSize: '13px', borderRadius: '6px' }}
               onClick={() => setIsAutoMode(true)}
             >
               自動加入標的
@@ -554,13 +554,12 @@ export default function AddGroupDialog({
                   <span style={{ fontSize: '13px', color: '#333', minWidth: '80px' }}>
                     {getAlias(pos.account)}
                   </span>
-                  <span style={{ fontSize: '13px', fontWeight: 600, flex: 1 }}>
+                  <span style={{ fontSize: '12px', flex: 1 }}>
                     {formatOptionLabel(pos)}
                   </span>
                   <span
                     style={{
-                      fontSize: '13px',
-                      fontWeight: 600,
+                      fontSize: '12px',
                       color: '#333',
                       minWidth: '40px',
                       textAlign: 'right'
