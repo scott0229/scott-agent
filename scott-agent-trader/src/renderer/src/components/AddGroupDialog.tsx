@@ -9,13 +9,15 @@ function CustomMultiSelect({
   selectedValues,
   toggleValue,
   emptyText,
-  selectedTextPrefix
+  selectedTextPrefix,
+  onSelectAll
 }: {
   options: { value: string; label: string }[]
   selectedValues: string[]
   toggleValue: (value: string) => void
   emptyText: string
   selectedTextPrefix: string
+  onSelectAll?: (selectAll: boolean) => void
 }) {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
@@ -45,6 +47,27 @@ function CustomMultiSelect({
       </button>
       {open && (
         <div className="custom-select-dropdown" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+          {onSelectAll && options.length > 0 && (
+            <div
+              className="custom-select-option"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #eee' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                const isAllSelected = selectedValues.length === options.length && options.length > 0
+                onSelectAll(!isAllSelected)
+              }}
+            >
+              <input 
+                type="checkbox" 
+                checked={selectedValues.length === options.length && options.length > 0} 
+                readOnly 
+                style={{ accentColor: '#2563eb', pointerEvents: 'none', margin: 0 }} 
+              />
+              <span style={{ flex: 1, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontWeight: 600 }}>
+                {selectedValues.length === options.length && options.length > 0 ? '取消全選' : '全選'}
+              </span>
+            </div>
+          )}
           {options.map(o => {
             const isSelected = selectedValues.includes(o.value)
             return (
@@ -396,6 +419,7 @@ export default function AddGroupDialog({
                     toggleValue={toggleAutoAccount}
                     emptyText="未選擇帳戶"
                     selectedTextPrefix="已選"
+                    onSelectAll={(selectAll) => setAutoAccounts(selectAll ? uniqueAccounts.map(a => a.accountId) : [])}
                   />
                 </div>
               </div>
@@ -411,17 +435,19 @@ export default function AddGroupDialog({
                     toggleValue={toggleAutoSymbol}
                     emptyText="未選擇標的"
                     selectedTextPrefix="已選"
+                    onSelectAll={(selectAll) => setAutoSymbols(selectAll ? Array.from(new Set([...uniqueSymbols, ...autoSymbols])) : [])}
                   />
                 </div>
               </div>
 
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '6px' }}>
-                  期權類型
+                  資產類型
                 </label>
                 <div style={{ zIndex: 10, position: 'relative' }}>
                   <CustomMultiSelect
                     options={[
+                      { value: 'STK', label: '股票' },
                       { value: 'C', label: 'CALL 期權' },
                       { value: 'P', label: 'PUT 期權' }
                     ]}
@@ -429,6 +455,7 @@ export default function AddGroupDialog({
                     toggleValue={toggleAutoRight}
                     emptyText="未選擇類型"
                     selectedTextPrefix="已選"
+                    onSelectAll={(selectAll) => setAutoRights(selectAll ? ['STK', 'C', 'P'] : [])}
                   />
                 </div>
               </div>

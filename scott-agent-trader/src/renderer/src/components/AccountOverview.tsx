@@ -244,7 +244,7 @@ export default function AccountOverview({
           if (symbolMatch) {
             const rights = g.autoParams!.rights || (g.autoParams!.right ? [g.autoParams!.right] : [])
             const rightMatch =
-              p.secType === 'STK' ||
+              (rights.includes('STK') && p.secType === 'STK') ||
               (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
               (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
             const accountMatch =
@@ -1172,7 +1172,7 @@ export default function AccountOverview({
                       if (!symbolMatch) return false
                       const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
                       const rightMatch =
-                        p.secType === 'STK' ||
+                        (rights.includes('STK') && p.secType === 'STK') ||
                         (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
                         (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
                       if (!rightMatch) return false
