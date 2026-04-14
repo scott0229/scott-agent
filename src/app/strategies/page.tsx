@@ -834,11 +834,12 @@ export default function StrategiesPage() {
                                                                     const openDate = new Date(option.open_date * 1000);
                                                                     const formattedOpenDate = `${String(openDate.getMonth() + 1).padStart(2, '0')}/${String(openDate.getDate()).padStart(2, '0')}`;
 
-                                                                    // Format expiry date (MM-DD) for label
+                                                                    // Format expiry date for option label (e.g., Apr24'26)
+                                                                    const monthAbbr = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                                                                     let expiryLabel = '';
                                                                     if (option.to_date) {
                                                                         const toDate = new Date(option.to_date * 1000);
-                                                                        expiryLabel = `${String(toDate.getMonth() + 1).padStart(2, '0')}/${String(toDate.getDate()).padStart(2, '0')}`;
+                                                                        expiryLabel = `${monthAbbr[toDate.getMonth()]}${String(toDate.getDate()).padStart(2, '0')}'${String(toDate.getFullYear()).slice(-2)}`;
                                                                     }
 
                                                                     // Format settlement date (平倉日)
@@ -848,9 +849,9 @@ export default function StrategiesPage() {
                                                                         formattedSettlement = `${String(sDate.getMonth() + 1).padStart(2, '0')}/${String(sDate.getDate()).padStart(2, '0')}`;
                                                                     }
 
-                                                                    // Full option label: QQQ_615_C_02-10
+                                                                    // Full option label: TQQQ Apr24'26 45.5C
                                                                     const typeShort = option.type === 'CALL' ? 'C' : 'P';
-                                                                    const optionLabel = `${option.underlying}_${option.strike_price || ''}_${typeShort}${expiryLabel ? '_' + expiryLabel : ''}`;
+                                                                    const optionLabel = `${option.underlying} ${expiryLabel} ${option.strike_price || ''}${typeShort}`;
 
                                                                     return (
                                                                         <tr key={option.id} className={`border-b last:border-0 ${option.operation === 'Open' ? 'bg-gray-100' : ''}`}>
