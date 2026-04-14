@@ -134,7 +134,7 @@ export default function AddGroupDialog({
   const [filterRight, setFilterRight] = useState('')
 
   // Auto Mode States
-  const [isAutoMode, setIsAutoMode] = useState(false)
+  const [isAutoMode, setIsAutoMode] = useState(true)
   const [autoSymbols, setAutoSymbols] = useState<string[]>([])
   const [autoAccounts, setAutoAccounts] = useState<string[]>([])
   const [autoRights, setAutoRights] = useState<string[]>([])
@@ -163,7 +163,7 @@ export default function AddGroupDialog({
       } else {
         setGroupName('')
         setSelected(new Set())
-        setIsAutoMode(false)
+        setIsAutoMode(true)
         setAutoSymbols([])
         setAutoAccounts([])
         setAutoRights([])
@@ -188,15 +188,14 @@ export default function AddGroupDialog({
   const displayPositions = useMemo(() => {
     if (isAutoMode) {
       return positions.filter((p) => {
-        const symbolMatch = autoSymbols.length === 0 || autoSymbols.includes(p.symbol)
+        const symbolMatch = autoSymbols.includes(p.symbol)
         if (!symbolMatch) return false
         const rightMatch =
-          autoRights.length === 0 ||
-          (autoRights.includes('STK') && p.secType === 'STK') ||
+          p.secType === 'STK' ||
           (autoRights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
           (autoRights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
         if (!rightMatch) return false
-        const accountMatch = autoAccounts.length === 0 || autoAccounts.includes(p.account)
+        const accountMatch = autoAccounts.includes(p.account)
         return accountMatch
       }).sort((a, b) => {
         const aliasA = accounts.find((acc) => acc.accountId === a.account)?.alias || a.account
@@ -325,7 +324,7 @@ export default function AddGroupDialog({
     <div className="stock-order-dialog-overlay" onClick={handleClose}>
       <div
         className="stock-order-dialog"
-        style={{ maxWidth: '680px', height: '80vh' }}
+        style={{ maxWidth: '500px', height: isAutoMode ? 'auto' : '65vh', maxHeight: '65vh', overflow: isAutoMode ? 'visible' : 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="stock-order-dialog-header">
@@ -336,7 +335,7 @@ export default function AddGroupDialog({
         </div>
         <div
           className="stock-order-dialog-body"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: isAutoMode ? 'visible' : 'hidden' }}
         >
           {/* Mode Toggle */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -388,14 +387,29 @@ export default function AddGroupDialog({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '12px' }}>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '6px' }}>
-                  目標股票 (選填：不指定代表符合條件的股票皆加入)
+                  限定帳戶
                 </label>
-                <div style={{ display: 'flex', gap: '6px', zIndex: 30, position: 'relative' }}>
+                <div style={{ zIndex: 30, position: 'relative' }}>
+                  <CustomMultiSelect
+                    options={uniqueAccounts.map(a => ({ value: a.accountId, label: a.alias || a.accountId }))}
+                    selectedValues={autoAccounts}
+                    toggleValue={toggleAutoAccount}
+                    emptyText="未選擇帳戶"
+                    selectedTextPrefix="已選"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '6px' }}>
+                  目標股票
+                </label>
+                <div style={{ zIndex: 20, position: 'relative' }}>
                   <CustomMultiSelect
                      options={Array.from(new Set([...uniqueSymbols, ...autoSymbols])).sort().map(s => ({ value: s, label: s }))}
                     selectedValues={autoSymbols}
                     toggleValue={toggleAutoSymbol}
-                    emptyText="不指定標的 (全部)"
+                    emptyText="未選擇標的"
                     selectedTextPrefix="已選"
                   />
                 </div>
@@ -405,7 +419,7 @@ export default function AddGroupDialog({
                 <label style={{ fontSize: '13px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '6px' }}>
                   期權類型
                 </label>
-                <div style={{ zIndex: 20, position: 'relative' }}>
+                <div style={{ zIndex: 10, position: 'relative' }}>
                   <CustomMultiSelect
                     options={[
                       { value: 'C', label: 'CALL 期權' },
@@ -413,31 +427,12 @@ export default function AddGroupDialog({
                     ]}
                     selectedValues={autoRights}
                     toggleValue={toggleAutoRight}
-                    emptyText="全部類型"
+                    emptyText="未選擇類型"
                     selectedTextPrefix="已選"
                   />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '6px' }}>
-                  限定帳戶 (選填：不指定代表跨帳戶全拿)
-                </label>
-                <div style={{ zIndex: 10, position: 'relative' }}>
-                  <CustomMultiSelect
-                    options={uniqueAccounts.map(a => ({ value: a.accountId, label: a.alias || a.accountId }))}
-                    selectedValues={autoAccounts}
-                    toggleValue={toggleAutoAccount}
-                    emptyText="不指定帳戶 (全部)"
-                    selectedTextPrefix="已選"
-                  />
-                </div>
-              </div>
-
-              <div style={{ height: '1px', background: '#eee', margin: '8px 0' }} />
-              <label style={{ fontSize: '13px', fontWeight: 600, color: '#555' }}>
-                目前符合條件的持倉 (預覽)：
-              </label>
             </div>
           ) : (
             <div
@@ -527,6 +522,7 @@ export default function AddGroupDialog({
           )}
 
           {/* Positions List */}
+          {!isAutoMode && (
           <div
             style={{ flex: 1, overflowY: 'auto', border: '1px solid #e0dbd4', borderRadius: '6px' }}
           >
@@ -583,6 +579,7 @@ export default function AddGroupDialog({
               </div>
             )}
           </div>
+          )}
 
           {/* Actions */}
           <div className="confirm-buttons" style={{ marginTop: 'auto', paddingTop: '16px' }}>

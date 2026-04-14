@@ -240,19 +240,15 @@ export default function AccountOverview({
     symbolGroups.forEach((g) => {
       if (g.autoParams) {
         positions.forEach((p) => {
-          const symbolMatch =
-            g.autoParams!.symbols.length === 0 || g.autoParams!.symbols.includes(p.symbol)
+          const symbolMatch = g.autoParams!.symbols.includes(p.symbol)
           if (symbolMatch) {
             const rights = g.autoParams!.rights || (g.autoParams!.right ? [g.autoParams!.right] : [])
             const rightMatch =
-              rights.length === 0 ||
-              (rights.includes('STK') && p.secType === 'STK') ||
+              p.secType === 'STK' ||
               (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
               (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
             const accountMatch =
-              !g.autoParams!.accounts ||
-              g.autoParams!.accounts.length === 0 ||
-              g.autoParams!.accounts.includes(p.account)
+              g.autoParams!.accounts && g.autoParams!.accounts.includes(p.account)
 
             if (rightMatch && accountMatch) {
               allGroupedKeys.add(posKey(p))
@@ -267,19 +263,21 @@ export default function AccountOverview({
       .filter((p) => !allGroupedKeys.has(posKey(p)))
       .sort((a, b) => {
         if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
-        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
         if (a.secType === 'OPT' && b.secType === 'OPT') {
+          if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
+          const rightA = a.right === 'P' || a.right === 'PUT' ? 'P' : 'C'
+          const rightB = b.right === 'P' || b.right === 'PUT' ? 'P' : 'C'
+          if (rightA !== rightB) return rightB.localeCompare(rightA)
+          const aAlias = formatAccountName(accounts.find((x) => x.accountId === a.account)?.alias || a.account)
+          const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
+          if (aAlias !== bAlias) return aAlias.localeCompare(bAlias)
           const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
           if (expiryComp !== 0) return expiryComp
-          const strikeComp = (a.strike || 0) - (b.strike || 0)
-          if (strikeComp !== 0) return strikeComp
+          return (a.strike || 0) - (b.strike || 0)
         }
-        const aAlias = formatAccountName(
-          accounts.find((x) => x.accountId === a.account)?.alias || a.account
-        )
-        const bAlias = formatAccountName(
-          accounts.find((x) => x.accountId === b.account)?.alias || b.account
-        )
+        if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
+        const aAlias = formatAccountName(accounts.find((x) => x.accountId === a.account)?.alias || a.account)
+        const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
         return aAlias.localeCompare(bAlias)
       })
   }, [groupViewMode, symbolGroups, positions, accounts])
@@ -293,21 +291,16 @@ export default function AccountOverview({
         const groupPosKeys = new Set(g.posKeys)
         const count = positions.filter((p) => {
           if (g.autoParams) {
-            const symbolMatch =
-              g.autoParams.symbols.length === 0 || g.autoParams.symbols.includes(p.symbol)
+            const symbolMatch = g.autoParams.symbols.includes(p.symbol)
             if (!symbolMatch) return false
             const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
             const rightMatch =
-              rights.length === 0 ||
-              (rights.includes('STK') && p.secType === 'STK') ||
+              p.secType === 'STK' ||
               (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
               (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
             if (!rightMatch) return false
-            const accountMatch =
-              !g.autoParams.accounts ||
-              g.autoParams.accounts.length === 0 ||
-              g.autoParams.accounts.includes(p.account)
-            return accountMatch
+            const accountMatch = g.autoParams.accounts && g.autoParams.accounts.includes(p.account)
+            return !!accountMatch
           }
           return groupPosKeys.has(posKey(p))
         }).length
@@ -1175,38 +1168,36 @@ export default function AccountOverview({
                 const groupPositions = positions
                   .filter((p) => {
                     if (g.autoParams) {
-                      const symbolMatch =
-                        g.autoParams.symbols.length === 0 || g.autoParams.symbols.includes(p.symbol)
+                      const symbolMatch = g.autoParams.symbols.includes(p.symbol)
                       if (!symbolMatch) return false
+                      const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
                       const rightMatch =
-                        !g.autoParams.right ||
-                        (g.autoParams.right === 'STK' && p.secType === 'STK') ||
-                        (g.autoParams.right === 'C' && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
-                        (g.autoParams.right === 'P' && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
+                        p.secType === 'STK' ||
+                        (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
+                        (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
                       if (!rightMatch) return false
-                      const accountMatch =
-                        !g.autoParams.accounts ||
-                        g.autoParams.accounts.length === 0 ||
-                        g.autoParams.accounts.includes(p.account)
-                      return accountMatch
+                      const accountMatch = g.autoParams.accounts && g.autoParams.accounts.includes(p.account)
+                      return !!accountMatch
                     }
                     return groupPosKeys.has(posKey(p))
                   })
                   .sort((a, b) => {
                     if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
-                    // Group options by expiry then strike
                     if (a.secType === 'OPT' && b.secType === 'OPT') {
+                      if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
+                      const rightA = a.right === 'P' || a.right === 'PUT' ? 'P' : 'C'
+                      const rightB = b.right === 'P' || b.right === 'PUT' ? 'P' : 'C'
+                      if (rightA !== rightB) return rightB.localeCompare(rightA)
+                      const aAlias = formatAccountName(accounts.find((x) => x.accountId === a.account)?.alias || a.account)
+                      const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
+                      if (aAlias !== bAlias) return aAlias.localeCompare(bAlias)
                       const expiryComp = (a.expiry || '').localeCompare(b.expiry || '')
                       if (expiryComp !== 0) return expiryComp
-                      const strikeComp = (a.strike || 0) - (b.strike || 0)
-                      if (strikeComp !== 0) return strikeComp
+                      return (a.strike || 0) - (b.strike || 0)
                     }
-                    const aAlias = formatAccountName(
-                      accounts.find((x) => x.accountId === a.account)?.alias || a.account
-                    )
-                    const bAlias = formatAccountName(
-                      accounts.find((x) => x.accountId === b.account)?.alias || b.account
-                    )
+                    if (a.symbol !== b.symbol) return a.symbol.localeCompare(b.symbol)
+                    const aAlias = formatAccountName(accounts.find((x) => x.accountId === a.account)?.alias || a.account)
+                    const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
                     return aAlias.localeCompare(bAlias)
                   })
                 return (
@@ -1278,18 +1269,23 @@ export default function AccountOverview({
                           return sum + pnl
                         }, 0)
                         return (
-                          <span
-                            style={{
-                              fontSize: '14px',
-                              fontWeight: 600,
-                              marginLeft: 'auto',
-                              marginRight: '12px',
-                              color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
-                            }}
-                          >
-                            {totalPnl >= 0 ? '+' : ''}
-                            {Math.round(totalPnl).toLocaleString()}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', marginRight: '12px' }}>
+                            {g.autoParams && (
+                              <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px' }}>
+                                自動
+                              </span>
+                            )}
+                            <span
+                              style={{
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                              }}
+                            >
+                              {totalPnl >= 0 ? '+' : ''}
+                              {Math.round(totalPnl).toLocaleString()}
+                            </span>
+                          </div>
                         )
                       })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1341,7 +1337,7 @@ export default function AccountOverview({
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '4px 12px 0'
+                        padding: '4px 0 0'
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
