@@ -241,6 +241,13 @@ export async function GET(
             }
         }
 
+        const highestEquityResult = await db.prepare(`
+            SELECT MAX(net_equity) as max_net_equity
+            FROM DAILY_NET_EQUITY
+            WHERE user_id = ?
+        `).bind(userId).first();
+        const highestNetWorth = highestEquityResult?.max_net_equity || accountNetWorth;
+
         // 9. Get open positions
         const { results: openOptions } = await db.prepare(`
             SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, SUM(premium) as premium
@@ -267,6 +274,7 @@ export async function GET(
                 cashBalance,
                 dailyInterest,
                 marginRate,
+                highestNetWorth,
                 ytdReturn,
                 maxDrawdown,
                 sharpeRatio,

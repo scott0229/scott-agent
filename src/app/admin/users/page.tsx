@@ -313,12 +313,15 @@ export default function AdminUsersPage() {
             report += `最後更新日 : ${dateStr}\n`;
             report += `----------------------------------------\n`;
         }
-        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}\n`;
+        const highestNetWorth = data.highestNetWorth || data.accountNetWorth;
+        const isNewHigh = data.accountNetWorth > 0 && data.accountNetWorth >= highestNetWorth;
+        report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}${isNewHigh ? ' (新高)' : ''}\n`;
         report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
         report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `當日利息 : ${data.dailyInterest ? data.dailyInterest.toFixed(1) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
+        report += `最高歷史淨值 : ${formatMoney(highestNetWorth)}\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
