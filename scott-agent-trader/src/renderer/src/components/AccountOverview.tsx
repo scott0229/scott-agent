@@ -237,7 +237,32 @@ export default function AccountOverview({
   const uncategorizedPositions = useMemo(() => {
     if (!groupViewMode) return []
     const allGroupedKeys = new Set<string>()
-    symbolGroups.forEach((g) => g.posKeys.forEach((k) => allGroupedKeys.add(k)))
+    symbolGroups.forEach((g) => {
+      if (g.autoParams) {
+        positions.forEach((p) => {
+          const symbolMatch =
+            g.autoParams!.symbols.length === 0 || g.autoParams!.symbols.includes(p.symbol)
+          if (symbolMatch) {
+            const rights = g.autoParams!.rights || (g.autoParams!.right ? [g.autoParams!.right] : [])
+            const rightMatch =
+              rights.length === 0 ||
+              (rights.includes('STK') && p.secType === 'STK') ||
+              (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
+              (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
+            const accountMatch =
+              !g.autoParams!.accounts ||
+              g.autoParams!.accounts.length === 0 ||
+              g.autoParams!.accounts.includes(p.account)
+
+            if (rightMatch && accountMatch) {
+              allGroupedKeys.add(posKey(p))
+            }
+          }
+        })
+      } else {
+        g.posKeys.forEach((k) => allGroupedKeys.add(k))
+      }
+    })
     return positions
       .filter((p) => !allGroupedKeys.has(posKey(p)))
       .sort((a, b) => {
@@ -266,7 +291,26 @@ export default function AccountOverview({
     const groupPart = symbolGroups
       .map((g) => {
         const groupPosKeys = new Set(g.posKeys)
-        const count = positions.filter((p) => groupPosKeys.has(posKey(p))).length
+        const count = positions.filter((p) => {
+          if (g.autoParams) {
+            const symbolMatch =
+              g.autoParams.symbols.length === 0 || g.autoParams.symbols.includes(p.symbol)
+            if (!symbolMatch) return false
+            const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
+            const rightMatch =
+              rights.length === 0 ||
+              (rights.includes('STK') && p.secType === 'STK') ||
+              (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
+              (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
+            if (!rightMatch) return false
+            const accountMatch =
+              !g.autoParams.accounts ||
+              g.autoParams.accounts.length === 0 ||
+              g.autoParams.accounts.includes(p.account)
+            return accountMatch
+          }
+          return groupPosKeys.has(posKey(p))
+        }).length
         return `${g.id}:${count}`
       })
       .join('|')
@@ -330,6 +374,7 @@ export default function AccountOverview({
       Object.fromEntries(replacements)
     )
     for (const g of symbolGroups) {
+      if (g.autoParams) continue
       if (!g.posKeys.some((k) => replacements.has(k))) continue
       const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
       const finalPosKeys = Array.from(new Set(newPosKeys))
@@ -381,6 +426,7 @@ export default function AccountOverview({
     }
 
     for (const g of symbolGroups) {
+      if (g.autoParams) continue
       // Find ops that apply to this group (i.e. group holds the source stock limit)
       const opsInGroup = ops.filter((op) =>
         g.posKeys.includes(`${op.account}|${op.sourceSymbol}|STK|||`)
@@ -1127,7 +1173,25 @@ export default function AccountOverview({
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
                 const groupPosKeys = new Set(g.posKeys)
                 const groupPositions = positions
-                  .filter((p) => groupPosKeys.has(posKey(p)))
+                  .filter((p) => {
+                    if (g.autoParams) {
+                      const symbolMatch =
+                        g.autoParams.symbols.length === 0 || g.autoParams.symbols.includes(p.symbol)
+                      if (!symbolMatch) return false
+                      const rightMatch =
+                        !g.autoParams.right ||
+                        (g.autoParams.right === 'STK' && p.secType === 'STK') ||
+                        (g.autoParams.right === 'C' && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
+                        (g.autoParams.right === 'P' && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
+                      if (!rightMatch) return false
+                      const accountMatch =
+                        !g.autoParams.accounts ||
+                        g.autoParams.accounts.length === 0 ||
+                        g.autoParams.accounts.includes(p.account)
+                      return accountMatch
+                    }
+                    return groupPosKeys.has(posKey(p))
+                  })
                   .sort((a, b) => {
                     if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
                     // Group options by expiry then strike

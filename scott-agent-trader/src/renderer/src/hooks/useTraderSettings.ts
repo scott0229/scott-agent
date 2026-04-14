@@ -7,7 +7,14 @@ export interface SymbolGroup {
   posKeys: string[]
   createdAt: number
   completedDate?: string // YYYY-MM-DD format, marks "今日已完成操作"
+  autoParams?: {
+    symbols: string[]
+    right?: string // legacy 'STK' | 'C' | 'P' | ''
+    rights?: string[]
+    accounts?: string[]
+  }
 }
+
 
 declare global {
   interface Window {
