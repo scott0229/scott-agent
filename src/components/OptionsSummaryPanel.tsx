@@ -156,37 +156,33 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const monthlyTurnover = currentMonthStats?.turnover || 0;
         const turnoverRate = (initialCost * daysInCurrentMonth) > 0 ? monthlyTurnover / (initialCost * daysInCurrentMonth) : 0;
 
-        // QX Premium
+        // QX Premium components
         const quarterStats = user.monthly_stats?.filter((stat) => {
             const m = parseInt(stat.month.replace('月', ''));
             return m >= startMonth && m <= endMonth;
         }) || [];
 
-        const quarterPremium = quarterStats.reduce((s, stat) => s + stat.total_profit, 0);
         const quarterPutPremium = quarterStats.reduce((s, stat) => s + stat.put_profit, 0);
         const quarterCallPremium = quarterStats.reduce((s, stat) => s + stat.call_profit, 0);
+        const quarterStockPnl = quarterStats.reduce((s, stat) => s + (stat.stock_pnl || 0), 0);
+        const quarterPremium = quarterPutPremium + quarterCallPremium + quarterStockPnl;
 
         // QX Target - Use initial cost instead of current equity
         const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100));
         const quarterTarget = Math.round(annualTarget / 4);
 
-        // Annual Premium
-        const annualPremium = user.total_profit || 0;
+        // Annual Premium components
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
+        const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
+        const annualPremium = annualPutPremium + annualCallPremium + annualStockPnl;
 
-        // Daily Premium = total premium / trading days so far (from user's start_date)
+        // Daily Premium = annual total / trading days so far (from user's start_date)
         const userStartDate = user.start_date
             ? new Date(user.start_date)
             : new Date(Number(displayYear), 0, 1);
         const userTradingDays = countWeekdays(userStartDate);
         const dailyPremium = userTradingDays > 0 ? annualPremium / userTradingDays : 0;
-
-        // QX Stock PnL
-        const quarterStockPnl = quarterStats.reduce((s, stat) => s + (stat.stock_pnl || 0), 0);
-
-        // Annual Stock PnL
-        const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
 
         return {
             marginRate,
