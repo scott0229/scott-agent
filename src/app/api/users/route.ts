@@ -179,6 +179,32 @@ export async function GET(req: NextRequest) {
                         }
                     });
 
+                    // Add closed stock P&L (include_in_options=1) to monthly stats
+                    const stockPnlQuery = `
+                        SELECT 
+                            owner_id as user_id,
+                            strftime('%m', datetime(close_date, 'unixepoch')) as month,
+                            SUM((close_price - open_price) * quantity) as stock_pnl
+                        FROM STOCK_TRADES
+                        WHERE include_in_options = 1
+                            AND status = 'Closed'
+                            AND close_price IS NOT NULL
+                            AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
+                        GROUP BY owner_id, month
+                    `;
+                    const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(year).all();
+
+                    (stockPnlResults as any[]).forEach((row: any) => {
+                        if (!userStatsMap.has(row.user_id)) {
+                            userStatsMap.set(row.user_id, {});
+                        }
+                        const userStats = userStatsMap.get(row.user_id);
+                        if (!userStats[row.month]) {
+                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0 };
+                        }
+                        userStats[row.month].total += (row.stock_pnl || 0);
+                    });
+
                     // Add interest data to userStatsMap
 
 
@@ -425,6 +451,25 @@ export async function GET(req: NextRequest) {
 
             (optionsResults as any[]).forEach(row => {
                 userProfitMap.set(row.user_id, row.profit);
+            });
+
+            // Add closed stock P&L (include_in_options=1)
+            const stockPnlQuery = `
+                SELECT 
+                    owner_id as user_id,
+                    SUM((close_price - open_price) * quantity) as stock_pnl
+                FROM STOCK_TRADES
+                WHERE include_in_options = 1
+                    AND status = 'Closed'
+                    AND close_price IS NOT NULL
+                    AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
+                GROUP BY owner_id
+            `;
+            const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(year).all();
+
+            (stockPnlResults as any[]).forEach((row: any) => {
+                const current = userProfitMap.get(row.user_id) || 0;
+                userProfitMap.set(row.user_id, current + (row.stock_pnl || 0));
             });
 
             (results as any[]).forEach((user: any) => {

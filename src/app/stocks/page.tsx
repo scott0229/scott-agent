@@ -69,6 +69,7 @@ interface StockTrade {
     source?: string; // e.g. 'assigned'
     close_source?: string; // e.g. 'assigned'
     current_market_price?: number | null; // Current closing price from market_prices table
+    include_in_options?: number; // 1 = include stock P&L in options revenue
 }
 
 interface User {
@@ -233,6 +234,22 @@ export default function StockTradingPage() {
         return currentUser.user_id === trade.user_id; // Simple ownership check
     };
 
+    const handleToggleIncludeInOptions = async (trade: StockTrade) => {
+        const newValue = trade.include_in_options ? 0 : 1;
+        try {
+            const res = await fetch(`/api/stocks/${trade.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: trade.id, include_in_options: newValue }),
+            });
+            if (!res.ok) throw new Error('Toggle failed');
+            setTrades(prev => prev.map(t => t.id === trade.id ? { ...t, include_in_options: newValue } : t));
+        } catch (error) {
+            console.error('Toggle include_in_options failed', error);
+            toast({ variant: 'destructive', title: '操作失敗', description: '無法更新列入期權設定' });
+        }
+    };
+
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
 
@@ -366,6 +383,7 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
+                                <TableHead className="text-center">列入期權</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -430,6 +448,24 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center py-1">
+                                                {isClosed && trade.close_price ? (
+                                                    <button
+                                                        onClick={() => handleToggleIncludeInOptions(trade)}
+                                                        className={cn(
+                                                            "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
+                                                            trade.include_in_options
+                                                                ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
+                                                                : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+                                                        )}
+                                                        title={trade.include_in_options ? '已列入期權收益' : '點擊列入期權收益'}
+                                                    >
+                                                        {trade.include_in_options ? '✓' : ''}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-300">-</span>
+                                                )}
                                             </TableCell>
                                             {settings.showTradeCode && (
                                                 <TableCell className="text-center font-mono text-sm py-1">

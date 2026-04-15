@@ -23,8 +23,18 @@ export async function PUT(req: NextRequest) {
             close_date,
             open_price,
             close_price,
-            quantity
+            quantity,
+            include_in_options
         } = body;
+
+        // Support partial update for include_in_options toggle
+        if (typeof include_in_options !== 'undefined' && id) {
+            const group = await getGroupFromRequest(req);
+            const db = await getDb(group);
+            await db.prepare('UPDATE STOCK_TRADES SET include_in_options = ?, updated_at = unixepoch() WHERE id = ?')
+                .bind(include_in_options ? 1 : 0, id).run();
+            return NextResponse.json({ success: true });
+        }
 
         if (!id || !symbol || !open_date || !open_price || !quantity) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -37,6 +47,7 @@ export async function PUT(req: NextRequest) {
             UPDATE STOCK_TRADES SET
                 symbol = ?, status = ?, open_date = ?, close_date = ?,
                 open_price = ?, close_price = ?, quantity = ?,
+                include_in_options = ?,
                 updated_at = unixepoch()
             WHERE id = ?
         `).bind(
@@ -47,6 +58,7 @@ export async function PUT(req: NextRequest) {
             open_price,
             close_price || null,
             quantity,
+            include_in_options ? 1 : 0,
             id
         ).run();
 
