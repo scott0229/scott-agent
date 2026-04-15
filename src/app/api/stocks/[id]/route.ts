@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearUserSelectionCache } from '@/lib/user-cache';
 
 export async function PUT(req: NextRequest) {
     try {
@@ -33,6 +34,7 @@ export async function PUT(req: NextRequest) {
             const db = await getDb(group);
             await db.prepare('UPDATE STOCK_TRADES SET include_in_options = ?, updated_at = unixepoch() WHERE id = ?')
                 .bind(include_in_options ? 1 : 0, id).run();
+            clearUserSelectionCache();
             return NextResponse.json({ success: true });
         }
 
@@ -62,6 +64,7 @@ export async function PUT(req: NextRequest) {
             id
         ).run();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Update stock trade error:', error);
@@ -90,6 +93,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         const db = await getDb(group);
         await db.prepare('DELETE FROM STOCK_TRADES WHERE id = ?').bind(id).run();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true });
 
     } catch (error) {

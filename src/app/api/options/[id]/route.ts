@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearUserSelectionCache } from '@/lib/user-cache';
 
 export async function DELETE(
     req: NextRequest,
@@ -24,6 +25,7 @@ export async function DELETE(
         const db = await getDb(group);
         await db.prepare('DELETE FROM OPTIONS WHERE id = ?').bind(id).run();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Delete option error:', error);

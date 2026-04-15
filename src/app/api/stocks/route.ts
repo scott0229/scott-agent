@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearUserSelectionCache } from '@/lib/user-cache';
 import { customAlphabet } from 'nanoid';
 
 // Generate 5-character uppercase alphanumeric code
@@ -166,6 +167,7 @@ export async function POST(req: NextRequest) {
             code
         ).run();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
     } catch (error: any) {
         console.error('Create stock trade error:', error);

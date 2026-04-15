@@ -82,6 +82,7 @@ interface User {
 
 export default function StockTradingPage() {
     const [trades, setTrades] = useState<StockTrade[]>([]);
+    const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<User[]>([]);
     const { toast } = useToast();
@@ -102,7 +103,6 @@ export default function StockTradingPage() {
     const { selectedYear } = useYearFilter();
     const { settings } = useAdminSettings();
 
-    // Auth context (simplified)
     // Auth context (simplified)
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [mounted, setMounted] = useState(false);
@@ -453,15 +453,20 @@ export default function StockTradingPage() {
                                                 {isClosed && trade.close_price ? (
                                                     <button
                                                         onClick={() => handleToggleIncludeInOptions(trade)}
+                                                        disabled={togglingIds.has(trade.id)}
                                                         className={cn(
-                                                            "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
-                                                            trade.include_in_options
-                                                                ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
-                                                                : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+                                                            "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200",
+                                                            togglingIds.has(trade.id)
+                                                                ? "bg-gray-100 border-gray-300 cursor-wait opacity-60"
+                                                                : trade.include_in_options
+                                                                    ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200 cursor-pointer"
+                                                                    : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500 cursor-pointer"
                                                         )}
-                                                        title={trade.include_in_options ? '已列入期權收益' : '點擊列入期權收益'}
+                                                        title={togglingIds.has(trade.id) ? '更新中...' : trade.include_in_options ? '已列入期權收益' : '點擊列入期權收益'}
                                                     >
-                                                        {trade.include_in_options ? '✓' : ''}
+                                                        {togglingIds.has(trade.id)
+                                                            ? <span className="animate-spin text-gray-400" style={{fontSize: '10px'}}>⟳</span>
+                                                            : trade.include_in_options ? '✓' : ''}
                                                     </button>
                                                 ) : (
                                                     <span className="text-gray-300">-</span>

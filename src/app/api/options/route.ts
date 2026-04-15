@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearUserSelectionCache } from '@/lib/user-cache';
 import { customAlphabet } from 'nanoid';
 
 // Generate 5-character uppercase alphanumeric code
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
             code
         ).run();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true, id: result.meta.last_row_id });
     } catch (error: any) {
         console.error('Create option error:', error);
@@ -231,6 +233,7 @@ export async function PUT(req: NextRequest) {
 
         console.log('Update result:', { id, final_profit: body.final_profit, premium, profit_percent });
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Update option error:', error);
@@ -278,6 +281,7 @@ export async function DELETE(req: NextRequest) {
 
         const result = await db.prepare(query).bind(...params).all();
 
+        clearUserSelectionCache();
         return NextResponse.json({ success: true, deleted: result.meta.changes });
     } catch (error) {
         console.error('Delete all options error:', error);

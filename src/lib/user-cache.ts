@@ -1,7 +1,11 @@
 // Cached wrapper for expensive user selection queries
-import { cacheResponse } from '@/lib/response-cache';
+import { cacheResponse, clearCacheByPattern } from '@/lib/response-cache';
 import { getGroupFromRequest } from '@/lib/group';
 import type { NextRequest } from 'next/server';
+
+export function clearUserSelectionCache() {
+    clearCacheByPattern('users-selection');
+}
 
 export async function getCachedUserSelection(
     req: NextRequest,
