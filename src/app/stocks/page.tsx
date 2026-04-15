@@ -380,8 +380,8 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">股數</TableHead>
                                 <TableHead className="text-center">開倉價</TableHead>
-                                <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">平倉價</TableHead>
+                                <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="text-center">列入期權</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
@@ -441,10 +441,10 @@ export default function StockTradingPage() {
                                             <TableCell className="text-center py-1">{trade.quantity.toLocaleString()}</TableCell>
                                             <TableCell className="text-center py-1">{formatMoney(trade.open_price)}</TableCell>
                                             <TableCell className="text-center py-1">
-                                                {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
+                                                {trade.close_price ? formatMoney(trade.close_price) : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
-                                                {trade.close_price ? formatMoney(trade.close_price) : '-'}
+                                                {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
                                             </TableCell>
                                             <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
