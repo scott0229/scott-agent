@@ -482,7 +482,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 const isVisible = columnVisibility.users[userKey] !== false;
                                 const val = calculateUserMetrics(user).quarterStockPnl;
                                 return isVisible ? (
-                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : val > 0 ? 'text-green-700' : 'text-muted-foreground'}`}>
+                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : ''}`}>
                                         {formatMoney(val)}
                                     </td>
                                 ) : null;
@@ -553,7 +553,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 const isVisible = columnVisibility.users[userKey] !== false;
                                 const val = calculateUserMetrics(user).annualStockPnl;
                                 return isVisible ? (
-                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : val > 0 ? 'text-green-700' : 'text-muted-foreground'}`}>
+                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : ''}`}>
                                         {formatMoney(val)}
                                     </td>
                                 ) : null;
