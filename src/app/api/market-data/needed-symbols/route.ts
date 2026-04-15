@@ -13,9 +13,14 @@ async function checkApiKey(req: NextRequest): Promise<boolean> {
   const headerKey = req.headers.get('Authorization')?.replace('Bearer ', '')
   const key = qKey || headerKey
   if (!key) return false
-  const db = await getDb()
+
+  const db = await getDb('advisor')
   const row = await db.prepare('SELECT id FROM USERS WHERE api_key = ? LIMIT 1').bind(key).first()
-  return !!row
+  if (row) return true
+
+  const dbScott = await getDb('scott')
+  const row2 = await dbScott.prepare('SELECT id FROM USERS WHERE api_key = ? LIMIT 1').bind(key).first()
+  return !!row2
 }
 
 export async function GET(req: NextRequest) {
