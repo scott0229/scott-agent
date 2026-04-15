@@ -200,9 +200,10 @@ export async function GET(req: NextRequest) {
                         }
                         const userStats = userStatsMap.get(row.user_id);
                         if (!userStats[row.month]) {
-                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0 };
+                            userStats[row.month] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0, stock_pnl: 0 };
                         }
                         userStats[row.month].total += (row.stock_pnl || 0);
+                        userStats[row.month].stock_pnl = (userStats[row.month].stock_pnl || 0) + (row.stock_pnl || 0);
                     });
 
                     // Add interest data to userStatsMap
@@ -216,7 +217,7 @@ export async function GET(req: NextRequest) {
                         const allMonths = [];
                         for (let i = 1; i <= 12; i++) {
                             const monthStr = i.toString().padStart(2, '0');
-                            const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0 };
+                            const monthData = userMonthlyData?.[monthStr] || { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0, stock_pnl: 0 };
                             allMonths.push({
                                 month: monthStr,
                                 total_profit: monthData.total,
@@ -225,7 +226,8 @@ export async function GET(req: NextRequest) {
                                 put_win_rate: monthData.put_total > 0 ? Math.round((monthData.put_win / monthData.put_total) * 100) : null,
                                 call_win_rate: monthData.call_total > 0 ? Math.round((monthData.call_win / monthData.call_total) * 100) : null,
                                 interest: monthData.interest,
-                                turnover: monthData.turnover
+                                turnover: monthData.turnover,
+                                stock_pnl: monthData.stock_pnl || 0
                             });
                         }
 

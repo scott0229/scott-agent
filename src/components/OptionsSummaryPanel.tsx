@@ -9,6 +9,7 @@ interface UserStats {
     put_profit: number;
     call_profit: number;
     turnover?: number;
+    stock_pnl?: number;
 }
 
 interface User {
@@ -181,6 +182,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const userTradingDays = countWeekdays(userStartDate);
         const dailyPremium = userTradingDays > 0 ? annualPremium / userTradingDays : 0;
 
+        // QX Stock PnL
+        const quarterStockPnl = quarterStats.reduce((s, stat) => s + (stat.stock_pnl || 0), 0);
+
+        // Annual Stock PnL
+        const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
+
         return {
             marginRate,
             turnoverRate,
@@ -188,10 +195,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
             quarterPutPremium,
             quarterCallPremium,
             quarterTarget,
+            quarterStockPnl,
             annualPremium,
             annualPutPremium,
             annualCallPremium,
             annualTarget,
+            annualStockPnl,
             dailyPremium
         };
     };
@@ -220,6 +229,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const totalAnnualPutPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualPutPremium, 0);
     const totalAnnualCallPremium = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualCallPremium, 0);
     const totalAnnualTarget = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualTarget, 0);
+    const totalQuarterStockPnl = users.reduce((sum, user) => sum + calculateUserMetrics(user).quarterStockPnl, 0);
+    const totalAnnualStockPnl = users.reduce((sum, user) => sum + calculateUserMetrics(user).annualStockPnl, 0);
 
     const aggregates = {
         marginRate: aggregateMarginRate,
@@ -228,10 +239,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         quarterPutPremium: totalQuarterPutPremium,
         quarterCallPremium: totalQuarterCallPremium,
         quarterTarget: totalQuarterTarget,
+        quarterStockPnl: totalQuarterStockPnl,
         annualPremium: totalAnnualPremium,
         annualPutPremium: totalAnnualPutPremium,
         annualCallPremium: totalAnnualCallPremium,
-        annualTarget: totalAnnualTarget
+        annualTarget: totalAnnualTarget,
+        annualStockPnl: totalAnnualStockPnl
     };
 
 
@@ -460,6 +473,21 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
+                        {/* Quarterly Stock PnL */}
+                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
+
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                const val = calculateUserMetrics(user).quarterStockPnl;
+                                return isVisible ? (
+                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : val > 0 ? 'text-green-700' : 'text-muted-foreground'}`}>
+                                        {formatMoney(val)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
@@ -512,6 +540,21 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 return isVisible ? (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {formatMoney(calculateUserMetrics(user).annualCallPremium)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
+                        {/* Annual Stock PnL */}
+                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
+
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                const val = calculateUserMetrics(user).annualStockPnl;
+                                return isVisible ? (
+                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'text-red-600' : val > 0 ? 'text-green-700' : 'text-muted-foreground'}`}>
+                                        {formatMoney(val)}
                                     </td>
                                 ) : null;
                             })}
