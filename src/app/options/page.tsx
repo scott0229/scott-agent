@@ -362,16 +362,16 @@ export default function OptionsPage() {
                                                             return (
                                                                 <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                     <td className="px-1 text-center h-7">{stat.month}月</td>
-                                                                    <td className="px-1 text-center h-7">
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.total_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.total_profit).toLocaleString()}
                                                                     </td>
-                                                                    <td className="px-1 text-center h-7">
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.put_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.put_profit).toLocaleString()}
                                                                     </td>
                                                                     <td className="px-1 text-center h-7">
                                                                         {stat.put_win_rate !== null ? `${stat.put_win_rate}%` : '-'}
                                                                     </td>
-                                                                    <td className="px-1 text-center h-7">
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.call_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.call_profit).toLocaleString()}
                                                                     </td>
                                                                     <td className="px-1 text-center h-7">
@@ -402,10 +402,10 @@ export default function OptionsPage() {
                                                     <tbody>
                                                         <tr>
                                                             <td className="px-1 text-center h-7"></td>
-                                                            <td className="px-1 text-center h-7">
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.total_profit ?? 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
-                                                            <td className="px-1 text-center h-7">
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
                                                             </td>
                                                             <td className="px-1 text-center h-7">
@@ -416,7 +416,7 @@ export default function OptionsPage() {
                                                                     return `${avg}%`;
                                                                 })()}
                                                             </td>
-                                                            <td className="px-1 text-center h-7">
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
                                                             </td>
                                                             <td className="px-1 text-center h-7">
