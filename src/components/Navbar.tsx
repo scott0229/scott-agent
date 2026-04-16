@@ -93,19 +93,6 @@ export function Navbar() {
                     </Button>
                 </Link>
 
-                {/* Admin panel - visible for admin/manager and now customer (read-only) */}
-                {(canAccessAdmin || role === 'customer') && (
-                    <Link href="/admin/users" prefetch={true}>
-                        <Button
-                            variant={pathname.startsWith('/admin/users') ? "default" : "ghost"}
-                            className="gap-2"
-                        >
-                            <Users className="h-4 w-4" />
-                            帳戶設定
-                        </Button>
-                    </Link>
-                )}
-                
                 {/* Historical Reports - strictly admin/manager */}
                 {canAccessAdmin && (
                     <Link href="/admin/reports" prefetch={true}>
@@ -115,6 +102,19 @@ export function Navbar() {
                         >
                             <FileText className="h-4 w-4" />
                             檔案庫
+                        </Button>
+                    </Link>
+                )}
+
+                {/* Admin panel - visible for admin/manager and now customer (read-only) */}
+                {(canAccessAdmin || role === 'customer') && (
+                    <Link href="/admin/users" prefetch={true}>
+                        <Button
+                            variant={pathname.startsWith('/admin/users') ? "default" : "ghost"}
+                            className="gap-2"
+                        >
+                            <Users className="h-4 w-4" />
+                            帳戶設定
                         </Button>
                     </Link>
                 )}
