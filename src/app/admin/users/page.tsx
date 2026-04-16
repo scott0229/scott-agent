@@ -1413,7 +1413,7 @@ export default function AdminUsersPage() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)}>
                                             <FileText className="h-4 w-4 mr-2" />
-                                            報表檔案庫
+                                            檔案庫
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
