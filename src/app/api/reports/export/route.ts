@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         headers.set('Content-Type', 'application/zip');
         headers.set('Content-Disposition', `attachment; filename="${accountId}_historical_reports.zip"`);
 
-        return new NextResponse(zipContent, {
+        return new NextResponse(zipContent as unknown as BodyInit, {
             headers,
         });
 
