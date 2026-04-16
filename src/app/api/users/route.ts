@@ -741,7 +741,7 @@ export async function PUT(req: NextRequest) {
 
         if (typeof managementFee !== 'undefined') {
             updateQuery += ', management_fee = ?';
-            params.push(managementFee);
+            params.push(managementFee !== '' ? parseFloat(managementFee as any) : 0);
         } else if (role && role !== 'customer') {
             updateQuery += ', management_fee = 0';
         }
@@ -789,7 +789,7 @@ export async function PUT(req: NextRequest) {
 
         if (typeof feeExemptMonths !== 'undefined') {
             updateQuery += ', fee_exempt_months = ?';
-            params.push(feeExemptMonths || 0);
+            params.push(feeExemptMonths !== '' ? parseInt(feeExemptMonths as any) : 0);
         }
 
         if (typeof operationMode !== 'undefined') {
@@ -813,8 +813,8 @@ export async function PUT(req: NextRequest) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Update user error:', error);
-        return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
+        return NextResponse.json({ error: error.message || '伺服器內部錯誤', stack: error.stack }, { status: 500 });
     }
 }
