@@ -182,7 +182,7 @@ export default function HistoricalReportsPage() {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-2">
-                        2026 報表檔案
+                        2026 檔案庫
                     </h1>
                 </div>
                 <div className="flex items-center gap-3">
@@ -240,16 +240,15 @@ export default function HistoricalReportsPage() {
                         <div key={accountId} className="rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col">
                             <div className="px-4 py-4 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                    <Users className="h-5 w-5 text-blue-500" />
                                     <span className="font-semibold lg:text-lg">
                                         {users.find(u => u.account_id === accountId) ? `${users.find(u => u.account_id === accountId).alias} - ${accountId}` : accountId}
                                     </span>
                                 </div>
-                                <div className="flex items-center text-muted-foreground text-sm gap-2 shrink-0 px-2 py-1 flex-row rounded">
+                                <div className="flex items-center text-sm gap-2 shrink-0 px-2 py-1 flex-row rounded">
                                     <span className="pointer-events-none">{accountReports.length} 份檔案</span>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button disabled={loading || uploading} variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:bg-transparent hover:text-destructive transition-all">
+                                            <Button disabled={loading || uploading} variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-transparent hover:text-destructive transition-all">
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
                                         </AlertDialogTrigger>
@@ -282,7 +281,7 @@ export default function HistoricalReportsPage() {
                                                     onClick={() => setPreviewId(report.id)}
                                                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                                                 >
-                                                    <TableCell className="font-medium text-blue-600 dark:text-blue-400 pl-4 w-[120px] py-2">
+                                                    <TableCell className="font-medium px-4 w-[120px] py-2">
                                                         {report.statement_date}
                                                     </TableCell>
                                                     <TableCell className="py-2 text-sm text-muted-foreground break-all">
