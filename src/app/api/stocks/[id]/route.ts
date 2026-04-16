@@ -25,15 +25,31 @@ export async function PUT(req: NextRequest) {
             open_price,
             close_price,
             quantity,
-            include_in_options
+            include_in_options,
+            note
         } = body;
 
-        // Support partial update for include_in_options toggle
-        if (typeof include_in_options !== 'undefined' && id) {
+        // Support partial update for toggle and note
+        if ((typeof include_in_options !== 'undefined' || typeof note !== 'undefined') && !symbol && id) {
             const group = await getGroupFromRequest(req);
             const db = await getDb(group);
-            await db.prepare('UPDATE STOCK_TRADES SET include_in_options = ?, updated_at = unixepoch() WHERE id = ?')
-                .bind(include_in_options ? 1 : 0, id).run();
+            let updateQuery = 'UPDATE STOCK_TRADES SET updated_at = unixepoch()';
+            const bindParams: any[] = [];
+            
+            if (typeof include_in_options !== 'undefined') {
+                updateQuery += ', include_in_options = ?';
+                bindParams.push(Number(include_in_options));
+            }
+            
+            if (typeof note !== 'undefined') {
+                updateQuery += ', note = ?';
+                bindParams.push(note);
+            }
+            
+            updateQuery += ' WHERE id = ?';
+            bindParams.push(id);
+            
+            await db.prepare(updateQuery).bind(...bindParams).run();
             clearUserSelectionCache();
             return NextResponse.json({ success: true });
         }
@@ -49,7 +65,8 @@ export async function PUT(req: NextRequest) {
             UPDATE STOCK_TRADES SET
                 symbol = ?, status = ?, open_date = ?, close_date = ?,
                 open_price = ?, close_price = ?, quantity = ?,
-                include_in_options = ?,
+                include_in_options = COALESCE(?, include_in_options),
+                note = COALESCE(?, note),
                 updated_at = unixepoch()
             WHERE id = ?
         `).bind(
@@ -60,7 +77,8 @@ export async function PUT(req: NextRequest) {
             open_price,
             close_price || null,
             quantity,
-            include_in_options ? 1 : 0,
+            include_in_options !== undefined ? Number(include_in_options) : null,
+            note !== undefined ? note : null,
             id
         ).run();
 

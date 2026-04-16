@@ -373,10 +373,13 @@ export default function AdminUsersPage() {
                 // to_date is Unix timestamp, convert to date string
                 const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
                 const expiry = expiryDate ? `${String(expiryDate.getMonth() + 1).padStart(2, '0')}/${String(expiryDate.getDate()).padStart(2, '0')}` : '';
-                const quantity = Math.abs(opt.quantity);
+                const isSeller = opt.quantity < 0;
+                const action = isSeller ? 'sell' : 'buy';
+                const quantityStr = isSeller ? opt.quantity : Math.abs(opt.quantity);
                 const optType = opt.type.toLowerCase();
+                const premiumStr = isSeller ? `, 權利金 ${formatMoney(Math.abs(opt.premium))}` : '';
                 // Premium is negative for sold options in the database
-                report += `${quantity}口 ${expiry} sell-${opt.underlying}-${optType} ${opt.strike_price}, 權利金 ${formatMoney(Math.abs(opt.premium))}\n`;
+                report += `${quantityStr}口 ${expiry} ${action}-${opt.underlying}-${optType} ${opt.strike_price}${premiumStr}\n`;
             });
         }
 
