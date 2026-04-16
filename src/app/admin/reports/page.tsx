@@ -19,7 +19,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle } from 'lucide-react';
+import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { isMarketHoliday } from '@/lib/holidays';
 
@@ -287,6 +287,9 @@ export default function HistoricalReportsPage() {
                                         );
                                     })()}
                                     <span className="pointer-events-none">{accountReports.length} 份檔案</span>
+                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); window.location.href = `/api/reports/export?accountId=${accountId}`; }} className="h-6 w-6 p-0 hover:bg-transparent hover:text-primary transition-all">
+                                        <Download className="h-4 w-4" />
+                                    </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <Button disabled={loading || uploading || deletingId === accountId} variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-transparent hover:text-destructive transition-all">

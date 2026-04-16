@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDb } from '@/lib/db';
+import { getGroupFromRequest } from '@/lib/group';
+import { verifyToken } from '@/lib/auth';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import JSZip from 'jszip';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+    try {
+        const admin = await verifyToken(request.cookies.get('token')?.value || '');
+        if (!admin || !['admin', 'manager'].includes(admin.role)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const accountId = request.nextUrl.searchParams.get('accountId');
+        if (!accountId) {
+            return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
+        }
+
+        const group = await getGroupFromRequest(request);
+        const db = await getDb(group);
+
+        // Fetch up to 1000 latest reports for safety
+        const records = await db.prepare(
+            'SELECT bucket_key, filename FROM report_archives WHERE filename LIKE ? ORDER BY statement_date DESC LIMIT 1000'
+        ).bind(`%${accountId}_%`).all<{ bucket_key: string, filename: string }>();
+
+        if (!records.results || records.results.length === 0) {
+            return NextResponse.json({ error: 'No reports found for this account' }, { status: 404 });
+        }
+
+        const { env } = await getCloudflareContext();
+        if (!env || !env.R2) {
+            return NextResponse.json({ error: 'R2 storage not configured' }, { status: 500 });
+        }
+
+        const zip = new JSZip();
+        
+        // Fetch files sequentially to avoid hitting R2 rate limits or memory bursts in worker
+        for (const record of records.results) {
+            try {
+                const object = await env.R2.get(record.bucket_key);
+                if (object) {
+                    const arrayBuffer = await object.arrayBuffer();
+                    zip.file(record.filename, arrayBuffer);
+                }
+            } catch (err) {
+                console.warn(`Failed to fetch file ${record.filename} from R2 for export:`, err);
+            }
+        }
+
+        const zipContent = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+
+        const headers = new Headers();
+        headers.set('Content-Type', 'application/zip');
+        headers.set('Content-Disposition', `attachment; filename="${accountId}_historical_reports.zip"`);
+
+        return new NextResponse(zipContent, {
+            headers,
+        });
+
+    } catch (error: any) {
+        console.error('Export account reports failed:', error);
+        return NextResponse.json({ error: 'Failed to generate zip export' }, { status: 500 });
+    }
+}
