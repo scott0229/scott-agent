@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { isMarketHoliday } from '@/lib/holidays';
 
 interface ReportArchive {
     id: number;
@@ -35,13 +36,14 @@ export default function HistoricalReportsPage() {
     const [uploading, setUploading] = useState(false);
     const [previewId, setPreviewId] = useState<number | null>(null);
     const [users, setUsers] = useState<any[]>([]);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dirInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const router = useRouter();
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = async (showLoader = true) => {
+        if (showLoader) setLoading(true);
         try {
             const [resReports, resUsers] = await Promise.all([
                 fetch('/api/reports'),
@@ -64,7 +66,7 @@ export default function HistoricalReportsPage() {
         } catch (error) {
             console.error('Fetch data failed:', error);
         } finally {
-            setLoading(false);
+            if (showLoader) setLoading(false);
         }
     };
 
@@ -95,12 +97,12 @@ export default function HistoricalReportsPage() {
     }, [reports]);
 
     const handleDeleteAccount = async (accountId: string) => {
-        setLoading(true);
+        setDeletingId(accountId);
         try {
             const res = await fetch(`/api/reports?accountId=${accountId}`, { method: 'DELETE' });
             if (res.ok) {
                 toast({ title: '刪除成功', description: `已清空帳戶 ${accountId} 的報表資料` });
-                fetchData();
+                fetchData(false);
             } else {
                 toast({ variant: 'destructive', title: '刪除失敗', description: '無法清空資料' });
             }
@@ -108,7 +110,7 @@ export default function HistoricalReportsPage() {
             console.error('Delete account failed:', error);
             toast({ variant: 'destructive', title: '刪除失敗', description: '發生系統錯誤' });
         } finally {
-            setLoading(false);
+            setDeletingId(null);
         }
     };
 
@@ -155,7 +157,7 @@ export default function HistoricalReportsPage() {
                 title: "上傳完成",
                 description: `成功歸檔 ${successCount} 份報表${failCount > 0 ? `，失敗 ${failCount} 份` : ''}`,
             });
-            fetchData();
+            fetchData(false);
         } else if (failCount > 0) {
             toast({
                 variant: 'destructive',
@@ -175,6 +177,36 @@ export default function HistoricalReportsPage() {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const getCompletenessStatus = (accountReports: ReportArchive[]) => {
+        if (accountReports.length === 0) return null;
+        if (accountReports.length === 1) return "檔案完整";
+    
+        const latestStr = accountReports[0].statement_date; 
+        const earliestStr = accountReports[accountReports.length - 1].statement_date;
+        
+        const existingDates = new Set(accountReports.map(r => r.statement_date));
+        
+        let current = new Date(`${earliestStr}T00:00:00`);
+        const end = new Date(`${latestStr}T00:00:00`);
+        
+        let isMissing = false;
+        while (current <= end) {
+            if (current.getDay() !== 0 && current.getDay() !== 6 && !isMarketHoliday(current)) {
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const d = String(current.getDate()).padStart(2, '0');
+                const dateStr = `${y}-${m}-${d}`;
+                if (!existingDates.has(dateStr)) {
+                    isMissing = true;
+                    break;
+                }
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        
+        return isMissing ? "檔案短缺" : "檔案完整";
     };
 
     return (
@@ -245,11 +277,20 @@ export default function HistoricalReportsPage() {
                                     </span>
                                 </div>
                                 <div className="flex items-center text-sm gap-2 shrink-0 px-2 py-1 flex-row rounded">
+                                    {(() => {
+                                        const status = getCompletenessStatus(accountReports);
+                                        if (!status) return null;
+                                        return (
+                                            <span className={`px-2 py-0.5 rounded text-sm ${status === '檔案完整' ? 'bg-green-100' : 'bg-red-100'}`}>
+                                                {status}
+                                            </span>
+                                        );
+                                    })()}
                                     <span className="pointer-events-none">{accountReports.length} 份檔案</span>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button disabled={loading || uploading} variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-transparent hover:text-destructive transition-all">
-                                                <Trash2 className="h-3 w-3" />
+                                            <Button disabled={loading || uploading || deletingId === accountId} variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-transparent hover:text-destructive transition-all">
+                                                {deletingId === accountId ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                                             </Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
@@ -275,20 +316,55 @@ export default function HistoricalReportsPage() {
                             <div className="border-t bg-background max-h-[350px] overflow-y-auto custom-scrollbar">
                                     <Table>
                                         <TableBody>
-                                            {accountReports.map((report) => (
-                                                <TableRow 
-                                                    key={report.id} 
-                                                    onClick={() => setPreviewId(report.id)}
-                                                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                >
-                                                    <TableCell className="font-medium px-4 w-[120px] py-2">
-                                                        {report.statement_date}
-                                                    </TableCell>
-                                                    <TableCell className="py-2 text-sm text-muted-foreground break-all">
-                                                        {report.filename.split('/').pop()}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
+                                            {accountReports.map((report, index) => {
+                                                const rows = [
+                                                    <TableRow 
+                                                        key={report.id} 
+                                                        onClick={() => setPreviewId(report.id)}
+                                                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                                    >
+                                                        <TableCell className="font-medium px-4 w-[120px] py-2">
+                                                            {report.statement_date}
+                                                        </TableCell>
+                                                        <TableCell className="py-2 text-sm break-all">
+                                                            {report.filename.split('/').pop()}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ];
+
+                                                if (index < accountReports.length - 1) {
+                                                    const nextReport = accountReports[index + 1];
+                                                    
+                                                    let d = new Date(`${report.statement_date}T00:00:00`);
+                                                    d.setDate(d.getDate() - 1);
+                                                    const end = new Date(`${nextReport.statement_date}T00:00:00`);
+                                                    
+                                                    while (d > end) {
+                                                        if (d.getDay() !== 0 && d.getDay() !== 6 && !isMarketHoliday(d)) {
+                                                            const y = d.getFullYear();
+                                                            const m = String(d.getMonth() + 1).padStart(2, '0');
+                                                            const day = String(d.getDate()).padStart(2, '0');
+                                                            const missingDateStr = `${y}-${m}-${day}`;
+                                                            
+                                                            rows.push(
+                                                                <TableRow 
+                                                                    key={`missing-${missingDateStr}-${accountId}`} 
+                                                                    className="bg-red-50/50 hover:bg-red-50/50 pointer-events-none"
+                                                                >
+                                                                    <TableCell className="font-medium px-4 w-[120px] py-2 text-red-700">
+                                                                        {missingDateStr}
+                                                                    </TableCell>
+                                                                    <TableCell className="py-2 text-sm text-red-700">
+                                                                        檔案短缺
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        }
+                                                        d.setDate(d.getDate() - 1);
+                                                    }
+                                                }
+                                                return rows;
+                                            })}
                                         </TableBody>
                                     </Table>
                                 </div>
