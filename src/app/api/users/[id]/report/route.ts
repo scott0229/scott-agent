@@ -180,6 +180,28 @@ export async function GET(
             }
         });
 
+        // Add closed stock P&L (include_in_options=1)
+        const stockPnlQuery = `
+            SELECT 
+                strftime('%m', datetime(close_date, 'unixepoch')) as month,
+                SUM((close_price - open_price) * quantity) as stock_pnl
+            FROM STOCK_TRADES
+            WHERE owner_id = ? 
+                AND include_in_options = 1 
+                AND status = 'Closed' 
+                AND close_price IS NOT NULL
+                AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
+            GROUP BY month
+        `;
+        const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(userId, currentYear.toString()).all();
+
+        (stockPnlResults as any[]).forEach((row: any) => {
+            if (!monthlyData[row.month]) {
+                monthlyData[row.month] = { total: 0, put: 0, call: 0, turnover: 0 };
+            }
+            monthlyData[row.month].total += (row.stock_pnl || 0);
+        });
+
         // Create monthly stats array (all 12 months)
         const monthlyStats = [];
         for (let i = 1; i <= 12; i++) {
@@ -255,6 +277,7 @@ export async function GET(
             WHERE owner_id = ? AND year = ? AND operation = 'Open'
             GROUP BY to_date, underlying, type, strike_price
             ORDER BY 
+                CASE WHEN SUM(quantity) < 0 THEN 1 ELSE 2 END,
                 CASE underlying
                     WHEN 'QQQ' THEN 1
                     WHEN 'QLD' THEN 2
