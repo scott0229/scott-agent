@@ -68,19 +68,21 @@ export function Navbar() {
         <nav className="sticky top-0 w-full z-50 p-4 flex justify-between gap-2 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-white/20 shadow-sm items-center">
             {/* Year Filter - Only show on options pages */}
             <div className="flex items-center gap-2 ml-2">
-                {/* Year Filter - Only show on options pages */}
-                {isOptionsPage && (
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                        <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="選擇年份" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {years.map(year => (
-                                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
+                {/* Year Filter - Always render to prevent layout shift, but disable when not applicable */}
+                <Select 
+                    value={isOptionsPage ? selectedYear : ''} 
+                    onValueChange={setSelectedYear}
+                    disabled={!isOptionsPage}
+                >
+                    <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder={!isOptionsPage ? "-" : "選擇年份"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {years.map(year => (
+                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
                 {/* Projects - Moved to left side */}
                 <Link href="/project-list" prefetch={true}>
