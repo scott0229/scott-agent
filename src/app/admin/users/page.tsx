@@ -25,6 +25,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
+import { ArchiveImportDialog } from "@/components/ArchiveImportDialog";
 
 
 interface User {
@@ -140,6 +141,7 @@ export default function AdminUsersPage() {
     const [batchResults, setBatchResults] = useState<Array<{ file: string; date: string; user: string; status: string }>>([]);
     const [batchError, setBatchError] = useState<string | null>(null);
     const [batchDateWarnings, setBatchDateWarnings] = useState<string[]>([]);
+    const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const singleFileInputRef = useRef<HTMLInputElement>(null);
     const dirInputRef = useRef<HTMLInputElement>(null);
     const jsonImportRef = useRef<HTMLInputElement>(null);
@@ -948,20 +950,6 @@ export default function AdminUsersPage() {
             });
         }
     };
-    // ...
-    // Note: I will update the UserSelectionDialog instances below in the JSX return part in another pass or rely on multi chunk?
-    // Wait, the instruction only covered the logic functions. I need to update the JSX return to include the new dependencies too.
-    // The previous tool call covered lines 171-424.
-    // I need to update the JSX part too. 
-    // Let's rely on `multi_replace` or just do it all here if I can find the JSX.
-    // The JSX is further down.
-    // I will use `TargetContent` for the function bodies.
-    // I will handle the JSX update in a separate call or try to verify if I can reach it.
-    // The file is 791 lines.
-    // `confirmImport` ends around line 430.
-    // `dependencies` prop is passed in JSX around line 700.
-    // I will stick to updating functions first.
-
 
     // Batch IB Import: Chinese month map for date extraction
     const BATCH_MONTH_MAP: Record<string, number> = {
@@ -1155,11 +1143,7 @@ export default function AdminUsersPage() {
     };
 
     // IB Statement Import Handlers
-    const handleIbImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        event.target.value = ''; // Reset input
-
+    const processIbFile = async (file: File) => {
         try {
             // Parse net equity
             const formData = new FormData();
@@ -1211,6 +1195,13 @@ export default function AdminUsersPage() {
                 description: error.message,
             });
         }
+    };
+
+    const handleIbImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        event.target.value = ''; // Reset input
+        await processIbFile(file);
     };
 
     const confirmIbImport = async () => {
@@ -1419,6 +1410,10 @@ export default function AdminUsersPage() {
                                         <DropdownMenuItem onClick={() => dirInputRef.current?.click()}>
                                             <FolderOpen className="h-4 w-4 mr-2" />
                                             資料夾
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)}>
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            報表檔案庫
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -2272,6 +2267,11 @@ export default function AdminUsersPage() {
                     description={progressMessage}
                     progress={progressValue}
                     onConfirm={progressValue === 100 ? () => setProgressOpen(false) : undefined}
+                />
+                <ArchiveImportDialog 
+                    open={archiveDialogOpen} 
+                    onOpenChange={setArchiveDialogOpen} 
+                    onImport={processIbFile} 
                 />
             </div>
         </TooltipProvider >

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, Wallet, LineChart, Target } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -97,11 +97,24 @@ export function Navbar() {
                 {(canAccessAdmin || role === 'customer') && (
                     <Link href="/admin/users" prefetch={true}>
                         <Button
-                            variant={pathname.startsWith('/admin') ? "default" : "ghost"}
+                            variant={pathname.startsWith('/admin/users') ? "default" : "ghost"}
                             className="gap-2"
                         >
                             <Users className="h-4 w-4" />
                             帳戶設定
+                        </Button>
+                    </Link>
+                )}
+                
+                {/* Historical Reports - strictly admin/manager */}
+                {canAccessAdmin && (
+                    <Link href="/admin/reports" prefetch={true}>
+                        <Button
+                            variant={pathname.startsWith('/admin/reports') ? "default" : "ghost"}
+                            className="gap-2"
+                        >
+                            <FileText className="h-4 w-4" />
+                            報表檔案庫
                         </Button>
                     </Link>
                 )}

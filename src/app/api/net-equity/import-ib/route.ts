@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { clearCache } from '@/lib/response-cache';
 import { customAlphabet } from 'nanoid';
 import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 const generateCode = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 5);
 
@@ -621,6 +622,43 @@ export async function POST(request: NextRequest) {
 
         // Confirm mode
         let yearStartUpdated = false;
+
+        // --- Archive Report to R2 and D1 ---
+        try {
+            const { env } = await getCloudflareContext();
+            if (env && env.R2) {
+                const rawFilename = file.name || 'report.html';
+                const baseFilename = rawFilename.split('/').pop() || rawFilename;
+
+                const existing = await db.prepare('SELECT id, bucket_key FROM report_archives WHERE filename = ?').bind(baseFilename).first();
+
+                let r2Key;
+                if (existing) {
+                    r2Key = existing.bucket_key as string;
+                    await env.R2.put(r2Key, html, {
+                        httpMetadata: { contentType: file.type || 'text/html' },
+                    });
+                    
+                    await db.prepare('UPDATE report_archives SET statement_date = ?, created_at = unixepoch() WHERE id = ?')
+                        .bind(parsed.dateStr, existing.id).run();
+                } else {
+                    const ext = baseFilename.split('.').pop() || 'html';
+                    r2Key = `reports/${parsed.dateStr}_${customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8)()}.${ext}`;
+                    await env.R2.put(r2Key, html, {
+                        httpMetadata: { contentType: file.type || 'text/html' },
+                    });
+                    
+                    await db.prepare(`
+                        INSERT INTO report_archives (filename, bucket_key, statement_date, created_at)
+                        VALUES (?, ?, ?, unixepoch())
+                    `).bind(baseFilename, r2Key, parsed.dateStr).run();
+                }
+            }
+        } catch (r2Err) {
+            console.error('Failed to archive report to R2/D1:', r2Err);
+            // Non-fatal, continue with data import
+        }
+        // -----------------------------------
 
         if (parsed.isYearStart) {
             // Jan 1st: only update year-start fields in USERS table, no daily record
