@@ -549,7 +549,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                     : getDaysHeld(opt)
                                             )}
                                         </TableCell>
-                                        <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
+                                        <TableCell className="font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
 
                                         <TableCell>{opt.premium != null ? opt.premium.toLocaleString() : '-'}</TableCell>
                                         <TableCell className={opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
