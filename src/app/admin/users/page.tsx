@@ -26,6 +26,13 @@ import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { UserSelectionDialog } from "@/components/UserSelectionDialog";
 import { ProgressDialog } from "@/components/ProgressDialog";
 import { ArchiveImportDialog } from "@/components/ArchiveImportDialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 
 interface User {
@@ -97,6 +104,7 @@ export default function AdminUsersPage() {
     const [progressOpen, setProgressOpen] = useState(false);
     const [progressValue, setProgressValue] = useState(0);
     const [progressMessage, setProgressMessage] = useState("");
+    const [selectedUserId, setSelectedUserId] = useState<number | 'All'>('All');
 
     // In-Dialog Progress State (Import)
     const [importProcessing, setImportProcessing] = useState(false);
@@ -1352,6 +1360,23 @@ export default function AdminUsersPage() {
                         {/* Only show actions for admin/manager/trader, NOT customer */}
                         {currentUser?.role !== 'customer' && currentUser?.role !== 'trader' && (
                             <>
+                                <Select
+                                    value={selectedUserId === 'All' ? 'All' : selectedUserId.toString()}
+                                    onValueChange={(val) => setSelectedUserId(val === 'All' ? 'All' : Number(val))}
+                                >
+                                    <SelectTrigger className="w-[150px] h-9 border-border shadow-xs">
+                                        <SelectValue placeholder="所有帳號" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="All">所有帳號</SelectItem>
+                                        {users.filter(u => u.email !== 'admin').map((u) => (
+                                            <SelectItem key={u.id} value={u.id.toString()}>
+                                                {u.user_id || u.email.split('@')[0]}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
                                 {userReports.size > 0 && (
                                     <Button
                                         variant="outline"
@@ -1475,7 +1500,10 @@ export default function AdminUsersPage() {
                         </TableHeader>
                         <TableBody>
                             {(() => {
-                                const filteredUsers = users.filter(u => u.email !== 'admin');
+                                let filteredUsers = users.filter(u => u.email !== 'admin');
+                                if (selectedUserId !== 'All') {
+                                    filteredUsers = filteredUsers.filter(u => u.id === selectedUserId);
+                                }
                                 if (filteredUsers.length === 0) {
                                     return (
                                         <TableRow className="hover:bg-transparent">
@@ -1638,6 +1666,7 @@ export default function AdminUsersPage() {
                     <div className="mt-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {Array.from(userReports.entries())
+                                .filter(([aId]) => selectedUserId === 'All' || aId === selectedUserId)
                                 .sort(([aId], [bId]) => {
                                     const aEquity = users.find(u => u.id === aId)?.current_net_equity || 0;
                                     const bEquity = users.find(u => u.id === bId)?.current_net_equity || 0;
