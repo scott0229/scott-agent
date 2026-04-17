@@ -291,16 +291,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     });
 
-    // Sort options: open positions (Open) first (by open_date desc), then closed positions (by open_date desc)
+    // Sort options: strictly by open_date desc
     const sortedOptions = filteredOptions.sort((a, b) => {
-        const aIsOpen = (a.operation || 'Open') === 'Open';
-        const bIsOpen = (b.operation || 'Open') === 'Open';
-
-        // If one is open and the other is closed, open comes first
-        if (aIsOpen && !bIsOpen) return -1;
-        if (!aIsOpen && bIsOpen) return 1;
-
-        // If both have the same status, sort by open_date (newest first)
         return b.open_date - a.open_date;
     });
 
