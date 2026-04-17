@@ -169,28 +169,58 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 const stocksData = await stocksRes.json();
                 
                 if (stocksData.stocks) {
-                    const mappedStocks: Option[] = stocksData.stocks.map((st: any) => ({
-                        id: `STK-${st.id}`,
-                        status: st.status,
-                        operation: st.status,
-                        open_date: st.open_date,
-                        to_date: null,
-                        settlement_date: st.close_date || null,
-                        quantity: st.quantity,
-                        underlying: st.symbol,
-                        type: 'STK',
-                        strike_price: 0,
-                        collateral: null,
-                        premium: null,
-                        final_profit: st.close_date ? (st.close_price - st.open_price) * st.quantity : null,
-                        profit_percent: st.close_date && st.open_price ? (st.close_price - st.open_price) / st.open_price : null,
-                        delta: null,
-                        iv: null,
-                        capital_efficiency: null,
-                        user_id: st.user_id,
-                        code: st.code,
-                        underlying_price: st.open_price
-                    }));
+                    const mappedStocks: Option[] = [];
+                    stocksData.stocks.forEach((st: any) => {
+                        // Open transaction
+                        mappedStocks.push({
+                            id: `STK-${st.id}-O`,
+                            status: 'Open',
+                            operation: 'Open',
+                            open_date: st.open_date,
+                            to_date: null,
+                            settlement_date: null,
+                            quantity: st.quantity,
+                            underlying: st.symbol,
+                            type: 'STK',
+                            strike_price: 0,
+                            collateral: null,
+                            premium: null,
+                            final_profit: null,
+                            profit_percent: null,
+                            delta: null,
+                            iv: null,
+                            capital_efficiency: null,
+                            user_id: st.user_id,
+                            code: st.code,
+                            underlying_price: st.open_price
+                        });
+
+                        // Close transaction
+                        if (st.close_date) {
+                            mappedStocks.push({
+                                id: `STK-${st.id}-C`,
+                                status: 'Closed',
+                                operation: 'Closed',
+                                open_date: st.close_date, // Align on timeline
+                                to_date: null,
+                                settlement_date: null,
+                                quantity: -(st.quantity), // Inverse quantity
+                                underlying: st.symbol,
+                                type: 'STK',
+                                strike_price: 0,
+                                collateral: null,
+                                premium: null,
+                                final_profit: (st.close_price - st.open_price) * st.quantity,
+                                profit_percent: st.open_price ? (st.close_price - st.open_price) / st.open_price : null,
+                                delta: null,
+                                iv: null,
+                                capital_efficiency: null,
+                                user_id: st.user_id,
+                                code: st.code,
+                                underlying_price: st.close_price
+                            });
+                        }
+                    });
                     finalData = [...finalData, ...mappedStocks];
                 }
             }
@@ -502,18 +532,18 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="font-mono text-sm">
                                             {formatOptionTicker(opt)}
                                         </TableCell>
-                                        <TableCell>{getDaysToExpire(opt)}</TableCell>
+                                        <TableCell>{opt.type === 'STK' ? "-" : getDaysToExpire(opt)}</TableCell>
                                         <TableCell>
-                                            {(opt.operation === 'Open' || !opt.settlement_date) ? (
-                                                "-"
-                                            ) : (
-                                                formatDate(opt.settlement_date)
+                                            {opt.type === 'STK' ? "-" : (
+                                                (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {(opt.operation === 'Open' || !opt.settlement_date)
-                                                ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
-                                                : getDaysHeld(opt)}
+                                            {opt.type === 'STK' ? "-" : (
+                                                (opt.operation === 'Open' || !opt.settlement_date)
+                                                    ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
+                                                    : getDaysHeld(opt)
+                                            )}
                                         </TableCell>
                                         <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
 
