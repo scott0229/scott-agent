@@ -228,7 +228,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const m = date.getUTCMinutes();
         const s = date.getUTCSeconds();
         if (h === 0 && m === 0 && s === 0) return '-';
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     };
 
     const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
