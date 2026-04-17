@@ -263,10 +263,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const formatOptionTicker = (opt: Option) => {
+        const underlying = opt.underlying;
         if (opt.type === 'STK') {
-            return `${opt.underlying}`;
+            return opt.underlying_price != null ? `${underlying} (${opt.underlying_price.toLocaleString('en-US')})` : underlying;
         }
-        const underlying = opt.underlying || '';
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
         if (!opt.to_date) return `${underlying} - ${strike}${typeChar}`;
