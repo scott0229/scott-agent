@@ -526,7 +526,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
-                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : ''}>
+                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : opt.quantity < 0 ? 'text-red-600' : ''}>
                                             {opt.quantity}
                                         </TableCell>
                                         <TableCell className="font-mono text-sm">
