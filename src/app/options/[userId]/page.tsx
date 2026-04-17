@@ -72,6 +72,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
     const [includeStocks, setIncludeStocks] = useState<boolean>(false);
+    const [manualSeparators, setManualSeparators] = useState<Record<string, boolean>>({});
+
+    const toggleSeparator = (id: string | number) => {
+        const key = String(id);
+        setManualSeparators(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -265,7 +274,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const formatOptionTicker = (opt: Option) => {
         const underlying = opt.underlying;
         if (opt.type === 'STK') {
-            return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US')})` : underlying;
+            return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })})` : underlying;
         }
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
@@ -474,17 +483,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </TableRow>
                         ) : (
                             sortedOptions.map((opt, index) => {
-                                const olderTrade = sortedOptions[index + 1];
-                                const isLastInGroup = index < sortedOptions.length - 1 &&
-                                    !(
-                                        formatDate(opt.open_date) === formatDate(olderTrade?.open_date) ||
-                                        (olderTrade?.settlement_date && formatDate(opt.open_date) === formatDate(olderTrade?.settlement_date))
-                                    );
-
                                 return (
                                     <TableRow
                                         key={opt.id}
-                                        className={`text-center ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${isLastInGroup ? 'border-b-4 border-orange-200' : ''}`}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            toggleSeparator(opt.id);
+                                        }}
+                                        className={`text-center transition-colors ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
                                     >
                                         <TableCell>{sortedOptions.length - index}</TableCell>
                                         {params.userId === 'All' && (
@@ -551,9 +557,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         <TableCell className="font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
 
-                                        <TableCell>{opt.premium != null ? opt.premium.toLocaleString() : '-'}</TableCell>
+                                        <TableCell>{opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}</TableCell>
                                         <TableCell className={opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
-                                            {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US') : '-')}
+                                            {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-')}
                                         </TableCell>
 
 
