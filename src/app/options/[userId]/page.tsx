@@ -474,8 +474,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </TableRow>
                         ) : (
                             sortedOptions.map((opt, index) => {
+                                const olderTrade = sortedOptions[index + 1];
                                 const isLastInGroup = index < sortedOptions.length - 1 &&
-                                    formatDate(opt.open_date) !== formatDate(sortedOptions[index + 1].open_date);
+                                    !(
+                                        formatDate(opt.open_date) === formatDate(olderTrade?.open_date) ||
+                                        (olderTrade?.settlement_date && formatDate(opt.open_date) === formatDate(olderTrade?.settlement_date))
+                                    );
 
                                 return (
                                     <TableRow
