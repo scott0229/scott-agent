@@ -109,8 +109,8 @@ function parseIBStatement(html: string) {
         deposit = parseNumber(depositMatch[1]);
     }
 
-    // Format date string for display: YY-MM-DD
-    const dateStr = `${String(year).slice(2)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // Format date string for display and archiving: YYYY-MM-DD
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     // Check if this is January 1st (year start)
     const isYearStart = month === 1 && day === 1;
