@@ -7,6 +7,7 @@ interface AdminSettings {
     showPhone: boolean;
     showEmail: boolean;
     premiumTargetPercent: number;
+    includeStockDiffInPremium: boolean;
 }
 
 interface AdminSettingsContextType {
@@ -21,6 +22,7 @@ const defaultSettings: AdminSettings = {
     showPhone: true,
     showEmail: true,
     premiumTargetPercent: 4,
+    includeStockDiffInPremium: true,
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);

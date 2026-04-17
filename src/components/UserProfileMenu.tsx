@@ -23,6 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { LogOut, User as UserIcon, Upload, Loader2, Edit, Eye } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "@/contexts/AdminSettingsContext";
@@ -324,6 +331,20 @@ export function UserProfileMenu() {
                                             className="w-24"
                                         />
                                         <span className="text-sm text-muted-foreground">%</span>
+                                        <div className="ml-2">
+                                            <Select
+                                                value={settings.includeStockDiffInPremium === false ? "false" : "true"}
+                                                onValueChange={(val) => updateSetting('includeStockDiffInPremium', val === "true")}
+                                            >
+                                                <SelectTrigger className="w-[130px] h-9">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="true" className="cursor-pointer">列入價差</SelectItem>
+                                                    <SelectItem value="false" className="cursor-pointer">不列入價差</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                 </div>
                             )}

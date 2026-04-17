@@ -165,7 +165,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const quarterPutPremium = quarterStats.reduce((s, stat) => s + stat.put_profit, 0);
         const quarterCallPremium = quarterStats.reduce((s, stat) => s + stat.call_profit, 0);
         const quarterStockPnl = quarterStats.reduce((s, stat) => s + (stat.stock_pnl || 0), 0);
-        const quarterPremium = quarterPutPremium + quarterCallPremium + quarterStockPnl;
+        const quarterPremium = quarterPutPremium + quarterCallPremium + (settings.includeStockDiffInPremium === false ? 0 : quarterStockPnl);
 
         // QX Target - Use initial cost instead of current equity
         const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100));
@@ -175,7 +175,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
         const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
-        const annualPremium = annualPutPremium + annualCallPremium + annualStockPnl;
+        const annualPremium = annualPutPremium + annualCallPremium + (settings.includeStockDiffInPremium === false ? 0 : annualStockPnl);
 
         // Daily Premium = annual total / trading days so far (from user's start_date)
         const userStartDate = user.start_date
@@ -364,7 +364,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {(() => {
                                             const costBase = ((user.initial_cost || 0) + (user.net_deposit || 0)) || 1;
-                                            const rate = ((user.total_profit || 0) / costBase) * 100;
+                                            const rate = (calculateUserMetrics(user).annualPremium / costBase) * 100;
                                             return <StatBadge>{rate.toFixed(2)}%</StatBadge>;
                                         })()}
                                     </td>
@@ -470,20 +470,22 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Quarterly Stock PnL */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
+                        {settings.includeStockDiffInPremium !== false && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
 
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                const val = calculateUserMetrics(user).quarterStockPnl;
-                                return isVisible ? (
-                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
-                                        {formatMoney(val)}
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
+                                {users.map(user => {
+                                    const userKey = user.user_id || user.id.toString();
+                                    const isVisible = columnVisibility.users[userKey] !== false;
+                                    const val = calculateUserMetrics(user).quarterStockPnl;
+                                    return isVisible ? (
+                                        <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
+                                            {formatMoney(val)}
+                                        </td>
+                                    ) : null;
+                                })}
+                            </tr>
+                        )}
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
@@ -541,20 +543,22 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Stock PnL */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
+                        {settings.includeStockDiffInPremium !== false && (
+                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
 
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                const val = calculateUserMetrics(user).annualStockPnl;
-                                return isVisible ? (
-                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
-                                        {formatMoney(val)}
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
+                                {users.map(user => {
+                                    const userKey = user.user_id || user.id.toString();
+                                    const isVisible = columnVisibility.users[userKey] !== false;
+                                    const val = calculateUserMetrics(user).annualStockPnl;
+                                    return isVisible ? (
+                                        <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
+                                            {formatMoney(val)}
+                                        </td>
+                                    ) : null;
+                                })}
+                            </tr>
+                        )}
 
                     </tbody>
                 </table>
