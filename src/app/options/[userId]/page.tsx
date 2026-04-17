@@ -480,7 +480,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 return (
                                     <TableRow
                                         key={opt.id}
-                                        className={`text-center ${opt.type === 'STK' ? 'bg-amber-50' : 'hover:bg-muted/50'} ${isLastInGroup ? 'border-b-4 border-orange-200' : ''}`}
+                                        className={`text-center ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${isLastInGroup ? 'border-b-4 border-orange-200' : ''}`}
                                     >
                                         <TableCell>{sortedOptions.length - index}</TableCell>
                                         {params.userId === 'All' && (
