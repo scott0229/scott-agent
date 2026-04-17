@@ -285,9 +285,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         // Year filter is handled by API query based on selectedYear
         const monthMatch = selectedMonth === 'All' || (date.getMonth() + 1).toString() === selectedMonth;
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
-        const typeMatch = selectedType === 'All' || opt.type === selectedType;
+        const typeMatch = selectedType === 'All' || opt.type === selectedType || opt.type === 'STK';
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
-        const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation;
+        const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation || opt.type === 'STK';
         return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
     });
 
