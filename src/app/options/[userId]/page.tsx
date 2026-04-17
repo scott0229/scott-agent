@@ -33,7 +33,7 @@ import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 
 interface Option {
-    id: number;
+    id: number | string;
     status: string;
     operation: string | null;
     open_date: number;
@@ -71,6 +71,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedType, setSelectedType] = useState<string>('All');
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
+    const [includeStocks, setIncludeStocks] = useState<boolean>(false);
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -152,20 +153,49 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const fetchOptions = async () => {
         try {
             const year = selectedYear; // Allow 'All' to be passed directly
-            // Prioritize ownerId if available
-            // If params.userId is 'All', we don't pass userId or ownerId to get all records
             let idParam = '';
             if (params.userId !== 'All') {
                 idParam = ownerId ? `ownerId=${ownerId}` : `userId=${params.userId}`;
             }
-            // If idParam is empty, we just pass year. URLSearchParams handles empty keys mostly fine but let's be clean.
             const queryParams = [idParam, `year=${year}`].filter(Boolean).join('&');
 
-            const res = await fetch(`/api/options?${queryParams}`, { cache: 'no-store' });
-            const data = await res.json();
-            if (data.options) {
-                setOptions(data.options);
+            const optionsRes = await fetch(`/api/options?${queryParams}`, { cache: 'no-store' });
+            const optionsData = await optionsRes.json();
+            
+            let finalData: Option[] = optionsData.options || [];
+
+            if (includeStocks) {
+                const stocksRes = await fetch(`/api/stocks?${queryParams}`, { cache: 'no-store' });
+                const stocksData = await stocksRes.json();
+                
+                if (stocksData.stocks) {
+                    const mappedStocks: Option[] = stocksData.stocks.map((st: any) => ({
+                        id: `STK-${st.id}`,
+                        status: st.status,
+                        operation: st.status,
+                        open_date: st.open_date,
+                        to_date: null,
+                        settlement_date: st.close_date || null,
+                        quantity: st.quantity,
+                        underlying: st.symbol,
+                        type: 'STK',
+                        strike_price: 0,
+                        collateral: null,
+                        premium: null,
+                        final_profit: st.close_date ? (st.close_price - st.open_price) * st.quantity : null,
+                        profit_percent: st.close_date && st.open_price ? (st.close_price - st.open_price) / st.open_price : null,
+                        delta: null,
+                        iv: null,
+                        capital_efficiency: null,
+                        user_id: st.user_id,
+                        code: st.code,
+                        underlying_price: st.open_price
+                    }));
+                    finalData = [...finalData, ...mappedStocks];
+                }
             }
+
+            setOptions(finalData);
         } catch (error) {
             console.error('Failed to fetch options:', error);
         } finally {
@@ -175,7 +205,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     useEffect(() => {
         fetchOptions();
-    }, [params.userId, selectedYear, ownerId]);
+    }, [params.userId, selectedYear, ownerId, includeStocks]);
 
 
 
@@ -203,6 +233,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const formatOptionTicker = (opt: Option) => {
+        if (opt.type === 'STK') {
+            return `${opt.underlying} STK`;
+        }
         const underlying = opt.underlying || '';
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
@@ -367,6 +400,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 {operations.map(op => <SelectItem key={op} value={op}>{op}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                        
+                        <Button 
+                            variant={includeStocks ? "default" : "outline"}
+                            className="ml-2 gap-2"
+                            onClick={() => setIncludeStocks(!includeStocks)}
+                        >
+                            包含股票
+                        </Button>
                     </div>
 
 
