@@ -1380,7 +1380,7 @@ export default function AdminUsersPage() {
                                 {userReports.size > 0 && (
                                     <Button
                                         variant="outline"
-                                        className="hover:bg-accent hover:text-accent-foreground"
+                                        className="font-normal hover:bg-accent hover:text-accent-foreground"
                                         onClick={handleBatchMailClick}
                                     >
                                         <Mail className="h-4 w-4 mr-2" />
@@ -1392,7 +1392,7 @@ export default function AdminUsersPage() {
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="hover:bg-accent hover:text-accent-foreground"
+                                            className="font-normal hover:bg-accent hover:text-accent-foreground"
                                         >
                                             <HardDrive className="h-4 w-4 mr-2" />
                                             備份
@@ -1421,7 +1421,7 @@ export default function AdminUsersPage() {
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="hover:bg-accent hover:text-accent-foreground"
+                                            className="font-normal hover:bg-accent hover:text-accent-foreground"
                                         >
                                             <FileUp className="h-4 w-4 mr-2" />
                                             匯入報表
@@ -1460,7 +1460,7 @@ export default function AdminUsersPage() {
                                     <Button
                                         onClick={() => setDeleteAllDialogOpen(true)}
                                         variant="outline"
-                                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                        className="font-normal hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                                     >
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         刪除全部
