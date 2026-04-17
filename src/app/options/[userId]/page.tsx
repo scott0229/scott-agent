@@ -234,7 +234,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const formatOptionTicker = (opt: Option) => {
         if (opt.type === 'STK') {
-            return `${opt.underlying} STK`;
+            return `${opt.underlying}`;
         }
         const underlying = opt.underlying || '';
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
