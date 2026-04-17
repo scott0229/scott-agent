@@ -548,8 +548,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
 
                                         <TableCell>{opt.premium != null ? opt.premium.toLocaleString() : '-'}</TableCell>
-                                        <TableCell className={opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
-                                            {opt.final_profit != null ? opt.final_profit.toLocaleString('en-US') : '-'}
+                                        <TableCell className={opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
+                                            {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US') : '-')}
                                         </TableCell>
 
 
