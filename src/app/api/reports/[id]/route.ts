@@ -46,6 +46,11 @@ export async function GET(
         const headers = new Headers();
         headers.set('Content-Type', object.httpMetadata?.contentType || 'text/html; charset=utf-8');
 
+        if (request.nextUrl.searchParams.get('download') === '1') {
+            const downloadFilename = record.filename.split('/').pop() || 'report.html';
+            headers.set('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+        }
+
         return new NextResponse(object.body as unknown as BodyInit, {
             headers,
         });

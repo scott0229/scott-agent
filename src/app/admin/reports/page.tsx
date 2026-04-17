@@ -332,6 +332,19 @@ export default function HistoricalReportsPage() {
                                                         <TableCell className="py-2 text-sm break-all">
                                                             {report.filename.split('/').pop()}
                                                         </TableCell>
+                                                        <TableCell className="py-2 pr-4 text-right w-[40px]">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    window.location.href = `/api/reports/${report.id}?download=1`; 
+                                                                }} 
+                                                                className="h-6 w-6 p-0 hover:bg-transparent hover:text-primary transition-all text-foreground"
+                                                            >
+                                                                <Download className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
                                                     </TableRow>
                                                 ];
 
@@ -357,7 +370,7 @@ export default function HistoricalReportsPage() {
                                                                     <TableCell className="font-medium px-4 w-[140px] py-2 whitespace-nowrap text-red-700">
                                                                         {missingDateStr} ({['日', '一', '二', '三', '四', '五', '六'][d.getDay()]})
                                                                     </TableCell>
-                                                                    <TableCell className="py-2 text-sm text-red-700">
+                                                                    <TableCell colSpan={2} className="py-2 text-sm text-red-700">
                                                                         檔案短缺
                                                                     </TableCell>
                                                                 </TableRow>
