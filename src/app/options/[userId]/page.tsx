@@ -265,7 +265,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const formatOptionTicker = (opt: Option) => {
         const underlying = opt.underlying;
         if (opt.type === 'STK') {
-            return opt.underlying_price != null ? `${underlying} (${opt.underlying_price.toLocaleString('en-US')})` : underlying;
+            return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US')})` : underlying;
         }
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
