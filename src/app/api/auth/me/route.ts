@@ -97,15 +97,30 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    await db.prepare(
-      'UPDATE USERS SET user_id = ?, avatar_url = ?, api_key = ?, auto_update_time = ?, updated_at = unixepoch() WHERE id = ?'
-    ).bind(
-      userId || null,
-      avatarUrl !== undefined ? avatarUrl : null,
-      apiKey !== undefined ? apiKey : null,
-      autoUpdateTime || null,
-      payload.id
-    ).run();
+    let updateQuery = 'UPDATE USERS SET updated_at = unixepoch()';
+    const updateParams: any[] = [];
+
+    if (userId !== undefined) {
+      updateQuery += ', user_id = ?';
+      updateParams.push(userId || null);
+    }
+    if (avatarUrl !== undefined) {
+      updateQuery += ', avatar_url = ?';
+      updateParams.push(avatarUrl);
+    }
+    if (apiKey !== undefined) {
+      updateQuery += ', api_key = ?';
+      updateParams.push(apiKey);
+    }
+    if (autoUpdateTime !== undefined) {
+      updateQuery += ', auto_update_time = ?';
+      updateParams.push(autoUpdateTime);
+    }
+
+    updateQuery += ' WHERE id = ?';
+    updateParams.push(payload.id);
+
+    await db.prepare(updateQuery).bind(...updateParams).run();
 
     const user = await db.prepare(
       // Temporarily using SELECT * to handle incomplete migrations
