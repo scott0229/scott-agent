@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
     const group = await getGroupFromRequest(req)
     const db = await getDb(group)
 
-    // Get distinct symbols from open stock trades (current year only)
+    // Get distinct symbols from open stock trades
     const { results } = await db.prepare(
-      `SELECT DISTINCT symbol FROM STOCK_TRADES WHERE status = 'Open' AND strftime('%Y', open_date, 'unixepoch') = strftime('%Y', 'now')`
+      `SELECT DISTINCT symbol FROM STOCK_TRADES WHERE status != 'Closed'`
     ).all()
 
     const dbSymbols = (results as any[]).map(r => r.symbol as string)
