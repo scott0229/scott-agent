@@ -22,13 +22,30 @@ export async function PATCH(
         }
 
         const body = await req.json();
-        const { note, tradeSide } = body;
+        const { note, note_color, tradeSide } = body;
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
-        const targetColumn = tradeSide === 'C' ? 'close_note' : 'note';
-        const query = `UPDATE STOCK_TRADES SET ${targetColumn} = ?, updated_at = unixepoch() WHERE id = ?`;
-        await db.prepare(query).bind(note || null, id).run();
+        const targetNoteColumn = tradeSide === 'C' ? 'close_note' : 'note';
+        const targetColorColumn = tradeSide === 'C' ? 'close_note_color' : 'note_color';
+        
+        const updates = [];
+        const binds = [];
+        
+        if (note !== undefined) {
+            updates.push(`${targetNoteColumn} = ?`);
+            binds.push(note || null);
+        }
+        if (note_color !== undefined) {
+            updates.push(`${targetColorColumn} = ?`);
+            binds.push(note_color || null);
+        }
+        
+        if (updates.length > 0) {
+            const query = `UPDATE STOCK_TRADES SET ${updates.join(', ')}, updated_at = unixepoch() WHERE id = ?`;
+            binds.push(id);
+            await db.prepare(query).bind(...binds).run();
+        }
 
         clearUserSelectionCache();
         return NextResponse.json({ success: true });

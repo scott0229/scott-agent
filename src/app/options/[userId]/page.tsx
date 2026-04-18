@@ -55,6 +55,7 @@ interface Option {
     underlying_price: number | null;
     is_assigned?: boolean;
     note?: string | null;
+    note_color?: string | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -205,7 +206,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             code: st.code,
                             underlying_price: st.open_price,
                             is_assigned: st.source === 'assigned',
-                            note: st.note
+                            note: st.note,
+                            note_color: st.note_color
                         });
 
                         // Close transaction
@@ -232,7 +234,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 code: st.code,
                                 underlying_price: st.close_price,
                                 is_assigned: st.close_source === 'assigned',
-                                note: st.close_note
+                                note: st.close_note,
+                                note_color: st.close_note_color
                             });
                         }
                     });
@@ -325,6 +328,30 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note: newNote } : opt));
         } catch (error) {
             console.error('Note update error', error);
+        }
+    };
+
+    const handleColorToggle = async (id: string | number, type: string, currentColor: string | null | undefined) => {
+        // Toggle logic: dark blue (default/null) <-> dark red
+        const newColor = currentColor === 'red' ? 'blue' : 'red';
+        
+        setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note_color: newColor } : opt));
+
+        try {
+            const isStock = type === 'STK';
+            const realId = isStock ? String(id).split('-')[1] : id;
+            const tradeSide = isStock ? String(id).split('-')[2] : null;
+            const apiPath = isStock ? `/api/stocks/${realId}/note` : `/api/options/${realId}/note`;
+            
+            const res = await fetch(apiPath, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note_color: newColor, tradeSide })
+            });
+            if (!res.ok) throw new Error('Failed to update note color');
+        } catch (error) {
+            console.error('Note color update error', error);
+            setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note_color: currentColor } : opt));
         }
     };
 
@@ -518,10 +545,27 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         }}
                                         className={`text-center transition-colors ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
                                     >
-                                        <TableCell>{sortedOptions.length - index}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <span>{sortedOptions.length - index}</span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleColorToggle(opt.id, opt.type, opt.note_color);
+                                                    }}
+                                                    className="w-3 h-3 rounded-full shrink-0 border shadow-sm transition-colors"
+                                                    style={{ 
+                                                        backgroundColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a',
+                                                        borderColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a'
+                                                    }}
+                                                    title="切換註解顏色 (深藍/深紅)"
+                                                />
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="min-w-[180px]">
                                             <input 
-                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px]"
+                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px] font-medium"
+                                                style={{ color: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
                                                 maxLength={20}
                                                 defaultValue={opt.note || ''}
                                                 placeholder="..."

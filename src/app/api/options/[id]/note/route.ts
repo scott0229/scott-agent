@@ -22,11 +22,26 @@ export async function PATCH(
         }
 
         const body = await req.json();
-        const { note } = body;
+        const { note, note_color } = body;
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
-        await db.prepare('UPDATE OPTIONS SET note = ?, updated_at = unixepoch() WHERE id = ?').bind(note || null, id).run();
+        const updates = [];
+        const binds = [];
+        if (note !== undefined) {
+            updates.push('note = ?');
+            binds.push(note || null);
+        }
+        if (note_color !== undefined) {
+            updates.push('note_color = ?');
+            binds.push(note_color || null);
+        }
+
+        if (updates.length > 0) {
+            const query = `UPDATE OPTIONS SET ${updates.join(', ')}, updated_at = unixepoch() WHERE id = ?`;
+            binds.push(id);
+            await db.prepare(query).bind(...binds).run();
+        }
 
         clearUserSelectionCache();
         return NextResponse.json({ success: true });
