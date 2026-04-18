@@ -26,8 +26,27 @@ export async function PUT(req: NextRequest) {
             close_price,
             quantity,
             include_in_options,
-            note
+            note,
+            action
         } = body;
+
+        // Support partial update for transfer action
+        if (action === 'transfer' && id && close_date) {
+            const group = await getGroupFromRequest(req);
+            const db = await getDb(group);
+            
+            const trade = await db.prepare('SELECT open_price FROM STOCK_TRADES WHERE id = ?').bind(id).first<{ open_price: number }>();
+            if (!trade) return NextResponse.json({ error: 'Trade not found' }, { status: 404 });
+            
+            await db.prepare(`
+                UPDATE STOCK_TRADES SET
+                    status = 'Closed', close_date = ?, close_price = ?, close_source = 'transfer', updated_at = unixepoch()
+                WHERE id = ?
+            `).bind(close_date, trade.open_price, id).run();
+            
+            clearUserSelectionCache();
+            return NextResponse.json({ success: true });
+        }
 
         // Support partial update for toggle and note
         if ((typeof include_in_options !== 'undefined' || typeof note !== 'undefined') && !symbol && id) {

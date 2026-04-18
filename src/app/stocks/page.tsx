@@ -38,7 +38,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
-import { MessageSquare, MessageSquareText, FilterX, RefreshCw } from "lucide-react";
+import { TransferStockDialog } from '@/components/TransferStockDialog';
+import { MessageSquare, MessageSquareText, FilterX, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useYearFilter } from '@/contexts/YearFilterContext';
@@ -85,6 +86,8 @@ export default function StockTradingPage() {
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [tradeToEdit, setTradeToEdit] = useState<StockTrade | null>(null);
+    const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+    const [tradeToTransfer, setTradeToTransfer] = useState<StockTrade | null>(null);
 
 
     const { selectedYear } = useYearFilter();
@@ -364,7 +367,7 @@ export default function StockTradingPage() {
                                     }
 
                                     return (
-                                        <TableRow key={trade.id}>
+                                        <TableRow key={trade.id} className="h-[40px]">
                                             <TableCell className="text-center text-muted-foreground font-mono py-1">{sortedTrades.length - index}</TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span
@@ -382,6 +385,7 @@ export default function StockTradingPage() {
                                             <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
                                                 {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                                 {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(Assigned)</span>}
+                                                {trade.close_source === 'transfer' && <span className="text-xs text-gray-500 font-medium ml-1">(Transferred)</span>}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span
@@ -431,6 +435,23 @@ export default function StockTradingPage() {
                                                 <div className="flex justify-end gap-1">
                                                     {canEdit(trade) && (
                                                         <>
+                                                            {!isClosed && (
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => { setTradeToTransfer(trade); setTransferDialogOpen(true); }}
+                                                                            className="text-muted-foreground hover:text-orange-500 hover:bg-orange-50"
+                                                                        >
+                                                                            <ArrowRightLeft className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>手動轉倉 (平倉)</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            )}
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Button
@@ -469,6 +490,13 @@ export default function StockTradingPage() {
                     tradeToEdit={tradeToEdit}
                     onSuccess={() => { fetchTrades(); }}
                     year={displayYear}
+                />
+
+                <TransferStockDialog
+                    open={transferDialogOpen}
+                    onOpenChange={setTransferDialogOpen}
+                    tradeToTransfer={tradeToTransfer}
+                    onSuccess={() => { fetchTrades(); }}
                 />
 
 

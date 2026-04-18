@@ -11,13 +11,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FilterX } from 'lucide-react';
+import { ArrowLeft, FilterX, ArrowRightLeft } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TransferOptionDialog } from '@/components/TransferOptionDialog';
 
 
 import {
@@ -63,7 +64,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [users, setUsers] = useState<any[]>([]);
     const [selectedUserValue, setSelectedUserValue] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
-
+    const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+    const [tradeToTransfer, setTradeToTransfer] = useState<Option | null>(null);
 
     // Use global year filter instead of local state
     const { selectedYear, setSelectedYear } = useYearFilter();
@@ -396,7 +398,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         <div className="container mx-auto py-10 max-w-[1600px]">
             <div className="flex items-center gap-4 mb-6">
                 {/* Only show back button for non-customer roles */}
-                {currentUserRole && currentUserRole !== 'customer' && (
+                        {currentUserRole && currentUserRole !== 'customer' && (
                     <Button variant="ghost" size="icon" onClick={() => router.push('/options')}>
                         <ArrowLeft className="h-6 w-6" />
                     </Button>
@@ -482,7 +484,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </SelectContent>
                         </Select>
                         <Select value={selectedOperation} onValueChange={setSelectedOperation}>
-                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="操作" /></SelectTrigger>
+                            <SelectTrigger className="w-[140px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="操作" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="All">全部操作</SelectItem>
                                 {operations.map(op => <SelectItem key={op} value={op}>{op}</SelectItem>)}
@@ -524,6 +526,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -548,9 +551,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             e.preventDefault();
                                             toggleSeparator(opt.id);
                                         }}
-                                        className={`text-center transition-colors ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
+                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
                                     >
-                                        <TableCell>
+                                        <TableCell className="py-1">
                                             <div className="flex items-center justify-center gap-4">
                                                 <span>{sortedOptions.length - index}</span>
                                                 {opt.note?.trim() ? (
@@ -571,7 +574,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="min-w-[180px]">
+                                        <TableCell className="py-1 min-w-[180px]">
                                             <input 
                                                 className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px] font-medium"
                                                 style={{ color: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
@@ -591,7 +594,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             />
                                         </TableCell>
                                         {params.userId === 'All' && (
-                                            <TableCell>
+                                            <TableCell className="py-1">
                                                 <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                                                     {/* Try to find user display name from users list if possible, else just ID */}
                                                     {(() => {
@@ -601,70 +604,103 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 </span>
                                             </TableCell>
                                         )}
-                                        <TableCell className={(opt.operation || 'Open') === 'Open' ? 'bg-pink-50' : ''}>
-                                            {opt.operation === 'Assigned' ? (
-                                                <span
-                                                    className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
-                                                    // onClick={() => setSelectedOperation(opt.operation || 'Open')}
-                                                    // onClick={() => setSelectedOperation(opt.operation || 'Open')}
-                                                    title={`點擊過濾 ${opt.operation} 的交易`}
-                                                >
-                                                    {opt.operation}
-                                                </span>
-                                            ) : (
-                                                <div
-                                                    className={`cursor-pointer min-w-[34px] flex justify-center`}
-                                                    onClick={() => setSelectedOperation(opt.operation || 'Open')}
-                                                    title={`點擊過濾 ${opt.operation || 'Open'} 的交易`}
-                                                >
-                                                    {opt.operation === 'Expired' ? (
-                                                        <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none font-normal text-sm px-2 py-0.5">
-                                                            Expired
-                                                        </Badge>
-                                                    ) : (
-                                                        opt.operation || 'Open'
-                                                    )}
-                                                </div>
-                                            )}
+                                        <TableCell className={`py-1 ${(opt.operation || 'Open') === 'Open' ? 'bg-pink-50' : ''}`}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                {opt.operation === 'Assigned' ? (
+                                                    <span
+                                                        className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
+                                                        onClick={() => setSelectedOperation(opt.operation || 'Open')}
+                                                        title={`點擊過濾 ${opt.operation} 的交易`}
+                                                    >
+                                                        {opt.operation}
+                                                    </span>
+                                                ) : (
+                                                    <div
+                                                        className={`cursor-pointer min-w-[34px] flex justify-center`}
+                                                        onClick={() => setSelectedOperation(opt.operation || 'Open')}
+                                                        title={`點擊過濾 ${opt.operation || 'Open'} 的交易`}
+                                                    >
+                                                        {opt.operation === 'Expired' ? (
+                                                            <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none font-normal text-sm px-2 py-0.5">
+                                                                Expired
+                                                            </Badge>
+                                                        ) : opt.operation === 'Transferred' ? (
+                                                            <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none font-normal text-sm px-2 py-0.5">
+                                                                Transferred
+                                                            </Badge>
+                                                        ) : (
+                                                            opt.operation || 'Open'
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="py-1">
                                             {formatDate(opt.open_date)}{(() => {
                                                 const time = formatTime(opt.open_date);
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
-                                        <TableCell className={opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}>
+                                        <TableCell className={`py-1 ${opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}`}>
                                             {opt.quantity}
                                         </TableCell>
-                                        <TableCell className="font-mono text-sm">
+                                        <TableCell className="py-1 font-mono text-sm">
                                             {formatOptionTicker(opt)}
                                         </TableCell>
-                                        <TableCell>{opt.type === 'STK' ? "-" : getDaysToExpire(opt)}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="py-1">{opt.type === 'STK' ? "-" : getDaysToExpire(opt)}</TableCell>
+                                        <TableCell className="py-1">
                                             {opt.type === 'STK' ? "-" : (
                                                 (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
                                             )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="py-1">
                                             {opt.type === 'STK' ? "-" : (
                                                 (opt.operation === 'Open' || !opt.settlement_date)
                                                     ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
                                                     : getDaysHeld(opt)
                                             )}
                                         </TableCell>
-                                        <TableCell className="font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
+                                        <TableCell className="py-1 font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
 
-                                        <TableCell>{opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}</TableCell>
-                                        <TableCell className={opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}>
+                                        <TableCell className="py-1">{opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}</TableCell>
+                                        <TableCell className={`py-1 ${opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}`}>
                                             {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-')}
                                         </TableCell>
 
 
                                         {settings.showTradeCode && (
-                                            <TableCell className="text-center font-mono text-sm">
+                                            <TableCell className="py-1 text-center font-mono text-sm">
                                                 {opt.code || '-'}
                                             </TableCell>
                                         )}
+                                        
+                                        <TableCell className="py-1">
+                                            <div className="flex justify-center">
+                                                {opt.status === 'Open' && opt.type !== 'STK' && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-orange-500 hover:bg-orange-50 shrink-0"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setTradeToTransfer(opt);
+                                                                        setTransferDialogOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>手動轉倉 (平倉)</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                            </div>
+                                        </TableCell>
 
                                     </TableRow>
                                 );
@@ -673,6 +709,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                     </TableBody>
                 </Table>
             </div>
+            
+            <TransferOptionDialog
+                open={transferDialogOpen}
+                onOpenChange={setTransferDialogOpen}
+                tradeToTransfer={tradeToTransfer}
+                onSuccess={() => { fetchOptions(); }}
+            />
 
         </div>
     );
