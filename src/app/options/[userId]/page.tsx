@@ -314,6 +314,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     };
 
     const handleNoteUpdate = async (id: string | number, type: string, newNote: string) => {
+        // Optimistic UI update
+        const previousOptions = [...options];
+        setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note: newNote } : opt));
+
         try {
             const isStock = type === 'STK';
             const realId = isStock ? String(id).split('-')[1] : id;
@@ -325,9 +329,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 body: JSON.stringify({ note: newNote || null, tradeSide })
             });
             if (!res.ok) throw new Error('Failed to update note');
-            setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note: newNote } : opt));
         } catch (error) {
             console.error('Note update error', error);
+            // Revert to previous state if API call fails
+            setOptions(previousOptions);
         }
     };
 
