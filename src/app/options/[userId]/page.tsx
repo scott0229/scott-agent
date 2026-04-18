@@ -53,6 +53,7 @@ interface Option {
     user_id: string | null;
     code?: string;
     underlying_price: number | null;
+    is_assigned?: boolean;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -201,7 +202,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             capital_efficiency: null,
                             user_id: st.user_id,
                             code: st.code,
-                            underlying_price: st.open_price
+                            underlying_price: st.open_price,
+                            is_assigned: st.source === 'assigned'
                         });
 
                         // Close transaction
@@ -226,7 +228,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 capital_efficiency: null,
                                 user_id: st.user_id,
                                 code: st.code,
-                                underlying_price: st.close_price
+                                underlying_price: st.close_price,
+                                is_assigned: st.close_source === 'assigned'
                             });
                         }
                     });
@@ -274,7 +277,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const formatOptionTicker = (opt: Option) => {
         const underlying = opt.underlying;
         if (opt.type === 'STK') {
-            return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })})` : underlying;
+            const assignedText = opt.is_assigned ? '，被行權' : '';
+            return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : `${underlying}${assignedText}`;
         }
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
@@ -454,8 +458,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
-                            <TableHead className="text-center">口數</TableHead>
-                            <TableHead className="text-center">合約</TableHead>
+                            <TableHead className="text-center">數量</TableHead>
+                            <TableHead className="text-center">標的</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
                             <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
