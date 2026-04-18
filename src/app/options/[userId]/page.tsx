@@ -548,18 +548,22 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell>
                                             <div className="flex items-center justify-center gap-2">
                                                 <span>{sortedOptions.length - index}</span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleColorToggle(opt.id, opt.type, opt.note_color);
-                                                    }}
-                                                    className="w-3 h-3 rounded-full shrink-0 border shadow-sm transition-colors"
-                                                    style={{ 
-                                                        backgroundColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a',
-                                                        borderColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a'
-                                                    }}
-                                                    title="切換註解顏色 (深藍/深紅)"
-                                                />
+                                                {opt.note?.trim() ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleColorToggle(opt.id, opt.type, opt.note_color);
+                                                        }}
+                                                        className="w-3 h-3 rounded-full shrink-0 border shadow-sm transition-colors"
+                                                        style={{ 
+                                                            backgroundColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a',
+                                                            borderColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a'
+                                                        }}
+                                                        title="切換註解顏色 (深藍/深紅)"
+                                                    />
+                                                ) : (
+                                                    <div className="w-3 h-3 shrink-0" />
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="min-w-[180px]">
