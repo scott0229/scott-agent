@@ -546,7 +546,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         className={`text-center transition-colors ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
                                     >
                                         <TableCell>
-                                            <div className="flex items-center justify-center gap-2">
+                                            <div className="flex items-center justify-center gap-4">
                                                 <span>{sortedOptions.length - index}</span>
                                                 {opt.note?.trim() ? (
                                                     <button
