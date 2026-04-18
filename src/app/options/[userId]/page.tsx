@@ -54,6 +54,7 @@ interface Option {
     code?: string;
     underlying_price: number | null;
     is_assigned?: boolean;
+    note?: string | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -203,7 +204,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             user_id: st.user_id,
                             code: st.code,
                             underlying_price: st.open_price,
-                            is_assigned: st.source === 'assigned'
+                            is_assigned: st.source === 'assigned',
+                            note: st.note
                         });
 
                         // Close transaction
@@ -229,7 +231,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 user_id: st.user_id,
                                 code: st.code,
                                 underlying_price: st.close_price,
-                                is_assigned: st.close_source === 'assigned'
+                                is_assigned: st.close_source === 'assigned',
+                                note: st.close_note
                             });
                         }
                     });
@@ -305,6 +308,24 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const getDaysToExpire = (opt: Option) => {
         if (!opt.to_date) return '';
         return calculateDays(opt.open_date, opt.to_date);
+    };
+
+    const handleNoteUpdate = async (id: string | number, type: string, newNote: string) => {
+        try {
+            const isStock = type === 'STK';
+            const realId = isStock ? String(id).split('-')[1] : id;
+            const tradeSide = isStock ? String(id).split('-')[2] : null;
+            const apiPath = isStock ? `/api/stocks/${realId}/note` : `/api/options/${realId}/note`;
+            const res = await fetch(apiPath, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: newNote || null, tradeSide })
+            });
+            if (!res.ok) throw new Error('Failed to update note');
+            setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note: newNote } : opt));
+        } catch (error) {
+            console.error('Note update error', error);
+        }
     };
 
     const resetFilters = () => {
@@ -455,6 +476,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center">No.</TableHead>
+                            <TableHead className="text-center">註解</TableHead>
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
@@ -497,6 +519,24 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         className={`text-center transition-colors ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
                                     >
                                         <TableCell>{sortedOptions.length - index}</TableCell>
+                                        <TableCell className="min-w-[180px]">
+                                            <input 
+                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px]"
+                                                maxLength={20}
+                                                defaultValue={opt.note || ''}
+                                                placeholder="..."
+                                                onBlur={(e) => {
+                                                    if (e.target.value !== (opt.note || '')) {
+                                                        handleNoteUpdate(opt.id, opt.type, e.target.value);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.currentTarget.blur();
+                                                    }
+                                                }}
+                                            />
+                                        </TableCell>
                                         {params.userId === 'All' && (
                                             <TableCell>
                                                 <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
