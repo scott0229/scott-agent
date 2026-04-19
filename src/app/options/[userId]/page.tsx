@@ -676,7 +676,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         
                                         <TableCell className="py-1">
                                             <div className="flex justify-center">
-                                                {opt.status === 'Open' && opt.type !== 'STK' && (
+                                                {(opt.status === 'Open' || opt.operation === 'Transferred') && opt.type !== 'STK' && (
                                                     <TooltipProvider>
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
@@ -694,7 +694,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                <p>手動轉倉 (平倉)</p>
+                                                                <p>{opt.operation === 'Transferred' ? '修改轉倉日期' : '手動轉倉 (平倉)'}</p>
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>
