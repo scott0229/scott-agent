@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -9,6 +9,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +25,8 @@ interface OptionTrade {
     underlying: string;
     type: string;
     strike_price: number;
+    settlement_date?: number | null;
+    operation?: string | null;
 }
 
 interface TransferOptionDialogProps {
@@ -35,6 +44,24 @@ export function TransferOptionDialog({ open, onOpenChange, tradeToTransfer, onSu
     const today = new Date();
     const defaultDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const [transferDateStr, setTransferDateStr] = useState(defaultDate);
+    const [operationType, setOperationType] = useState('Transferred');
+
+    useEffect(() => {
+        if (open) {
+            if (tradeToTransfer && tradeToTransfer.settlement_date) {
+                // If it already has a settlement date (e.g. from a previous transfer), use it
+                const initDate = new Date(tradeToTransfer.settlement_date * 1000);
+                setTransferDateStr(`${initDate.getFullYear()}-${String(initDate.getMonth() + 1).padStart(2, '0')}-${String(initDate.getDate()).padStart(2, '0')}`);
+            } else {
+                setTransferDateStr(defaultDate);
+            }
+            if (tradeToTransfer && tradeToTransfer.operation) {
+                setOperationType(tradeToTransfer.operation);
+            } else {
+                setOperationType('Transferred');
+            }
+        }
+    }, [open, tradeToTransfer]);
 
     const handleSubmit = async () => {
         if (!tradeToTransfer || !tradeToTransfer.id) return;
@@ -55,7 +82,8 @@ export function TransferOptionDialog({ open, onOpenChange, tradeToTransfer, onSu
                 body: JSON.stringify({ 
                     id: tradeToTransfer.id, 
                     action: 'transfer',
-                    settlement_date: closeDateUnix
+                    settlement_date: closeDateUnix,
+                    operation_type: operationType
                 }),
             });
 
@@ -66,7 +94,7 @@ export function TransferOptionDialog({ open, onOpenChange, tradeToTransfer, onSu
 
             toast({
                 title: "操作成功",
-                description: `已將期權手動標記為轉倉`,
+                description: `已變更期權操作狀態`,
             });
             onSuccess();
             onOpenChange(false);
@@ -86,15 +114,35 @@ export function TransferOptionDialog({ open, onOpenChange, tradeToTransfer, onSu
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>期權手動標記轉倉</DialogTitle>
+                    <DialogTitle>變更操作</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <p className="text-sm text-muted-foreground mb-2">
-                        這將手動幫您平掉這筆期權 <span className="font-bold text-primary">{tradeToTransfer?.underlying} {tradeToTransfer?.strike_price}{tradeToTransfer?.type === 'PUT' ? 'P' : 'C'}</span>，並且強制設定已實現損益為 0（操作標記為 Transferred）。這主要用於標記被內部過戶出該帳號的持倉。
-                    </p>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="operation-type" className="text-right">
+                            操作類型
+                        </Label>
+                        <div className="col-span-3">
+                            <Select
+                                value={operationType}
+                                onValueChange={(value) => setOperationType(value)}
+                            >
+                                <SelectTrigger id="operation-type">
+                                    <SelectValue placeholder="選擇操作" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Transferred">Transferred</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
+                                    <SelectItem value="Expired">Expired</SelectItem>
+                                    <SelectItem value="Assigned">Assigned</SelectItem>
+                                    <SelectItem value="Exercised">Exercised</SelectItem>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="transfer-date" className="text-right">
-                            轉倉日期
+                            平倉日
                         </Label>
                         <Input
                             id="transfer-date"
@@ -110,7 +158,7 @@ export function TransferOptionDialog({ open, onOpenChange, tradeToTransfer, onSu
                         取消
                     </Button>
                     <Button type="button" onClick={handleSubmit} disabled={loading}>
-                        {loading ? "處理中..." : "確認轉倉"}
+                        {loading ? "處理中..." : "確認變更"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
