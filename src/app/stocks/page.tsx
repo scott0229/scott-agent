@@ -39,7 +39,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 import { StockTradeDialog } from '@/components/StockTradeDialog';
 import { TransferStockDialog } from '@/components/TransferStockDialog';
-import { MessageSquare, MessageSquareText, FilterX, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { Pencil, FilterX, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useYearFilter } from '@/contexts/YearFilterContext';
@@ -238,6 +238,24 @@ export default function StockTradingPage() {
         }
     };
 
+    const handleNoteUpdate = async (id: number, note: string) => {
+        const originalTrades = [...trades];
+        setTrades(prev => prev.map(t => t.id === id ? { ...t, note } : t));
+
+        try {
+            const res = await fetch(`/api/stocks/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, note }),
+            });
+            if (!res.ok) throw new Error('Update failed');
+        } catch (error) {
+            console.error('Note update failed', error);
+            setTrades(originalTrades);
+            toast({ variant: 'destructive', title: '操作失敗', description: '無法更新註解' });
+        }
+    };
+
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
 
@@ -331,6 +349,7 @@ export default function StockTradingPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
+                                <TableHead className="text-center">註解</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
@@ -348,7 +367,7 @@ export default function StockTradingPage() {
                         <TableBody>
                             {sortedTrades.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="h-24 text-center">
+                                    <TableCell colSpan={13} className="h-24 text-center">
                                         無交易紀錄
                                     </TableCell>
                                 </TableRow>
@@ -369,6 +388,24 @@ export default function StockTradingPage() {
                                     return (
                                         <TableRow key={trade.id} className="h-[40px]">
                                             <TableCell className="text-center text-muted-foreground font-mono py-1">{sortedTrades.length - index}</TableCell>
+                                            <TableCell className="py-1 min-w-[180px]">
+                                                <input 
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px] font-medium text-blue-500"
+                                                    maxLength={20}
+                                                    defaultValue={trade.note || ''}
+                                                    placeholder="..."
+                                                    onBlur={(e) => {
+                                                        if (e.target.value !== (trade.note || '')) {
+                                                            handleNoteUpdate(trade.id, e.target.value);
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.currentTarget.blur();
+                                                        }
+                                                    }}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span
                                                     className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
@@ -458,16 +495,13 @@ export default function StockTradingPage() {
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         onClick={() => { setTradeToEdit(trade); setDialogOpen(true); }}
-                                                                        className={cn(
-                                                                            "text-muted-foreground hover:text-primary hover:bg-primary/10",
-                                                                            trade.note && "text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                                                                        )}
+                                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                                     >
-                                                                        {trade.note ? <MessageSquareText className="h-4 w-4 fill-blue-100 text-blue-500" /> : <MessageSquare className="h-4 w-4" />}
+                                                                        <Pencil className="h-4 w-4" />
                                                                     </Button>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
-                                                                    <p>註解</p>
+                                                                    <p>編輯</p>
                                                                 </TooltipContent>
                                                             </Tooltip>
 
