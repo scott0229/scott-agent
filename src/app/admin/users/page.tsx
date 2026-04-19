@@ -982,14 +982,7 @@ export default function AdminUsersPage() {
         };
     };
 
-    const handleIbBatchImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const fileList = event.target.files;
-        if (!fileList || fileList.length === 0) return;
-
-        // Copy files BEFORE resetting input (FileList is a live reference)
-        const allFiles: File[] = Array.from(fileList);
-        event.target.value = ''; // Reset input after copying
-
+    const processBatchFiles = async (allFiles: File[]) => {
         // Filter .htm/.html files
         const htmlFiles: File[] = [];
         for (const f of allFiles) {
@@ -1060,6 +1053,17 @@ export default function AdminUsersPage() {
                 : ''
         );
         setBatchDialogOpen(true);
+    };
+
+    const handleIbBatchImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const fileList = event.target.files;
+        if (!fileList || fileList.length === 0) return;
+
+        // Copy files BEFORE resetting input (FileList is a live reference)
+        const allFiles: File[] = Array.from(fileList);
+        event.target.value = ''; // Reset input after copying
+        
+        await processBatchFiles(allFiles);
     };
 
     const confirmBatchImport = async () => {
@@ -2300,7 +2304,13 @@ export default function AdminUsersPage() {
                 <ArchiveImportDialog 
                     open={archiveDialogOpen} 
                     onOpenChange={setArchiveDialogOpen} 
-                    onImport={processIbFile} 
+                    onImport={async (files) => {
+                        if (files.length === 1) {
+                            await processIbFile(files[0]);
+                        } else if (files.length > 1) {
+                            await processBatchFiles(files);
+                        }
+                    }} 
                 />
             </div>
         </TooltipProvider >

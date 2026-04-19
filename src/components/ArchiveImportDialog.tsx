@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface ArchiveImportDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onImport: (file: File) => Promise<void>;
+    onImport: (files: File[]) => Promise<void>;
 }
 
 interface ReportArchive {
@@ -25,6 +25,9 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
     // Selections
     const [selectedAccount, setSelectedAccount] = useState<string>('');
     const [selectedReportId, setSelectedReportId] = useState<string>('');
+    const [importMode, setImportMode] = useState<'single' | 'range'>('single');
+    const [startReportId, setStartReportId] = useState<string>('');
+    const [endReportId, setEndReportId] = useState<string>('');
     const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
@@ -34,6 +37,8 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
             // Reset state when closed
             setSelectedAccount('');
             setSelectedReportId('');
+            setStartReportId('');
+            setEndReportId('');
         }
     }, [open]);
 
@@ -75,27 +80,50 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
     useEffect(() => {
         if (availableReports.length > 0) {
             setSelectedReportId(availableReports[0].id.toString());
+            setStartReportId(availableReports[availableReports.length - 1].id.toString()); // Oldest
+            setEndReportId(availableReports[0].id.toString()); // Newest
         } else {
             setSelectedReportId('');
+            setStartReportId('');
+            setEndReportId('');
         }
     }, [selectedAccount, availableReports]);
 
     const handleImportClick = async () => {
-        if (!selectedReportId) return;
+        let targets: ReportArchive[] = [];
+        
+        if (importMode === 'single') {
+            if (!selectedReportId) return;
+            const targetReport = reports.find(r => r.id.toString() === selectedReportId);
+            if (targetReport) targets = [targetReport];
+        } else {
+            if (!startReportId || !endReportId) return;
+            const startIdx = availableReports.findIndex(r => r.id.toString() === startReportId);
+            const endIdx = availableReports.findIndex(r => r.id.toString() === endReportId);
+            if (startIdx === -1 || endIdx === -1) return;
+            
+            const minIdx = Math.min(startIdx, endIdx);
+            const maxIdx = Math.max(startIdx, endIdx);
+            targets = availableReports.slice(minIdx, maxIdx + 1);
+        }
+
+        if (targets.length === 0) {
+            toast({ variant: 'destructive', title: '選取錯誤', description: '找不到符合的報表' });
+            return;
+        }
+
         setIsDownloading(true);
         
         try {
-            const targetReport = reports.find(r => r.id.toString() === selectedReportId);
-            if (!targetReport) throw new Error('找不到報表記錄');
-
-            // Fetch the raw HTML from the archive API
-            const res = await fetch(`/api/reports/${targetReport.id}`);
-            if (!res.ok) throw new Error('無法讀取歷史報表內容');
+            const files: File[] = [];
+            for (const targetReport of targets) {
+                const res = await fetch(`/api/reports/${targetReport.id}`);
+                if (!res.ok) throw new Error(`無法讀取檔案: ${targetReport.filename}`);
+                const blob = await res.blob();
+                files.push(new File([blob], targetReport.filename, { type: 'text/html' }));
+            }
             
-            const blob = await res.blob();
-            const file = new File([blob], targetReport.filename, { type: 'text/html' });
-            
-            await onImport(file);
+            await onImport(files);
             onOpenChange(false); // Close dialog on success
             
         } catch (error: any) {
@@ -140,23 +168,72 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <Select 
-                                    value={selectedReportId} 
-                                    onValueChange={setSelectedReportId}
-                                    disabled={!selectedAccount || availableReports.length === 0}
-                                >
+                                <Select value={importMode} onValueChange={(val) => setImportMode(val as 'single' | 'range')}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="請選擇報表日期" />
+                                        <SelectValue placeholder="請選擇匯入模式" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {availableReports.map(report => (
-                                            <SelectItem key={report.id} value={report.id.toString()}>
-                                                {report.statement_date}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="single">單一報表</SelectItem>
+                                        <SelectItem value="range">日期範圍 (批次)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {importMode === 'single' ? (
+                                <div className="flex flex-col gap-2">
+                                    <Select 
+                                        value={selectedReportId} 
+                                        onValueChange={setSelectedReportId}
+                                        disabled={!selectedAccount || availableReports.length === 0}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="請選擇報表日期" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableReports.map(report => (
+                                                <SelectItem key={report.id} value={report.id.toString()}>
+                                                    {report.statement_date}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col gap-2">
+                                        <Select 
+                                            value={startReportId} 
+                                            onValueChange={setStartReportId}
+                                            disabled={!selectedAccount || availableReports.length === 0}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="起始日期" /></SelectTrigger>
+                                            <SelectContent>
+                                                {availableReports.map(report => (
+                                                    <SelectItem key={`start-${report.id}`} value={report.id.toString()}>
+                                                        {report.statement_date}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Select 
+                                            value={endReportId} 
+                                            onValueChange={setEndReportId}
+                                            disabled={!selectedAccount || availableReports.length === 0}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="結束日期" /></SelectTrigger>
+                                            <SelectContent>
+                                                {availableReports.map(report => (
+                                                    <SelectItem key={`end-${report.id}`} value={report.id.toString()}>
+                                                        {report.statement_date}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
@@ -165,7 +242,7 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
                     <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
                     <Button 
                         onClick={handleImportClick} 
-                        disabled={!selectedReportId || loading || isDownloading}
+                        disabled={(importMode === 'single' ? !selectedReportId : (!startReportId || !endReportId)) || loading || isDownloading}
                     >
                         {isDownloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                         載入並預覽
