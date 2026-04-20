@@ -367,7 +367,7 @@ export default function StockTradingPage() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
-                                <TableHead className="w-[50px] text-center">#</TableHead>
+                                <TableHead className="w-[50px] text-center"></TableHead>
                                 <TableHead className="text-left">註解</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
