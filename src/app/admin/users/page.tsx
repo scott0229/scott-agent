@@ -342,14 +342,17 @@ export default function AdminUsersPage() {
         // Stock positions
         if (data.stockPositions && data.stockPositions.length > 0) {
             data.stockPositions.forEach((pos: any) => {
-                const avgCostStr = pos.avg_cost ? ` (成本 ${pos.avg_cost})` : '';
-                let allocationStr = '';
+                let extraInfo = [];
+                if (pos.avg_cost) {
+                    extraInfo.push(`成本 ${pos.avg_cost}`);
+                }
                 if ((pos.symbol === 'QQQ' || pos.symbol === 'QLD') && pos.current_price && data.accountNetWorth > 0) {
                     const positionValue = pos.quantity * pos.current_price;
                     const allocation = Math.round((positionValue / data.accountNetWorth) * 100);
-                    allocationStr = ` (佔比 ${allocation}%)`;
+                    extraInfo.push(`佔比 ${allocation}%`);
                 }
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}${allocationStr}\n`;
+                const infoStr = extraInfo.length > 0 ? ` (${extraInfo.join('，')})` : '';
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${infoStr}\n`;
             });
             report += `----------------------------------------\n`;
         }
