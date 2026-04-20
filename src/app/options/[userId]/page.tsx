@@ -57,6 +57,7 @@ interface Option {
     is_assigned?: boolean;
     note?: string | null;
     note_color?: string | null;
+    has_separator?: boolean | number;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -77,14 +78,45 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
     const [includeStocks, setIncludeStocks] = useState<boolean>(false);
-    const [manualSeparators, setManualSeparators] = useState<Record<string, boolean>>({});
 
-    const toggleSeparator = (id: string | number) => {
-        const key = String(id);
-        setManualSeparators(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+    const SEPARATOR_COLORS = [
+        '', // 0: None
+        'border-orange-200',  // 1: Orange (原始顏色)
+        'border-blue-300',    // 2: Blue
+        'border-green-500'    // 3: Green
+    ];
+
+    const toggleSeparator = async (id: string | number, type: string, currentSeparator: boolean | number | undefined) => {
+        let currentState = 0;
+        if (typeof currentSeparator === 'number') {
+            currentState = currentSeparator;
+        } else if (currentSeparator) {
+            currentState = 1;
+        }
+
+        const nextState = (currentState + 1) % SEPARATOR_COLORS.length;
+        
+        // Optimistic UI update
+        const previousOptions = [...options];
+        setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, has_separator: nextState } : opt));
+
+        try {
+            const isStock = type === 'STK';
+            const realId = isStock ? String(id).split('-')[1] : id;
+            const tradeSide = isStock ? String(id).split('-')[2] : null;
+            const apiPath = isStock ? `/api/stocks/${realId}/separator` : `/api/options/${realId}/separator`;
+            
+            const res = await fetch(apiPath, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ has_separator: nextState, tradeSide })
+            });
+            if (!res.ok) throw new Error('Failed to update separator');
+        } catch (error) {
+            console.error('Separator update error', error);
+            // Revert to previous state if API call fails
+            setOptions(previousOptions);
+        }
     };
 
     const [ownerId, setOwnerId] = useState<number | null>(null);
@@ -209,7 +241,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             underlying_price: st.open_price,
                             is_assigned: st.source === 'assigned',
                             note: st.note,
-                            note_color: st.note_color
+                            note_color: st.note_color,
+                            has_separator: st.has_separator
                         });
 
                         // Close transaction
@@ -237,7 +270,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 underlying_price: st.close_price,
                                 is_assigned: st.close_source === 'assigned',
                                 note: st.close_note,
-                                note_color: st.close_note_color
+                                note_color: st.close_note_color,
+                                has_separator: st.close_has_separator
                             });
                         }
                     });
@@ -549,9 +583,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         key={opt.id}
                                         onContextMenu={(e) => {
                                             e.preventDefault();
-                                            toggleSeparator(opt.id);
+                                            toggleSeparator(opt.id, opt.type, opt.has_separator);
                                         }}
-                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${manualSeparators[String(opt.id)] ? 'border-t-4 border-orange-200' : ''}`}
+                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
                                     >
                                         <TableCell className="py-1">
                                             <div className="flex items-center justify-center gap-4">
