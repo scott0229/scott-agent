@@ -576,7 +576,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             <input 
                                                 className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                 style={{ color: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
-                                                maxLength={20}
+                                                maxLength={50}
                                                 defaultValue={opt.note || ''}
                                                 placeholder="..."
                                                 onBlur={(e) => {

@@ -429,7 +429,7 @@ export default function StockTradingPage() {
                                                 <input 
                                                     className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                     style={{ color: trade.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
-                                                    maxLength={20}
+                                                    maxLength={50}
                                                     defaultValue={trade.note || ''}
                                                     placeholder="..."
                                                     onBlur={(e) => {
