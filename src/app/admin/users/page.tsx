@@ -343,7 +343,13 @@ export default function AdminUsersPage() {
         if (data.stockPositions && data.stockPositions.length > 0) {
             data.stockPositions.forEach((pos: any) => {
                 const avgCostStr = pos.avg_cost ? ` (成本 ${pos.avg_cost})` : '';
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}\n`;
+                let allocationStr = '';
+                if ((pos.symbol === 'QQQ' || pos.symbol === 'QLD') && pos.current_price && data.accountNetWorth > 0) {
+                    const positionValue = pos.quantity * pos.current_price;
+                    const allocation = Math.round((positionValue / data.accountNetWorth) * 100);
+                    allocationStr = ` (佔比 ${allocation}%)`;
+                }
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${avgCostStr}${allocationStr}\n`;
             });
             report += `----------------------------------------\n`;
         }

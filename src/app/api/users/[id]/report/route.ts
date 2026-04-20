@@ -136,6 +136,14 @@ export async function GET(
                 symbol
         `).bind(userId, currentYear).all();
 
+        const qqqCurrentPrice = qqqData && qqqData.length > 0 ? qqqData[qqqData.length - 1].close : null;
+        const qldCurrentPrice = qldData && qldData.length > 0 ? qldData[qldData.length - 1].close : null;
+        const enhancedStockPositions = (stockPositions || []).map((pos: any) => {
+            if (pos.symbol === 'QQQ' && qqqCurrentPrice) return { ...pos, current_price: qqqCurrentPrice };
+            if (pos.symbol === 'QLD' && qldCurrentPrice) return { ...pos, current_price: qldCurrentPrice };
+            return pos;
+        });
+
         // 7. Get monthly premium stats - USE SAME QUERY AS /api/users for consistency
         const statsQuery = `
             SELECT 
@@ -302,7 +310,7 @@ export async function GET(
                 maxDrawdown,
                 sharpeRatio,
                 annualStdDev,
-                stockPositions: stockPositions || [],
+                stockPositions: enhancedStockPositions,
                 quarterlyPremium,
                 quarterlyTarget,
                 annualPremium,
