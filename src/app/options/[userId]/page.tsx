@@ -510,7 +510,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center">No.</TableHead>
-                            <TableHead className="text-center">註解</TableHead>
+                            <TableHead className="text-left">註解</TableHead>
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
@@ -562,21 +562,19 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                             e.stopPropagation();
                                                             handleColorToggle(opt.id, opt.type, opt.note_color);
                                                         }}
-                                                        className="w-3 h-3 rounded-full shrink-0 border shadow-sm transition-colors"
-                                                        style={{ 
-                                                            backgroundColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a',
-                                                            borderColor: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a'
-                                                        }}
-                                                        title="切換註解顏色 (深藍/深紅)"
+                                                        className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
+                                                            opt.note_color === 'red' ? 'bg-red-500' : 'bg-blue-500'
+                                                        }`}
+                                                        title="切換註解顏色"
                                                     />
                                                 ) : (
-                                                    <div className="w-3 h-3 shrink-0" />
+                                                    <div className="w-4 h-4 shrink-0" />
                                                 )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
-                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px] font-medium"
+                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                 style={{ color: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
                                                 maxLength={20}
                                                 defaultValue={opt.note || ''}

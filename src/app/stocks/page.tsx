@@ -63,6 +63,7 @@ interface StockTrade {
     current_market_price?: number | null; // Current closing price from market_prices table
     include_in_options?: number; // 1 = include stock P&L in options revenue
     note?: string | null;
+    note_color?: string | null;
 }
 
 interface User {
@@ -238,15 +239,33 @@ export default function StockTradingPage() {
         }
     };
 
+    const handleColorToggle = async (id: number, currentColor: string | null | undefined) => {
+        const newColor = currentColor === 'red' ? 'blue' : 'red';
+        setTrades(prev => prev.map(t => t.id === id ? { ...t, note_color: newColor } : t));
+
+        try {
+            const res = await fetch(`/api/stocks/${id}/note`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note_color: newColor })
+            });
+            if (!res.ok) throw new Error('Failed to update note color');
+        } catch (error) {
+            console.error('Note color update error', error);
+            setTrades(prev => prev.map(t => t.id === id ? { ...t, note_color: currentColor } : t));
+            toast({ variant: 'destructive', title: '操作失敗', description: '無法更新註解顏色' });
+        }
+    };
+
     const handleNoteUpdate = async (id: number, note: string) => {
         const originalTrades = [...trades];
         setTrades(prev => prev.map(t => t.id === id ? { ...t, note } : t));
 
         try {
-            const res = await fetch(`/api/stocks/${id}`, {
-                method: 'PUT',
+            const res = await fetch(`/api/stocks/${id}/note`, {
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, note }),
+                body: JSON.stringify({ note }),
             });
             if (!res.ok) throw new Error('Update failed');
         } catch (error) {
@@ -349,7 +368,7 @@ export default function StockTradingPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center">#</TableHead>
-                                <TableHead className="text-center">註解</TableHead>
+                                <TableHead className="text-left">註解</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
@@ -387,10 +406,29 @@ export default function StockTradingPage() {
 
                                     return (
                                         <TableRow key={trade.id} className="h-[40px]">
-                                            <TableCell className="text-center text-muted-foreground font-mono py-1">{sortedTrades.length - index}</TableCell>
+                                            <TableCell className="text-center text-muted-foreground font-mono py-1">
+                                                <div className="flex items-center justify-center gap-4">
+                                                    <span>{sortedTrades.length - index}</span>
+                                                    {trade.note?.trim() ? (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleColorToggle(trade.id, trade.note_color);
+                                                            }}
+                                                            className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
+                                                                trade.note_color === 'red' ? 'bg-red-500' : 'bg-blue-500'
+                                                            }`}
+                                                            title="切換註解顏色"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-4 h-4 shrink-0" />
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="py-1 min-w-[180px]">
                                                 <input 
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-center text-[13px] font-medium text-blue-500"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
+                                                    style={{ color: trade.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
                                                     maxLength={20}
                                                     defaultValue={trade.note || ''}
                                                     placeholder="..."
