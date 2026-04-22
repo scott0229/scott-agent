@@ -206,14 +206,38 @@ export default function StockTradingPage() {
     // Check if any filter is active
     const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
 
-    // Calculate current accumulated shares for each user_id + symbol
-    const currentOpenSharesMap = useMemo(() => {
-        const map: Record<string, number> = {};
+    // Calculate running total of shares for each trade chronologically
+    const runningTotalMap = useMemo(() => {
+        const map: Record<number, number> = {};
+        
+        // Group trades by user+symbol
+        const grouped: Record<string, StockTrade[]> = {};
         trades.forEach(t => {
-            if (t.status === 'Open') {
-                const key = `${t.user_id}_${t.symbol}`;
-                map[key] = (map[key] || 0) + t.quantity;
-            }
+            const key = `${t.user_id}_${t.symbol}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+        });
+
+        Object.values(grouped).forEach(group => {
+            // Sort ascending by open_date, then by id
+            group.sort((a, b) => {
+                if (a.open_date !== b.open_date) return a.open_date - b.open_date;
+                return a.id - b.id;
+            });
+            
+            // Calculate running total for each trade in the group
+            group.forEach((t, index) => {
+                let total = 0;
+                // For this trade t, check all trades l that were opened before or at the same time
+                for (let i = 0; i <= index; i++) {
+                    const l = group[i];
+                    // l is included if it was not closed BEFORE t.open_date
+                    if (!l.close_date || l.close_date >= t.open_date) {
+                        total += l.quantity;
+                    }
+                }
+                map[t.id] = total;
+            });
         });
         return map;
     }, [trades]);
@@ -496,8 +520,8 @@ export default function StockTradingPage() {
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
-                                                {currentOpenSharesMap[`${trade.user_id}_${trade.symbol}`] > 0 
-                                                    ? currentOpenSharesMap[`${trade.user_id}_${trade.symbol}`].toLocaleString() 
+                                                {runningTotalMap[trade.id] > 0 
+                                                    ? runningTotalMap[trade.id].toLocaleString() 
                                                     : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
