@@ -824,7 +824,7 @@ export default function StrategiesPage() {
                                                                     <th className="text-center py-1 px-2 font-medium text-muted-foreground">口數</th>
                                                                     <th className="text-center py-1 px-2 font-medium text-muted-foreground">開倉日</th>
                                                                     <th className="text-center py-1 px-2 font-medium text-muted-foreground">平倉日</th>
-                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">盈虧</th>
+                                                                    <th className="text-center py-1 px-2 font-medium text-muted-foreground">權利金 / 盈虧</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
