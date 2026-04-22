@@ -19,6 +19,13 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { isMarketHoliday } from '@/lib/holidays';
@@ -37,6 +44,7 @@ export default function HistoricalReportsPage() {
     const [previewId, setPreviewId] = useState<number | null>(null);
     const [users, setUsers] = useState<any[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [selectedAccountId, setSelectedAccountId] = useState<string>('All');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dirInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -218,6 +226,32 @@ export default function HistoricalReportsPage() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Select
+                        value={selectedAccountId}
+                        onValueChange={setSelectedAccountId}
+                    >
+                        <SelectTrigger className="w-[150px] h-9 border-border shadow-xs bg-background">
+                            <SelectValue placeholder="所有帳號" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有帳號</SelectItem>
+                            {Object.entries(groupedReports)
+                                .sort(([accountIdA], [accountIdB]) => {
+                                    const aliasA = users.find(u => u.ib_account === accountIdA)?.user_id || accountIdA;
+                                    const aliasB = users.find(u => u.ib_account === accountIdB)?.user_id || accountIdB;
+                                    return aliasA.localeCompare(aliasB);
+                                })
+                                .map(([accountId]) => {
+                                    const user = users.find(u => u.ib_account === accountId);
+                                    const displayName = user?.user_id || accountId;
+                                    return (
+                                        <SelectItem key={accountId} value={accountId}>
+                                            {displayName}
+                                        </SelectItem>
+                                    );
+                                })}
+                        </SelectContent>
+                    </Select>
                     <input
                         type="file"
                         accept=".html,text/html"
@@ -269,6 +303,7 @@ export default function HistoricalReportsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                     {Object.entries(groupedReports)
+                        .filter(([accountId]) => selectedAccountId === 'All' || accountId === selectedAccountId)
                         .sort(([accountIdA], [accountIdB]) => {
                             const aliasA = users.find(u => u.ib_account === accountIdA)?.user_id || accountIdA;
                             const aliasB = users.find(u => u.ib_account === accountIdB)?.user_id || accountIdB;
