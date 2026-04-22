@@ -270,13 +270,13 @@ export default function HistoricalReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                     {Object.entries(groupedReports)
                         .sort(([accountIdA], [accountIdB]) => {
-                            const aliasA = users.find(u => u.account_id === accountIdA)?.alias || accountIdA;
-                            const aliasB = users.find(u => u.account_id === accountIdB)?.alias || accountIdB;
+                            const aliasA = users.find(u => u.ib_account === accountIdA)?.user_id || accountIdA;
+                            const aliasB = users.find(u => u.ib_account === accountIdB)?.user_id || accountIdB;
                             return aliasA.localeCompare(aliasB);
                         })
                         .map(([accountId, accountReports]) => {
-                            const user = users.find(u => u.account_id === accountId);
-                            const displayName = user?.alias || accountId;
+                            const user = users.find(u => u.ib_account === accountId);
+                            const displayName = user?.user_id || accountId;
                             
                             return (
                         <div key={accountId} className="rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col">
