@@ -1870,6 +1870,11 @@ export default function AdminUsersPage() {
                         }
                     }}
                     title="選擇要寄出報告的用戶"
+                    description={
+                        (settings.reportCcEmail1 || settings.reportCcEmail2) 
+                            ? `將同步密件副本 (BCC) 至：${[settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '').join(', ')}`
+                            : undefined
+                    }
                     users={batchMailUsers}
                     onConfirm={confirmBatchMail}
                     confirmLabel="開始寄出"
