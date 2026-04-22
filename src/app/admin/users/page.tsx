@@ -391,14 +391,19 @@ export default function AdminUsersPage() {
             data.openOptions.forEach((opt: any) => {
                 // to_date is Unix timestamp, convert to date string
                 const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
-                const expiry = expiryDate ? `${String(expiryDate.getMonth() + 1).padStart(2, '0')}/${String(expiryDate.getDate()).padStart(2, '0')}` : '';
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                let desc = `${opt.underlying} - ${opt.type} ${opt.strike_price}`;
+                if (expiryDate) {
+                    const monthName = months[expiryDate.getMonth()];
+                    const dayStr = String(expiryDate.getDate()).padStart(2, '0');
+                    const yearStr = String(expiryDate.getFullYear()).slice(2);
+                    const typeChar = opt.type === 'CALL' ? 'C' : 'P';
+                    desc = `${opt.underlying} ${monthName}${dayStr}'${yearStr} ${opt.strike_price}${typeChar}`;
+                }
                 const isSeller = opt.quantity < 0;
-                const action = isSeller ? 'sell' : 'buy';
                 const quantityStr = isSeller ? opt.quantity : Math.abs(opt.quantity);
-                const optType = opt.type.toLowerCase();
                 const premiumStr = isSeller ? `, 權利金 ${formatMoney(Math.abs(opt.premium))}` : '';
-                // Premium is negative for sold options in the database
-                report += `${quantityStr}口 ${expiry} ${action}-${opt.underlying}-${optType} ${opt.strike_price}${premiumStr}\n`;
+                report += `${quantityStr}口 ${desc}${premiumStr}\n`;
             });
         }
 
