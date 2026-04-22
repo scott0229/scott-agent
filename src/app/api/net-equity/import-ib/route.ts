@@ -146,6 +146,7 @@ function parseIBStatement(html: string) {
         quantity: number;
         costPrice: number;
         premium: number;
+        unrealizedPnl: number;
     }> = [];
     if (openPosSectionMatch) {
         const openPosHtml = openPosSectionMatch[1];
@@ -171,7 +172,7 @@ function parseIBStatement(html: string) {
                 const costBasisStr = cols[4];
                 // cols[5] = 收盤價格
                 // cols[6] = 價值
-                // cols[7] = 未實現的損益
+                const unrealizedPnlStr = cols[7]; // 未實現的損益
 
                 // Skip header/subtotal rows
                 if (codeStr === '代碼' || codeStr.includes('Symbol') || codeStr.startsWith('總數') || !codeStr) continue;
@@ -201,6 +202,7 @@ function parseIBStatement(html: string) {
                 const quantity = parseNumber(qtyStr);
                 const costPrice = parseNumber(costPriceStr);
                 const premium = quantity > 0 ? 0 : Math.abs(parseNumber(costBasisStr)); // BUY: premium=0, only track SELL premium
+                const unrealizedPnl = parseNumber(unrealizedPnlStr);
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
                 if (quantity !== 0) {
@@ -213,6 +215,7 @@ function parseIBStatement(html: string) {
                         quantity,
                         costPrice,
                         premium,
+                        unrealizedPnl,
                     });
                 }
             }
@@ -419,7 +422,7 @@ export async function POST(request: NextRequest) {
                     .filter(t => t.tradeAction === 'O')
                     .map(t => `${t.underlying}|${t.strikePrice}|${t.toDate}|${t.type}`)
             );
-            const openOptionActions: Array<{ action: string; underlying: string; type: string; strikePrice: number; toDateStr: string; quantity: number; premium: number }> = [];
+            const openOptionActions: Array<{ action: string; underlying: string; type: string; strikePrice: number; toDateStr: string; quantity: number; premium: number; unrealizedPnl: number }> = [];
             for (const pos of parsed.openOptionPositions) {
                 // Skip if already covered by an option trade being added
                 const posKey = `${pos.underlying}|${pos.strikePrice}|${pos.toDate}|${pos.type}`;
@@ -430,13 +433,14 @@ export async function POST(request: NextRequest) {
                 ).bind(userResult.id, pos.underlying, pos.strikePrice, pos.toDate, pos.type).first<{ id: number }>();
 
                 openOptionActions.push({
-                    action: existingOpt ? 'skip_exists' : 'sync_add',
+                    action: existingOpt ? 'sync_update' : 'sync_add',
                     underlying: pos.underlying,
                     type: pos.type,
                     strikePrice: pos.strikePrice,
                     toDateStr: pos.toDateStr,
                     quantity: pos.quantity,
                     premium: pos.premium,
+                    unrealizedPnl: pos.unrealizedPnl,
                 });
             }
 
@@ -767,8 +771,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Sync open option positions: ADD-ONLY (skip if already covered by option trades)
-        const openOptionsSync = { added: 0, skipped: 0 };
+        // Sync open option positions: ADD and UPDATE
+        const openOptionsSync = { added: 0, updated: 0, skipped: 0 };
         const confirmOptionTradeKeys = new Set(
             parsed.optionTrades
                 .filter(t => t.tradeAction === 'O')
@@ -809,7 +813,7 @@ export async function POST(request: NextRequest) {
                         pos.type,
                         pos.strikePrice,
                         pos.premium,
-                        pos.quantity > 0 ? 0 : pos.premium, // BUY Open: final_profit=0
+                        pos.unrealizedPnl,
                         parsed.userAlias,
                         userResult.id,
                         parsed.year,
@@ -817,7 +821,17 @@ export async function POST(request: NextRequest) {
                     ).run();
                     openOptionsSync.added++;
                 } else {
-                    openOptionsSync.skipped++;
+                    // Update Unrealized PnL for existing open options
+                    await db.prepare(`
+                        UPDATE OPTIONS SET
+                            final_profit = ?,
+                            updated_at = unixepoch()
+                        WHERE id = ?
+                    `).bind(
+                        pos.unrealizedPnl,
+                        existingOpt.id
+                    ).run();
+                    openOptionsSync.updated++;
                 }
             }
         }

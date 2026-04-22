@@ -1134,7 +1134,12 @@ export default function AdminUsersPage() {
 
                 // Append net equity / option stats
                 if (data.positionsSync?.added) statusText += ` +${data.positionsSync.added}持倉`;
-                if (data.openOptionsSync?.added) statusText += ` +${data.openOptionsSync.added}期權持倉`;
+                if (data.openOptionsSync?.added || data.openOptionsSync?.updated) {
+                    let text = [];
+                    if (data.openOptionsSync.added) text.push(`新增${data.openOptionsSync.added}`);
+                    if (data.openOptionsSync.updated) text.push(`更新${data.openOptionsSync.updated}`);
+                    statusText += ` +期權持倉(${text.join(', ')})`;
+                }
                 if (data.optionsSync?.added) statusText += ` +${data.optionsSync.added}期權交易`;
                 if (data.optionsSync?.closed) statusText += ` -${data.optionsSync.closed}期權平倉`;
 
@@ -1282,7 +1287,12 @@ export default function AdminUsersPage() {
             }
             if (data.openOptionsSync) {
                 const os = data.openOptionsSync;
-                if (os.added) posMsg += `，期權持倉：新增 ${os.added}`;
+                if (os.added || os.updated) {
+                    let text = [];
+                    if (os.added) text.push(`新增 ${os.added}`);
+                    if (os.updated) text.push(`更新 ${os.updated}`);
+                    posMsg += `，期權持倉：${text.join('、')}`;
+                }
             }
 
             toast({
