@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,6 +206,18 @@ export default function StockTradingPage() {
     // Check if any filter is active
     const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
 
+    // Calculate current accumulated shares for each user_id + symbol
+    const currentOpenSharesMap = useMemo(() => {
+        const map: Record<string, number> = {};
+        trades.forEach(t => {
+            if (t.status === 'Open') {
+                const key = `${t.user_id}_${t.symbol}`;
+                map[key] = (map[key] || 0) + t.quantity;
+            }
+        });
+        return map;
+    }, [trades]);
+
     const canEdit = (trade: StockTrade) => {
         if (!currentUser) return false;
         if (currentUser.role === 'admin' || currentUser.role === 'manager') return true;
@@ -378,6 +390,7 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
+                                <TableHead className="text-center">當前累積股數</TableHead>
                                 <TableHead className="text-center">列入期權</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                                 <TableHead className="text-right"></TableHead>
@@ -481,6 +494,11 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-center py-1">
+                                                {currentOpenSharesMap[`${trade.user_id}_${trade.symbol}`] > 0 
+                                                    ? currentOpenSharesMap[`${trade.user_id}_${trade.symbol}`].toLocaleString() 
+                                                    : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 {isClosed && trade.close_price ? (
