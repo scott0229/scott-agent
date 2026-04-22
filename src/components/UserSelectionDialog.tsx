@@ -27,7 +27,7 @@ interface UserSelectionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     title: string;
-    description?: string;
+    description?: React.ReactNode;
     users: UserOption[];
     onConfirm: (selectedIds: (number | string)[]) => void;
     confirmLabel?: string;
