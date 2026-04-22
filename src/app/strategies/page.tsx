@@ -55,6 +55,7 @@ interface Option {
     to_date?: number | null;
     strike_price?: number | null;
     settlement_date?: number | null;
+    premium?: number | null;
 }
 
 interface Strategy {
