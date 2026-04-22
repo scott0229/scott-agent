@@ -206,7 +206,7 @@ export default function StockTradingPage() {
     // Check if any filter is active
     const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
 
-    // Calculate running total of shares for each trade chronologically
+    // Calculate running total of shares for each trade chronologically (grouped by day to avoid artificial intra-day partial sums)
     const runningTotalMap = useMemo(() => {
         const map: Record<number, number> = {};
         
@@ -219,23 +219,18 @@ export default function StockTradingPage() {
         });
 
         Object.values(grouped).forEach(group => {
-            // Sort ascending by open_date, then by id
-            group.sort((a, b) => {
-                if (a.open_date !== b.open_date) return a.open_date - b.open_date;
-                return a.id - b.id;
-            });
-            
-            // Calculate running total for each trade in the group
-            group.forEach((t, index) => {
+            // Calculate running total for each trade based on daily snapshots
+            group.forEach(t => {
                 let total = 0;
-                // For this trade t, check all trades l that were opened before or at the same time
-                for (let i = 0; i <= index; i++) {
-                    const l = group[i];
-                    // l is included if it was not closed BEFORE t.open_date
-                    if (!l.close_date || l.close_date >= t.open_date) {
-                        total += l.quantity;
+                group.forEach(l => {
+                    // Include trade 'l' if it was opened on or before 't.open_date'
+                    if (l.open_date <= t.open_date) {
+                        // Exclude trade 'l' ONLY if it was closed strictly before 't.open_date'
+                        if (!l.close_date || l.close_date >= t.open_date) {
+                            total += l.quantity;
+                        }
                     }
-                }
+                });
                 map[t.id] = total;
             });
         });
