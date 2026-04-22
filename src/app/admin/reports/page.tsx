@@ -315,7 +315,7 @@ export default function HistoricalReportsPage() {
                             
                             return (
                         <div key={accountId} className="rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col">
-                            <div className="px-4 py-4 flex justify-between items-center">
+                            <div className="px-4 py-2 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold lg:text-lg">
                                         {displayName}
