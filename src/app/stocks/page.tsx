@@ -409,7 +409,7 @@ export default function StockTradingPage() {
                                 <TableHead className="text-center">平倉價</TableHead>
                                 <TableHead className="text-center">當前股價</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="text-center">當前累積股數</TableHead>
+                                <TableHead className="text-center">開倉後總股數</TableHead>
                                 <TableHead className="text-center">列入期權</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                                 <TableHead className="text-right"></TableHead>
