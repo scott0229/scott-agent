@@ -353,11 +353,11 @@ export function UserProfileMenu() {
                                         <Input
                                             id="report-cc-email-1"
                                             name="report-cc-email-1"
-                                            type="email"
+                                            type="text"
                                             value={settings.reportCcEmail1 || ''}
                                             onChange={(e) => updateSetting('reportCcEmail1', e.target.value)}
                                             placeholder="輸入 Email (選填)"
-                                            autoComplete="off"
+                                            autoComplete="new-password"
                                         />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
@@ -365,11 +365,11 @@ export function UserProfileMenu() {
                                         <Input
                                             id="report-cc-email-2"
                                             name="report-cc-email-2"
-                                            type="email"
+                                            type="text"
                                             value={settings.reportCcEmail2 || ''}
                                             onChange={(e) => updateSetting('reportCcEmail2', e.target.value)}
                                             placeholder="輸入 Email (選填)"
-                                            autoComplete="off"
+                                            autoComplete="new-password"
                                         />
                                     </div>
                                 </>
