@@ -654,8 +654,12 @@ export default function StrategiesPage() {
                                                         // Only count option profits from options opened on or after the earliest stock open date
                                                         const earliestStockDate = Math.min(...openStocks.map(s => s.open_date));
                                                         const optProfit = strategy.options.reduce((sum, o) => {
-                                                            if (o.final_profit !== null && o.final_profit !== undefined && o.open_date >= earliestStockDate) {
-                                                                return sum + o.final_profit;
+                                                            if (o.open_date >= earliestStockDate) {
+                                                                if (o.operation === 'Closed' && o.final_profit !== null && o.final_profit !== undefined) {
+                                                                    return sum + o.final_profit;
+                                                                } else if (o.operation !== 'Closed' && o.premium !== null && o.premium !== undefined) {
+                                                                    return sum + (o.quantity < 0 ? Math.abs(o.premium) : -Math.abs(o.premium));
+                                                                }
                                                             }
                                                             return sum;
                                                         }, 0);
