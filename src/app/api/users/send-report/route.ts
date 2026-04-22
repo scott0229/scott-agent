@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { userId, report, userName, dateStr } = await req.json();
+        const { userId, report, userName, dateStr, ccEmails } = await req.json();
 
         if (!userId || !report) {
             return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
@@ -67,20 +67,26 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`.trim();
 
+        const payload: any = {
+            from: 'Scott Agent <reports@scott-agent.com>',
+            reply_to: 'reports@scott-agent.com',
+            to: [recipientEmail],
+            subject,
+            text: report,
+            html: htmlContent,
+        };
+
+        if (ccEmails && Array.isArray(ccEmails) && ccEmails.length > 0) {
+            payload.bcc = ccEmails;
+        }
+
         const emailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${resendApiKey}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                from: 'Scott Agent <reports@scott-agent.com>',
-                reply_to: 'reports@scott-agent.com',
-                to: [recipientEmail],
-                subject,
-                text: report,
-                html: htmlContent,
-            }),
+            body: JSON.stringify(payload),
         });
 
         const emailData = await emailRes.json();

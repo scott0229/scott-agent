@@ -8,11 +8,13 @@ interface AdminSettings {
     showEmail: boolean;
     premiumTargetPercent: number;
     includeStockDiffInPremium: boolean;
+    reportCcEmail1?: string;
+    reportCcEmail2?: string;
 }
 
 interface AdminSettingsContextType {
     settings: AdminSettings;
-    updateSetting: (key: keyof AdminSettings, value: boolean | number) => void;
+    updateSetting: (key: keyof AdminSettings, value: boolean | number | string) => void;
 }
 
 const STORAGE_KEY = 'scott-agent-admin-settings';
@@ -23,6 +25,8 @@ const defaultSettings: AdminSettings = {
     showEmail: true,
     premiumTargetPercent: 4,
     includeStockDiffInPremium: true,
+    reportCcEmail1: '',
+    reportCcEmail2: '',
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);
@@ -43,7 +47,7 @@ function loadSettings(): AdminSettings {
 export function AdminSettingsProvider({ children }: { children: ReactNode }) {
     const [settings, setSettings] = useState<AdminSettings>(loadSettings);
 
-    const updateSetting = (key: keyof AdminSettings, value: boolean | number) => {
+    const updateSetting = (key: keyof AdminSettings, value: boolean | number | string) => {
         setSettings(prev => {
             const next = { ...prev, [key]: value };
             if (typeof window !== 'undefined') {

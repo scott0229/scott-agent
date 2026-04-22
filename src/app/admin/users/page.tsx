@@ -485,6 +485,7 @@ export default function AdminUsersPage() {
                         report: reportData.report,
                         userName: reportData.userName,
                         dateStr,
+                        ccEmails: [settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '')
                     }),
                 });
                 if (res.ok) {
@@ -1704,7 +1705,13 @@ export default function AdminUsersPage() {
                                                         const res = await fetch('/api/users/send-report', {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ userId, report, userName, dateStr }),
+                                                            body: JSON.stringify({ 
+                                                                userId, 
+                                                                report, 
+                                                                userName, 
+                                                                dateStr,
+                                                                ccEmails: [settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '')
+                                                            }),
                                                         });
                                                         const data = await res.json();
                                                         if (res.ok) {

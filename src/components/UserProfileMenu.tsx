@@ -315,38 +315,60 @@ export function UserProfileMenu() {
                                 </div>
                             )}
 
-                            {/* Premium Target - Admin Only */}
+                            {/* Premium Target and Emails - Admin Only */}
                             {user.role === 'admin' && (
-                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                    <Label htmlFor="premium-target">權利金目標</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input
-                                            id="premium-target"
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            value={settings.premiumTargetPercent}
-                                            onChange={(e) => updateSetting('premiumTargetPercent', parseFloat(e.target.value) || 0)}
-                                            className="w-24"
-                                        />
-                                        <span className="text-sm text-muted-foreground">%</span>
-                                        <div className="ml-2">
-                                            <Select
-                                                value={settings.includeStockDiffInPremium === false ? "false" : "true"}
-                                                onValueChange={(val) => updateSetting('includeStockDiffInPremium', val === "true")}
-                                            >
-                                                <SelectTrigger className="w-[130px] h-9">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="true" className="cursor-pointer">列入價差</SelectItem>
-                                                    <SelectItem value="false" className="cursor-pointer">不列入價差</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                <>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <Label htmlFor="premium-target">權利金目標</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                id="premium-target"
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                value={settings.premiumTargetPercent}
+                                                onChange={(e) => updateSetting('premiumTargetPercent', parseFloat(e.target.value) || 0)}
+                                                className="w-24"
+                                            />
+                                            <span className="text-sm text-muted-foreground">%</span>
+                                            <div className="ml-2">
+                                                <Select
+                                                    value={settings.includeStockDiffInPremium === false ? "false" : "true"}
+                                                    onValueChange={(val) => updateSetting('includeStockDiffInPremium', val === "true")}
+                                                >
+                                                    <SelectTrigger className="w-[130px] h-9">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="true" className="cursor-pointer">列入價差</SelectItem>
+                                                        <SelectItem value="false" className="cursor-pointer">不列入價差</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <Label htmlFor="report-cc-email-1">同步報表 1</Label>
+                                        <Input
+                                            id="report-cc-email-1"
+                                            type="email"
+                                            value={settings.reportCcEmail1 || ''}
+                                            onChange={(e) => updateSetting('reportCcEmail1', e.target.value)}
+                                            placeholder="輸入 Email (選填)"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <Label htmlFor="report-cc-email-2">同步報表 2</Label>
+                                        <Input
+                                            id="report-cc-email-2"
+                                            type="email"
+                                            value={settings.reportCcEmail2 || ''}
+                                            onChange={(e) => updateSetting('reportCcEmail2', e.target.value)}
+                                            placeholder="輸入 Email (選填)"
+                                        />
+                                    </div>
+                                </>
                             )}
 
                             <div className="col-span-full">
