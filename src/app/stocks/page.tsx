@@ -336,7 +336,7 @@ export default function StockTradingPage() {
                                     <SelectItem value="All">所有狀態</SelectItem>
                                     <SelectItem value="Open">Open</SelectItem>
                                     <SelectItem value="Closed">Closed</SelectItem>
-                                    <SelectItem value="Assigned">Assigned</SelectItem>
+                                    <SelectItem value="Assigned">被指派</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -455,11 +455,11 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 {formatDate(trade.open_date)}
-                                                {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(Assigned)</span>}
+                                                {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
                                             </TableCell>
                                             <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
                                                 {trade.close_date ? formatDate(trade.close_date) : 'Open'}
-                                                {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(Assigned)</span>}
+                                                {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
                                                 {trade.close_source === 'transfer' && <span className="text-xs text-gray-500 font-medium ml-1">(Transferred)</span>}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
