@@ -352,20 +352,24 @@ export function UserProfileMenu() {
                                         <Label htmlFor="report-cc-email-1">同步報表 1</Label>
                                         <Input
                                             id="report-cc-email-1"
+                                            name="report-cc-email-1"
                                             type="email"
                                             value={settings.reportCcEmail1 || ''}
                                             onChange={(e) => updateSetting('reportCcEmail1', e.target.value)}
                                             placeholder="輸入 Email (選填)"
+                                            autoComplete="off"
                                         />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <Label htmlFor="report-cc-email-2">同步報表 2</Label>
                                         <Input
                                             id="report-cc-email-2"
+                                            name="report-cc-email-2"
                                             type="email"
                                             value={settings.reportCcEmail2 || ''}
                                             onChange={(e) => updateSetting('reportCcEmail2', e.target.value)}
                                             placeholder="輸入 Email (選填)"
+                                            autoComplete="off"
                                         />
                                     </div>
                                 </>
