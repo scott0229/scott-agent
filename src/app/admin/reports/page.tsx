@@ -268,12 +268,22 @@ export default function HistoricalReportsPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-                    {Object.entries(groupedReports).map(([accountId, accountReports]) => (
+                    {Object.entries(groupedReports)
+                        .sort(([accountIdA], [accountIdB]) => {
+                            const aliasA = users.find(u => u.account_id === accountIdA)?.alias || accountIdA;
+                            const aliasB = users.find(u => u.account_id === accountIdB)?.alias || accountIdB;
+                            return aliasA.localeCompare(aliasB);
+                        })
+                        .map(([accountId, accountReports]) => {
+                            const user = users.find(u => u.account_id === accountId);
+                            const displayName = user?.alias || accountId;
+                            
+                            return (
                         <div key={accountId} className="rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col">
                             <div className="px-4 py-4 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold lg:text-lg">
-                                        {users.find(u => u.account_id === accountId) ? `${users.find(u => u.account_id === accountId).alias} - ${accountId}` : accountId}
+                                        {displayName}
                                     </span>
                                 </div>
                                 <div className="flex items-center text-sm gap-2 shrink-0 px-2 py-1 flex-row rounded">
@@ -385,7 +395,8 @@ export default function HistoricalReportsPage() {
                                     </Table>
                                 </div>
                         </div>
-                    ))}
+                            );
+                    })}
                 </div>
             )}
 
