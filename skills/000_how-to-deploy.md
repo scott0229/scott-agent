@@ -1,11 +1,11 @@
 ---
-description: "如何將專案部署至 Staging (測試環境)"
+description: "如何將專案部署至 Staging (測試環境) 或 Production (正式環境)"
 globs: ["**/*"]
 ---
 
-# 部署至 Staging (Deploy to Staging)
+# 部署至 Staging / Production (Deploy to Staging or Production)
 
-當使用者要求將專案部署到 Staging (測試機) 或發布更新時，請嚴格遵守以下標準流程。**絕對不要使用 Github Actions 或 CI/CD Pipeline 來觸發部署**。
+當使用者要求將專案部署到 Staging (測試機) 或 Production (正式環境) 時，請嚴格遵守以下標準流程。**絕對不要使用 Github Actions 或 CI/CD Pipeline 來觸發部署**。
 
 ## 1. 提交程式碼 (Commit & Push)
 在開始部署之前，請先確保所有變更都已經加入版控，並推送到遠端：
@@ -14,9 +14,16 @@ globs: ["**/*"]
 3. `git push`
 
 ## 2. 執行本機部署指令 (Run Deployment Command)
-使用背景終端機 (background command) 在專案根目錄執行以下指令：
+使用背景終端機 (background command) 在專案根目錄執行對應的指令：
+
+**部署至 Staging (測試機)：**
 ```bash
 npm run deploy:staging
+```
+
+**部署至 Production (正式機)：**
+```bash
+npm run deploy:production
 ```
 這會自動觸發 D1 資料庫遷移以及 Cloudflare Pages 的打包部署。
 
