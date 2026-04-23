@@ -474,6 +474,10 @@ export async function GET(req: NextRequest) {
             });
 
             // Add stock P&L (include_in_options=1) for both Closed and Open positions
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+            const todayTimestamp = Math.floor(today.getTime() / 1000);
+
             const stockPnlQuery = `
                 SELECT 
                     ST.owner_id as user_id,
