@@ -33,6 +33,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { isMarketHoliday } from '@/lib/holidays';
 
 
 interface User {
@@ -1047,7 +1048,7 @@ export default function AdminUsersPage() {
             d.setDate(d.getDate() + 1);
             while (d < curr) {
                 const dow = d.getDay();
-                if (dow !== 0 && dow !== 6) businessDays++;
+                if (dow !== 0 && dow !== 6 && !isMarketHoliday(d)) businessDays++;
                 d.setDate(d.getDate() + 1);
             }
             if (businessDays > 0) {
