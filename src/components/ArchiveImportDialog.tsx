@@ -66,8 +66,14 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport, users }: Arc
             const rawAccount = match ? match[1] : r.filename.split('_')[0];
             accs.add(rawAccount);
         });
-        return Array.from(accs).sort();
-    }, [reports]);
+        return Array.from(accs).sort((a, b) => {
+            const userA = users?.find(u => u.ib_account === a);
+            const nameA = userA ? (userA.user_id || userA.email.split('@')[0]) : a;
+            const userB = users?.find(u => u.ib_account === b);
+            const nameB = userB ? (userB.user_id || userB.email.split('@')[0]) : b;
+            return nameA.localeCompare(nameB);
+        });
+    }, [reports, users]);
 
     // Calculate available dates for selected account
     const availableReports = useMemo(() => {
