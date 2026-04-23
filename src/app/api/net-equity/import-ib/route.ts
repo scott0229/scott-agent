@@ -1010,6 +1010,14 @@ export async function POST(request: NextRequest) {
                     code = generateCode();
                 }
 
+                const matchingPos = parsed.openOptionPositions.find(p => 
+                    p.underlying === opt.underlying && 
+                    p.strikePrice === opt.strikePrice && 
+                    p.toDate === opt.toDate && 
+                    p.type === opt.type
+                );
+                const initialProfit = matchingPos ? matchingPos.unrealizedPnl : (opt.quantity > 0 ? 0 : opt.premium);
+
                 await db.prepare(`
                     INSERT INTO OPTIONS (
                         operation, open_date, to_date, quantity, underlying, type, strike_price,
@@ -1023,7 +1031,7 @@ export async function POST(request: NextRequest) {
                     opt.type,
                     opt.strikePrice,
                     opt.premium,
-                    opt.quantity > 0 ? 0 : opt.premium, // BUY Open: final_profit=0
+                    initialProfit,
                     parsed.userAlias,
                     userResult.id,
                     parsed.year,
