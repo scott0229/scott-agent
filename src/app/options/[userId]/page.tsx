@@ -556,7 +556,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">當時股價</TableHead>
 
                             <TableHead className="text-center">權利金</TableHead>
-                            <TableHead className="text-center">未/已實現損益</TableHead>
+                            <TableHead className="text-center">損益</TableHead>
 
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
