@@ -379,10 +379,6 @@ export default function AdminUsersPage() {
         // Premium section
         report += `期權收益率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
-        report += `季-累積期權收益 : $${formatMoney(data.quarterlyPremium)}\n`;
-        const quarterlyPercent = settings.premiumTargetPercent / 4;
-        const quarterlyPercentStr = quarterlyPercent % 1 === 0 ? quarterlyPercent.toString() : quarterlyPercent.toFixed(1).replace(/\.0$/, '');
-        report += `季-${quarterlyPercentStr}%目標 : $${formatMoney(data.quarterlyTarget)}\n`;
         report += `年-累積期權收益 : $${formatMoney(data.annualPremium)}\n`;
         report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
