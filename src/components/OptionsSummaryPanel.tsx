@@ -257,12 +257,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
             <div>
                 <table className="w-full text-[13px] table-fixed">
                     <colgroup>
-                        <col style={{ width: '120px' }} /> {/* Label Column */}
+                        <col style={{ width: '170px' }} /> {/* Label Column */}
 
                         {users.map(u => {
                             const userKey = u.user_id || u.id.toString();
                             const isVisible = columnVisibility.users[userKey] !== false;
-                            return isVisible ? <col key={u.id} /> : null;
+                            return isVisible ? <col key={u.id} style={{ width: '100px' }} /> : null;
                         })}
                     </colgroup>
                     <thead>
