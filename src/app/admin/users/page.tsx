@@ -2278,16 +2278,16 @@ export default function AdminUsersPage() {
                                                     <table className="w-full text-xs border rounded">
                                                         <thead>
                                                             <tr className="bg-muted">
-                                                                <th className="text-left p-1.5">日期</th>
-                                                                <th className="text-left p-1.5">用戶</th>
+                                                                <th className="text-left p-1.5 whitespace-nowrap">日期</th>
+                                                                <th className="text-left p-1.5 whitespace-nowrap">用戶</th>
                                                                 <th className="text-left p-1.5">結果</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {batchResults.map((r, i) => (
                                                                 <tr key={i} className={`border-t ${r.status.startsWith('✗') ? 'bg-red-50' : ''}`}>
-                                                                    <td className="p-1.5 font-mono">{r.date}</td>
-                                                                    <td className="p-1.5">{r.user}</td>
+                                                                    <td className="p-1.5 font-mono whitespace-nowrap">{r.date}</td>
+                                                                    <td className="p-1.5 whitespace-nowrap">{r.user}</td>
                                                                     <td className="p-1.5">
                                                                         {r.status.startsWith('✓') ? (
                                                                             <div className="flex items-center gap-1">
