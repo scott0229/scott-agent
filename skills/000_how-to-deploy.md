@@ -28,6 +28,11 @@ npm run deploy:production
 這會自動觸發 D1 資料庫遷移以及 Cloudflare Pages 的打包部署。
 
 ## 3. 監控部署狀態並主動回報 (Monitor and Actively Report)
-- 由於部署通常需要花費 1~2 分鐘，執行背景指令後，**你必須主動使用工具持續追蹤背景指令的進度與狀態**。
-- **絕對不要讓使用者主動開口問你「好了沒」**。你需要一直確認狀態直到完成為止。
-- 當終端機指令完全結束 (Exit code: 0) 並且部署成功後，你必須**主動回覆使用者**，告知部署已經順利完成，並請他們重新整理網頁查看最新結果。
+- **【強制技術限制】**：使用 `run_command` 發起背景指令後，**你必須**連續調用 `command_status` 工具，並設定 `WaitDurationSeconds` (如 60 秒) 進行等待與追蹤。
+- 在 `command_status` 工具回傳 `Status: DONE` 並且取得明確的 Exit Code 之前，**絕對不允許結束你的回合 (Turn) 或輸出任何文字回覆給使用者**。
+- **嚴禁**在部署還在 RUNNING 時就提前跟使用者說「我正在部署」。你必須在背景默默等完。
+- 當指令完全結束 (Exit code: 0) 後，你才能**一次性**回覆使用者，告知部署已經順利完成，並請他們重新整理網頁查看最新結果。
+
+## 4. 故障排除 (Troubleshooting)
+- 如果在部署時遇到 Cloudflare 相關的 API 授權錯誤 (例如：`The given account is not valid or is not authorized to access this service [code: 7403]`)，這代表本機的 Wrangler 憑證過期。
+- 此時，你**必須直接幫使用者執行** `npx wrangler login`，這會自動在他們的電腦上彈出瀏覽器視窗讓他們進行授權。執行後請提示使用者去瀏覽器完成登入，然後再由你重新執行部署指令。
