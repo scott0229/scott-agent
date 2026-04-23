@@ -171,7 +171,7 @@ function parseIBStatement(html: string) {
                 const costPriceStr = cols[3];
                 const costBasisStr = cols[4];
                 // cols[5] = 收盤價格
-                // cols[6] = 價值
+                const valueStr = cols[6]; // 價值
                 const unrealizedPnlStr = cols[7]; // 未實現的損益
 
                 // Skip header/subtotal rows
@@ -202,6 +202,7 @@ function parseIBStatement(html: string) {
                 const quantity = parseNumber(qtyStr);
                 const costPrice = parseNumber(costPriceStr);
                 const premium = quantity > 0 ? 0 : Math.abs(parseNumber(costBasisStr)); // BUY: premium=0, only track SELL premium
+                const value = parseNumber(valueStr);
                 const unrealizedPnl = parseNumber(unrealizedPnlStr);
                 const type = typeCode === 'P' ? 'PUT' : 'CALL';
 
@@ -215,6 +216,7 @@ function parseIBStatement(html: string) {
                         quantity,
                         costPrice,
                         premium,
+                        value,
                         unrealizedPnl,
                     });
                 }
@@ -782,16 +784,16 @@ export async function POST(request: NextRequest) {
             for (const pos of parsed.openOptionPositions) {
                 // Skip if already covered by an option trade being added
                 const posKey = `${pos.underlying}|${pos.strikePrice}|${pos.toDate}|${pos.type}`;
-                if (confirmOptionTradeKeys.has(posKey)) {
-                    openOptionsSync.skipped++;
-                    continue;
-                }
 
-                const existingOpt = await db.prepare(
-                    `SELECT id FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open' LIMIT 1`
-                ).bind(userResult.id, pos.underlying, pos.strikePrice, pos.toDate, pos.type).first<{ id: number }>();
+                const existingOpts = await db.prepare(
+                    `SELECT id, quantity, premium FROM OPTIONS WHERE owner_id = ? AND underlying = ? AND strike_price = ? AND to_date = ? AND type = ? AND operation = 'Open'`
+                ).bind(userResult.id, pos.underlying, pos.strikePrice, pos.toDate, pos.type).all<{ id: number, quantity: number, premium: number }>();
 
-                if (!existingOpt) {
+                if (existingOpts.results.length === 0) {
+                    if (confirmOptionTradeKeys.has(posKey)) {
+                        openOptionsSync.skipped++;
+                        continue;
+                    }
                     let code = generateCode();
                     for (let attempt = 0; attempt < 10; attempt++) {
                         const existsOpt = await db.prepare('SELECT 1 FROM OPTIONS WHERE code = ?').bind(code).first();
@@ -821,17 +823,22 @@ export async function POST(request: NextRequest) {
                     ).run();
                     openOptionsSync.added++;
                 } else {
-                    // Update Unrealized PnL for existing open options
-                    await db.prepare(`
-                        UPDATE OPTIONS SET
-                            final_profit = ?,
-                            updated_at = unixepoch()
-                        WHERE id = ?
-                    `).bind(
-                        pos.unrealizedPnl,
-                        existingOpt.id
-                    ).run();
-                    openOptionsSync.updated++;
+                    // Update Unrealized PnL for all existing open options proportionally
+                    for (const opt of existingOpts.results) {
+                        const proratedValue = pos.quantity !== 0 ? (pos.value / pos.quantity) * opt.quantity : 0;
+                        const tradePnl = proratedValue + (opt.quantity < 0 ? opt.premium : -opt.premium);
+                        
+                        await db.prepare(`
+                            UPDATE OPTIONS SET
+                                final_profit = ?,
+                                updated_at = unixepoch()
+                            WHERE id = ?
+                        `).bind(
+                            tradePnl,
+                            opt.id
+                        ).run();
+                        openOptionsSync.updated++;
+                    }
                 }
             }
         }
@@ -1016,7 +1023,12 @@ export async function POST(request: NextRequest) {
                     p.toDate === opt.toDate && 
                     p.type === opt.type
                 );
-                const initialProfit = matchingPos ? matchingPos.unrealizedPnl : (opt.quantity > 0 ? 0 : opt.premium);
+                
+                let initialProfit = opt.quantity > 0 ? 0 : opt.premium;
+                if (matchingPos && matchingPos.quantity !== 0) {
+                    const proratedValue = (matchingPos.value / matchingPos.quantity) * opt.quantity;
+                    initialProfit = proratedValue + (opt.quantity < 0 ? opt.premium : -opt.premium);
+                }
 
                 await db.prepare(`
                     INSERT INTO OPTIONS (
