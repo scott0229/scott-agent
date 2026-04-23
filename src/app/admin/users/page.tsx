@@ -2219,7 +2219,7 @@ export default function AdminUsersPage() {
                         setBatchError(null);
                     }
                 }}>
-                    <AlertDialogContent className="max-w-lg">
+                    <AlertDialogContent className="max-w-[562px]">
                         <AlertDialogHeader>
                             <AlertDialogTitle>
                                 {batchImporting
@@ -2274,7 +2274,7 @@ export default function AdminUsersPage() {
 
                                             {/* Results table */}
                                             {batchResults.length > 0 && (
-                                                <div className="max-h-[300px] overflow-y-auto">
+                                                <div className="max-h-[350px] overflow-y-auto">
                                                     <table className="w-full text-xs border rounded">
                                                         <thead>
                                                             <tr className="bg-muted">
