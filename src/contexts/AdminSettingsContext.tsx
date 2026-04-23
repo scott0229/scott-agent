@@ -6,6 +6,7 @@ interface AdminSettings {
     showTradeCode: boolean;
     showPhone: boolean;
     showEmail: boolean;
+    showPremium: boolean;
     premiumTargetPercent: number;
     includeStockDiffInPremium: boolean;
     reportCcEmail1?: string;
@@ -23,6 +24,7 @@ const defaultSettings: AdminSettings = {
     showTradeCode: true,
     showPhone: true,
     showEmail: true,
+    showPremium: true,
     premiumTargetPercent: 4,
     includeStockDiffInPremium: true,
     reportCcEmail1: '',

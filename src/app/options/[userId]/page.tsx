@@ -555,7 +555,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <TableHead className="text-center">持有天數</TableHead>
                             <TableHead className="text-center">當時股價</TableHead>
 
-                            <TableHead className="text-center">權利金</TableHead>
+                            {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
                             <TableHead className="text-center">損益</TableHead>
 
 
@@ -694,7 +694,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         <TableCell className="py-1 font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
 
-                                        <TableCell className="py-1">{opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}</TableCell>
+                                        {settings.showPremium && (
+                                            <TableCell className="py-1 text-center">
+                                                {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
+                                            </TableCell>
+                                        )}
                                         <TableCell className={`py-1 ${opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}`}>
                                             {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-')}
                                         </TableCell>

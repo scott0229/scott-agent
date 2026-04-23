@@ -288,7 +288,7 @@ export function UserProfileMenu() {
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="outline" size="sm" className="w-full justify-start gap-2 font-normal">
                                                 <Eye className="h-4 w-4" />
-                                                欄位顯示 ({[settings.showTradeCode, settings.showPhone, settings.showEmail].filter(Boolean).length}/3)
+                                                欄位顯示 ({[settings.showTradeCode, settings.showPhone, settings.showEmail, settings.showPremium].filter(Boolean).length}/4)
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="start" className="w-48">
@@ -309,6 +309,12 @@ export function UserProfileMenu() {
                                                 onCheckedChange={(v) => updateSetting('showEmail', v)}
                                             >
                                                 郵件地址
+                                            </DropdownMenuCheckboxItem>
+                                            <DropdownMenuCheckboxItem
+                                                checked={settings.showPremium}
+                                                onCheckedChange={(v) => updateSetting('showPremium', v)}
+                                            >
+                                                權利金
                                             </DropdownMenuCheckboxItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
