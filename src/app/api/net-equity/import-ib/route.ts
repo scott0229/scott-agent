@@ -146,6 +146,7 @@ function parseIBStatement(html: string) {
         quantity: number;
         costPrice: number;
         premium: number;
+        value: number;
         unrealizedPnl: number;
     }> = [];
     if (openPosSectionMatch) {
