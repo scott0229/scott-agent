@@ -369,7 +369,7 @@ export default function HistoricalReportsPage() {
                                                     <TableRow 
                                                         key={report.id} 
                                                         onClick={() => setPreviewId(report.id)}
-                                                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                                        className="cursor-pointer hover:bg-muted/50 transition-colors odd:bg-[#FDF8F3] dark:odd:bg-muted/20"
                                                     >
                                                         <TableCell className="font-medium px-4 w-[140px] py-1 whitespace-nowrap">
                                                             {report.statement_date} ({['日', '一', '二', '三', '四', '五', '六'][new Date(`${report.statement_date}T00:00:00`).getDay()]})
