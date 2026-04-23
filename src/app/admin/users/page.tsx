@@ -402,8 +402,7 @@ export default function AdminUsersPage() {
                 }
                 const isSeller = opt.quantity < 0;
                 const quantityStr = isSeller ? opt.quantity : Math.abs(opt.quantity);
-                const premiumStr = isSeller ? `, 權利金 ${formatMoney(Math.abs(opt.premium))}` : '';
-                report += `${quantityStr}口 ${desc}${premiumStr}\n`;
+                report += `${quantityStr}口 ${desc}\n`;
             });
         }
 
