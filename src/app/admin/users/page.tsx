@@ -2342,6 +2342,7 @@ export default function AdminUsersPage() {
                 <ArchiveImportDialog 
                     open={archiveDialogOpen} 
                     onOpenChange={setArchiveDialogOpen} 
+                    users={users}
                     onImport={async (files) => {
                         if (files.length === 1) {
                             await processIbFile(files[0]);

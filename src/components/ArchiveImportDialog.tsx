@@ -9,6 +9,7 @@ export interface ArchiveImportDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImport: (files: File[]) => Promise<void>;
+    users?: { ib_account?: string; user_id: string | null; email: string }[];
 }
 
 interface ReportArchive {
@@ -17,7 +18,7 @@ interface ReportArchive {
     statement_date: string;
 }
 
-export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImportDialogProps) {
+export function ArchiveImportDialog({ open, onOpenChange, onImport, users }: ArchiveImportDialogProps) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [reports, setReports] = useState<ReportArchive[]>([]);
@@ -158,11 +159,15 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport }: ArchiveImp
                                         <SelectValue placeholder="請選擇帳戶" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {accounts.map(acc => (
-                                            <SelectItem key={acc} value={acc}>
-                                                {acc}
-                                            </SelectItem>
-                                        ))}
+                                        {accounts.map(acc => {
+                                            const user = users?.find(u => u.ib_account === acc);
+                                            const displayName = user ? (user.user_id || user.email.split('@')[0]) : acc;
+                                            return (
+                                                <SelectItem key={acc} value={acc}>
+                                                    {displayName}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>
