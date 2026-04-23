@@ -2219,7 +2219,7 @@ export default function AdminUsersPage() {
                         setBatchError(null);
                     }
                 }}>
-                    <AlertDialogContent className="max-w-[562px]">
+                    <AlertDialogContent className="sm:max-w-[750px]">
                         <AlertDialogHeader>
                             <AlertDialogTitle>
                                 {batchImporting
