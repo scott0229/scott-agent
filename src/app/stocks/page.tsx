@@ -226,8 +226,9 @@ export default function StockTradingPage() {
                 group.forEach(l => {
                     // Include trade 'l' if it was opened on or before 't.open_date'
                     if (l.open_date <= t.open_date) {
-                        // Exclude trade 'l' ONLY if it was closed strictly before 't.open_date'
-                        if (!l.close_date || l.close_date >= t.open_date) {
+                        // Exclude trade 'l' if it was closed on or before 't.open_date'
+                        // (a trade closed on the same day should NOT count toward new positions opened that day)
+                        if (!l.close_date || l.close_date > t.open_date) {
                             total += l.quantity;
                             totalCost += l.quantity * l.open_price;
                         }
