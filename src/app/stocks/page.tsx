@@ -525,7 +525,7 @@ export default function StockTradingPage() {
                                                     ? (
                                                         <div className="flex items-center justify-center gap-1">
                                                             <span>{runningDataMap[trade.id].total.toLocaleString()}</span>
-                                                            <span className="text-xs text-muted-foreground font-medium">(均價 {formatMoney(runningDataMap[trade.id].avgPrice)})</span>
+                                                            <span className="text-sm text-foreground font-medium">(均價 {formatMoney(runningDataMap[trade.id].avgPrice)})</span>
                                                         </div>
                                                     )
                                                     : '-'}
