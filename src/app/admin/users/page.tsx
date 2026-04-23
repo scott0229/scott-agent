@@ -2260,7 +2260,7 @@ export default function AdminUsersPage() {
                                     {(batchImporting || batchResults.length > 0) && (
                                         <>
                                             <div className="space-y-1 mt-2">
-                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                <div className="flex justify-between text-[13px] text-muted-foreground">
                                                     <span>{batchMessage}</span>
                                                     <span>{batchProgress}%</span>
                                                 </div>
@@ -2275,7 +2275,7 @@ export default function AdminUsersPage() {
                                             {/* Results table */}
                                             {batchResults.length > 0 && (
                                                 <div className="max-h-[350px] overflow-y-auto">
-                                                    <table className="w-full text-xs border rounded">
+                                                    <table className="w-full text-[13px] border rounded">
                                                         <thead>
                                                             <tr className="bg-muted">
                                                                 <th className="text-left p-1.5 whitespace-nowrap">日期</th>
@@ -2292,7 +2292,7 @@ export default function AdminUsersPage() {
                                                                         {r.status.startsWith('✓') ? (
                                                                             <div className="flex items-center gap-1">
                                                                                 <Check className="text-green-700 h-4 w-4 stroke-[3] shrink-0" />
-                                                                                <span className="text-xs">{r.status.replace(/^✓\s*(年初更新|更新|已匯入)\s*/, '')}</span>
+                                                                                <span className="text-[13px]">{r.status.replace(/^✓\s*(年初更新|更新|已匯入)\s*/, '')}</span>
                                                                             </div>
                                                                         ) : (
                                                                             r.status
@@ -2306,7 +2306,7 @@ export default function AdminUsersPage() {
                                             )}
 
                                             {batchError && (
-                                                <p className="text-xs text-red-600 bg-red-50 px-2 py-1.5 rounded">
+                                                <p className="text-[13px] text-red-600 bg-red-50 px-2 py-1.5 rounded">
                                                     ❌ {batchError}
                                                 </p>
                                             )}
