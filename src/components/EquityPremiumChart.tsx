@@ -214,7 +214,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                             )}
                                             {dataPoint && visible.premium && (
                                                 <div style={{ color: '#c2410c', padding: 0 }}>
-                                                    權利金 : {dataPoint.premiumRate.toFixed(2)}% ({Math.round(dataPoint.rawPremium).toLocaleString()})
+                                                    期權收益 : {dataPoint.premiumRate.toFixed(2)}% ({Math.round(dataPoint.rawPremium).toLocaleString()})
                                                 </div>
                                             )}
                                         </div>
@@ -246,7 +246,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                 <Line
                                     type="monotone"
                                     dataKey="premiumRate"
-                                    name="權利金"
+                                    name="期權收益"
                                     stroke="#f97316"
                                     strokeWidth={2}
                                     dot={false}
@@ -286,7 +286,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                     className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.premium ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-[#f97316]" />
-                    <span className="text-muted-foreground font-medium">權利金</span>
+                    <span className="text-muted-foreground font-medium">期權收益</span>
                 </button>
             </div>
         </div>

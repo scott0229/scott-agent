@@ -376,13 +376,13 @@ export default function AdminUsersPage() {
         const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
 
         // Premium section
-        report += `權利金率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
-        report += `日權利金 : $${formatMoney(dailyPremium)}\n`;
-        report += `季-累積權利金 : $${formatMoney(data.quarterlyPremium)}\n`;
+        report += `期權收益率 : ${data.cost2026 > 0 ? ((data.annualPremium / data.cost2026) * 100).toFixed(2) : '0.00'}%\n`;
+        report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
+        report += `季-累積期權收益 : $${formatMoney(data.quarterlyPremium)}\n`;
         const quarterlyPercent = settings.premiumTargetPercent / 4;
         const quarterlyPercentStr = quarterlyPercent % 1 === 0 ? quarterlyPercent.toString() : quarterlyPercent.toFixed(1).replace(/\.0$/, '');
         report += `季-${quarterlyPercentStr}%目標 : $${formatMoney(data.quarterlyTarget)}\n`;
-        report += `年-累積權利金 : $${formatMoney(data.annualPremium)}\n`;
+        report += `年-累積期權收益 : $${formatMoney(data.annualPremium)}\n`;
         report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
 
@@ -1758,7 +1758,7 @@ export default function AdminUsersPage() {
                                     </div>
                                     <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                         {report.split('\n').map((line, i, arr) => {
-                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('權利金率 :') || line.startsWith('帳戶淨值 :');
+                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('期權收益率 :') || line.startsWith('帳戶淨值 :');
                                             return (
                                                 <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
                                                     {line}{i < arr.length - 1 ? '\n' : ''}

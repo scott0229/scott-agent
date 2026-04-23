@@ -355,7 +355,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Premium Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金率</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益率</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -373,7 +373,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Daily Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日權利金</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日期權收益</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -415,7 +415,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -429,7 +429,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-季-目標</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-季-目標</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -443,7 +443,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-PUT</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-PUT</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -457,7 +457,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-季-CALL</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-CALL</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -488,7 +488,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         )}
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -502,7 +502,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">權利金-年-目標</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -516,7 +516,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-PUT</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -530,7 +530,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">權利金-年-CALL</td>
+                            <td className="h-7 py-1 px-2 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();

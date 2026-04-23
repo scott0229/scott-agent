@@ -259,7 +259,7 @@ export default function OptionsPage() {
                         <SelectItem value="alphabetical">按字母</SelectItem>
                         <SelectItem value="profit-desc">當前淨值-從大到小</SelectItem>
                         <SelectItem value="margin-desc">融資需求-從高到低</SelectItem>
-                        <SelectItem value="premium-rate-desc">權利金率-從高到低</SelectItem>
+                        <SelectItem value="premium-rate-desc">期權收益率-從高到低</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
