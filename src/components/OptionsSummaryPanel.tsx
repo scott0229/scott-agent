@@ -413,79 +413,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 ) : null;
                             })}
                         </tr>
-                        {/* Quarterly Premium */}
-                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季</td>
 
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                return isVisible ? (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        <StatBadge>{formatMoney(calculateUserMetrics(user).quarterPremium)}</StatBadge>
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
-                        {/* Quarterly Target */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-季-目標</td>
-
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                return isVisible ? (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(calculateUserMetrics(user).quarterTarget)}
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
-                        {/* Quarterly Put Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-PUT</td>
-
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                return isVisible ? (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(calculateUserMetrics(user).quarterPutPremium)}
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
-                        {/* Quarterly Call Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-CALL</td>
-
-                            {users.map(user => {
-                                const userKey = user.user_id || user.id.toString();
-                                const isVisible = columnVisibility.users[userKey] !== false;
-                                return isVisible ? (
-                                    <td key={user.id} className="h-7 py-1 px-2 text-center">
-                                        {formatMoney(calculateUserMetrics(user).quarterCallPremium)}
-                                    </td>
-                                ) : null;
-                            })}
-                        </tr>
-                        {/* Quarterly Stock PnL */}
-                        {settings.includeStockDiffInPremium !== false && (
-                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
-
-                                {users.map(user => {
-                                    const userKey = user.user_id || user.id.toString();
-                                    const isVisible = columnVisibility.users[userKey] !== false;
-                                    const val = calculateUserMetrics(user).quarterStockPnl;
-                                    return isVisible ? (
-                                        <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
-                                            {formatMoney(val)}
-                                        </td>
-                                    ) : null;
-                                })}
-                            </tr>
-                        )}
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年</td>
