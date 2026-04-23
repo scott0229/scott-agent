@@ -531,23 +531,19 @@ export default function StockTradingPage() {
                                                     : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
-                                                {isClosed && trade.close_price ? (
-                                                    <button
-                                                        onClick={() => handleToggleIncludeInOptions(trade)}
-                                                        className={cn(
-                                                            "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
-                                                            trade.include_in_options === 1
-                                                                ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
-                                                                : trade.include_in_options === 2
-                                                                    ? "bg-red-100 border-red-400 text-red-700 hover:bg-red-200"
-                                                                    : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
-                                                        )}
-                                                    >
-                                                        {trade.include_in_options === 1 ? '✓' : trade.include_in_options === 2 ? '✕' : ''}
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-gray-300">-</span>
-                                                )}
+                                                <button
+                                                    onClick={() => handleToggleIncludeInOptions(trade)}
+                                                    className={cn(
+                                                        "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
+                                                        trade.include_in_options === 1
+                                                            ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
+                                                            : trade.include_in_options === 2
+                                                                ? "bg-red-100 border-red-400 text-red-700 hover:bg-red-200"
+                                                                : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+                                                    )}
+                                                >
+                                                    {trade.include_in_options === 1 ? '✓' : trade.include_in_options === 2 ? '✕' : ''}
+                                                </button>
                                             </TableCell>
                                             {settings.showTradeCode && (
                                                 <TableCell className="text-center font-mono text-sm py-1">
