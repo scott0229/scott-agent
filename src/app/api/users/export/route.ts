@@ -26,7 +26,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
     const group = await getGroupFromRequest(req);
     const db = await getDb(group);
 
-    let query = `SELECT id, user_id, email, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months, account_capability, operation_mode
+    let query = `SELECT id, user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months, account_capability, operation_mode, name, api_key, initial_interest, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message, created_at, updated_at
             FROM USERS 
             WHERE email != 'admin'`;
 
@@ -142,7 +142,8 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             SELECT 
                 id, status, operation, open_date, to_date, settlement_date, days_to_expire, days_held,
                 quantity, underlying, type, strike_price, collateral, premium,
-                final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price
+                final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price,
+                note, note_color, has_separator, created_at, updated_at
             FROM OPTIONS 
             WHERE owner_id = ?
         `;
@@ -165,7 +166,8 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
         let stocksQuery = `
             SELECT 
-                id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year, source, close_source
+                id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year, source, close_source,
+                note, close_note, note_color, close_note_color, has_separator, close_has_separator, include_in_options, created_at, updated_at
             FROM STOCK_TRADES 
             WHERE owner_id = ?
         `;
@@ -186,7 +188,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         // Export strategies
         if (includeStrategies) {
             let strategiesQuery = `
-                SELECT id, name, user_id, year, status, option_strategy, stock_strategy, stock_strategy_params
+                SELECT id, name, user_id, year, status, option_strategy, stock_strategy, stock_strategy_params, created_at, updated_at
                 FROM STRATEGIES
                 WHERE owner_id = ?
             `;
@@ -247,6 +249,17 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         feesQuery += ` ORDER BY year ASC, month ASC`;
         const { results: fees } = await db.prepare(feesQuery).bind(...feesParams).all();
         (user as any).monthly_fees = fees || [];
+
+        // Export monthly_interest
+        let interestQuery = `SELECT year, month, interest FROM monthly_interest WHERE user_id = ?`;
+        const interestParams: any[] = [user.id];
+        if (year && year !== 'All') {
+            interestQuery += ` AND year = ?`;
+            interestParams.push(parseInt(year));
+        }
+        interestQuery += ` ORDER BY year ASC, month ASC`;
+        const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
+        (user as any).monthly_interest = interest || [];
     }
 
     let minExportDate = Number.MAX_SAFE_INTEGER;
@@ -325,6 +338,24 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         console.error('Failed to export annotations:', annErr);
     }
 
+    // Export trader settings
+    let traderSettingsExport: any[] = [];
+    try {
+        const { results: settings } = await db.prepare('SELECT * FROM TRADER_SETTINGS').all();
+        traderSettingsExport = settings || [];
+    } catch (err) {
+        console.error('Failed to export trader settings:', err);
+    }
+
+    // Export report archives
+    let reportArchivesExport: any[] = [];
+    try {
+        const { results: archives } = await db.prepare('SELECT * FROM report_archives').all();
+        reportArchivesExport = archives || [];
+    } catch (err) {
+        console.error('Failed to export report archives:', err);
+    }
+
     // Remove id field from users before export (used internally for queries only)
     for (const user of users) {
         delete (user as any).id;
@@ -334,6 +365,8 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         users,
         market_prices: marketPrices,
         annotations: annotationsExport,
+        trader_settings: traderSettingsExport,
+        report_archives: reportArchivesExport,
         exportDate: new Date().toISOString(),
         sourceYear: year || 'All',
         count: users.length
