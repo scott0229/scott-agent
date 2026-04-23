@@ -2122,7 +2122,7 @@ export default function AdminUsersPage() {
                                                     <th className="text-center p-1.5">類型</th>
                                                     <th className="text-center p-1.5">行權價</th>
                                                     <th className="text-right p-1.5">到期日</th>
-                                                    <th className="text-right p-1.5">權利金</th>
+                                                    <th className="text-right p-1.5">盈虧</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2140,7 +2140,7 @@ export default function AdminUsersPage() {
                                                         </td>
                                                         <td className="text-center p-1.5 font-mono">{pos.strikePrice}</td>
                                                         <td className="text-right p-1.5 font-mono">{pos.toDateStr}</td>
-                                                        <td className="text-right p-1.5 font-mono">${pos.premium.toFixed(0)}</td>
+                                                        <td className={`text-right p-1.5 font-mono ${pos.unrealizedPnl < 0 ? 'text-red-600' : ''}`}>${Math.round(pos.unrealizedPnl || 0).toLocaleString()}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
