@@ -207,8 +207,8 @@ export default function StockTradingPage() {
     const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
 
     // Calculate running total of shares for each trade chronologically (grouped by day to avoid artificial intra-day partial sums)
-    const runningTotalMap = useMemo(() => {
-        const map: Record<number, number> = {};
+    const runningDataMap = useMemo(() => {
+        const map: Record<number, { total: number; avgPrice: number | null }> = {};
         
         // Group trades by user+symbol
         const grouped: Record<string, StockTrade[]> = {};
@@ -222,16 +222,21 @@ export default function StockTradingPage() {
             // Calculate running total for each trade based on daily snapshots
             group.forEach(t => {
                 let total = 0;
+                let totalCost = 0;
                 group.forEach(l => {
                     // Include trade 'l' if it was opened on or before 't.open_date'
                     if (l.open_date <= t.open_date) {
                         // Exclude trade 'l' ONLY if it was closed strictly before 't.open_date'
                         if (!l.close_date || l.close_date >= t.open_date) {
                             total += l.quantity;
+                            totalCost += l.quantity * l.open_price;
                         }
                     }
                 });
-                map[t.id] = total;
+                map[t.id] = {
+                    total,
+                    avgPrice: total > 0 ? totalCost / total : null
+                };
             });
         });
         return map;
@@ -514,9 +519,14 @@ export default function StockTradingPage() {
                                             <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
                                                 {pnl !== null ? formatPnL(pnl) : '-'}
                                             </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                {runningTotalMap[trade.id] > 0 
-                                                    ? runningTotalMap[trade.id].toLocaleString() 
+                                            <TableCell className="text-center py-1 whitespace-nowrap">
+                                                {runningDataMap[trade.id]?.total > 0 
+                                                    ? (
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span>{runningDataMap[trade.id].total.toLocaleString()}</span>
+                                                            <span className="text-xs text-muted-foreground font-medium">(均價 {formatMoney(runningDataMap[trade.id].avgPrice)})</span>
+                                                        </div>
+                                                    )
                                                     : '-'}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
