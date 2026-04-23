@@ -44,6 +44,10 @@ export async function GET(req: NextRequest) {
                 const group = await getGroupFromRequest(req);
                 const db = await getDb(group);
 
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+                const todayTimestamp = Math.floor(today.getTime() / 1000);
+
                 const roles = searchParams.get('roles')?.split(',');
                 const year = searchParams.get('year');
 
@@ -179,20 +183,34 @@ export async function GET(req: NextRequest) {
                         }
                     });
 
-                    // Add closed stock P&L (include_in_options=1) to monthly stats
+                    // Add stock P&L (include_in_options=1) for both Closed and Open positions to monthly stats
                     const stockPnlQuery = `
                         SELECT 
-                            owner_id as user_id,
-                            strftime('%m', datetime(close_date, 'unixepoch')) as month,
-                            SUM((close_price - open_price) * quantity) as stock_pnl
-                        FROM STOCK_TRADES
-                        WHERE include_in_options = 1
-                            AND status = 'Closed'
-                            AND close_price IS NOT NULL
-                            AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
-                        GROUP BY owner_id, month
+                            ST.owner_id as user_id,
+                            strftime('%m', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) as month,
+                            SUM(
+                                CASE 
+                                    WHEN ST.status = 'Closed' THEN (ST.close_price - ST.open_price) * ST.quantity
+                                    WHEN ST.status = 'Open' AND MP.close_price IS NOT NULL THEN (MP.close_price - ST.open_price) * ST.quantity
+                                    ELSE 0
+                                END
+                            ) as stock_pnl
+                        FROM STOCK_TRADES ST
+                        LEFT JOIN (
+                            SELECT symbol, close_price
+                            FROM market_prices
+                            WHERE (symbol, date) IN (
+                                SELECT symbol, MAX(date)
+                                FROM market_prices
+                                WHERE date <= ?
+                                GROUP BY symbol
+                            )
+                        ) MP ON ST.symbol = MP.symbol
+                        WHERE ST.include_in_options = 1
+                            AND strftime('%Y', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) = ?
+                        GROUP BY ST.owner_id, month
                     `;
-                    const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(year).all();
+                    const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(todayTimestamp, year).all();
 
                     (stockPnlResults as any[]).forEach((row: any) => {
                         if (!userStatsMap.has(row.user_id)) {
@@ -455,19 +473,33 @@ export async function GET(req: NextRequest) {
                 userProfitMap.set(row.user_id, row.profit);
             });
 
-            // Add closed stock P&L (include_in_options=1)
+            // Add stock P&L (include_in_options=1) for both Closed and Open positions
             const stockPnlQuery = `
                 SELECT 
-                    owner_id as user_id,
-                    SUM((close_price - open_price) * quantity) as stock_pnl
-                FROM STOCK_TRADES
-                WHERE include_in_options = 1
-                    AND status = 'Closed'
-                    AND close_price IS NOT NULL
-                    AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
-                GROUP BY owner_id
+                    ST.owner_id as user_id,
+                    SUM(
+                        CASE 
+                            WHEN ST.status = 'Closed' THEN (ST.close_price - ST.open_price) * ST.quantity
+                            WHEN ST.status = 'Open' AND MP.close_price IS NOT NULL THEN (MP.close_price - ST.open_price) * ST.quantity
+                            ELSE 0
+                        END
+                    ) as stock_pnl
+                FROM STOCK_TRADES ST
+                LEFT JOIN (
+                    SELECT symbol, close_price
+                    FROM market_prices
+                    WHERE (symbol, date) IN (
+                        SELECT symbol, MAX(date)
+                        FROM market_prices
+                        WHERE date <= ?
+                        GROUP BY symbol
+                    )
+                ) MP ON ST.symbol = MP.symbol
+                WHERE ST.include_in_options = 1
+                    AND strftime('%Y', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) = ?
+                GROUP BY ST.owner_id
             `;
-            const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(year).all();
+            const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(todayTimestamp, year).all();
 
             (stockPnlResults as any[]).forEach((row: any) => {
                 const current = userProfitMap.get(row.user_id) || 0;

@@ -188,20 +188,38 @@ export async function GET(
             }
         });
 
-        // Add closed stock P&L (include_in_options=1)
+        // Add stock P&L (include_in_options=1) for both Closed and Open positions
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const todayTimestamp = Math.floor(today.getTime() / 1000);
+
         const stockPnlQuery = `
             SELECT 
-                strftime('%m', datetime(close_date, 'unixepoch')) as month,
-                SUM((close_price - open_price) * quantity) as stock_pnl
-            FROM STOCK_TRADES
-            WHERE owner_id = ? 
-                AND include_in_options = 1 
-                AND status = 'Closed' 
-                AND close_price IS NOT NULL
-                AND strftime('%Y', datetime(close_date, 'unixepoch')) = ?
+                strftime('%m', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) as month,
+                SUM(
+                    CASE 
+                        WHEN ST.status = 'Closed' THEN (ST.close_price - ST.open_price) * ST.quantity
+                        WHEN ST.status = 'Open' AND MP.close_price IS NOT NULL THEN (MP.close_price - ST.open_price) * ST.quantity
+                        ELSE 0
+                    END
+                ) as stock_pnl
+            FROM STOCK_TRADES ST
+            LEFT JOIN (
+                SELECT symbol, close_price
+                FROM market_prices
+                WHERE (symbol, date) IN (
+                    SELECT symbol, MAX(date)
+                    FROM market_prices
+                    WHERE date <= ?
+                    GROUP BY symbol
+                )
+            ) MP ON ST.symbol = MP.symbol
+            WHERE ST.owner_id = ? 
+                AND ST.include_in_options = 1 
+                AND strftime('%Y', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) = ?
             GROUP BY month
         `;
-        const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(userId, currentYear.toString()).all();
+        const { results: stockPnlResults } = await db.prepare(stockPnlQuery).bind(todayTimestamp, userId, currentYear.toString()).all();
 
         (stockPnlResults as any[]).forEach((row: any) => {
             if (!monthlyData[row.month]) {
