@@ -267,7 +267,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                     </colgroup>
                     <thead>
                         <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 pl-3 pr-5 sticky left-0 bg-muted/40 z-10 border-r whitespace-nowrap">
+                            <td className="py-1 pl-4 pr-8 sticky left-0 bg-muted/40 z-10 border-r whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
@@ -310,7 +310,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                     <tbody className="text-[13px]">
                         {/* Last Update Date */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">最後更新日</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">最後更新日</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -327,7 +327,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Open Position Count */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -355,7 +355,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Premium Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益率</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益率</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -373,7 +373,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Daily Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日期權收益</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日期權收益</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -387,7 +387,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Margin Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -401,7 +401,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Turnover Rate */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">周轉率</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">周轉率</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -415,7 +415,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -429,7 +429,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-季-目標</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-季-目標</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -443,7 +443,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-PUT</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-PUT</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -457,7 +457,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Quarterly Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-CALL</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-季-CALL</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -472,7 +472,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Quarterly Stock PnL */}
                         {settings.includeStockDiffInPremium !== false && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
+                                <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-季</td>
 
                                 {users.map(user => {
                                     const userKey = user.user_id || user.id.toString();
@@ -488,7 +488,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         )}
                         {/* Annual Premium */}
                         <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -502,7 +502,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Target */}
                         <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -516,7 +516,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Put Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -530,7 +530,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Call Premium */}
                         <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
+                            <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -545,7 +545,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         {/* Annual Stock PnL */}
                         {settings.includeStockDiffInPremium !== false && (
                             <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 pl-3 pr-5 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
+                                <td className="h-7 py-1 pl-4 pr-8 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
 
                                 {users.map(user => {
                                     const userKey = user.user_id || user.id.toString();
