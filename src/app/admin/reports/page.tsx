@@ -371,13 +371,13 @@ export default function HistoricalReportsPage() {
                                                         onClick={() => setPreviewId(report.id)}
                                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                                     >
-                                                        <TableCell className="font-medium px-4 w-[140px] py-2 whitespace-nowrap">
+                                                        <TableCell className="font-medium px-4 w-[140px] py-1 whitespace-nowrap">
                                                             {report.statement_date} ({['日', '一', '二', '三', '四', '五', '六'][new Date(`${report.statement_date}T00:00:00`).getDay()]})
                                                         </TableCell>
-                                                        <TableCell className="py-2 text-sm break-all">
+                                                        <TableCell className="py-1 text-sm break-all">
                                                             {report.filename.split('/').pop()}
                                                         </TableCell>
-                                                        <TableCell className="py-2 pr-4 text-right w-[40px]">
+                                                        <TableCell className="py-1 pr-4 text-right w-[40px]">
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="sm" 
@@ -412,10 +412,10 @@ export default function HistoricalReportsPage() {
                                                                     key={`missing-${missingDateStr}-${accountId}`} 
                                                                     className="bg-red-50/50 hover:bg-red-50/50 pointer-events-none"
                                                                 >
-                                                                    <TableCell className="font-medium px-4 w-[140px] py-2 whitespace-nowrap text-red-700">
+                                                                    <TableCell className="font-medium px-4 w-[140px] py-1 whitespace-nowrap text-red-700">
                                                                         {missingDateStr} ({['日', '一', '二', '三', '四', '五', '六'][d.getDay()]})
                                                                     </TableCell>
-                                                                    <TableCell colSpan={2} className="py-2 text-sm text-red-700">
+                                                                    <TableCell colSpan={2} className="py-1 text-sm text-red-700">
                                                                         檔案短缺
                                                                     </TableCell>
                                                                 </TableRow>
