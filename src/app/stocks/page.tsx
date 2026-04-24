@@ -125,7 +125,11 @@ export default function StockTradingPage() {
             const res = await fetch(`/api/users?year=${year}`);
             const data = await res.json();
             if (data.users) {
-                const sortedUsers = data.users.sort((a: User, b: User) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
+                const sortedUsers = data.users.sort((a: User, b: User) => {
+                    const nameA = a.user_id || a.email || '';
+                    const nameB = b.user_id || b.email || '';
+                    return nameA.localeCompare(nameB);
+                });
                 setUsers(sortedUsers);
             }
         } catch (e) {

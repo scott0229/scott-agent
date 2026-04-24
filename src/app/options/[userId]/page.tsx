@@ -177,7 +177,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         return true;
                     });
 
-                    filteredUsers.sort((a: any, b: any) => (b.current_net_equity || 0) - (a.current_net_equity || 0));
+                    filteredUsers.sort((a: any, b: any) => {
+                        const nameA = a.user_id || a.email || '';
+                        const nameB = b.user_id || b.email || '';
+                        return nameA.localeCompare(nameB);
+                    });
                     setUsers(filteredUsers);
                     // Find current owner
                     const currentOwner = data.users.find((u: any) => u.id.toString() === params.userId || u.user_id === params.userId);
