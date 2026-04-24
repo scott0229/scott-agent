@@ -660,7 +660,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 value={opt.group_id ? String(opt.group_id) : "none"} 
                                                 onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : val)}
                                             >
-                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-[13px] text-center justify-center font-medium">
+                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-center justify-center font-normal text-slate-700">
                                                     <SelectValue placeholder="-" />
                                                 </SelectTrigger>
                                                 <SelectContent>
