@@ -34,6 +34,7 @@ interface UserStats {
     put_win_rate: number | null;
     call_win_rate: number | null;
     turnover?: number;
+    stock_pnl?: number;
 }
 
 interface User {
@@ -323,7 +324,7 @@ export default function OptionsPage() {
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT勝率</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
-                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">周轉率</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">股票損益</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
@@ -355,10 +356,6 @@ export default function OptionsPage() {
                                                             };
                                                             const index = i;
                                                             const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
-                                                            const monthNum = parseInt(stat.month);
-                                                            const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
-                                                            const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-                                                            const turnoverRate = (initialCost * daysInMonth) > 0 && stat.turnover ? stat.turnover / (initialCost * daysInMonth) : 0;
                                                             return (
                                                                 <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                     <td className="px-1 text-center h-7">{stat.month}月</td>
@@ -377,8 +374,8 @@ export default function OptionsPage() {
                                                                     <td className="px-1 text-center h-7">
                                                                         {stat.call_win_rate !== null ? `${stat.call_win_rate}%` : '-'}
                                                                     </td>
-                                                                    <td className="px-1 text-center h-7">
-                                                                        {turnoverRate > 0 ? `${(turnoverRate * 100).toFixed(0)}%` : '-'}
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.stock_pnl || 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                                        {Math.round(stat.stock_pnl || 0).toLocaleString()}
                                                                     </td>
                                                                 </tr>
                                                             );
@@ -427,19 +424,8 @@ export default function OptionsPage() {
                                                                     return `${avg}%`;
                                                                 })()}
                                                             </td>
-                                                            <td className="px-1 text-center h-7">
-                                                                {(() => {
-                                                                    const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
-                                                                    const monthsWithTurnover = client.monthly_stats.filter(s => (s.turnover || 0) > 0);
-                                                                    const totalTurnover = monthsWithTurnover.reduce((sum, s) => sum + (s.turnover || 0), 0);
-                                                                    const yearNum = typeof selectedYear === 'number' ? selectedYear : new Date().getFullYear();
-                                                                    const totalDays = monthsWithTurnover.reduce((sum, s) => {
-                                                                        const monthNum = parseInt(s.month);
-                                                                        return sum + new Date(yearNum, monthNum, 0).getDate();
-                                                                    }, 0);
-                                                                    const rate = (initialCost * totalDays) > 0 ? totalTurnover / (initialCost * totalDays) : 0;
-                                                                    return rate > 0 ? `${(rate * 100).toFixed(0)}%` : '-';
-                                                                })()}
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     </tbody>
