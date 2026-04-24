@@ -58,7 +58,7 @@ interface Option {
     note?: string | null;
     note_color?: string | null;
     has_separator?: boolean | number;
-    group_id?: number | null;
+    group_id?: string | number | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -403,7 +403,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         }
     };
 
-    const handleGroupUpdate = async (id: string | number, type: string, newGroupId: number | null) => {
+    const handleGroupUpdate = async (id: string | number, type: string, newGroupId: string | null) => {
         const previousOptions = [...options];
         setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, group_id: newGroupId } : opt));
 
@@ -572,9 +572,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                     <TableHeader>
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
-                            <TableHead className="text-center">No.</TableHead>
-                            <TableHead className="text-center w-[60px]">群組</TableHead>
+                            <TableHead className="text-center"></TableHead>
                             <TableHead className="text-left">註解</TableHead>
+                            <TableHead className="text-center w-[85px]">群組</TableHead>
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
@@ -636,22 +636,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="py-1 min-w-[70px]">
-                                            <Select 
-                                                value={opt.group_id ? String(opt.group_id) : "none"} 
-                                                onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : Number(val))}
-                                            >
-                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-[13px] text-center justify-center font-medium">
-                                                    <SelectValue placeholder="-" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
-                                                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
                                                 className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
@@ -670,6 +654,26 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                     }
                                                 }}
                                             />
+                                        </TableCell>
+                                        <TableCell className="py-1 min-w-[85px]">
+                                            <Select 
+                                                value={opt.group_id ? String(opt.group_id) : "none"} 
+                                                onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : val)}
+                                            >
+                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-[13px] text-center justify-center font-medium">
+                                                    <SelectValue placeholder="-" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
+                                                    {[
+                                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
+                                                        'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
+                                                    ].map(n => (
+                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         {params.userId === 'All' && (
                                             <TableCell className="py-1">
