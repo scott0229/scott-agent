@@ -64,6 +64,7 @@ interface StockTrade {
     include_in_options?: number; // 1 = include stock P&L in options revenue
     note?: string | null;
     note_color?: string | null;
+    group_id?: string | number | null;
 }
 
 interface User {
@@ -316,6 +317,24 @@ export default function StockTradingPage() {
         }
     };
 
+    const handleGroupUpdate = async (id: number, newGroupId: string | null) => {
+        const originalTrades = [...trades];
+        setTrades(prev => prev.map(t => t.id === id ? { ...t, group_id: newGroupId } : t));
+
+        try {
+            const res = await fetch(`/api/stocks/${id}/group`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: newGroupId }),
+            });
+            if (!res.ok) throw new Error('Update failed');
+        } catch (error) {
+            console.error('Group update failed', error);
+            setTrades(originalTrades);
+            toast({ variant: 'destructive', title: '操作失敗', description: '無法更新群組' });
+        }
+    };
+
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
 
@@ -410,6 +429,7 @@ export default function StockTradingPage() {
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center"></TableHead>
                                 <TableHead className="text-left">註解</TableHead>
+                                <TableHead className="text-center w-[85px]">群組</TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
@@ -485,6 +505,26 @@ export default function StockTradingPage() {
                                                         }
                                                     }}
                                                 />
+                                            </TableCell>
+                                            <TableCell className="py-1 min-w-[85px]">
+                                                <Select 
+                                                    value={trade.group_id ? String(trade.group_id) : "none"} 
+                                                    onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
+                                                >
+                                                    <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-center justify-center font-normal text-slate-700">
+                                                        <SelectValue placeholder="-" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
+                                                        {[
+                                                            'QQQ-P0', 'QQQ-P1', 'QQQ-P2', 'QQQ-C0', 'QQQ-C1', 'QQQ-C2',
+                                                            'TQQQ-P0', 'TQQQ-P1', 'TQQQ-P2', 'TQQQ-C0', 'TQQQ-C1', 'TQQQ-C2',
+                                                            'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
+                                                        ].map(n => (
+                                                            <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span
