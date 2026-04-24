@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
         try {
             // Fetch users filtered by year
             const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
-            const res = await fetch(`/api/users?year=${year}`);
+            const res = await fetch(`/api/users?year=${year}&t=${Date.now()}`);
             if (res.status === 403) {
                 toast({
                     variant: "destructive",
@@ -195,8 +195,10 @@ export default function AdminUsersPage() {
             const data = await res.json();
             if (data.users) {
                 setUsers(data.users);
-                // Fetch reports after users are loaded
-                fetchAllReports(data.users);
+                // Fetch reports after users are loaded (force refresh on background updates)
+                if (userReports.size === 0 || silent) {
+                    fetchAllReports(data.users);
+                }
             }
             if (data.meta && typeof data.meta.marketDataCount === 'number') {
                 setMarketDataCount(data.meta.marketDataCount);
@@ -235,7 +237,7 @@ export default function AdminUsersPage() {
         const reportsMap = new Map<number, { userName: string; report: string }>();
         await Promise.all(nonAdminUsers.map(async (user) => {
             try {
-                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}`);
+                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&t=${Date.now()}`);
                 const data = await res.json();
                 if (data.success) {
                     const report = formatUserReport(data.reportData);
