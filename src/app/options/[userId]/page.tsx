@@ -58,7 +58,6 @@ interface Option {
     note?: string | null;
     note_color?: string | null;
     has_separator?: boolean | number;
-    original_open_date?: number;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -230,7 +229,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             open_date: st.open_date,
                             to_date: null,
                             settlement_date: null,
-                            original_open_date: st.open_date,
                             quantity: st.quantity,
                             underlying: st.symbol,
                             type: 'STK',
@@ -259,8 +257,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 operation: 'Closed',
                                 open_date: st.close_date, // Align on timeline
                                 to_date: null,
-                                settlement_date: st.close_date,
-                                original_open_date: st.open_date,
+                                settlement_date: null,
                                 quantity: -(st.quantity), // Inverse quantity
                                 underlying: st.symbol,
                                 type: 'STK',
@@ -675,13 +672,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             </div>
                                         </TableCell>
                                         <TableCell className="py-1">
-                                            {formatDate(opt.original_open_date || opt.open_date)}{(() => {
-                                                const time = formatTime(opt.original_open_date || opt.open_date);
+                                            {formatDate(opt.open_date)}{(() => {
+                                                const time = formatTime(opt.open_date);
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
                                         <TableCell className="py-1">
-                                            {opt.type === 'STK' ? (opt.operation === 'Closed' && opt.settlement_date ? formatDate(opt.settlement_date) : "-") : (
+                                            {opt.type === 'STK' ? "-" : (
                                                 (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
                                             )}
                                         </TableCell>
