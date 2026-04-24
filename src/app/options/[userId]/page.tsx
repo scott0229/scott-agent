@@ -377,8 +377,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     };
 
     const handleColorToggle = async (id: string | number, type: string, currentColor: string | null | undefined) => {
-        // Toggle logic: dark blue (default/null) <-> dark red <-> dark green
-        const newColor = currentColor === 'red' ? 'blue' : currentColor === 'blue' ? 'green' : 'red';
+        // Toggle logic: dark blue (default/null/blue) -> dark red -> dark green -> dark blue
+        const newColor = (!currentColor || currentColor === 'blue') ? 'red' : currentColor === 'red' ? 'green' : 'blue';
         
         setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note_color: newColor } : opt));
 

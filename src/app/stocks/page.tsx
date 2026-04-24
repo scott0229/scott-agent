@@ -281,7 +281,7 @@ export default function StockTradingPage() {
     };
 
     const handleColorToggle = async (id: number, currentColor: string | null | undefined) => {
-        const newColor = currentColor === 'red' ? 'blue' : currentColor === 'blue' ? 'green' : 'red';
+        const newColor = (!currentColor || currentColor === 'blue') ? 'red' : currentColor === 'red' ? 'green' : 'blue';
         setTrades(prev => prev.map(t => t.id === id ? { ...t, note_color: newColor } : t));
 
         try {
