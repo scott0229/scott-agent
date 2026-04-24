@@ -58,6 +58,7 @@ interface Option {
     note?: string | null;
     note_color?: string | null;
     has_separator?: boolean | number;
+    group_id?: number | null;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -246,7 +247,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             is_assigned: st.source === 'assigned',
                             note: st.note,
                             note_color: st.note_color,
-                            has_separator: st.has_separator
+                            has_separator: st.has_separator,
+                            group_id: st.group_id
                         });
 
                         // Close transaction
@@ -275,7 +277,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 is_assigned: st.close_source === 'assigned',
                                 note: st.close_note,
                                 note_color: st.close_note_color,
-                                has_separator: st.close_has_separator
+                                has_separator: st.close_has_separator,
+                                group_id: st.close_group_id
                             });
                         }
                     });
@@ -397,6 +400,28 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         } catch (error) {
             console.error('Note color update error', error);
             setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note_color: currentColor } : opt));
+        }
+    };
+
+    const handleGroupUpdate = async (id: string | number, type: string, newGroupId: number | null) => {
+        const previousOptions = [...options];
+        setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, group_id: newGroupId } : opt));
+
+        try {
+            const isStock = type === 'STK';
+            const realId = isStock ? String(id).split('-')[1] : id;
+            const tradeSide = isStock ? String(id).split('-')[2] : null;
+            const apiPath = isStock ? `/api/stocks/${realId}/group` : `/api/options/${realId}/group`;
+            
+            const res = await fetch(apiPath, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_id: newGroupId, tradeSide })
+            });
+            if (!res.ok) throw new Error('Failed to update group');
+        } catch (error) {
+            console.error('Group update error', error);
+            setOptions(previousOptions);
         }
     };
 
@@ -548,6 +573,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center">No.</TableHead>
+                            <TableHead className="text-center w-[60px]">群組</TableHead>
                             <TableHead className="text-left">註解</TableHead>
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
@@ -609,6 +635,22 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                     <div className="w-4 h-4 shrink-0" />
                                                 )}
                                             </div>
+                                        </TableCell>
+                                        <TableCell className="py-1 min-w-[70px]">
+                                            <Select 
+                                                value={opt.group_id ? String(opt.group_id) : "none"} 
+                                                onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : Number(val))}
+                                            >
+                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-[13px] text-center justify-center font-medium">
+                                                    <SelectValue placeholder="-" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
+                                                    {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
