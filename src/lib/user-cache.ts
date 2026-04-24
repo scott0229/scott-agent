@@ -18,7 +18,7 @@ export async function getCachedUserSelection(
     const group = await getGroupFromRequest(req);
 
     // Create cache key from query parameters (include group to prevent cross-group contamination)
-    const cacheKey = `users-selection-${group}-${roles || 'all'}-${year || 'all'}-${userId || 'all'}-v3`;
+    const cacheKey = `users-selection-${group}-${roles || 'all'}-${year || 'all'}-${userId || 'all'}-v4`;
 
     // 5 minute cache for user data with stats
     return cacheResponse(cacheKey, fetcher, 5 * 60 * 1000);
