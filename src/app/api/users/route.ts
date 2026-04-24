@@ -263,59 +263,71 @@ export async function GET(req: NextRequest) {
                 if (year && year !== 'All') {
                     try {
                         const dailyPremiumQuery = `
-                            SELECT owner_id, date, SUM(daily_profit) as daily_profit
-                            FROM (
-                                SELECT 
-                                    owner_id,
-                                    CAST(strftime('%s', date(datetime(COALESCE(settlement_date, open_date), 'unixepoch'))) AS INTEGER) as date,
-                                    SUM(COALESCE(final_profit, 0)) as daily_profit
-                                FROM OPTIONS
-                                WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
-                                GROUP BY owner_id, date
-                                
-                                UNION ALL
-                                
-                                SELECT 
-                                    ST.owner_id as owner_id,
-                                    CAST(strftime('%s', date(datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch'))) AS INTEGER) as date,
-                                    SUM(
-                                        CASE 
-                                            WHEN ST.status = 'Closed' THEN (ST.close_price - ST.open_price) * ST.quantity
-                                            WHEN ST.status = 'Open' AND MP.close_price IS NOT NULL THEN (MP.close_price - ST.open_price) * ST.quantity
-                                            ELSE 0
-                                        END
-                                    ) as daily_profit
-                                FROM STOCK_TRADES ST
-                                LEFT JOIN (
-                                    SELECT symbol, close_price
-                                    FROM market_prices
-                                    WHERE (symbol, date) IN (
-                                        SELECT symbol, MAX(date)
-                                        FROM market_prices
-                                        WHERE date <= ?
-                                        GROUP BY symbol
-                                    )
-                                ) MP ON ST.symbol = MP.symbol
-                                WHERE ST.include_in_options = 1
-                                    AND strftime('%Y', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) = ?
-                                GROUP BY ST.owner_id, date
-                            )
+                            SELECT 
+                                owner_id,
+                                CAST(strftime('%s', date(datetime(COALESCE(settlement_date, open_date), 'unixepoch'))) AS INTEGER) as date,
+                                SUM(COALESCE(final_profit, 0)) as daily_profit
+                            FROM OPTIONS
+                            WHERE strftime('%Y', datetime(open_date, 'unixepoch')) = ?
                             GROUP BY owner_id, date
-                            ORDER BY owner_id, date ASC
                         `;
-                        const { results: dailyPremiumResults } = await db.prepare(dailyPremiumQuery).bind(year, todayTimestamp, year).all();
+                        const { results: optionsResults } = await db.prepare(dailyPremiumQuery).bind(year).all();
+
+                        const dailyStockQuery = `
+                            SELECT 
+                                ST.owner_id as owner_id,
+                                CAST(strftime('%s', date(datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch'))) AS INTEGER) as date,
+                                SUM(
+                                    CASE 
+                                        WHEN ST.status = 'Closed' THEN (ST.close_price - ST.open_price) * ST.quantity
+                                        WHEN ST.status = 'Open' AND MP.close_price IS NOT NULL THEN (MP.close_price - ST.open_price) * ST.quantity
+                                        ELSE 0
+                                    END
+                                ) as daily_profit
+                            FROM STOCK_TRADES ST
+                            LEFT JOIN (
+                                SELECT symbol, close_price
+                                FROM market_prices
+                                WHERE (symbol, date) IN (
+                                    SELECT symbol, MAX(date)
+                                    FROM market_prices
+                                    WHERE date <= ?
+                                    GROUP BY symbol
+                                )
+                            ) MP ON ST.symbol = MP.symbol
+                            WHERE ST.include_in_options = 1
+                                AND strftime('%Y', datetime(COALESCE(ST.close_date, ST.open_date), 'unixepoch')) = ?
+                            GROUP BY ST.owner_id, date
+                        `;
+                        const { results: stockResults } = await db.prepare(dailyStockQuery).bind(todayTimestamp, year).all();
+
+                        const combinedMap = new Map<string, number>();
+                        const addResult = (row: any) => {
+                            const key = `${row.owner_id}-${row.date}`;
+                            combinedMap.set(key, (combinedMap.get(key) || 0) + (row.daily_profit || 0));
+                        };
+                        
+                        (optionsResults as any[]).forEach(addResult);
+                        (stockResults as any[]).forEach(addResult);
 
                         // Build map: userId -> [{date, daily_profit}]
                         const dailyPremiumMap = new Map<number, { date: number; daily_profit: number }[]>();
-                        (dailyPremiumResults as any[]).forEach((row: any) => {
-                            if (!dailyPremiumMap.has(row.owner_id)) {
-                                dailyPremiumMap.set(row.owner_id, []);
+                        
+                        combinedMap.forEach((daily_profit, key) => {
+                            const [ownerIdStr, dateStr] = key.split('-');
+                            const owner_id = parseInt(ownerIdStr, 10);
+                            const date = parseInt(dateStr, 10);
+                            
+                            if (!dailyPremiumMap.has(owner_id)) {
+                                dailyPremiumMap.set(owner_id, []);
                             }
-                            dailyPremiumMap.get(row.owner_id)!.push({
-                                date: row.date,
-                                daily_profit: row.daily_profit
-                            });
+                            dailyPremiumMap.get(owner_id)!.push({ date, daily_profit });
                         });
+
+                        // Sort by date ASC
+                        for (const [owner_id, arr] of dailyPremiumMap.entries()) {
+                            arr.sort((a, b) => a.date - b.date);
+                        }
 
                         // Attach daily_premium to each user (with cumulative sum)
                         (users as any[]).forEach((user: any) => {
