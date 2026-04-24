@@ -377,8 +377,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     };
 
     const handleColorToggle = async (id: string | number, type: string, currentColor: string | null | undefined) => {
-        // Toggle logic: dark blue (default/null) <-> dark red
-        const newColor = currentColor === 'red' ? 'blue' : 'red';
+        // Toggle logic: dark blue (default/null) <-> dark red <-> dark green
+        const newColor = currentColor === 'red' ? 'blue' : currentColor === 'blue' ? 'green' : 'red';
         
         setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, note_color: newColor } : opt));
 
@@ -601,7 +601,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                             handleColorToggle(opt.id, opt.type, opt.note_color);
                                                         }}
                                                         className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                            opt.note_color === 'red' ? 'bg-red-500' : 'bg-blue-500'
+                                                            opt.note_color === 'red' ? 'bg-red-500' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                         }`}
                                                         title="切換註解顏色"
                                                     />
@@ -613,7 +613,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
                                                 className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                style={{ color: opt.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
+                                                style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
                                                 maxLength={50}
                                                 defaultValue={opt.note || ''}
                                                 placeholder="..."

@@ -281,7 +281,7 @@ export default function StockTradingPage() {
     };
 
     const handleColorToggle = async (id: number, currentColor: string | null | undefined) => {
-        const newColor = currentColor === 'red' ? 'blue' : 'red';
+        const newColor = currentColor === 'red' ? 'blue' : currentColor === 'blue' ? 'green' : 'red';
         setTrades(prev => prev.map(t => t.id === id ? { ...t, note_color: newColor } : t));
 
         try {
@@ -458,7 +458,7 @@ export default function StockTradingPage() {
                                                                 handleColorToggle(trade.id, trade.note_color);
                                                             }}
                                                             className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                                trade.note_color === 'red' ? 'bg-red-500' : 'bg-blue-500'
+                                                                trade.note_color === 'red' ? 'bg-red-500' : trade.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                             }`}
                                                             title="切換註解顏色"
                                                         />
@@ -470,7 +470,7 @@ export default function StockTradingPage() {
                                             <TableCell className="py-1 min-w-[180px]">
                                                 <input 
                                                     className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                    style={{ color: trade.note_color === 'red' ? '#7f1d1d' : '#1e3a8a' }}
+                                                    style={{ color: trade.note_color === 'red' ? '#7f1d1d' : trade.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
                                                     maxLength={50}
                                                     defaultValue={trade.note || ''}
                                                     placeholder="..."
