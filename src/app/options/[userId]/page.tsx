@@ -548,10 +548,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
+                            <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">數量</TableHead>
                             <TableHead className="text-center">標的</TableHead>
                             <TableHead className="text-center">到期天數</TableHead>
-                            <TableHead className="text-center">平倉日</TableHead>
                             <TableHead className="text-center">持有天數</TableHead>
                             <TableHead className="text-center">當時股價</TableHead>
 
@@ -673,6 +673,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 return time !== '-' ? ` ${time}` : '';
                                             })()}
                                         </TableCell>
+                                        <TableCell className="py-1">
+                                            {opt.type === 'STK' ? "-" : (
+                                                (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
+                                            )}
+                                        </TableCell>
                                         <TableCell className={`py-1 ${opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}`}>
                                             {opt.quantity}
                                         </TableCell>
@@ -680,11 +685,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             {formatOptionTicker(opt)}
                                         </TableCell>
                                         <TableCell className="py-1">{opt.type === 'STK' ? "-" : getDaysToExpire(opt)}</TableCell>
-                                        <TableCell className="py-1">
-                                            {opt.type === 'STK' ? "-" : (
-                                                (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
-                                            )}
-                                        </TableCell>
                                         <TableCell className="py-1">
                                             {opt.type === 'STK' ? "-" : (
                                                 (opt.operation === 'Open' || !opt.settlement_date)
