@@ -78,6 +78,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedType, setSelectedType] = useState<string>('All');
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
+    const [selectedGroup, setSelectedGroup] = useState<string>('All');
     const [includeStocks, setIncludeStocks] = useState<boolean>(false);
 
     const SEPARATOR_COLORS = [
@@ -143,6 +144,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
         const operation = searchParams.get('operation');
         setSelectedOperation(operation || 'All');
+
+        const group = searchParams.get('group');
+        setSelectedGroup(group || 'All');
 
         console.log('[DEBUG] After sync - selectedStatus will be:', status || 'All');
     }, [searchParams]);
@@ -432,6 +436,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         setSelectedType('All');
         setSelectedStatus('All');
         setSelectedOperation('All');
+        setSelectedGroup('All');
     };
 
     // Derived State for Filters
@@ -440,6 +445,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
     const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
     const operations = Array.from(new Set(options.map(opt => opt.operation || 'Open'))).sort();
+    const groups = Array.from(new Set(options.map(opt => opt.group_id).filter(g => g !== null && g !== undefined && String(g).trim() !== ''))).map(String).sort();
 
     const filteredOptions = options.filter(opt => {
         const date = new Date(opt.open_date * 1000);
@@ -449,7 +455,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const typeMatch = selectedType === 'All' || opt.type === selectedType || opt.type === 'STK';
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation || opt.type === 'STK';
-        return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch;
+        const groupMatch = selectedGroup === 'All' || String(opt.group_id) === selectedGroup;
+        return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch && groupMatch;
     });
 
     // Sort options: strictly by open_date desc
@@ -479,6 +486,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                     if (selectedType !== 'All') params.set('type', selectedType);
                                     if (selectedStatus !== 'All') params.set('status', selectedStatus);
                                     if (selectedOperation !== 'All') params.set('operation', selectedOperation);
+                                    if (selectedGroup !== 'All') params.set('group', selectedGroup);
 
                                     const queryString = params.toString();
                                     const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;
@@ -551,6 +559,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <SelectContent>
                                 <SelectItem value="All">全部操作</SelectItem>
                                 {operations.map(op => <SelectItem key={op} value={op}>{op}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                            <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="All">全部群組</SelectItem>
+                                {groups.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         
