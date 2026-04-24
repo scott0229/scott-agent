@@ -666,7 +666,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 <SelectContent>
                                                     <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                     {[
-                                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                        'QQQ-P0', 'QQQ-P1', 'QQQ-P2', 'QQQ-C0', 'QQQ-C1', 'QQQ-C2',
                                                         'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
                                                         'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                                     ].map(n => (
