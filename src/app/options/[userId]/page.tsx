@@ -639,7 +639,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 {operations.map(op => <SelectItem key={op} value={op}>{op}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                        <Select value={selectedGroup} onValueChange={(val) => {
+                            setSelectedGroup(val);
+                            if (val !== 'NoFilter' && val !== 'All') {
+                                setSelectedUnderlying('All');
+                                setSelectedType('All');
+                                setSelectedStatus('All');
+                                setSelectedOperation('All');
+                            }
+                        }}>
                             <SelectTrigger className="w-[160px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="NoFilter">不過濾群組</SelectItem>

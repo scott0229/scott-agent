@@ -31,6 +31,24 @@ const formatDate = (timestamp: number) => {
     return `${yy}-${mm}-${dd}`;
 };
 
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const formatOptionTicker = (opt: any) => {
+    if (!opt) return '-';
+    const underlying = opt.underlying;
+    if (opt.type === 'STK') {
+        const assignedText = opt.is_assigned ? '，被行權' : '';
+        return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : `${underlying}${assignedText}`;
+    }
+    const typeChar = opt.type === 'PUT' ? 'P' : 'C';
+    const strike = opt.strike_price;
+    if (!opt.to_date) return `${underlying} - ${strike}${typeChar}`;
+    const d = new Date(opt.to_date * 1000);
+    const mon = MONTH_ABBR[d.getMonth()];
+    const day = d.getDate();
+    const yr = d.getFullYear().toString().slice(-2);
+    return `${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
+};
+
 interface GroupOverviewDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -47,6 +65,8 @@ interface GroupStat {
     profit: number;
     startDate: number;
     endDate: number;
+    latestTradeText: string;
+    contentTypes: string;
     status: 'Active' | 'Terminated';
 }
 
@@ -62,7 +82,7 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
             setIsLoading(true);
             try {
                 // 1. Calculate local stats
-                const statsMap = new Map<string, { count: number, profit: number, minDate: number, maxDate: number }>();
+                const statsMap = new Map<string, { count: number, profit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string> }>();
                 
                 options.forEach(opt => {
                     const groupName = opt.group_id?.toString().trim();
@@ -71,13 +91,23 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                     const tradeDate = opt.open_date;
 
                     if (!statsMap.has(groupName)) {
-                        statsMap.set(groupName, { count: 0, profit: 0, minDate: tradeDate, maxDate: tradeDate });
+                        statsMap.set(groupName, { count: 0, profit: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>() });
                     }
                     const stat = statsMap.get(groupName)!;
                     stat.count += 1;
                     stat.profit += (opt.final_profit || 0);
+                    
+                    if (opt.type === 'STK') stat.types.add('股票');
+                    else if (opt.type === 'CALL') stat.types.add('CALL');
+                    else if (opt.type === 'PUT') stat.types.add('PUT');
+                    
                     if (tradeDate < stat.minDate) stat.minDate = tradeDate;
-                    if (tradeDate > stat.maxDate) stat.maxDate = tradeDate;
+                    if (tradeDate > stat.maxDate) {
+                        stat.maxDate = tradeDate;
+                        stat.latestTrade = opt;
+                    } else if (tradeDate === stat.maxDate && opt.id > stat.latestTrade.id) {
+                        stat.latestTrade = opt;
+                    }
                 });
 
                 // 2. Fetch statuses from DB
@@ -92,14 +122,21 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                 }
 
                 // 3. Merge
-                const mergedStats: GroupStat[] = Array.from(statsMap.entries()).map(([name, stat]) => ({
-                    name,
-                    count: stat.count,
-                    profit: stat.profit,
-                    startDate: stat.minDate,
-                    endDate: stat.maxDate,
-                    status: (dbStatusMap.get(name) as 'Active' | 'Terminated') || 'Active'
-                }));
+                const mergedStats: GroupStat[] = Array.from(statsMap.entries()).map(([name, stat]) => {
+                    const typeOrder = ['股票', 'CALL', 'PUT'];
+                    const sortedTypes = Array.from(stat.types).sort((a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b));
+                    
+                    return {
+                        name,
+                        count: stat.count,
+                        profit: stat.profit,
+                        startDate: stat.minDate,
+                        endDate: stat.maxDate,
+                        latestTradeText: formatOptionTicker(stat.latestTrade),
+                        contentTypes: sortedTypes.join('、'),
+                        status: (dbStatusMap.get(name) as 'Active' | 'Terminated') || 'Active'
+                    };
+                });
 
                 // Sort by name
                 mergedStats.sort((a, b) => {
@@ -165,7 +202,7 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{titlePrefix ? `${titlePrefix} 群組總覽` : '群組總覽'}</DialogTitle>
                 </DialogHeader>
@@ -177,8 +214,10 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                         <TableHeader>
                             <TableRow className="bg-muted/50">
                                 <TableHead>群組名稱</TableHead>
+                                <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
                                 <TableHead className="text-center">終止日</TableHead>
+                                <TableHead className="text-center">最後交易</TableHead>
                                 <TableHead className="text-center">交易筆數</TableHead>
                                 <TableHead className="text-center">總收益</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
@@ -187,7 +226,7 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                         <TableBody>
                             {groupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -195,20 +234,22 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                                 groupStats.map((group) => (
                                     <TableRow key={group.name}>
                                         <TableCell className="font-medium">{group.name}</TableCell>
+                                        <TableCell className="text-center text-sm">{group.contentTypes}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
-                                        <TableCell className="text-center">{formatDate(group.endDate)}</TableCell>
+                                        <TableCell className="text-center">{group.status === 'Active' ? '-' : formatDate(group.endDate)}</TableCell>
+                                        <TableCell className="text-center">{group.latestTradeText}</TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.name, val)}>
-                                                <SelectTrigger className={`h-8 w-[100px] mx-auto ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
+                                                <SelectTrigger hideIcon className={`h-8 w-[100px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Active">進行中</SelectItem>
-                                                    <SelectItem value="Terminated">已終止</SelectItem>
+                                                    <SelectItem value="Active" hideCheck>進行中</SelectItem>
+                                                    <SelectItem value="Terminated" hideCheck>已終止</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
