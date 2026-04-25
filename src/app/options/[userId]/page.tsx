@@ -105,7 +105,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         try {
             const isStock = type === 'STK';
             const realId = isStock ? String(id).split('-')[1] : id;
-            const tradeSide = isStock ? String(id).split('-')[2] : null;
+            const tradeSide = isStock ? 'O' : null;
             const apiPath = isStock ? `/api/stocks/${realId}/separator` : `/api/options/${realId}/separator`;
             
             const res = await fetch(apiPath, {
@@ -226,65 +226,33 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 if (stocksData.stocks) {
                     const mappedStocks: Option[] = [];
                     stocksData.stocks.forEach((st: any) => {
-                        // Open transaction
                         mappedStocks.push({
-                            id: `STK-${st.id}-O`,
-                            status: 'Open',
-                            operation: 'Open',
+                            id: `STK-${st.id}`,
+                            status: st.status,
+                            operation: st.status,
                             open_date: st.open_date,
                             to_date: null,
-                            settlement_date: null,
+                            settlement_date: st.close_date || null,
                             quantity: st.quantity,
                             underlying: st.symbol,
                             type: 'STK',
                             strike_price: 0,
                             collateral: null,
                             premium: null,
-                            final_profit: null,
-                            profit_percent: null,
+                            final_profit: st.status === 'Closed' ? (st.close_price - st.open_price) * st.quantity : (st.current_market_price ? (st.current_market_price - st.open_price) * st.quantity : null),
+                            profit_percent: st.status === 'Closed' && st.open_price ? (st.close_price - st.open_price) / st.open_price : (st.current_market_price && st.open_price ? (st.current_market_price - st.open_price) / st.open_price : null),
                             delta: null,
                             iv: null,
                             capital_efficiency: null,
                             user_id: st.user_id,
                             code: st.code,
                             underlying_price: st.open_price,
-                            is_assigned: st.source === 'assigned',
-                            note: st.note,
-                            note_color: st.note_color,
-                            has_separator: st.has_separator,
-                            group_id: st.group_id
+                            is_assigned: st.source === 'assigned' || st.close_source === 'assigned',
+                            note: st.note || st.close_note,
+                            note_color: st.note_color || st.close_note_color,
+                            has_separator: st.has_separator || st.close_has_separator,
+                            group_id: st.group_id || st.close_group_id
                         });
-
-                        // Close transaction
-                        if (st.close_date) {
-                            mappedStocks.push({
-                                id: `STK-${st.id}-C`,
-                                status: 'Closed',
-                                operation: 'Closed',
-                                open_date: st.close_date, // Align on timeline
-                                to_date: null,
-                                settlement_date: null,
-                                quantity: -(st.quantity), // Inverse quantity
-                                underlying: st.symbol,
-                                type: 'STK',
-                                strike_price: 0,
-                                collateral: null,
-                                premium: null,
-                                final_profit: (st.close_price - st.open_price) * st.quantity,
-                                profit_percent: st.open_price ? (st.close_price - st.open_price) / st.open_price : null,
-                                delta: null,
-                                iv: null,
-                                capital_efficiency: null,
-                                user_id: st.user_id,
-                                code: st.code,
-                                underlying_price: st.close_price,
-                                is_assigned: st.close_source === 'assigned',
-                                note: st.close_note,
-                                note_color: st.close_note_color,
-                                has_separator: st.close_has_separator,
-                                group_id: st.close_group_id
-                            });
-                        }
                     });
                     finalData = [...finalData, ...mappedStocks];
                 }
@@ -464,6 +432,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         return b.open_date - a.open_date;
     });
 
+    const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
+    const formattedPnL = totalPnL > 0 ? `+${(Math.round(totalPnL * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (totalPnL < 0 ? (Math.round(totalPnL * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '');
+
     return (
         <div className="container mx-auto py-10 max-w-[1600px]">
             <div className="flex items-center gap-4 mb-6">
@@ -588,8 +559,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         <TableRow className="bg-secondary hover:bg-secondary">
                             {/* Table Headers same as original */}
                             <TableHead className="text-center"></TableHead>
-                            <TableHead className="text-left">註解</TableHead>
-                            <TableHead className="text-center w-[85px]">群組</TableHead>
+                            <TableHead className="text-left"></TableHead>
+                            <TableHead className="text-center w-[110px]"></TableHead>
                             {params.userId === 'All' && <TableHead className="text-center">用戶</TableHead>}
                             <TableHead className="text-center">操作</TableHead>
                             <TableHead className="text-center">開倉日</TableHead>
@@ -605,7 +576,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="text-center whitespace-nowrap min-w-[75px] px-2">
+                                {formattedPnL && <span className={totalPnL > 0 ? 'text-green-600' : 'text-red-500 font-medium'}>{formattedPnL}</span>}
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -670,19 +643,25 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 }}
                                             />
                                         </TableCell>
-                                        <TableCell className="py-1 min-w-[85px]">
+                                        <TableCell className="py-1 min-w-[110px]">
                                             <Select 
                                                 value={opt.group_id ? String(opt.group_id) : "none"} 
                                                 onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : val)}
                                             >
-                                                <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-center justify-center font-normal text-slate-700">
+                                                <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
+                                                    opt.group_id && String(opt.group_id).endsWith('-0') 
+                                                        ? 'bg-yellow-100 hover:bg-yellow-200' 
+                                                        : opt.group_id && String(opt.group_id).endsWith('-2')
+                                                            ? 'bg-green-100 hover:bg-green-200'
+                                                            : 'bg-slate-100 hover:bg-slate-200'
+                                                }`}>
                                                     <SelectValue placeholder="-" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                     {[
-                                                        'QQQ-P0', 'QQQ-P1', 'QQQ-P2', 'QQQ-C0', 'QQQ-C1', 'QQQ-C2',
-                                                        'TQQQ-P0', 'TQQQ-P1', 'TQQQ-P2', 'TQQQ-C0', 'TQQQ-C1', 'TQQQ-C2',
+                                                        'QQQ-0', 'QQQ-1', 'QQQ-2',
+                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2',
                                                         'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                                     ].map(n => (
                                                         <SelectItem key={n} value={n}>{n}</SelectItem>
@@ -692,7 +671,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         {params.userId === 'All' && (
                                             <TableCell className="py-1">
-                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 border border-slate-200">
                                                     {/* Try to find user display name from users list if possible, else just ID */}
                                                     {(() => {
                                                         const u = users.find(u => u.user_id === opt.user_id || u.id.toString() === opt.user_id);
@@ -739,9 +718,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             })()}
                                         </TableCell>
                                         <TableCell className="py-1">
-                                            {opt.type === 'STK' ? "-" : (
-                                                (opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)
-                                            )}
+                                            {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
                                         </TableCell>
                                         <TableCell className={`py-1 ${opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}`}>
                                             {opt.quantity}
@@ -757,15 +734,15 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                     : getDaysHeld(opt)
                                             )}
                                         </TableCell>
-                                        <TableCell className="py-1 font-mono">{opt.type === 'STK' ? '-' : (opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-')}</TableCell>
+                                        <TableCell className="py-1 font-mono">{opt.underlying_price != null ? opt.underlying_price.toLocaleString() : '-'}</TableCell>
 
                                         {settings.showPremium && (
                                             <TableCell className="py-1 text-center">
                                                 {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                             </TableCell>
                                         )}
-                                        <TableCell className={`py-1 ${opt.type !== 'STK' && opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}`}>
-                                            {opt.type === 'STK' ? '-' : (opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-')}
+                                        <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}`}>
+                                            {opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                         </TableCell>
 
 

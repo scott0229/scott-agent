@@ -428,8 +428,8 @@ export default function StockTradingPage() {
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="w-[50px] text-center"></TableHead>
-                                <TableHead className="text-left">註解</TableHead>
-                                <TableHead className="text-center w-[85px]">群組</TableHead>
+                                <TableHead className="text-left"></TableHead>
+                                <TableHead className="text-center w-[95px]"></TableHead>
                                 <TableHead className="text-center">持有者</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
@@ -506,19 +506,25 @@ export default function StockTradingPage() {
                                                     }}
                                                 />
                                             </TableCell>
-                                            <TableCell className="py-1 min-w-[85px]">
+                                            <TableCell className="py-1 min-w-[95px]">
                                                 <Select 
                                                     value={trade.group_id ? String(trade.group_id) : "none"} 
                                                     onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
                                                 >
-                                                    <SelectTrigger className="h-7 px-2 py-0 border-none bg-transparent hover:bg-slate-100 focus:ring-0 shadow-none text-center justify-center font-normal text-slate-700">
+                                                    <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
+                                                        trade.group_id && String(trade.group_id).endsWith('-0') 
+                                                            ? 'bg-yellow-100 hover:bg-yellow-200' 
+                                                            : trade.group_id && String(trade.group_id).endsWith('-2')
+                                                                ? 'bg-green-100 hover:bg-green-200'
+                                                                : 'bg-slate-100 hover:bg-slate-200'
+                                                    }`}>
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                         {[
-                                                            'QQQ-P0', 'QQQ-P1', 'QQQ-P2', 'QQQ-C0', 'QQQ-C1', 'QQQ-C2',
-                                                            'TQQQ-P0', 'TQQQ-P1', 'TQQQ-P2', 'TQQQ-C0', 'TQQQ-C1', 'TQQQ-C2',
+                                                            'QQQ-0', 'QQQ-1', 'QQQ-2',
+                                                            'TQQQ-0', 'TQQQ-1', 'TQQQ-2',
                                                             'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                                         ].map(n => (
                                                             <SelectItem key={n} value={n}>{n}</SelectItem>
