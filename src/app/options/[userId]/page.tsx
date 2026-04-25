@@ -11,7 +11,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FilterX, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, FilterX, ArrowRightLeft, FolderOpen } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
@@ -28,6 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { GroupOverviewDialog } from "@/components/GroupOverviewDialog";
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
@@ -71,6 +72,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [isLoading, setIsLoading] = useState(true);
     const [transferDialogOpen, setTransferDialogOpen] = useState(false);
     const [tradeToTransfer, setTradeToTransfer] = useState<Option | null>(null);
+    const [isGroupOverviewOpen, setIsGroupOverviewOpen] = useState(false);
+    const [groupStatuses, setGroupStatuses] = useState<Record<string, string>>({});
 
     // Use global year filter instead of local state
     const { selectedYear, setSelectedYear } = useYearFilter();
@@ -351,6 +354,30 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         fetchOptions();
     }, [params.userId, selectedYear, ownerId, hideStocks]);
 
+    const fetchGroupStatuses = async () => {
+        if (!ownerId && params.userId !== 'All') return;
+        try {
+            const queryYear = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+            const idParam = ownerId ? ownerId : (params.userId !== 'All' ? params.userId : null);
+            if (!idParam) return;
+            const res = await fetch(`/api/trade-groups?ownerId=${idParam}&year=${queryYear}`);
+            const data = await res.json();
+            if (data.groups) {
+                const statusMap: Record<string, string> = {};
+                data.groups.forEach((g: any) => {
+                    statusMap[g.name] = g.status;
+                });
+                setGroupStatuses(statusMap);
+            }
+        } catch (e) {
+            console.error('Failed to fetch group statuses', e);
+        }
+    };
+
+    useEffect(() => {
+        fetchGroupStatuses();
+    }, [ownerId, selectedYear, params.userId]);
+
 
 
 
@@ -570,6 +597,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 <div className="ml-auto flex items-center gap-4">
                     {/* Filter Controls */}
                     <div className="flex items-center gap-2">
+
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -612,17 +640,28 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </SelectContent>
                         </Select>
                         <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                            <SelectTrigger className="w-[130px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
+                            <SelectTrigger className="w-[160px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="NoFilter">不過濾群組</SelectItem>
                                 <SelectItem value="All">所有群組</SelectItem>
-                                {groups.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                {groups.map(g => (
+                                    <SelectItem key={g} value={g}>
+                                        {g} {groupStatuses[g] === 'Terminated' ? '(已終止)' : ''}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                         
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsGroupOverviewOpen(true)}
+                            className="ml-2"
+                        >
+                            群組總覽
+                        </Button>
                         <Button 
                             variant={hideStocks ? "default" : "outline"}
-                            className="ml-2 gap-2"
+                            className="ml-2"
                             onClick={() => setHideStocks(!hideStocks)}
                         >
                             隱藏股票
@@ -873,6 +912,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 onOpenChange={setTransferDialogOpen}
                 tradeToTransfer={tradeToTransfer}
                 onSuccess={() => { fetchOptions(); }}
+            />
+            
+            <GroupOverviewDialog 
+                isOpen={isGroupOverviewOpen}
+                onOpenChange={setIsGroupOverviewOpen}
+                options={options}
+                ownerId={ownerId}
+                year={selectedYear}
+                onStatusChange={fetchGroupStatuses}
+                titlePrefix={params.userId !== 'All' ? params.userId : '所有用戶'}
             />
 
         </div>
