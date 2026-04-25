@@ -59,6 +59,9 @@ interface Option {
     note_color?: string | null;
     has_separator?: boolean | number;
     group_id?: string | number | null;
+    accumulated_shares?: number;
+    accumulated_avg_price?: number;
+    include_in_options?: number;
 }
 
 export default function ClientOptionsPage({ params }: { params: { userId: string } }) {
@@ -73,13 +76,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const { selectedYear, setSelectedYear } = useYearFilter();
     const searchParams = useSearchParams();
     // Initialize to 'All' to avoid hydration mismatch, useEffect will sync from URL
-    const [selectedMonth, setSelectedMonth] = useState<string>('All');
     const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
     const [selectedType, setSelectedType] = useState<string>('All');
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
-    const [selectedGroup, setSelectedGroup] = useState<string>('All');
-    const [includeStocks, setIncludeStocks] = useState<boolean>(false);
+    const [selectedGroup, setSelectedGroup] = useState<string>('NoFilter');
+    const [hideStocks, setHideStocks] = useState<boolean>(false);
 
     const SEPARATOR_COLORS = [
         '', // 0: None
@@ -133,9 +135,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         console.log('[DEBUG] Syncing filters from URL - status:', status);
         setSelectedStatus(status || 'All');
 
-        const month = searchParams.get('month');
-        setSelectedMonth(month || 'All');
-
         const underlying = searchParams.get('underlying');
         setSelectedUnderlying(underlying || 'All');
 
@@ -146,7 +145,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         setSelectedOperation(operation || 'All');
 
         const group = searchParams.get('group');
-        setSelectedGroup(group || 'All');
+        setSelectedGroup(group || 'NoFilter');
 
         console.log('[DEBUG] After sync - selectedStatus will be:', status || 'All');
     }, [searchParams]);
@@ -219,13 +218,92 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             
             let finalData: Option[] = optionsData.options || [];
 
-            if (includeStocks) {
+            if (!hideStocks) {
                 const stocksRes = await fetch(`/api/stocks?${queryParams}`, { cache: 'no-store' });
                 const stocksData = await stocksRes.json();
                 
                 if (stocksData.stocks) {
+                    const events: { time: number, type: 'open' | 'close', tradeId: number, quantity: number, price: number, symbol: string }[] = [];
+                    
+                    stocksData.stocks.forEach((st: any) => {
+                        events.push({
+                            time: st.open_date,
+                            type: 'open',
+                            tradeId: st.id,
+                            quantity: st.quantity,
+                            price: st.open_price,
+                            symbol: st.symbol
+                        });
+                        if (st.status === 'Closed' && st.close_date) {
+                            events.push({
+                                time: st.close_date,
+                                type: 'close',
+                                tradeId: st.id,
+                                quantity: -st.quantity,
+                                price: st.close_price,
+                                symbol: st.symbol
+                            });
+                        }
+                    });
+                    
+                    events.sort((a, b) => {
+                        if (a.time !== b.time) return a.time - b.time;
+                        if (a.type !== b.type) return a.type === 'open' ? -1 : 1;
+                        return a.tradeId - b.tradeId;
+                    });
+                    
+                    const symbolState: Record<string, { totalShares: number, totalCost: number }> = {};
+                    const rowOpenState: Record<number, { shares: number, avgPrice: number }> = {};
+                    
+                    for (const ev of events) {
+                        const sym = ev.symbol;
+                        if (!symbolState[sym]) symbolState[sym] = { totalShares: 0, totalCost: 0 };
+                        
+                        let { totalShares, totalCost } = symbolState[sym];
+                        
+                        if (ev.type === 'open') {
+                            if (totalShares === 0) {
+                                totalShares = ev.quantity;
+                                totalCost = ev.quantity * ev.price;
+                            } else if ((totalShares > 0 && ev.quantity > 0) || (totalShares < 0 && ev.quantity < 0)) {
+                                totalShares += ev.quantity;
+                                totalCost += ev.quantity * ev.price;
+                            } else {
+                                const newShares = totalShares + ev.quantity;
+                                if ((totalShares > 0 && newShares < 0) || (totalShares < 0 && newShares > 0)) {
+                                    totalShares = newShares;
+                                    totalCost = newShares * ev.price;
+                                } else if (newShares === 0) {
+                                    totalShares = 0;
+                                    totalCost = 0;
+                                } else {
+                                    totalCost = totalCost * (newShares / totalShares);
+                                    totalShares = newShares;
+                                }
+                            }
+                            rowOpenState[ev.tradeId] = {
+                                shares: totalShares,
+                                avgPrice: totalShares !== 0 ? Math.abs(totalCost / totalShares) : 0
+                            };
+                        } else {
+                            const newShares = totalShares + ev.quantity;
+                            if (newShares === 0) {
+                                totalShares = 0;
+                                totalCost = 0;
+                            } else if ((totalShares > 0 && newShares > 0) || (totalShares < 0 && newShares < 0)) {
+                                totalCost = totalCost * (newShares / totalShares);
+                                totalShares = newShares;
+                            } else {
+                                totalShares = newShares;
+                                totalCost = newShares * ev.price;
+                            }
+                        }
+                        symbolState[sym] = { totalShares, totalCost };
+                    }
+
                     const mappedStocks: Option[] = [];
                     stocksData.stocks.forEach((st: any) => {
+                        const state = rowOpenState[st.id] || { shares: 0, avgPrice: 0 };
                         mappedStocks.push({
                             id: `STK-${st.id}`,
                             status: st.status,
@@ -251,7 +329,10 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             note: st.note || st.close_note,
                             note_color: st.note_color || st.close_note_color,
                             has_separator: st.has_separator || st.close_has_separator,
-                            group_id: st.group_id || st.close_group_id
+                            group_id: st.group_id || st.close_group_id,
+                            accumulated_shares: state.shares,
+                            accumulated_avg_price: state.avgPrice,
+                            include_in_options: st.include_in_options
                         });
                     });
                     finalData = [...finalData, ...mappedStocks];
@@ -268,7 +349,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     useEffect(() => {
         fetchOptions();
-    }, [params.userId, selectedYear, ownerId, includeStocks]);
+    }, [params.userId, selectedYear, ownerId, hideStocks]);
 
 
 
@@ -399,32 +480,38 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
     const resetFilters = () => {
         // Note: selectedYear is managed globally via navbar, not reset here
-        setSelectedMonth('All');
         setSelectedUnderlying('All');
         setSelectedType('All');
         setSelectedStatus('All');
         setSelectedOperation('All');
-        setSelectedGroup('All');
+        setSelectedGroup('NoFilter');
     };
 
     // Derived State for Filters
-    const years = Array.from(new Set(options.map(opt => new Date(opt.open_date * 1000).getFullYear()))).sort((a, b) => b - a);
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const underlyings = Array.from(new Set(options.map(opt => opt.underlying))).sort();
     const statuses = Array.from(new Set(options.map(opt => opt.status))).sort();
     const operations = Array.from(new Set(options.map(opt => opt.operation || 'Open'))).sort();
-    const groups = Array.from(new Set(options.map(opt => opt.group_id).filter(g => g !== null && g !== undefined && String(g).trim() !== ''))).map(String).sort();
+    const groups = Array.from(new Set(options.map(opt => opt.group_id).filter(g => g !== null && g !== undefined && String(g).trim() !== ''))).map(String).sort((a, b) => {
+        const getPrefixWeight = (str: string) => {
+            if (str.startsWith('QQQ')) return 1;
+            if (str.startsWith('TQQQ')) return 2;
+            if (str.startsWith('GROUP')) return 3;
+            return 4;
+        };
+        const weightA = getPrefixWeight(a);
+        const weightB = getPrefixWeight(b);
+        if (weightA !== weightB) return weightA - weightB;
+        return a.localeCompare(b);
+    });
 
     const filteredOptions = options.filter(opt => {
-        const date = new Date(opt.open_date * 1000);
         // Year filter is handled by API query based on selectedYear
-        const monthMatch = selectedMonth === 'All' || (date.getMonth() + 1).toString() === selectedMonth;
         const underlyingMatch = selectedUnderlying === 'All' || opt.underlying === selectedUnderlying;
         const typeMatch = selectedType === 'All' || opt.type === selectedType || opt.type === 'STK';
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation || opt.type === 'STK';
-        const groupMatch = selectedGroup === 'All' || String(opt.group_id) === selectedGroup;
-        return monthMatch && underlyingMatch && typeMatch && statusMatch && operationMatch && groupMatch;
+        const groupMatch = selectedGroup === 'NoFilter' ? true : (selectedGroup === 'All' ? (opt.group_id !== null && opt.group_id !== undefined && String(opt.group_id).trim() !== '') : String(opt.group_id) === selectedGroup);
+        return underlyingMatch && typeMatch && statusMatch && operationMatch && groupMatch;
     });
 
     // Sort options: strictly by open_date desc
@@ -433,7 +520,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     });
 
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
-    const formattedPnL = totalPnL > 0 ? `+${(Math.round(totalPnL * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (totalPnL < 0 ? (Math.round(totalPnL * 10) / 10).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '');
+    const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
     return (
         <div className="container mx-auto py-10 max-w-[1600px]">
@@ -452,12 +539,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 value={selectedUserValue || params.userId}
                                 onValueChange={(newId) => {
                                     const params = new URLSearchParams();
-                                    if (selectedMonth !== 'All') params.set('month', selectedMonth);
                                     if (selectedUnderlying !== 'All') params.set('underlying', selectedUnderlying);
                                     if (selectedType !== 'All') params.set('type', selectedType);
                                     if (selectedStatus !== 'All') params.set('status', selectedStatus);
                                     if (selectedOperation !== 'All') params.set('operation', selectedOperation);
-                                    if (selectedGroup !== 'All') params.set('group', selectedGroup);
+                                    if (selectedGroup !== 'NoFilter') params.set('group', selectedGroup);
 
                                     const queryString = params.toString();
                                     const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;
@@ -503,13 +589,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         </TooltipProvider>
 
                         {/* Year filter removed - using global navbar year selector */}
-                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                            <SelectTrigger className="w-[100px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="月份" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">全部月份</SelectItem>
-                                {months.map(month => <SelectItem key={month} value={month.toString()}>{month}月</SelectItem>)}
-                            </SelectContent>
-                        </Select>
                         <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
                             <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="底層標的" /></SelectTrigger>
                             <SelectContent>
@@ -533,19 +612,20 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             </SelectContent>
                         </Select>
                         <Select value={selectedGroup} onValueChange={setSelectedGroup}>
-                            <SelectTrigger className="w-[120px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
+                            <SelectTrigger className="w-[130px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="All">全部群組</SelectItem>
+                                <SelectItem value="NoFilter">不過濾群組</SelectItem>
+                                <SelectItem value="All">所有群組</SelectItem>
                                 {groups.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         
                         <Button 
-                            variant={includeStocks ? "default" : "outline"}
+                            variant={hideStocks ? "default" : "outline"}
                             className="ml-2 gap-2"
-                            onClick={() => setIncludeStocks(!includeStocks)}
+                            onClick={() => setHideStocks(!hideStocks)}
                         >
-                            包含股票
+                            隱藏股票
                         </Button>
                     </div>
 
@@ -577,7 +657,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             <TableHead className="text-center whitespace-nowrap min-w-[75px] px-2">
-                                {formattedPnL && <span className={totalPnL > 0 ? 'text-green-600' : 'text-red-500 font-medium'}>{formattedPnL}</span>}
+                                {formattedPnL && <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>}
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -660,8 +740,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 <SelectContent>
                                                     <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                     {[
-                                                        'QQQ-0', 'QQQ-1', 'QQQ-2',
-                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2',
+                                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
                                                         'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                                     ].map(n => (
                                                         <SelectItem key={n} value={n}>{n}</SelectItem>
@@ -726,9 +806,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="py-1 font-mono text-sm">
                                             {formatOptionTicker(opt)}
                                         </TableCell>
-                                        <TableCell className="py-1">{opt.type === 'STK' ? "-" : getDaysToExpire(opt)}</TableCell>
+                                        <TableCell className="py-1">{opt.type === 'STK' ? (opt.accumulated_shares != null ? `股${opt.accumulated_shares.toLocaleString()}` : "-") : getDaysToExpire(opt)}</TableCell>
                                         <TableCell className="py-1">
-                                            {opt.type === 'STK' ? "-" : (
+                                            {opt.type === 'STK' ? (opt.accumulated_avg_price != null && opt.accumulated_shares !== 0 ? `均${opt.accumulated_avg_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : "-") : (
                                                 (opt.operation === 'Open' || !opt.settlement_date)
                                                     ? (opt.open_date ? Math.floor((Date.now() / 1000 - opt.open_date) / 86400) : '-')
                                                     : getDaysHeld(opt)
@@ -742,7 +822,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             </TableCell>
                                         )}
                                         <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-pink-50' : ''}`}>
-                                            {opt.final_profit != null ? opt.final_profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
+                                            {opt.final_profit != null ? Math.round(opt.final_profit).toLocaleString('en-US') : '-'}
                                         </TableCell>
 
 
