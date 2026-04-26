@@ -65,7 +65,7 @@ interface GroupStat {
     profit: number;
     startDate: number;
     endDate: number;
-    latestTradeText: string;
+    latestTrade: any;
     contentTypes: string;
     status: 'Active' | 'Terminated';
 }
@@ -132,14 +132,17 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                         profit: stat.profit,
                         startDate: stat.minDate,
                         endDate: stat.maxDate,
-                        latestTradeText: formatOptionTicker(stat.latestTrade),
+                        latestTrade: stat.latestTrade,
                         contentTypes: sortedTypes.join('、'),
                         status: (dbStatusMap.get(name) as 'Active' | 'Terminated') || 'Active'
                     };
                 });
 
-                // Sort by name
+                // Sort by status, then by name
                 mergedStats.sort((a, b) => {
+                    if (a.status !== b.status) {
+                        return a.status === 'Active' ? -1 : 1;
+                    }
                     const getPrefixWeight = (str: string) => {
                         if (str.startsWith('QQQ')) return 1;
                         if (str.startsWith('TQQQ')) return 2;
@@ -210,13 +213,26 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                 {isLoading ? (
                     <div className="py-8 text-center text-muted-foreground">載入中...</div>
                 ) : (
-                    <Table>
+                    <div className="space-y-4">
+                        <div className="text-[14px] text-foreground">
+                            {(() => {
+                                const activeGroupsCount = groupStats.filter(g => g.status === 'Active').length;
+                                const totalProfit = groupStats.reduce((sum, g) => sum + g.profit, 0);
+                                const profitColorClass = totalProfit > 0 ? 'text-green-700 font-medium' : totalProfit < 0 ? 'text-red-700 font-medium' : '';
+                                return (
+                                    <>
+                                        {groupStats.length} 個群組收益總合 <span className={profitColorClass}>{totalProfit > 0 ? '+' : ''}{Math.round(totalProfit).toLocaleString('en-US')}</span>，{activeGroupsCount} 個群組進行中
+                                    </>
+                                );
+                            })()}
+                        </div>
+                        <Table className="text-[13px]">
                         <TableHeader>
                             <TableRow className="bg-muted/50">
+                                <TableHead className="w-[40px] text-center"></TableHead>
                                 <TableHead>群組名稱</TableHead>
                                 <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
-                                <TableHead className="text-center">終止日</TableHead>
                                 <TableHead className="text-center">最後交易</TableHead>
                                 <TableHead className="text-center">交易筆數</TableHead>
                                 <TableHead className="text-center">總收益</TableHead>
@@ -231,13 +247,28 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                groupStats.map((group) => (
+                                groupStats.map((group, index) => (
                                     <TableRow key={group.name}>
+                                        <TableCell className="text-center text-[13px] text-foreground font-mono">{index + 1}</TableCell>
                                         <TableCell className="font-medium">{group.name}</TableCell>
-                                        <TableCell className="text-center text-sm">{group.contentTypes}</TableCell>
+                                        <TableCell className="text-center">{group.contentTypes}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
-                                        <TableCell className="text-center">{group.status === 'Active' ? '-' : formatDate(group.endDate)}</TableCell>
-                                        <TableCell className="text-center">{group.latestTradeText}</TableCell>
+                                        <TableCell className="text-center whitespace-nowrap">
+                                            {formatOptionTicker(group.latestTrade)}
+                                            {group.latestTrade && (() => {
+                                                const op = group.latestTrade.operation || 'Open';
+                                                let badgeClass = "ml-2 px-2 py-0.5 rounded-sm text-xs font-medium ";
+                                                if (op === 'Assigned') badgeClass += "text-red-600 bg-red-50";
+                                                else if (op === 'Expired') badgeClass += "bg-green-50 text-green-700 rounded-full";
+                                                else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
+                                                else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
+                                                else badgeClass += "text-slate-600";
+                                                
+                                                return (
+                                                    <span className={badgeClass}>{op}</span>
+                                                );
+                                            })()}
+                                        </TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
@@ -258,6 +289,7 @@ export function GroupOverviewDialog({ isOpen, onOpenChange, options, ownerId, ye
                             )}
                         </TableBody>
                     </Table>
+                    </div>
                 )}
             </DialogContent>
         </Dialog>

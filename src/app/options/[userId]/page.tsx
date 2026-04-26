@@ -29,6 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { GroupOverviewDialog } from "@/components/GroupOverviewDialog";
+import { BatchSetGroupDialog } from "@/components/BatchSetGroupDialog";
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
@@ -73,6 +74,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [transferDialogOpen, setTransferDialogOpen] = useState(false);
     const [tradeToTransfer, setTradeToTransfer] = useState<Option | null>(null);
     const [isGroupOverviewOpen, setIsGroupOverviewOpen] = useState(false);
+    const [isBatchGroupOpen, setIsBatchGroupOpen] = useState(false);
     const [groupStatuses, setGroupStatuses] = useState<Record<string, string>>({});
 
     // Use global year filter instead of local state
@@ -667,6 +669,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         >
                             群組總覽
                         </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsBatchGroupOpen(true)}
+                            className="ml-2"
+                        >
+                            批次設群
+                        </Button>
                         <Button 
                             variant={hideStocks ? "default" : "outline"}
                             className="ml-2"
@@ -922,6 +931,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 onSuccess={() => { fetchOptions(); }}
             />
             
+            <BatchSetGroupDialog
+                open={isBatchGroupOpen}
+                onOpenChange={setIsBatchGroupOpen}
+                sortedOptions={sortedOptions as any}
+                onSuccess={() => { fetchOptions(); }}
+            />
+
             <GroupOverviewDialog 
                 isOpen={isGroupOverviewOpen}
                 onOpenChange={setIsGroupOverviewOpen}
