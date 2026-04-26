@@ -946,6 +946,31 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 year={selectedYear}
                 onStatusChange={fetchGroupStatuses}
                 titlePrefix={params.userId !== 'All' ? params.userId : '所有用戶'}
+                users={users}
+                currentUserRole={currentUserRole}
+                selectedUserValue={selectedUserValue || params.userId}
+                onUserChange={(newId) => {
+                    const paramsObj = new URLSearchParams();
+                    if (selectedUnderlying !== 'All') paramsObj.set('underlying', selectedUnderlying);
+                    if (selectedType !== 'All') paramsObj.set('type', selectedType);
+                    if (selectedStatus !== 'All') paramsObj.set('status', selectedStatus);
+                    if (selectedOperation !== 'All') paramsObj.set('operation', selectedOperation);
+                    if (selectedGroup !== 'NoFilter') paramsObj.set('group', selectedGroup);
+
+                    const queryString = paramsObj.toString();
+                    const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;
+                    router.push(url);
+                    setIsGroupOverviewOpen(false);
+                }}
+                onSelectGroup={(val) => {
+                    setSelectedGroup(val);
+                    if (val !== 'NoFilter' && val !== 'All') {
+                        setSelectedUnderlying('All');
+                        setSelectedType('All');
+                        setSelectedStatus('All');
+                        setSelectedOperation('All');
+                    }
+                }}
             />
 
         </div>

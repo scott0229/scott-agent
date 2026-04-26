@@ -1,0 +1,3 @@
+-- Add note and note_color columns to TRADE_GROUPS table
+ALTER TABLE TRADE_GROUPS ADD COLUMN note TEXT;
+ALTER TABLE TRADE_GROUPS ADD COLUMN note_color TEXT;
