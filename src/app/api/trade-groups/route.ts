@@ -15,16 +15,22 @@ export async function GET(req: NextRequest) {
         const ownerId = searchParams.get('ownerId');
         const year = searchParams.get('year');
 
-        if (!ownerId || !year) {
-            return NextResponse.json({ error: 'Missing ownerId or year' }, { status: 400 });
+        if (!year) {
+            return NextResponse.json({ error: 'Missing year' }, { status: 400 });
         }
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
 
-        const { results } = await db.prepare('SELECT * FROM TRADE_GROUPS WHERE owner_id = ? AND year = ?')
-            .bind(ownerId, year)
-            .all();
+        let query = 'SELECT * FROM TRADE_GROUPS WHERE year = ?';
+        const params: any[] = [year];
+
+        if (ownerId && ownerId !== 'All') {
+            query += ' AND owner_id = ?';
+            params.push(ownerId);
+        }
+
+        const { results } = await db.prepare(query).bind(...params).all();
 
         return NextResponse.json({ groups: results });
     } catch (error) {
