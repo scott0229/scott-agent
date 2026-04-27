@@ -37,7 +37,7 @@ const formatOptionTicker = (opt: any) => {
     
     const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'}` : '';
     const quantityBlock = quantityStr ? (
-        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs mr-1 font-mono font-semibold">{quantityStr}</span>
+        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs mr-1 font-mono">{quantityStr}</span>
     ) : null;
 
     const underlying = opt.underlying;
