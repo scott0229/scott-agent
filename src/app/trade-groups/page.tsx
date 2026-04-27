@@ -398,8 +398,8 @@ export default function TradeGroupsPage() {
                         <TableHeader>
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[40px] text-center"></TableHead>
-                                <TableHead className="w-[120px]">帳戶</TableHead>
                                 <TableHead className="min-w-[150px]"></TableHead>
+                                <TableHead className="w-[120px]">帳戶</TableHead>
                                 <TableHead>群組名稱</TableHead>
                                 <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
@@ -422,12 +422,6 @@ export default function TradeGroupsPage() {
                                 groupStats.map((group, index) => (
                                     <TableRow key={`${group.ownerId}_${group.name}`}>
                                         <TableCell className="text-center text-[13px] text-foreground font-mono">{index + 1}</TableCell>
-                                        <TableCell className="font-medium text-muted-foreground">
-                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-xs inline-flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
-                                                {group.ownerName}
-                                            </span>
-                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">
                                                 {group.note?.trim() ? (
@@ -463,6 +457,12 @@ export default function TradeGroupsPage() {
                                                     }}
                                                 />
                                             </div>
+                                        </TableCell>
+                                        <TableCell className="font-medium text-muted-foreground">
+                                            <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-xs inline-flex items-center gap-1.5">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
+                                                {group.ownerName}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             <button 
