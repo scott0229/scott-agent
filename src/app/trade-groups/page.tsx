@@ -515,7 +515,6 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell className="font-medium text-muted-foreground">
                                             <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded font-semibold text-xs inline-flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
                                                 {group.ownerName}
                                             </span>
                                         </TableCell>
