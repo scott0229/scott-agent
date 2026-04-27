@@ -190,7 +190,7 @@ export function GroupTradesDialog({
                         <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
                         {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
                             <Select value={groupName} onValueChange={onGroupSelect}>
-                                <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-1 hover:bg-muted/50 transition-colors">
+                                <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 bg-slate-100 hover:bg-slate-200 transition-colors">
                                     <SelectValue placeholder={groupName} />
                                 </SelectTrigger>
                                 <SelectContent>
