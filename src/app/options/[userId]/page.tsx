@@ -857,7 +857,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
                                         </TableCell>
                                         <TableCell className={`py-1 ${opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}`}>
-                                            {opt.quantity}
+                                            {opt.quantity.toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className="py-1 font-mono text-sm">
                                             {formatOptionTicker(opt)}
@@ -949,13 +949,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 users={users}
                 currentUserRole={currentUserRole}
                 selectedUserValue={selectedUserValue || params.userId}
-                onUserChange={(newId) => {
+                onUserChange={(newId, targetGroup) => {
                     const paramsObj = new URLSearchParams();
-                    if (selectedUnderlying !== 'All') paramsObj.set('underlying', selectedUnderlying);
-                    if (selectedType !== 'All') paramsObj.set('type', selectedType);
-                    if (selectedStatus !== 'All') paramsObj.set('status', selectedStatus);
-                    if (selectedOperation !== 'All') paramsObj.set('operation', selectedOperation);
-                    if (selectedGroup !== 'NoFilter') paramsObj.set('group', selectedGroup);
+                    const grp = targetGroup !== undefined ? targetGroup : selectedGroup;
+                    const isSpecificGroup = grp !== 'NoFilter' && grp !== 'All';
+
+                    if (!isSpecificGroup && selectedUnderlying !== 'All') paramsObj.set('underlying', selectedUnderlying);
+                    if (!isSpecificGroup && selectedType !== 'All') paramsObj.set('type', selectedType);
+                    if (!isSpecificGroup && selectedStatus !== 'All') paramsObj.set('status', selectedStatus);
+                    if (!isSpecificGroup && selectedOperation !== 'All') paramsObj.set('operation', selectedOperation);
+                    if (grp !== 'NoFilter') paramsObj.set('group', grp);
 
                     const queryString = paramsObj.toString();
                     const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;

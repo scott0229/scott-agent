@@ -34,19 +34,20 @@ const formatDate = (timestamp: number) => {
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatOptionTicker = (opt: any) => {
     if (!opt) return '-';
+    const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'} ` : '';
     const underlying = opt.underlying;
     if (opt.type === 'STK') {
         const assignedText = opt.is_assigned ? '，被行權' : '';
-        return opt.underlying_price != null ? `${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : `${underlying}${assignedText}`;
+        return opt.underlying_price != null ? `${quantityStr}${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : `${quantityStr}${underlying}${assignedText}`;
     }
     const typeChar = opt.type === 'PUT' ? 'P' : 'C';
     const strike = opt.strike_price;
-    if (!opt.to_date) return `${underlying} - ${strike}${typeChar}`;
+    if (!opt.to_date) return `${quantityStr}${underlying} - ${strike}${typeChar}`;
     const d = new Date(opt.to_date * 1000);
     const mon = MONTH_ABBR[d.getMonth()];
     const day = d.getDate();
     const yr = d.getFullYear().toString().slice(-2);
-    return `${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
+    return `${quantityStr}${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
 };
 
 interface GroupOverviewDialogProps {
@@ -61,7 +62,7 @@ interface GroupOverviewDialogProps {
     users?: any[];
     currentUserRole?: string | null;
     selectedUserValue?: string;
-    onUserChange?: (newId: string) => void;
+    onUserChange?: (newId: string, targetGroup?: string) => void;
 }
 
 interface GroupStat {
@@ -182,10 +183,8 @@ export function GroupOverviewDialog({
                     
                     if (opt.type === 'STK') {
                         stat.types.add(opt.underlying || '股票');
-                        if (opt.status === 'Open') {
-                            stat.holdingShares += opt.quantity || 0;
-                            stat.holdingCost += (opt.quantity || 0) * (opt.underlying_price || 0);
-                        }
+                        stat.holdingShares += opt.quantity || 0;
+                        stat.holdingCost += (opt.quantity || 0) * (opt.underlying_price || 0);
                     }
                     else if (opt.type === 'CALL') stat.types.add('CALL');
                     else if (opt.type === 'PUT') stat.types.add('PUT');
@@ -399,14 +398,14 @@ export function GroupOverviewDialog({
                         <TableHeader>
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[40px] text-center"></TableHead>
-                                <TableHead className="min-w-[180px]">註解</TableHead>
+                                <TableHead className="min-w-[180px]"></TableHead>
                                 <TableHead>群組名稱</TableHead>
                                 <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
-                                <TableHead className="text-center">最後交易</TableHead>
-                                <TableHead className="text-center">成本</TableHead>
-                                <TableHead className="text-center">交易筆數</TableHead>
-                                <TableHead className="text-center">總收益</TableHead>
+                                <TableHead>最後交易</TableHead>
+                                <TableHead className="text-center">持股成本</TableHead>
+                                <TableHead className="text-center">筆數</TableHead>
+                                <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -461,8 +460,13 @@ export function GroupOverviewDialog({
                                             <button 
                                                 type="button"
                                                 onClick={() => {
-                                                    onSelectGroup?.(group.name);
-                                                    onOpenChange(false);
+                                                    if (localUserId && localUserId !== selectedUserValue && onUserChange) {
+                                                        onSelectGroup?.(group.name);
+                                                        onUserChange(localUserId, group.name);
+                                                    } else {
+                                                        onSelectGroup?.(group.name);
+                                                        onOpenChange(false);
+                                                    }
                                                 }}
                                                 className="text-foreground hover:text-foreground/80 hover:underline cursor-pointer"
                                             >
@@ -471,7 +475,7 @@ export function GroupOverviewDialog({
                                         </TableCell>
                                         <TableCell className="text-center">{group.contentTypes}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
-                                        <TableCell className="text-center whitespace-nowrap">
+                                        <TableCell className="whitespace-nowrap">
                                             {formatOptionTicker(group.latestTrade)}
                                             {group.latestTrade && (() => {
                                                 const op = group.latestTrade.operation || 'Open';
@@ -500,7 +504,7 @@ export function GroupOverviewDialog({
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.name, val)}>
-                                                <SelectTrigger hideIcon className={`h-8 w-[100px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
+                                                <SelectTrigger hideIcon className={`h-8 w-[100px] text-[13px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
