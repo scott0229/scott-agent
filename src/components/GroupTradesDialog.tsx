@@ -217,7 +217,7 @@ export function GroupTradesDialog({
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="text-center w-[60px] px-2"></TableHead>
-                                <TableHead className="text-left w-full min-w-[200px]"></TableHead>
+                                <TableHead className="text-left min-w-[200px] max-w-[300px]"></TableHead>
                                 <TableHead className="text-center w-[110px]"></TableHead>
                                 <TableHead className="text-center">操作</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
@@ -263,7 +263,7 @@ export function GroupTradesDialog({
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-1 w-full min-w-[200px]">
+                                            <TableCell className="py-1 min-w-[200px] max-w-[300px]">
                                                 <input 
                                                     type="text"
                                                     className="w-full bg-transparent border-none focus:ring-0 focus:outline-none px-1 text-left text-[13px] font-medium truncate"
