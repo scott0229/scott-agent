@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
+import { useToast } from "@/hooks/use-toast";
 
 const formatDate = (timestamp: number | null) => {
     if (!timestamp) return '';
@@ -69,9 +70,101 @@ export function GroupTradesDialog({
     trades: any[];
 }) {
     const { settings } = useAdminSettings();
+    const { toast } = useToast();
+    const [localTrades, setLocalTrades] = useState<any[]>(trades);
+
+    useEffect(() => {
+        setLocalTrades(trades);
+    }, [trades]);
+
+    const handleNoteUpdate = async (trade: any, newNote: string) => {
+        const previousNote = trade.note;
+        if (previousNote === newNote) return;
+
+        // Optimistic update
+        setLocalTrades(prev => prev.map(t => 
+            t.id === trade.id && t.type === trade.type 
+                ? { ...t, note: newNote } 
+                : t
+        ));
+
+        try {
+            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}` : `/api/options/${trade.id}`;
+            const res = await fetch(endpoint, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note: newNote })
+            });
+
+            if (!res.ok) throw new Error('Failed to update note');
+            
+            // Mutate the original array as well so it persists if dialog closes and reopens
+            const originalTrade = trades.find(t => t.id === trade.id && t.type === trade.type);
+            if (originalTrade) originalTrade.note = newNote;
+        } catch (error) {
+            console.error('Failed to update note:', error);
+            // Revert on error
+            setLocalTrades(prev => prev.map(t => 
+                t.id === trade.id && t.type === trade.type 
+                    ? { ...t, note: previousNote } 
+                    : t
+            ));
+            toast({
+                title: "更新失敗",
+                description: "無法儲存註解，請稍後再試。",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleNoteColorToggle = async (trade: any) => {
+        if (!trade.note?.trim()) return;
+        
+        const previousColor = trade.note_color;
+        const colorCycle = {
+            'blue': 'red',
+            'red': 'green',
+            'green': 'blue'
+        };
+        const newColor = colorCycle[(trade.note_color as 'blue' | 'red' | 'green') || 'blue'];
+
+        // Optimistic update
+        setLocalTrades(prev => prev.map(t => 
+            t.id === trade.id && t.type === trade.type 
+                ? { ...t, note_color: newColor } 
+                : t
+        ));
+
+        try {
+            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}` : `/api/options/${trade.id}`;
+            const res = await fetch(endpoint, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ note_color: newColor })
+            });
+
+            if (!res.ok) throw new Error('Failed to update note color');
+            
+            // Mutate original array
+            const originalTrade = trades.find(t => t.id === trade.id && t.type === trade.type);
+            if (originalTrade) originalTrade.note_color = newColor;
+        } catch (error) {
+            console.error('Failed to update note color:', error);
+            setLocalTrades(prev => prev.map(t => 
+                t.id === trade.id && t.type === trade.type 
+                    ? { ...t, note_color: previousColor } 
+                    : t
+            ));
+            toast({
+                title: "更新失敗",
+                description: "無法儲存顏色設定，請稍後再試。",
+                variant: "destructive",
+            });
+        }
+    };
 
     // Sort trades: strictly by open_date desc
-    const sortedOptions = [...trades].sort((a, b) => {
+    const sortedOptions = [...localTrades].sort((a, b) => {
         return b.open_date - a.open_date;
     });
 
@@ -126,11 +219,16 @@ export function GroupTradesDialog({
                                                 <div className="flex items-center justify-center gap-4">
                                                     <span>{sortedOptions.length - index}</span>
                                                     {opt.note?.trim() ? (
-                                                        <div
-                                                            className={`w-4 h-4 rounded-full shrink-0 shadow-sm opacity-90 ${
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleNoteColorToggle(opt);
+                                                            }}
+                                                            className={`w-4 h-4 rounded-full shrink-0 cursor-pointer shadow-sm transition-colors opacity-90 hover:opacity-100 ${
                                                                 opt.note_color === 'red' ? 'bg-red-500' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                             }`}
-                                                            title="註解顏色"
+                                                            title="切換註解顏色"
                                                         />
                                                     ) : (
                                                         <div className="w-4 h-4 shrink-0" />
@@ -138,12 +236,19 @@ export function GroupTradesDialog({
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-1 min-w-[180px]">
-                                                <div 
-                                                    className="w-full bg-transparent border-b border-transparent px-1 text-left text-[13px] font-medium truncate max-w-[200px]"
+                                                <input 
+                                                    type="text"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium truncate max-w-[200px]"
                                                     style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
-                                                >
-                                                    {opt.note || ''}
-                                                </div>
+                                                    defaultValue={opt.note || ''}
+                                                    placeholder="..."
+                                                    onBlur={(e) => handleNoteUpdate(opt, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.currentTarget.blur();
+                                                        }
+                                                    }}
+                                                />
                                             </TableCell>
                                             <TableCell className="py-1 min-w-[110px]">
                                                 <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${
