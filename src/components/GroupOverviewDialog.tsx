@@ -76,6 +76,7 @@ interface GroupStat {
     status: 'Active' | 'Terminated';
     note?: string | null;
     note_color?: string | null;
+    next_group?: string | null;
     holdingShares?: number;
     holdingAvgPrice?: number;
 }
@@ -232,6 +233,7 @@ export function GroupOverviewDialog({
                         status: (dbGroup.status as 'Active' | 'Terminated') || 'Active',
                         note: dbGroup.note,
                         note_color: dbGroup.note_color,
+                        next_group: dbGroup.next_group,
                         holdingShares: stat.holdingShares,
                         holdingAvgPrice: stat.holdingShares !== 0 ? Math.abs(stat.holdingCost / stat.holdingShares) : 0
                     };
@@ -351,9 +353,42 @@ export function GroupOverviewDialog({
         }
     };
 
+    const handleNextGroupChange = async (groupName: string, newNextGroup: string) => {
+        if (!ownerId || !year) return;
+        
+        // Optimistic update
+        const previousStats = [...groupStats];
+        setGroupStats(prev => prev.map(g => g.name === groupName ? { ...g, next_group: newNextGroup === 'none' ? null : newNextGroup } : g));
+
+        try {
+            const currentOwnerId = localUserId ? (users?.find(u => u.user_id === localUserId || u.email === localUserId)?.id || localUserId) : ownerId;
+            const res = await fetch('/api/trade-groups/next-group', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ownerId: currentOwnerId,
+                    year: year === 'All' ? new Date().getFullYear() : year,
+                    name: groupName,
+                    next_group: newNextGroup === 'none' ? null : newNextGroup
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to update next group');
+            onStatusChange?.();
+        } catch (error) {
+            console.error('Failed to update next group:', error);
+            setGroupStats(previousStats);
+            toast({
+                title: "更新失敗",
+                description: "無法更新接手群組",
+                variant: "destructive",
+            });
+        }
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1200px] max-h-[80vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[1300px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         群組總覽
@@ -406,13 +441,14 @@ export function GroupOverviewDialog({
                                 <TableHead className="text-center">持股成本</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
+                                <TableHead className="w-[100px] text-center">接手群組</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {groupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -501,6 +537,23 @@ export function GroupOverviewDialog({
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.name, val)}>
+                                                <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-slate-100 border-none shadow-none focus:ring-0">
+                                                    <SelectValue placeholder="-" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
+                                                    {[
+                                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
+                                                        'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
+                                                    ].map(n => (
+                                                        <SelectItem key={n} value={n} hideCheck>{n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.name, val)}>

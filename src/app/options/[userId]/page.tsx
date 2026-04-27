@@ -539,7 +539,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         const typeMatch = selectedType === 'All' || opt.type === selectedType || opt.type === 'STK';
         const statusMatch = selectedStatus === 'All' || opt.status === selectedStatus;
         const operationMatch = selectedOperation === 'All' || (opt.operation || 'Open') === selectedOperation || opt.type === 'STK';
-        const groupMatch = selectedGroup === 'NoFilter' ? true : (selectedGroup === 'All' ? (opt.group_id !== null && opt.group_id !== undefined && String(opt.group_id).trim() !== '') : String(opt.group_id) === selectedGroup);
+        let groupMatch = true;
+        if (selectedGroup === 'NoFilter') {
+            groupMatch = true;
+        } else if (selectedGroup === 'Ungrouped') {
+            groupMatch = (opt.group_id === null || opt.group_id === undefined || String(opt.group_id).trim() === '' || String(opt.group_id).trim() === 'none');
+        } else if (selectedGroup === 'All') {
+            groupMatch = (opt.group_id !== null && opt.group_id !== undefined && String(opt.group_id).trim() !== '' && String(opt.group_id).trim() !== 'none');
+        } else {
+            groupMatch = String(opt.group_id) === selectedGroup;
+        }
         return underlyingMatch && typeMatch && statusMatch && operationMatch && groupMatch;
     });
 
@@ -567,16 +576,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                             <Select
                                 value={selectedUserValue || params.userId}
                                 onValueChange={(newId) => {
-                                    const params = new URLSearchParams();
-                                    if (selectedUnderlying !== 'All') params.set('underlying', selectedUnderlying);
-                                    if (selectedType !== 'All') params.set('type', selectedType);
-                                    if (selectedStatus !== 'All') params.set('status', selectedStatus);
-                                    if (selectedOperation !== 'All') params.set('operation', selectedOperation);
-                                    if (selectedGroup !== 'NoFilter') params.set('group', selectedGroup);
-
-                                    const queryString = params.toString();
-                                    const url = queryString ? `/options/${newId}?${queryString}` : `/options/${newId}`;
-                                    router.push(url);
+                                    // Reset all filters when switching users from the main dropdown
+                                    router.push(`/options/${newId}`);
                                 }}
                             >
                                 <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
@@ -643,16 +644,17 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                         </Select>
                         <Select value={selectedGroup} onValueChange={(val) => {
                             setSelectedGroup(val);
-                            if (val !== 'NoFilter' && val !== 'All') {
+                            if (val !== 'NoFilter' && val !== 'All' && val !== 'Ungrouped') {
                                 setSelectedUnderlying('All');
                                 setSelectedType('All');
                                 setSelectedStatus('All');
                                 setSelectedOperation('All');
                             }
                         }}>
-                            <SelectTrigger className="w-[160px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
+                            <SelectTrigger className="w-[200px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="群組" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="NoFilter">不過濾群組</SelectItem>
+                                <SelectItem value="Ungrouped">未設群組</SelectItem>
                                 <SelectItem value="All">所有群組</SelectItem>
                                 {groups.map(g => (
                                     <SelectItem key={g} value={g}>
@@ -952,7 +954,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 onUserChange={(newId, targetGroup) => {
                     const paramsObj = new URLSearchParams();
                     const grp = targetGroup !== undefined ? targetGroup : selectedGroup;
-                    const isSpecificGroup = grp !== 'NoFilter' && grp !== 'All';
+                    const isSpecificGroup = grp !== 'NoFilter' && grp !== 'All' && grp !== 'Ungrouped';
 
                     if (!isSpecificGroup && selectedUnderlying !== 'All') paramsObj.set('underlying', selectedUnderlying);
                     if (!isSpecificGroup && selectedType !== 'All') paramsObj.set('type', selectedType);
@@ -967,7 +969,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 }}
                 onSelectGroup={(val) => {
                     setSelectedGroup(val);
-                    if (val !== 'NoFilter' && val !== 'All') {
+                    if (val !== 'NoFilter' && val !== 'All' && val !== 'Ungrouped') {
                         setSelectedUnderlying('All');
                         setSelectedType('All');
                         setSelectedStatus('All');
