@@ -424,6 +424,7 @@ export default function TradeGroupsPage() {
                         </SelectContent>
                     </Select>
                 </div>
+            </div>
 
             <div className={`space-y-4 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
 
