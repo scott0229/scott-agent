@@ -403,6 +403,22 @@ export default function TradeGroupsPage() {
                 </h1>
                 <div className="flex gap-4">
                     <Select
+                        value={selectedUserValue}
+                        onValueChange={(val) => setSelectedUserValue(val)}
+                    >
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="選擇用戶" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有用戶</SelectItem>
+                            {users.map((user: any) => (
+                                <SelectItem key={user.id} value={user.user_id || user.email}>
+                                    {user.user_id || user.email}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
                         value={selectedStatusValue}
                         onValueChange={(val) => setSelectedStatusValue(val)}
                     >
@@ -427,23 +443,6 @@ export default function TradeGroupsPage() {
                             {availableSymbols.map((sym: string) => (
                                 <SelectItem key={sym} value={sym}>
                                     {sym}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <Select
-                        value={selectedUserValue}
-                        onValueChange={(val) => setSelectedUserValue(val)}
-                    >
-                        <SelectTrigger className="w-[200px]">
-                            <SelectValue placeholder="選擇用戶" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="All">所有用戶</SelectItem>
-                            {users.map((user: any) => (
-                                <SelectItem key={user.id} value={user.user_id || user.email}>
-                                    {user.user_id || user.email}
                                 </SelectItem>
                             ))}
                         </SelectContent>
