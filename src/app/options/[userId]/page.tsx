@@ -308,6 +308,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                     const mappedStocks: Option[] = [];
                     stocksData.stocks.forEach((st: any) => {
+                        if (st.include_in_options !== 1) return;
                         const state = rowOpenState[st.id] || { shares: 0, avgPrice: 0 };
                         mappedStocks.push({
                             id: `STK-${st.id}`,
