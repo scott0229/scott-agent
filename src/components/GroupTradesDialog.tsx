@@ -216,8 +216,8 @@ export function GroupTradesDialog({
                     <Table className="whitespace-nowrap">
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
-                                <TableHead className="text-center"></TableHead>
-                                <TableHead className="text-left"></TableHead>
+                                <TableHead className="text-center w-[60px] px-2"></TableHead>
+                                <TableHead className="text-left w-full min-w-[200px]"></TableHead>
                                 <TableHead className="text-center w-[110px]"></TableHead>
                                 <TableHead className="text-center">操作</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
@@ -243,9 +243,9 @@ export function GroupTradesDialog({
                                             key={opt.id}
                                             className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
                                         >
-                                            <TableCell className="py-1">
-                                                <div className="flex items-center justify-center gap-4">
-                                                    <span>{sortedOptions.length - index}</span>
+                                            <TableCell className="py-1 w-[60px] px-2">
+                                                <div className="flex items-center justify-end gap-3 pr-2">
+                                                    <span className="text-muted-foreground">{sortedOptions.length - index}</span>
                                                     {opt.note?.trim() ? (
                                                         <button
                                                             type="button"
@@ -263,10 +263,10 @@ export function GroupTradesDialog({
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-1 min-w-[180px]">
+                                            <TableCell className="py-1 w-full min-w-[200px]">
                                                 <input 
                                                     type="text"
-                                                    className="w-full bg-transparent border-none focus:ring-0 focus:outline-none px-1 text-left text-[13px] font-medium truncate max-w-[200px]"
+                                                    className="w-full bg-transparent border-none focus:ring-0 focus:outline-none px-1 text-left text-[13px] font-medium truncate"
                                                     style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
                                                     defaultValue={opt.note || ''}
                                                     placeholder="..."
