@@ -65,6 +65,7 @@ interface GroupStat {
     next_group?: string | null;
     holdingShares?: number;
     holdingAvgPrice?: number;
+    underlyings?: string[];
 }
 
 export default function TradeGroupsPage() {
@@ -72,6 +73,8 @@ export default function TradeGroupsPage() {
     const [mounted, setMounted] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
     const [selectedUserValue, setSelectedUserValue] = useState<string>('All');
+    const [selectedSymbolValue, setSelectedSymbolValue] = useState<string>('All');
+    const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
@@ -140,7 +143,7 @@ export default function TradeGroupsPage() {
                 users.forEach(u => userMap.set(u.id, u.user_id || u.email));
 
                 // 2. Calculate local stats grouped by ownerId + groupName
-                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number }>();
+                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
                 
                 currentOptions.forEach((opt: any) => {
                     const groupName = opt.group_id?.toString().trim();
@@ -152,7 +155,7 @@ export default function TradeGroupsPage() {
                     const mapKey = `${optOwnerId}_${groupName}`;
 
                     if (!statsMap.has(mapKey)) {
-                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0 });
+                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
                     }
                     const stat = statsMap.get(mapKey)!;
                     stat.count += 1;
@@ -165,6 +168,10 @@ export default function TradeGroupsPage() {
                     }
                     else if (opt.type === 'CALL') stat.types.add('CALL');
                     else if (opt.type === 'PUT') stat.types.add('PUT');
+                    
+                    if (opt.underlying) {
+                        stat.underlyings.add(opt.underlying);
+                    }
                     
                     if (tradeDate < stat.minDate) stat.minDate = tradeDate;
                     if (tradeDate > stat.maxDate) {
@@ -216,7 +223,8 @@ export default function TradeGroupsPage() {
                         note_color: dbGroup.note_color,
                         next_group: dbGroup.next_group,
                         holdingShares: stat.holdingShares,
-                        holdingAvgPrice: stat.holdingShares !== 0 ? Math.abs(stat.holdingCost / stat.holdingShares) : 0
+                        holdingAvgPrice: stat.holdingShares !== 0 ? Math.abs(stat.holdingCost / stat.holdingShares) : 0,
+                        underlyings: Array.from(stat.underlyings)
                     };
                 });
 
@@ -240,6 +248,11 @@ export default function TradeGroupsPage() {
                     return a.name.localeCompare(b.name);
                 });
                 
+                const allUnderlyings = new Set<string>();
+                mergedStats.forEach(g => {
+                    g.underlyings?.forEach(sym => allUnderlyings.add(sym));
+                });
+                setAvailableSymbols(Array.from(allUnderlyings).sort());
                 setGroupStats(mergedStats);
             } catch (error) {
                 console.error('Failed to load group data:', error);
@@ -364,6 +377,11 @@ export default function TradeGroupsPage() {
 
     if (!mounted) return null;
 
+    const filteredGroupStats = groupStats.filter(g => {
+        if (selectedSymbolValue === 'All') return true;
+        return g.underlyings?.includes(selectedSymbolValue);
+    });
+
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
@@ -371,24 +389,41 @@ export default function TradeGroupsPage() {
                     {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 交易群組
                     {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                 </h1>
-                
-                <Select
-                    value={selectedUserValue}
-                    onValueChange={(val) => setSelectedUserValue(val)}
-                >
-                    <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="選擇用戶" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="All">所有用戶</SelectItem>
-                        {users.map((user: any) => (
-                            <SelectItem key={user.id} value={user.user_id || user.email}>
-                                {user.user_id || user.email}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+                <div className="flex gap-4">
+                    <Select
+                        value={selectedSymbolValue}
+                        onValueChange={(val) => setSelectedSymbolValue(val)}
+                    >
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="選擇標的" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有標的</SelectItem>
+                            {availableSymbols.map((sym: string) => (
+                                <SelectItem key={sym} value={sym}>
+                                    {sym}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={selectedUserValue}
+                        onValueChange={(val) => setSelectedUserValue(val)}
+                    >
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="選擇用戶" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有用戶</SelectItem>
+                            {users.map((user: any) => (
+                                <SelectItem key={user.id} value={user.user_id || user.email}>
+                                    {user.user_id || user.email}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
             <div className={`space-y-4 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
 
@@ -412,14 +447,14 @@ export default function TradeGroupsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {groupStats.length === 0 ? (
+                            {filteredGroupStats.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                groupStats.map((group, index) => (
+                                filteredGroupStats.map((group, index) => (
                                     <TableRow key={`${group.ownerId}_${group.name}`}>
                                         <TableCell className="text-center text-[13px] text-foreground font-mono">{index + 1}</TableCell>
                                         <TableCell>
