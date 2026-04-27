@@ -97,8 +97,6 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
-                                <TableHead className="text-center">到期天</TableHead>
-                                <TableHead className="text-center">持有天</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
                                 {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">損益</TableHead>
@@ -111,7 +109,7 @@ export function GroupTradesDialog({
                         <TableBody>
                             {sortedOptions.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                                         尚無交易
                                     </TableCell>
                                 </TableRow>
@@ -177,8 +175,6 @@ export function GroupTradesDialog({
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
                                             <TableCell className="py-1 text-[13px] font-medium">{formatOptionTicker(opt)}</TableCell>
-                                            <TableCell className="py-1">{opt.to_date ? calculateDays(opt.open_date, opt.to_date) : ''}</TableCell>
-                                            <TableCell className="py-1">{opt.settlement_date ? calculateDays(opt.open_date, opt.settlement_date) : ''}</TableCell>
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
