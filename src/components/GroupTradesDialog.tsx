@@ -309,7 +309,7 @@ export function GroupTradesDialog({
                                             <TableCell className={`py-1 font-mono font-medium ${opt.quantity > 0 ? 'text-green-700' : 'text-red-700'}`}>
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
-                                            <TableCell className="py-1 text-[13px] font-medium">{formatOptionTicker(opt)}</TableCell>
+                                            <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
