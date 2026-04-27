@@ -89,7 +89,7 @@ export function GroupTradesDialog({
         ));
 
         try {
-            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}` : `/api/options/${trade.id}`;
+            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}/note` : `/api/options/${trade.id}/note`;
             const res = await fetch(endpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -136,7 +136,7 @@ export function GroupTradesDialog({
         ));
 
         try {
-            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}` : `/api/options/${trade.id}`;
+            const endpoint = trade.type === 'STK' ? `/api/stocks/${trade.id}/note` : `/api/options/${trade.id}/note`;
             const res = await fetch(endpoint, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
