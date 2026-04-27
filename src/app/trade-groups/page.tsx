@@ -20,6 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { GroupTradesDialog } from "@/components/GroupTradesDialog";
 
 const formatDate = (timestamp: number) => {
     if (!timestamp) return '';
@@ -83,6 +84,8 @@ export default function TradeGroupsPage() {
     const [selectedStatusValue, setSelectedStatusValue] = useState<string>('All');
     const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
+    const [allTrades, setAllTrades] = useState<any[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number} | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
@@ -160,6 +163,8 @@ export default function TradeGroupsPage() {
                 // Create user map for fast lookup
                 const userMap = new Map();
                 users.forEach(u => userMap.set(u.id, u.user_id || u.email));
+
+                setAllTrades(currentOptions);
 
                 // 2. Calculate local stats grouped by ownerId + groupName
                 const statsMap = new Map<string, { ownerId: number, count: number, profit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
@@ -539,10 +544,7 @@ export default function TradeGroupsPage() {
                                             <button 
                                                 type="button"
                                                 onClick={() => {
-                                                    const targetUser = users.find(u => u.id === group.ownerId);
-                                                    if (targetUser) {
-                                                        router.push(`/options/${targetUser.user_id || targetUser.email}?group=${group.name}`);
-                                                    }
+                                                    setSelectedGroup({name: group.name, ownerId: group.ownerId});
                                                 }}
                                                 className="text-foreground hover:text-foreground/80 hover:underline cursor-pointer"
                                             >
@@ -613,6 +615,15 @@ export default function TradeGroupsPage() {
                     </Table>
                 </div>
             </div>
+
+            {selectedGroup && (
+                <GroupTradesDialog
+                    isOpen={!!selectedGroup}
+                    onOpenChange={(open) => !open && setSelectedGroup(null)}
+                    groupName={selectedGroup.name}
+                    trades={allTrades.filter(t => t.group_id === selectedGroup.name && t.owner_id === selectedGroup.ownerId)}
+                />
+            )}
         </div>
     );
 }
