@@ -508,7 +508,7 @@ export default function StockTradingPage() {
                                             </TableCell>
                                             <TableCell className="py-1 min-w-[95px]">
                                                 <Select 
-                                                    value={trade.group_id ? String(trade.group_id) : "none"} 
+                                                    value={trade.include_in_options !== 1 ? "disabled" : (trade.group_id ? String(trade.group_id) : "none")} 
                                                     onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
                                                     disabled={trade.include_in_options !== 1}
                                                 >
@@ -522,6 +522,7 @@ export default function StockTradingPage() {
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
                                                     <SelectContent>
+                                                        <SelectItem value="disabled" className="hidden"></SelectItem>
                                                         <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                         {[
                                                             'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
