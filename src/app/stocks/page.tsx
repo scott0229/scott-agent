@@ -510,6 +510,7 @@ export default function StockTradingPage() {
                                                 <Select 
                                                     value={trade.group_id ? String(trade.group_id) : "none"} 
                                                     onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
+                                                    disabled={trade.include_in_options !== 1}
                                                 >
                                                     <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
                                                         trade.group_id && String(trade.group_id).endsWith('-0') 
