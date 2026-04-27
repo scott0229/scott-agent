@@ -33,20 +33,26 @@ const formatDate = (timestamp: number) => {
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatOptionTicker = (opt: any) => {
     if (!opt) return '-';
-    const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'} ` : '';
+    
+    const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'}` : '';
+    const quantityBlock = quantityStr ? (
+        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs mr-1 font-mono font-semibold">{quantityStr}</span>
+    ) : null;
+
     const underlying = opt.underlying;
     if (opt.type === 'STK') {
         const assignedText = opt.is_assigned ? '，被行權' : '';
-        return opt.underlying_price != null ? `${quantityStr}${underlying} (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : `${quantityStr}${underlying}${assignedText}`;
+        const priceText = opt.underlying_price != null ? ` (均價 ${opt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedText})` : assignedText;
+        return <>{quantityBlock}{underlying}{priceText}</>;
     }
     const typeChar = opt.type === 'PUT' ? 'P' : 'C';
     const strike = opt.strike_price;
-    if (!opt.to_date) return `${quantityStr}${underlying} - ${strike}${typeChar}`;
+    if (!opt.to_date) return <>{quantityBlock}{underlying} - {strike}{typeChar}</>;
     const d = new Date(opt.to_date * 1000);
     const mon = MONTH_ABBR[d.getMonth()];
     const day = d.getDate();
     const yr = d.getFullYear().toString().slice(-2);
-    return `${quantityStr}${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
+    return <>{quantityBlock}{underlying} {mon}{day}'{yr} {strike}{typeChar}</>;
 };
 
 interface GroupStat {
