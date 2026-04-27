@@ -74,6 +74,7 @@ export default function TradeGroupsPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [selectedUserValue, setSelectedUserValue] = useState<string>('All');
     const [selectedSymbolValue, setSelectedSymbolValue] = useState<string>('All');
+    const [selectedStatusValue, setSelectedStatusValue] = useState<string>('All');
     const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -378,8 +379,13 @@ export default function TradeGroupsPage() {
     if (!mounted) return null;
 
     const filteredGroupStats = groupStats.filter(g => {
-        if (selectedSymbolValue === 'All') return true;
-        return g.underlyings?.includes(selectedSymbolValue);
+        if (selectedSymbolValue !== 'All' && !g.underlyings?.includes(selectedSymbolValue)) {
+            return false;
+        }
+        if (selectedStatusValue !== 'All' && g.status !== selectedStatusValue) {
+            return false;
+        }
+        return true;
     });
 
     return (
@@ -390,6 +396,19 @@ export default function TradeGroupsPage() {
                     {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                 </h1>
                 <div className="flex gap-4">
+                    <Select
+                        value={selectedStatusValue}
+                        onValueChange={(val) => setSelectedStatusValue(val)}
+                    >
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="選擇狀態" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有狀態</SelectItem>
+                            <SelectItem value="Active">進行中</SelectItem>
+                            <SelectItem value="Terminated">已終止</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <Select
                         value={selectedSymbolValue}
                         onValueChange={(val) => setSelectedSymbolValue(val)}
