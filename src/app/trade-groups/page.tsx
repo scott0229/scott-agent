@@ -391,18 +391,7 @@ export default function TradeGroupsPage() {
             </div>
 
             <div className={`space-y-4 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="text-[14px] text-foreground">
-                    {(() => {
-                        const activeGroupsCount = groupStats.filter(g => g.status === 'Active').length;
-                        const totalProfit = groupStats.reduce((sum, g) => sum + g.profit, 0);
-                        const profitColorClass = totalProfit > 0 ? 'text-green-700 font-medium' : totalProfit < 0 ? 'text-red-700 font-medium' : '';
-                        return (
-                            <>
-                                {groupStats.length} 個群組收益總合 <span className={profitColorClass}>{totalProfit > 0 ? '+' : ''}{Math.round(totalProfit).toLocaleString('en-US')}</span>，{activeGroupsCount} 個群組進行中
-                            </>
-                        );
-                    })()}
-                </div>
+
                 
                 <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
                     <Table className="text-[13px]">
