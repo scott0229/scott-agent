@@ -622,7 +622,7 @@ export default function TradeGroupsPage() {
                     onOpenChange={(open) => !open && setSelectedGroup(null)}
                     groupName={selectedGroup.name}
                     ownerName={selectedGroup.ownerName}
-                    availableGroups={groupStats.filter(g => g.ownerId === selectedGroup.ownerId).map(g => g.name)}
+                    availableGroups={groupStats.filter(g => g.ownerId === selectedGroup.ownerId).map(g => ({name: g.name, status: g.status}))}
                     onGroupSelect={(name) => setSelectedGroup({ ...selectedGroup, name })}
                     trades={allTrades.filter(t => t.group_id === selectedGroup.name && t.owner_id === selectedGroup.ownerId)}
                 />

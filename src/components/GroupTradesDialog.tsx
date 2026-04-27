@@ -76,7 +76,7 @@ export function GroupTradesDialog({
     onOpenChange: (open: boolean) => void;
     groupName: string;
     ownerName?: string;
-    availableGroups?: string[];
+    availableGroups?: {name: string, status: string}[];
     onGroupSelect?: (groupName: string) => void;
     trades: any[];
 }) {
@@ -195,8 +195,8 @@ export function GroupTradesDialog({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {availableGroups.map(g => (
-                                        <SelectItem key={g} value={g}>
-                                            {g}
+                                        <SelectItem key={g.name} value={g.name}>
+                                            {g.name}{g.status === 'Terminated' ? ' (已終止)' : ''}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
