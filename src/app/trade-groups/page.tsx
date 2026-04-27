@@ -404,7 +404,7 @@ export default function TradeGroupsPage() {
                                 <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
                                 <TableHead>最後交易</TableHead>
-                                <TableHead className="text-center">持股成本</TableHead>
+                                <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="w-[100px] text-center">接手群組</TableHead>
@@ -496,7 +496,7 @@ export default function TradeGroupsPage() {
                                                 );
                                             })()}
                                         </TableCell>
-                                        <TableCell className="text-center whitespace-nowrap">
+                                        <TableCell className="whitespace-nowrap">
                                             {group.holdingShares && group.holdingShares !== 0 ? (
                                                 <span className="text-foreground">
                                                     股{Math.abs(group.holdingShares).toLocaleString('en-US')}，均{group.holdingAvgPrice?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
