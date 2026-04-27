@@ -190,7 +190,7 @@ export function GroupTradesDialog({
                         <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
                         {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
                             <Select value={groupName} onValueChange={onGroupSelect}>
-                                <SelectTrigger className="w-[180px] h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 hover:bg-muted/50 transition-colors">
+                                <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-1 hover:bg-muted/50 transition-colors">
                                     <SelectValue placeholder={groupName} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -203,6 +203,11 @@ export function GroupTradesDialog({
                             </Select>
                         ) : (
                             <span>{groupName}</span>
+                        )}
+                        {formattedPnL && (
+                            <span className="text-sm font-normal text-muted-foreground ml-2">
+                                ，損益 <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>
+                            </span>
                         )}
                     </DialogTitle>
                 </DialogHeader>
@@ -220,12 +225,8 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
-                                {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">損益</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
-                                <TableHead className="text-center whitespace-nowrap min-w-[75px] px-2">
-                                    {formattedPnL && <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>}
-                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -312,24 +313,12 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
-                                            {settings.showPremium && (
-                                                <TableCell className={`py-1 ${opt.premium && opt.premium < 0 ? 'text-red-600' : ''}`}>
-                                                    {opt.premium != null ? Math.round(opt.premium).toLocaleString('en-US') : '-'}
-                                                </TableCell>
-                                            )}
                                             <TableCell className={`py-1 font-medium ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
                                             {settings.showTradeCode && (
                                                 <TableCell className="py-1 text-xs text-muted-foreground font-mono">{opt.code || '-'}</TableCell>
                                             )}
-                                            <TableCell className="py-1 text-xs">
-                                                {opt.profit_percent != null && opt.final_profit != null ? (
-                                                    <span className={opt.profit_percent > 0 ? 'text-green-700' : opt.profit_percent < 0 ? 'text-red-600' : ''}>
-                                                        {opt.profit_percent > 0 ? '+' : ''}{(opt.profit_percent * 100).toFixed(1)}%
-                                                    </span>
-                                                ) : '-'}
-                                            </TableCell>
                                         </TableRow>
                                     );
                                 })
