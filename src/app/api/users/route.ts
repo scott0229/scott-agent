@@ -66,7 +66,6 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as active_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
-                        (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id AND STRATEGIES.year = ?) as strategies_count,
                         (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = 'Open' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
                         (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance,
@@ -82,7 +81,6 @@ export async function GET(req: NextRequest) {
                     params.push(parseInt(year)); // For deposits_count subquery
 
                     params.push(parseInt(year)); // For stock_trades_count subquery
-                    params.push(parseInt(year)); // For strategies_count subquery
                     params.push(parseInt(year)); // For open_put_covered_capital subquery
 
                     params.push(parseInt(year)); // For main WHERE year = ?
@@ -98,7 +96,6 @@ export async function GET(req: NextRequest) {
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as active_count,
 
                         (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
-                        (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id) as strategies_count,
                         (SELECT COALESCE(SUM(ABS(quantity) * strike_price * 100), 0) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open' AND OPTIONS.type = 'PUT') as open_put_covered_capital,
                         (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
                         (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance,
@@ -441,7 +438,6 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
-                (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id AND STRATEGIES.year = ?) as strategies_count,
                 (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
                 (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance`;
 
@@ -450,7 +446,6 @@ export async function GET(req: NextRequest) {
             params.push(parseInt(year)); // deposits_count
             params.push(parseInt(year)); // options_count
             params.push(parseInt(year)); // stock_trades_count
-            params.push(parseInt(year)); // strategies_count
         } else {
             // General counts for All years
             additionalSelects = `, 
@@ -458,7 +453,6 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
-                (SELECT COUNT(*) FROM STRATEGIES WHERE STRATEGIES.owner_id = USERS.id) as strategies_count,
                 (SELECT net_equity FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_net_equity,
                 (SELECT cash_balance FROM DAILY_NET_EQUITY WHERE user_id = USERS.id ORDER BY date DESC LIMIT 1) as current_cash_balance`;
         }

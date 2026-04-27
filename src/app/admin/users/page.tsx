@@ -533,9 +533,6 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.stock_trades_count || 0), 0);
 
-        const totalStrategies = users
-            .filter(u => u.email !== 'admin')
-            .reduce((sum, u) => sum + (u.strategies_count || 0), 0);
 
         // Add Options Records Option
         exportableUsers.push({
@@ -548,13 +545,6 @@ export default function AdminUsersPage() {
         exportableUsers.push({
             id: 'stock_trades',
             display: `股票交易記錄 (${totalStocks} 筆)`,
-            checked: true
-        });
-
-        // Add Strategies Option
-        exportableUsers.push({
-            id: 'strategies',
-            display: `投資策略資料 (${totalStrategies} 個)`,
             checked: true
         });
 
@@ -586,15 +576,13 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeStockRecords = selectedIds.includes('stock_trades');
-            const includeStrategies = selectedIds.includes('strategies');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
-                id !== 'fees_records' &&
-                id !== 'strategies'
+                id !== 'fees_records'
             );
 
             // Call POST endpoint with selected IDs
@@ -606,8 +594,7 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeStockRecords: includeStockRecords,
-                    includeStrategies: includeStrategies
+                    includeStockRecords: includeStockRecords
                 })
             });
 
@@ -696,15 +683,6 @@ export default function AdminUsersPage() {
                 disabled: totalStocks === 0
             } as any);
 
-            // Check for Strategies
-            const totalStrategies = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.strategies) ? u.strategies.length : 0), 0);
-            importableUsers.push({
-                id: 'strategies',
-                display: `投資策略資料 (${totalStrategies} 個)`,
-                checked: totalStrategies > 0,
-                disabled: totalStrategies === 0
-            } as any);
-
 
             // Check for Market Data
             if (data.market_prices && data.market_prices.length > 0) {
@@ -755,7 +733,6 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importStocks = selectedIds.includes('stock_trades');
-            const importStrategies = selectedIds.includes('strategies');
             const importAnnotations = selectedIds.includes('annotations');
 
             const selectedUserEmails = selectedIds.filter(id =>
@@ -764,7 +741,6 @@ export default function AdminUsersPage() {
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
                 id !== 'fees_records' &&
-                id !== 'strategies' &&
                 id !== 'annotations'
             );
 
@@ -849,12 +825,10 @@ export default function AdminUsersPage() {
                 const userClone = { ...rawUser };
                 if (!importOptions) delete userClone.options;
                 if (!importStocks) delete userClone.stock_trades;
-                if (!importStrategies) delete userClone.strategies;
 
                 // Extract sub-records for chunked sending
                 const allOptions = userClone.options || [];
                 const allStocks = userClone.stock_trades || [];
-                const allStrategies = userClone.strategies || [];
                 const allNetEquity = userClone.net_equity_records || [];
 
                 // Sub-record batch size (keep each request small to avoid CPU limits)
@@ -864,7 +838,7 @@ export default function AdminUsersPage() {
                 const subRequests: any[] = [];
 
                 // Request 1: User profile + net equity (net equity uses batched INSERT OR IGNORE so it's efficient)
-                const profileUser = { ...userClone, options: [], stock_trades: [], strategies: [] };
+                const profileUser = { ...userClone, options: [], stock_trades: [] };
                 subRequests.push(profileUser);
 
                 // Additional requests for options in batches of SUB_BATCH
@@ -873,7 +847,7 @@ export default function AdminUsersPage() {
                     subRequests.push({
                         ...userClone,
                         net_equity_records: [], deposits: [],
-                        options: optChunk, stock_trades: [], strategies: [],
+                        options: optChunk, stock_trades: [],
                         monthly_interest: [], monthly_fees: []
                     });
                 }
@@ -884,20 +858,12 @@ export default function AdminUsersPage() {
                     subRequests.push({
                         ...userClone,
                         net_equity_records: [], deposits: [],
-                        options: [], stock_trades: stChunk, strategies: [],
+                        options: [], stock_trades: stChunk,
                         monthly_interest: [], monthly_fees: []
                     });
                 }
 
-                // Request for strategies (if any)
-                if (allStrategies.length > 0) {
-                    subRequests.push({
-                        ...userClone,
-                        net_equity_records: [], deposits: [],
-                        options: [], stock_trades: [], strategies: allStrategies,
-                        monthly_interest: [], monthly_fees: []
-                    });
-                }
+
 
                 // Send each sub-request sequentially
                 for (const subUser of subRequests) {
@@ -934,9 +900,6 @@ export default function AdminUsersPage() {
                     }
                     if (importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');
-                    }
-                    if (importStrategies && !prev.includes('strategies')) {
-                        newIds.push('strategies');
                     }
                     return newIds;
                 });

@@ -184,7 +184,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1500px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent className="sm:max-w-[1200px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
@@ -291,7 +291,7 @@ export function GroupTradesDialog({
                                             </TableCell>
                                             <TableCell className="py-1 min-w-[100px]">
                                                 {opt.operation === 'Open' || !opt.operation ? (
-                                                    <Badge variant="outline" className="border-slate-300 text-slate-600 bg-white shadow-sm font-medium">Open</Badge>
+                                                    <Badge variant="secondary" className="bg-yellow-50 text-slate-700 hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
                                                 ) : opt.operation === 'Assigned' ? (
                                                     <Badge variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
                                                 ) : opt.operation === 'Expired' ? (

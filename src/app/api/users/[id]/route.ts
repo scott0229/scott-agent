@@ -110,16 +110,6 @@ export async function DELETE(
             }
         }
 
-        // Strategy tables (cascade-aware order)
-        try {
-            await db.prepare('DELETE FROM STRATEGY_OPTIONS WHERE strategy_id IN (SELECT id FROM STRATEGIES WHERE owner_id = ?)').bind(id).run();
-        } catch (e) { console.error('Failed to delete STRATEGY_OPTIONS:', e); }
-        try {
-            await db.prepare('DELETE FROM STRATEGY_STOCKS WHERE strategy_id IN (SELECT id FROM STRATEGIES WHERE owner_id = ?)').bind(id).run();
-        } catch (e) { console.error('Failed to delete STRATEGY_STOCKS:', e); }
-        try {
-            await db.prepare('DELETE FROM STRATEGIES WHERE owner_id = ?').bind(id).run();
-        } catch (e) { console.error('Failed to delete STRATEGIES:', e); }
 
         if (mode === 'clear_records') {
             // Also reset account initial values

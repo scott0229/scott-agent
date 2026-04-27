@@ -54,7 +54,7 @@ export function Navbar() {
     }
 
     const canAccessAdmin = role === 'admin' || role === 'manager';
-    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity') || pathname.startsWith('/stocks') || pathname.startsWith('/strategies') || pathname.startsWith('/trade-groups');
+    const isOptionsPage = pathname.startsWith('/options') || pathname.startsWith('/admin/users') || pathname.startsWith('/net-equity') || pathname.startsWith('/stocks') || pathname.startsWith('/trade-groups');
 
     // Generate year options from 2025 (when the website started) to current year
     const currentYear = new Date().getFullYear();
@@ -147,15 +147,7 @@ export function Navbar() {
                     </Button>
                 </Link>
 
-                <Link href="/strategies" prefetch={true}>
-                    <Button
-                        variant={pathname.startsWith('/strategies') ? "default" : "ghost"}
-                        className="gap-2"
-                    >
-                        <Target className="h-4 w-4" />
-                        投資策略
-                    </Button>
-                </Link>
+
                 <Link href="/stocks" prefetch={true}>
                     <Button
                         variant={pathname.startsWith('/stocks') ? "default" : "ghost"}

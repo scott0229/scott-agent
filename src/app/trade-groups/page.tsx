@@ -148,6 +148,7 @@ export default function TradeGroupsPage() {
                         id: st.id,
                         group_id: st.group_id || st.close_group_id,
                         open_date: st.open_date,
+                        settlement_date: st.close_date,
                         final_profit: st.status === 'Closed' ? (st.close_price - st.open_price) * st.quantity : (st.current_market_price ? (st.current_market_price - st.open_price) * st.quantity : null),
                         type: 'STK',
                         underlying: st.symbol,
@@ -155,7 +156,11 @@ export default function TradeGroupsPage() {
                         quantity: st.quantity,
                         underlying_price: st.open_price,
                         operation: st.status,
-                        owner_id: st.owner_id
+                        owner_id: st.owner_id,
+                        note: st.note,
+                        note_color: st.note_color,
+                        code: st.code,
+                        has_separator: st.has_separator
                     }));
                     currentOptions.push(...mappedStks);
                 }
@@ -477,7 +482,7 @@ export default function TradeGroupsPage() {
                                 <TableHead className="w-[40px] text-center"></TableHead>
                                 <TableHead className="min-w-[150px]"></TableHead>
                                 <TableHead className="w-[120px]">帳戶</TableHead>
-                                <TableHead>群組名稱</TableHead>
+                                <TableHead>群組</TableHead>
                                 <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
                                 <TableHead>最後交易</TableHead>

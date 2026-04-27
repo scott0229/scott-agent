@@ -40,7 +40,6 @@ interface ImportUser {
     options?: any[];
     monthly_interest?: any[];
     stock_trades?: any[];
-    strategies?: any[];
     monthly_fees?: any[];
     password?: string;
     name?: string | null;
@@ -457,110 +456,6 @@ export async function POST(req: NextRequest) {
                         } catch (stockErr) {
                             console.error(`Failed to batch import stock trades for user ${user.email}:`, stockErr);
                             errors.push(`股票批次匯入失敗 (${user.user_id || user.email})`);
-                        }
-                    }
-                }
-
-                // Import strategies
-                if (user.strategies && Array.isArray(user.strategies) && targetUserId) {
-                    for (const strategy of user.strategies) {
-                        if (!strategy.name) continue;
-
-                        const strategyYear = strategy.year || targetYear;
-
-                        // Check duplicate strategy (same name, user, year)
-                        const existingStrategy = await db.prepare(
-                            `SELECT id FROM STRATEGIES WHERE owner_id = ? AND name = ? AND year = ?`
-                        ).bind(targetUserId, strategy.name, strategyYear).first();
-
-                        if (!existingStrategy) {
-                            try {
-                                const createdAt = strategy.created_at || Math.floor(Date.now() / 1000);
-                                const updatedAt = strategy.updated_at || Math.floor(Date.now() / 1000);
-                                // Create strategy
-                                const strategyResult = await db.prepare(
-                                    `INSERT INTO STRATEGIES (name, user_id, owner_id, year, status, option_strategy, stock_strategy, stock_strategy_params, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-                                ).bind(
-                                    strategy.name,
-                                    strategy.user_id || user.user_id || null,
-                                    targetUserId,
-                                    strategyYear,
-                                    strategy.status || '進行中',
-                                    strategy.option_strategy || null,
-                                    strategy.stock_strategy || null,
-                                    strategy.stock_strategy_params || null,
-                                    createdAt,
-                                    updatedAt
-                                ).run();
-
-                                const newStrategyId = strategyResult.meta.last_row_id;
-
-                                // Link stock trades by code (portable across databases)
-                                if (strategy.stock_trade_codes && Array.isArray(strategy.stock_trade_codes) && strategy.stock_trade_codes.length > 0) {
-                                    const stmts = [];
-                                    for (const code of strategy.stock_trade_codes) {
-                                        const stock = await db.prepare(
-                                            `SELECT id FROM STOCK_TRADES WHERE owner_id = ? AND code = ?`
-                                        ).bind(targetUserId, code).first();
-                                        if (stock) {
-                                            stmts.push(
-                                                db.prepare(`INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id) VALUES (?, ?)`)
-                                                  .bind(newStrategyId, stock.id)
-                                            );
-                                        }
-                                    }
-                                    if (stmts.length > 0) await db.batch(stmts);
-                                }
-                                // Fallback: link stock trades by old ID map (same-request import)
-                                else if (strategy.stock_trade_ids && Array.isArray(strategy.stock_trade_ids)) {
-                                    const stmts = [];
-                                    for (const oldStockId of strategy.stock_trade_ids) {
-                                        const newStockId = stockIdMap.get(oldStockId);
-                                        if (newStockId) {
-                                            stmts.push(
-                                                db.prepare(`INSERT INTO STRATEGY_STOCKS (strategy_id, stock_trade_id) VALUES (?, ?)`)
-                                                  .bind(newStrategyId, newStockId)
-                                            );
-                                        }
-                                    }
-                                    if (stmts.length > 0) await db.batch(stmts);
-                                }
-
-                                // Link options by code (portable across databases)
-                                if (strategy.option_codes && Array.isArray(strategy.option_codes) && strategy.option_codes.length > 0) {
-                                    const stmts = [];
-                                    for (const code of strategy.option_codes) {
-                                        const option = await db.prepare(
-                                            `SELECT id FROM OPTIONS WHERE owner_id = ? AND code = ?`
-                                        ).bind(targetUserId, code).first();
-                                        if (option) {
-                                            stmts.push(
-                                                db.prepare(`INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id) VALUES (?, ?)`)
-                                                  .bind(newStrategyId, option.id)
-                                            );
-                                        }
-                                    }
-                                    if (stmts.length > 0) await db.batch(stmts);
-                                }
-                                // Fallback: link options by old ID map (same-request import)
-                                else if (strategy.option_ids && Array.isArray(strategy.option_ids)) {
-                                    const stmts = [];
-                                    for (const oldOptionId of strategy.option_ids) {
-                                        const newOptionId = optionIdMap.get(oldOptionId);
-                                        if (newOptionId) {
-                                            stmts.push(
-                                                db.prepare(`INSERT INTO STRATEGY_OPTIONS (strategy_id, option_id) VALUES (?, ?)`)
-                                                  .bind(newStrategyId, newOptionId)
-                                            );
-                                        }
-                                    }
-                                    if (stmts.length > 0) await db.batch(stmts);
-                                }
-                            } catch (stratErr) {
-                                console.error(`Failed to import strategy for user ${user.email}:`, stratErr);
-                                errors.push(`策略匯入失敗 (${user.user_id || user.email}): ${(stratErr as any).message}`);
-                            }
                         }
                     }
                 }
