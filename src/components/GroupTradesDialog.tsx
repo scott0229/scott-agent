@@ -59,11 +59,13 @@ export function GroupTradesDialog({
     isOpen,
     onOpenChange,
     groupName,
+    ownerName,
     trades,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     groupName: string;
+    ownerName?: string;
     trades: any[];
 }) {
     const { settings } = useAdminSettings();
@@ -81,7 +83,7 @@ export function GroupTradesDialog({
             <DialogContent className="sm:max-w-[1500px] max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        群組交易明細 - {groupName}
+                        {ownerName ? `${ownerName} 群組 ${groupName}` : `群組交易明細 - ${groupName}`}
                     </DialogTitle>
                 </DialogHeader>
                 

@@ -85,7 +85,7 @@ export default function TradeGroupsPage() {
     const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
     const [allTrades, setAllTrades] = useState<any[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number} | null>(null);
+    const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number, ownerName: string} | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
@@ -544,7 +544,7 @@ export default function TradeGroupsPage() {
                                             <button 
                                                 type="button"
                                                 onClick={() => {
-                                                    setSelectedGroup({name: group.name, ownerId: group.ownerId});
+                                                    setSelectedGroup({name: group.name, ownerId: group.ownerId, ownerName: group.ownerName});
                                                 }}
                                                 className="text-foreground hover:text-foreground/80 hover:underline cursor-pointer"
                                             >
@@ -621,6 +621,7 @@ export default function TradeGroupsPage() {
                     isOpen={!!selectedGroup}
                     onOpenChange={(open) => !open && setSelectedGroup(null)}
                     groupName={selectedGroup.name}
+                    ownerName={selectedGroup.ownerName}
                     trades={allTrades.filter(t => t.group_id === selectedGroup.name && t.owner_id === selectedGroup.ownerId)}
                 />
             )}
