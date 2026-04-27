@@ -94,7 +94,19 @@ export default function TradeGroupsPage() {
             try {
                 const res = await fetch(`/api/users?mode=selection&roles=customer`);
                 const data = await res.json();
-                setUsers(data.users || []);
+                
+                // Deduplicate users by user_id or email
+                const uniqueUsers = [];
+                const seen = new Set();
+                for (const u of (data.users || [])) {
+                    const identifier = u.user_id || u.email;
+                    if (identifier && !seen.has(identifier)) {
+                        seen.add(identifier);
+                        uniqueUsers.push(u);
+                    }
+                }
+                
+                setUsers(uniqueUsers);
             } catch (error) {
                 console.error("Failed to fetch users", error);
             }
