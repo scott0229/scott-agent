@@ -428,7 +428,7 @@ export default function TradeGroupsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="All">所有用戶</SelectItem>
-                            {users.map((user: any) => (
+                            {[...users].sort((a: any, b: any) => (a.user_id || a.email).localeCompare(b.user_id || b.email)).map((user: any) => (
                                 <SelectItem key={user.id} value={user.user_id || user.email}>
                                     {user.user_id || user.email}
                                 </SelectItem>
