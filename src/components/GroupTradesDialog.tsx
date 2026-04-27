@@ -14,6 +14,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,12 +68,16 @@ export function GroupTradesDialog({
     onOpenChange,
     groupName,
     ownerName,
+    availableGroups = [],
+    onGroupSelect,
     trades,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     groupName: string;
     ownerName?: string;
+    availableGroups?: string[];
+    onGroupSelect?: (groupName: string) => void;
     trades: any[];
 }) {
     const { settings } = useAdminSettings();
@@ -176,7 +187,23 @@ export function GroupTradesDialog({
             <DialogContent className="sm:max-w-[1500px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        {ownerName ? `${ownerName} 群組 ${groupName}` : `群組交易明細 - ${groupName}`}
+                        <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
+                        {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
+                            <Select value={groupName} onValueChange={onGroupSelect}>
+                                <SelectTrigger className="w-[180px] h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 hover:bg-muted/50 transition-colors">
+                                    <SelectValue placeholder={groupName} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableGroups.map(g => (
+                                        <SelectItem key={g} value={g}>
+                                            {g}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <span>{groupName}</span>
+                        )}
                     </DialogTitle>
                 </DialogHeader>
                 
