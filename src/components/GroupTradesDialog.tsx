@@ -173,7 +173,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1500px] max-h-[85vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[1500px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         {ownerName ? `${ownerName} 群組 ${groupName}` : `群組交易明細 - ${groupName}`}
@@ -238,7 +238,7 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1 min-w-[180px]">
                                                 <input 
                                                     type="text"
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium truncate max-w-[200px]"
+                                                    className="w-full bg-transparent border-none focus:ring-0 focus:outline-none px-1 text-left text-[13px] font-medium truncate max-w-[200px]"
                                                     style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
                                                     defaultValue={opt.note || ''}
                                                     placeholder="..."
