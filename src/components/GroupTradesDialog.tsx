@@ -205,7 +205,7 @@ export function GroupTradesDialog({
                             <span>{groupName}</span>
                         )}
                         {formattedPnL && (
-                            <span className="text-sm font-normal text-muted-foreground ml-2">
+                            <span className="text-sm font-normal text-foreground ml-2">
                                 ，損益 <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>
                             </span>
                         )}
