@@ -313,7 +313,7 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
-                                            <TableCell className={`py-1 font-medium ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
+                                            <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
                                             {settings.showTradeCode && (
