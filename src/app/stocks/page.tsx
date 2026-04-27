@@ -507,32 +507,32 @@ export default function StockTradingPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="py-1 min-w-[95px]">
-                                                <Select 
-                                                    value={trade.include_in_options !== 1 ? "disabled" : (trade.group_id ? String(trade.group_id) : "none")} 
-                                                    onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
-                                                    disabled={trade.include_in_options !== 1}
-                                                >
-                                                    <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
-                                                        trade.group_id && String(trade.group_id).endsWith('-0') 
-                                                            ? 'bg-yellow-100 hover:bg-yellow-200' 
-                                                            : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                ? 'bg-green-100 hover:bg-green-200'
-                                                                : 'bg-slate-100 hover:bg-slate-200'
-                                                    }`}>
-                                                        <SelectValue placeholder="-" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="disabled" className="hidden"></SelectItem>
-                                                        <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
-                                                        {[
-                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
-                                                            'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
-                                                            'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
-                                                        ].map(n => (
-                                                            <SelectItem key={n} value={n}>{n}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                {trade.include_in_options === 1 && (
+                                                    <Select 
+                                                        value={trade.group_id ? String(trade.group_id) : "none"} 
+                                                        onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
+                                                    >
+                                                        <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
+                                                            trade.group_id && String(trade.group_id).endsWith('-0') 
+                                                                ? 'bg-yellow-100 hover:bg-yellow-200' 
+                                                                : trade.group_id && String(trade.group_id).endsWith('-2')
+                                                                    ? 'bg-green-100 hover:bg-green-200'
+                                                                    : 'bg-slate-100 hover:bg-slate-200'
+                                                        }`}>
+                                                            <SelectValue placeholder="-" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
+                                                            {[
+                                                                'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                                'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
+                                                                'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
+                                                            ].map(n => (
+                                                                <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-center py-1">
                                                 <span
