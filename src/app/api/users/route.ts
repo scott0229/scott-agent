@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
                 // Add year filter (only admin crosses years)
                 if (year && year !== 'All') {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, report_note,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ? AND OPTIONS.operation = 'Open') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
 
                     whereAdded = true;
                 } else {
-                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, fee_exempt_months, account_capability,
+                    query = `SELECT id, email, user_id, avatar_url, ib_account, role, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, fee_exempt_months, account_capability, report_note,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                         (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.operation = 'Open') as open_count,
                         (SELECT COALESCE(SUM(deposit), 0) 
@@ -464,7 +464,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, operation_mode${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, operation_mode, report_note${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];

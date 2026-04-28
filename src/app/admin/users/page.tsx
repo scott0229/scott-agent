@@ -61,6 +61,7 @@ interface User {
     fee_exempt_months?: number;
     account_capability?: string;
     operation_mode?: string;
+    report_note?: string;
 }
 
 import {
@@ -1755,6 +1756,26 @@ export default function AdminUsersPage() {
                                             );
                                         })}
                                     </pre>
+                                    <div className="mt-3 pt-3 border-t border-orange-100">
+                                        <textarea
+                                            className="w-full text-sm border-2 border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-400 p-2 text-orange-900 bg-orange-50/30 rounded-md resize-none outline-none transition-colors placeholder:text-orange-300"
+                                            placeholder="在此輸入筆記 (不會包含在寄送內容中)"
+                                            rows={2}
+                                            defaultValue={users.find(u => u.id === userId)?.report_note || ''}
+                                            onBlur={async (e) => {
+                                                const val = e.target.value;
+                                                try {
+                                                    await fetch(`/api/users/${userId}/report-note`, {
+                                                        method: 'PUT',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ reportNote: val })
+                                                    });
+                                                } catch (err) {
+                                                    console.error('Failed to save report note', err);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </div>
