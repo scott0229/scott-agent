@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         const chunkSize = 20;
         for (let i = 0; i < records.results.length; i += chunkSize) {
             const chunk = records.results.slice(i, i + chunkSize);
-            await Promise.all(chunk.map(async (record) => {
+            await Promise.all(chunk.map(async (record: { bucket_key: string, filename: string }) => {
                 try {
                     const object = await env.R2.get(record.bucket_key);
                     if (object) {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         const chunkSize = 20;
         for (let i = 0; i < records.results.length; i += chunkSize) {
             const chunk = records.results.slice(i, i + chunkSize);
-            await Promise.all(chunk.map(async (record) => {
+            await Promise.all(chunk.map(async (record: { bucket_key: string, filename: string }) => {
                 try {
                     const object = await env.R2.get(record.bucket_key);
                     if (object) {
