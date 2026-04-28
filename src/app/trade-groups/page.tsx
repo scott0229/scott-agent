@@ -19,8 +19,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, FilterX } from "lucide-react";
 import { GroupTradesDialog } from "@/components/GroupTradesDialog";
+import { Button } from "@/components/ui/button";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const formatDate = (timestamp: number) => {
     if (!timestamp) return '';
@@ -417,14 +424,35 @@ export default function TradeGroupsPage() {
     });
 
     return (
-        <div className="container mx-auto py-10 max-w-[1400px]">
-            <div className="mb-8 flex justify-between items-center">
-                <h1 className="text-3xl font-bold flex items-center gap-4">
-                    {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 交易群組
-                    {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-                </h1>
-                <div className="flex gap-4">
-                    <Select
+        <TooltipProvider delayDuration={300}>
+            <div className="container mx-auto py-10 max-w-[1400px]">
+                <div className="mb-8 flex justify-between items-center">
+                    <h1 className="text-3xl font-bold flex items-center gap-4">
+                        {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 交易群組
+                        {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+                    </h1>
+                    <div className="flex items-center gap-4">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                        setSelectedUserValue("All");
+                                        setSelectedStatusValue("All");
+                                        setSelectedSymbolValue("All");
+                                    }}
+                                    className="mr-2 text-muted-foreground hover:text-primary"
+                                >
+                                    <FilterX className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>重置篩選</p>
+                            </TooltipContent>
+                        </Tooltip>
+
+                        <Select
                         value={selectedUserValue}
                         onValueChange={(val) => setSelectedUserValue(val)}
                     >
@@ -633,5 +661,6 @@ export default function TradeGroupsPage() {
                 />
             )}
         </div>
+        </TooltipProvider>
     );
 }
