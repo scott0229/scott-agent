@@ -147,41 +147,45 @@ export default function HistoricalReportsPage() {
             const JSZip = (await import('jszip')).default;
             const finalZip = new JSZip();
             const accountsArr = Array.from(selectedDownloadAccounts);
-            let processed = 0;
             
+            // Collect all reports to download
+            const allReportsToFetch: { folderName: string, report: ReportArchive }[] = [];
             for (const accountId of accountsArr) {
-                try {
-                    const res = await fetch(`/api/reports/export?accountId=${accountId}`);
-                    const user = users.find(u => u.ib_account === accountId);
-                    const folderName = user?.user_id || accountId;
-                    
-                    if (res.ok) {
-                        const blob = await res.blob();
-                        const tempZip = await JSZip.loadAsync(blob);
-                        const filePromises: Promise<void>[] = [];
-
-                        tempZip.forEach((relativePath, file) => {
-                            if (!file.dir) {
-                                filePromises.push(
-                                    file.async('uint8array').then(content => {
-                                        // Remove any existing folder structure from relativePath if it exists (e.g. 'reports/file.htm')
-                                        const fileName = relativePath.split('/').pop() || relativePath;
-                                        finalZip.file(`${folderName}/${fileName}`, content);
-                                    })
-                                );
-                            }
-                        });
-                        await Promise.all(filePromises);
-                    } else {
-                        const errText = await res.text();
-                        throw new Error(`無法下載帳戶 ${folderName}: ${res.status} - ${errText.substring(0, 50)}`);
-                    }
-                } catch (err: any) {
-                    throw new Error(`處理帳戶 ${accountId} 時發生錯誤: ${err.message}`);
+                const user = users.find(u => u.ib_account === accountId);
+                const folderName = user?.user_id || accountId;
+                const accountReports = groupedReports[accountId] || [];
+                for (const report of accountReports) {
+                    allReportsToFetch.push({ folderName, report });
                 }
+            }
+
+            const BATCH_SIZE = 15;
+            let processed = 0;
+            const totalFiles = allReportsToFetch.length;
+
+            if (totalFiles === 0) {
+                throw new Error('無法取得任何報表檔案');
+            }
+
+            for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+                const batch = allReportsToFetch.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map(async ({ folderName, report }) => {
+                    try {
+                        const res = await fetch(`/api/reports/${report.id}`);
+                        if (res.ok) {
+                            const arrayBuffer = await res.arrayBuffer();
+                            const fileName = report.filename.split('/').pop() || report.filename;
+                            finalZip.file(`${folderName}/${fileName}`, arrayBuffer);
+                        } else {
+                            console.warn(`無法下載報表檔案: ${report.filename} (HTTP ${res.status})`);
+                        }
+                    } catch (err: any) {
+                        console.error(`處理檔案 ${report.filename} 時發生錯誤: ${err.message}`);
+                    }
+                }));
                 
-                processed++;
-                setDownloadProgress(Math.floor((processed / accountsArr.length) * 80));
+                processed += batch.length;
+                setDownloadProgress(Math.floor((processed / totalFiles) * 80));
             }
             
             if (Object.keys(finalZip.files).length === 0) {
