@@ -46,7 +46,7 @@ export async function DELETE(request: NextRequest) {
 
         if (accountId) {
             await db.prepare('DELETE FROM report_archives WHERE filename LIKE ?')
-                .bind(`%${accountId}_%`)
+                .bind(`%${accountId}%`)
                 .run();
         } else {
             await db.prepare('DELETE FROM report_archives').run();

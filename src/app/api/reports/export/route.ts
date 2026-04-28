@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
             // Fetch up to 1000 latest reports for safety
             records = await db.prepare(
                 'SELECT bucket_key, filename FROM report_archives WHERE filename LIKE ? ORDER BY statement_date DESC LIMIT 1000'
-            ).bind(`%${accountId}_%`).all<{ bucket_key: string, filename: string }>();
+            ).bind(`%${accountId}%`).all<{ bucket_key: string, filename: string }>();
         }
 
         if (!records.results || records.results.length === 0) {
