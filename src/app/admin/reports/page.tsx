@@ -156,9 +156,17 @@ export default function HistoricalReportsPage() {
                     if (res.ok) {
                         const blob = await res.blob();
                         const tempZip = await JSZip.loadAsync(blob);
+                        const filePromises: Promise<void>[] = [];
                         tempZip.forEach((relativePath, file) => {
-                            finalZip.file(relativePath, file.async('blob'));
+                            if (!file.dir) {
+                                filePromises.push(
+                                    file.async('uint8array').then(content => {
+                                        finalZip.file(relativePath, content);
+                                    })
+                                );
+                            }
                         });
+                        await Promise.all(filePromises);
                     } else {
                         console.warn(`Failed to download ${accountId}`);
                     }
