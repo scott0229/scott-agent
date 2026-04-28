@@ -282,34 +282,44 @@ export async function POST(req: NextRequest) {
 
                 // Import trade groups first, so we can map their IDs for options and stocks
                 const groupIdMap = new Map<number, number>();
+                const existingGroupMap = new Map<string, number>();
                 if (user.trade_groups && Array.isArray(user.trade_groups) && targetUserId) {
+                    // Pre-fetch all existing groups for this user to avoid sequential SELECTs
+                    const existingGroupsRes = await db.prepare(
+                        `SELECT id, year, name FROM TRADE_GROUPS WHERE owner_id = ?`
+                    ).bind(targetUserId).all();
+                    for (const g of (existingGroupsRes.results || [])) {
+                        existingGroupMap.set(`${g.year}-${g.name}`, g.id as number);
+                    }
+
+                    const updateStmts = [];
+
                     for (const group of user.trade_groups) {
                         if (!group.name || group.year === undefined) continue;
 
                         try {
                             const groupYear = group.year || targetYear;
+                            const key = `${groupYear}-${group.name}`;
+                            let newGroupId = existingGroupMap.get(key);
                             
-                            // Check if group exists
-                            let existingGroup = await db.prepare(
-                                `SELECT id FROM TRADE_GROUPS WHERE owner_id = ? AND year = ? AND name = ?`
-                            ).bind(targetUserId, groupYear, group.name).first();
-                            
-                            let newGroupId;
-                            if (existingGroup) {
-                                newGroupId = existingGroup.id;
-                                await db.prepare(
-                                    `UPDATE TRADE_GROUPS SET 
-                                     status = ?, note = ?, note_color = ?, next_group = ?, updated_at = ?
-                                     WHERE id = ?`
-                                ).bind(
-                                    group.status || 'Active', 
-                                    group.note || null, 
-                                    group.note_color || null, 
-                                    group.next_group || null, 
-                                    group.updated_at || Math.floor(Date.now() / 1000),
-                                    newGroupId
-                                ).run();
+                            if (newGroupId) {
+                                // Add to batch updates instead of sequential await
+                                updateStmts.push(
+                                    db.prepare(
+                                        `UPDATE TRADE_GROUPS SET 
+                                         status = ?, note = ?, note_color = ?, next_group = ?, updated_at = ?
+                                         WHERE id = ?`
+                                    ).bind(
+                                        group.status || 'Active', 
+                                        group.note || null, 
+                                        group.note_color || null, 
+                                        group.next_group || null, 
+                                        group.updated_at || Math.floor(Date.now() / 1000),
+                                        newGroupId
+                                    )
+                                );
                             } else {
+                                // Insert sequentially only for new groups (usually only happens in the first chunk)
                                 const result = await db.prepare(
                                     `INSERT INTO TRADE_GROUPS (owner_id, year, name, status, note, note_color, next_group, created_at, updated_at)
                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -324,14 +334,27 @@ export async function POST(req: NextRequest) {
                                     group.created_at || Math.floor(Date.now() / 1000), 
                                     group.updated_at || Math.floor(Date.now() / 1000)
                                 ).run();
-                                newGroupId = result.meta.last_row_id;
+                                newGroupId = result.meta.last_row_id as number;
+                                existingGroupMap.set(key, newGroupId);
                             }
                             
                             if (group.id && newGroupId) {
-                                groupIdMap.set(group.id, newGroupId as number);
+                                groupIdMap.set(Number(group.id), newGroupId);
                             }
                         } catch (grpErr) {
                             console.error(`Failed to import trade group for user ${user.email}:`, grpErr);
+                        }
+                    }
+
+                    // Execute updates in batches
+                    if (updateStmts.length > 0) {
+                        try {
+                            const BATCH_SIZE = 50;
+                            for (let i = 0; i < updateStmts.length; i += BATCH_SIZE) {
+                                await db.batch(updateStmts.slice(i, i + BATCH_SIZE));
+                            }
+                        } catch (err) {
+                            console.error(`Failed to batch update trade groups for user ${user.email}:`, err);
                         }
                     }
                 }
@@ -355,14 +378,41 @@ export async function POST(req: NextRequest) {
                         existingMap.set(`${o.open_date}|${o.underlying}|${o.type}|${o.strike_price}`, o.id);
                     }
 
+                    const updateOptionStmts: any[] = [];
                     // Filter new options and batch insert
                     const newOptions = user.options.filter((option: any) => {
                         if (!option.open_date || !option.underlying || !option.type) return false;
                         const key = `${option.open_date}|${option.underlying}|${option.type}|${option.strike_price || 0}`;
                         if (existingSet.has(key)) {
+                            const existingId = existingMap.get(key)!;
                             if (option.id) {
-                                optionIdMap.set(option.id, existingMap.get(key)!);
+                                optionIdMap.set(option.id, existingId);
                             }
+                            // Update group_id for existing options (fixes cases where options were imported before trade groups)
+                            let mappedGroupId = null;
+                            if (option.group_id) {
+                                if (typeof option.group_id === 'number' || !isNaN(Number(option.group_id))) {
+                                    mappedGroupId = groupIdMap.get(Number(option.group_id)) || null;
+                                } else {
+                                    mappedGroupId = existingGroupMap.get(`${option.year || targetYear}-${String(option.group_id).trim()}`) || null;
+                                }
+                            }
+                            
+                            let mappedCloseGroupId = null;
+                            if (option.close_group_id) {
+                                if (typeof option.close_group_id === 'number' || !isNaN(Number(option.close_group_id))) {
+                                    mappedCloseGroupId = groupIdMap.get(Number(option.close_group_id)) || null;
+                                } else {
+                                    mappedCloseGroupId = existingGroupMap.get(`${option.year || targetYear}-${String(option.close_group_id).trim()}`) || null;
+                                }
+                            }
+                            if (mappedGroupId) {
+                                updateOptionStmts.push(
+                                    db.prepare(`UPDATE OPTIONS SET group_id = COALESCE(?, group_id) WHERE id = ?`)
+                                    .bind(mappedGroupId, existingId)
+                                );
+                            }
+                            
                             return false;
                         }
                         return true;
@@ -375,7 +425,15 @@ export async function POST(req: NextRequest) {
                             const optionYear = option.year || targetYear;
                             const createdAt = option.created_at || Math.floor(Date.now() / 1000);
                             const updatedAt = option.updated_at || Math.floor(Date.now() / 1000);
-                            const mappedGroupId = option.group_id ? groupIdMap.get(option.group_id) : null;
+                            
+                            let mappedGroupId = null;
+                            if (option.group_id) {
+                                if (typeof option.group_id === 'number' || !isNaN(Number(option.group_id))) {
+                                    mappedGroupId = groupIdMap.get(Number(option.group_id)) || null;
+                                } else {
+                                    mappedGroupId = existingGroupMap.get(`${optionYear}-${String(option.group_id).trim()}`) || null;
+                                }
+                            }
                             
                             return db.prepare(
                                 `INSERT INTO OPTIONS (
@@ -440,6 +498,18 @@ export async function POST(req: NextRequest) {
                             errors.push(`期權批次匯入失敗 (${user.user_id || user.email})`);
                         }
                     }
+
+                    // Batch UPDATE existing options
+                    if (updateOptionStmts.length > 0) {
+                        try {
+                            const BATCH_SIZE = 50;
+                            for (let i = 0; i < updateOptionStmts.length; i += BATCH_SIZE) {
+                                await db.batch(updateOptionStmts.slice(i, i + BATCH_SIZE));
+                            }
+                        } catch (optUpdateErr) {
+                            console.error(`Failed to batch update existing options for user ${user.email}:`, optUpdateErr);
+                        }
+                    }
                 }
 
                 // Import nested stock trades
@@ -460,13 +530,41 @@ export async function POST(req: NextRequest) {
                         existingStockMap.set(`${s.symbol}|${s.open_date}|${s.quantity}`, s.id);
                     }
 
+                    const updateStockStmts: any[] = [];
                     const newTrades = user.stock_trades.filter((trade: any) => {
                         if (!trade.open_date || !trade.symbol || !trade.quantity) return false;
                         const key = `${trade.symbol}|${trade.open_date}|${trade.quantity}`;
                         if (existingStockSet.has(key)) {
+                            const existingId = existingStockMap.get(key)!;
                             if (trade.id) {
-                                stockIdMap.set(trade.id, existingStockMap.get(key)!);
+                                stockIdMap.set(trade.id, existingId);
                             }
+                            
+                            // Update group_id for existing stock trades
+                            let mappedGroupId = null;
+                            if (trade.group_id) {
+                                if (typeof trade.group_id === 'number' || !isNaN(Number(trade.group_id))) {
+                                    mappedGroupId = groupIdMap.get(Number(trade.group_id)) || null;
+                                } else {
+                                    mappedGroupId = existingGroupMap.get(`${trade.year || targetYear}-${String(trade.group_id).trim()}`) || null;
+                                }
+                            }
+                            
+                            let mappedCloseGroupId = null;
+                            if (trade.close_group_id) {
+                                if (typeof trade.close_group_id === 'number' || !isNaN(Number(trade.close_group_id))) {
+                                    mappedCloseGroupId = groupIdMap.get(Number(trade.close_group_id)) || null;
+                                } else {
+                                    mappedCloseGroupId = existingGroupMap.get(`${trade.year || targetYear}-${String(trade.close_group_id).trim()}`) || null;
+                                }
+                            }
+                            if (mappedGroupId || mappedCloseGroupId) {
+                                updateStockStmts.push(
+                                    db.prepare(`UPDATE STOCK_TRADES SET group_id = COALESCE(?, group_id), close_group_id = COALESCE(?, close_group_id) WHERE id = ?`)
+                                    .bind(mappedGroupId || null, mappedCloseGroupId || null, existingId)
+                                );
+                            }
+                            
                             return false;
                         }
                         return true;
@@ -479,8 +577,24 @@ export async function POST(req: NextRequest) {
                             const tradeYear = trade.year || targetYear;
                             const createdAt = trade.created_at || Math.floor(Date.now() / 1000);
                             const updatedAt = trade.updated_at || Math.floor(Date.now() / 1000);
-                            const mappedGroupId = trade.group_id ? groupIdMap.get(trade.group_id) : null;
-                            const mappedCloseGroupId = trade.close_group_id ? groupIdMap.get(trade.close_group_id) : null;
+                            
+                            let mappedGroupId = null;
+                            if (trade.group_id) {
+                                if (typeof trade.group_id === 'number' || !isNaN(Number(trade.group_id))) {
+                                    mappedGroupId = groupIdMap.get(Number(trade.group_id)) || null;
+                                } else {
+                                    mappedGroupId = existingGroupMap.get(`${tradeYear}-${String(trade.group_id).trim()}`) || null;
+                                }
+                            }
+                            
+                            let mappedCloseGroupId = null;
+                            if (trade.close_group_id) {
+                                if (typeof trade.close_group_id === 'number' || !isNaN(Number(trade.close_group_id))) {
+                                    mappedCloseGroupId = groupIdMap.get(Number(trade.close_group_id)) || null;
+                                } else {
+                                    mappedCloseGroupId = existingGroupMap.get(`${tradeYear}-${String(trade.close_group_id).trim()}`) || null;
+                                }
+                            }
                             
                             return db.prepare(
                                 `INSERT INTO STOCK_TRADES (
@@ -535,7 +649,20 @@ export async function POST(req: NextRequest) {
                             errors.push(`股票批次匯入失敗 (${user.user_id || user.email})`);
                         }
                     }
+
+                    // Batch UPDATE existing stock trades
+                    if (updateStockStmts.length > 0) {
+                        try {
+                            const BATCH_SIZE = 50;
+                            for (let i = 0; i < updateStockStmts.length; i += BATCH_SIZE) {
+                                await db.batch(updateStockStmts.slice(i, i + BATCH_SIZE));
+                            }
+                        } catch (stkUpdateErr) {
+                            console.error(`Failed to batch update existing stock trades for user ${user.email}:`, stkUpdateErr);
+                        }
+                    }
                 }
+
 
 
                 // Import nested monthly interest

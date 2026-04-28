@@ -225,14 +225,21 @@ export default function TradeGroupsPage() {
                 const dbStatusMap = new Map<string, any>();
                 if (dbData.groups) {
                     dbData.groups.forEach((g: any) => {
+                        dbStatusMap.set(`${g.owner_id}_${g.id}`, g);
+                        // Fallback for un-migrated records where group_id is still a string name
                         dbStatusMap.set(`${g.owner_id}_${g.name}`, g);
                     });
                 }
 
                 // 4. Merge
                 const mergedStats: GroupStat[] = Array.from(statsMap.entries()).map(([key, stat]) => {
-                    const [, name] = key.split('_'); // key is ownerId_name
-                    const actualName = key.substring(key.indexOf('_') + 1); // safely get name if it has underscores
+                    const [, _name] = key.split('_'); // key is ownerId_name or ownerId_id
+                    const dbGroup = dbStatusMap.get(key) || {};
+                    
+                    // If dbGroup has a name, use it (handles cases where key contains the integer ID)
+                    // Otherwise fallback to whatever is in the key
+                    const actualName = dbGroup.name || key.substring(key.indexOf('_') + 1);
+                    
                     const sortedTypes = Array.from(stat.types).sort((a, b) => {
                         const aIsOption = a === 'CALL' || a === 'PUT';
                         const bIsOption = b === 'CALL' || b === 'PUT';
@@ -241,7 +248,7 @@ export default function TradeGroupsPage() {
                         if (aIsOption && bIsOption) return a === 'CALL' ? -1 : 1;
                         return a.localeCompare(b);
                     });
-                    const dbGroup = dbStatusMap.get(key) || {};
+                    
                     const ownerName = userMap.get(stat.ownerId) || `User ${stat.ownerId}`;
                     
                     return {

@@ -676,6 +676,7 @@ export default function AdminUsersPage() {
             // Check for Deposit Records choice REMOVED (Merged into net_equity)
             const totalOptions = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.options) ? u.options.length : 0), 0);
             const totalStocks = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.stock_trades) ? u.stock_trades.length : 0), 0);
+            const totalTradeGroups = usersList.reduce((sum: number, u: any) => sum + (Array.isArray(u.trade_groups) ? u.trade_groups.length : 0), 0);
 
             // Check for Options Records choice
             importableUsers.push({
@@ -693,6 +694,14 @@ export default function AdminUsersPage() {
                 display: `股票交易記錄 (${totalStocks} 筆)`,
                 checked: totalStocks > 0,
                 disabled: totalStocks === 0
+            } as any);
+
+            // Check for Trade Groups choice
+            importableUsers.push({
+                id: 'trade_groups',
+                display: `交易群組 (${totalTradeGroups} 筆)`,
+                checked: totalTradeGroups > 0,
+                disabled: totalTradeGroups === 0
             } as any);
 
 
@@ -745,6 +754,7 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const importOptions = selectedIds.includes('options_records');
             const importStocks = selectedIds.includes('stock_trades');
+            const importTradeGroups = selectedIds.includes('trade_groups');
             const importAnnotations = selectedIds.includes('annotations');
 
             const selectedUserEmails = selectedIds.filter(id =>
@@ -753,6 +763,7 @@ export default function AdminUsersPage() {
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
                 id !== 'fees_records' &&
+                id !== 'trade_groups' &&
                 id !== 'annotations'
             );
 
@@ -837,6 +848,7 @@ export default function AdminUsersPage() {
                 const userClone = { ...rawUser };
                 if (!importOptions) delete userClone.options;
                 if (!importStocks) delete userClone.stock_trades;
+                if (!importTradeGroups) delete userClone.trade_groups;
 
                 // Extract sub-records for chunked sending
                 const allOptions = userClone.options || [];
@@ -912,6 +924,9 @@ export default function AdminUsersPage() {
                     }
                     if (importStocks && !prev.includes('stock_trades')) {
                         newIds.push('stock_trades');
+                    }
+                    if (importTradeGroups && !prev.includes('trade_groups')) {
+                        newIds.push('trade_groups');
                     }
                     return newIds;
                 });
