@@ -530,9 +530,6 @@ export default function HistoricalReportsPage() {
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>批次下載報表</DialogTitle>
-                        <DialogDescription>
-                            請選擇要下載的帳戶，將會為您打包成一個 ZIP 壓縮檔。
-                        </DialogDescription>
                     </DialogHeader>
                     
                     <div className="py-4">
