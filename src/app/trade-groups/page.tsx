@@ -431,7 +431,7 @@ export default function TradeGroupsPage() {
                         {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 交易群組
                         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                     </h1>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
