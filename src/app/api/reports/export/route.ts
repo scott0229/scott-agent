@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
         const targetIds = new Set(accountIds.map(id => id.toUpperCase()));
         const records = {
-            results: (allRecords.results || []).filter(r => {
+            results: (allRecords.results || []).filter((r: { bucket_key: string, filename: string }) => {
                 let accId = null;
                 const match = r.filename.match(/^([A-Z]+\d+)_/i);
                 if (match) {
