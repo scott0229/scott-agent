@@ -533,6 +533,9 @@ export default function AdminUsersPage() {
             .filter(u => u.email !== 'admin')
             .reduce((sum, u) => sum + (u.stock_trades_count || 0), 0);
 
+        const totalTradeGroups = users
+            .filter(u => u.email !== 'admin')
+            .reduce((sum, u) => sum + (u.trade_groups_count || 0), 0);
 
         // Add Options Records Option
         exportableUsers.push({
@@ -548,7 +551,12 @@ export default function AdminUsersPage() {
             checked: true
         });
 
-
+        // Add Trade Groups Option
+        exportableUsers.push({
+            id: 'trade_groups',
+            display: `交易群組 (${totalTradeGroups} 筆)`,
+            checked: true
+        });
 
         // Add Market Data Option
         exportableUsers.push({
@@ -576,13 +584,15 @@ export default function AdminUsersPage() {
             // deposit_records removed
             const includeOptionsRecords = selectedIds.includes('options_records');
             const includeStockRecords = selectedIds.includes('stock_trades');
+            const includeTradeGroups = selectedIds.includes('trade_groups');
 
             const realUserIds = selectedIds.filter(id =>
                 id !== 'market_data' &&
                 id !== 'options_records' &&
                 id !== 'interest_records' &&
                 id !== 'stock_trades' &&
-                id !== 'fees_records'
+                id !== 'fees_records' &&
+                id !== 'trade_groups'
             );
 
             // Call POST endpoint with selected IDs
@@ -594,7 +604,8 @@ export default function AdminUsersPage() {
                     userIds: realUserIds,
                     includeMarketData: includeMarketData,
                     includeOptionsRecords: includeOptionsRecords,
-                    includeStockRecords: includeStockRecords
+                    includeStockRecords: includeStockRecords,
+                    includeTradeGroups: includeTradeGroups
                 })
             });
 

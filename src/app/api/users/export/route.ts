@@ -22,7 +22,7 @@ async function checkAdmin(req: NextRequest) {
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
 // Extracting logic is safer. Use `executeExport`
-async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true) {
+async function executeExport(req: NextRequest, year: string | null, userIds: number[] | null, includeMarketData: boolean = true, includeDepositRecords: boolean = true, includeOptionsRecords: boolean = true, includeInterestRecords: boolean = true, includeFeeRecords: boolean = true, includeStockRecords: boolean = true, includeTradeGroups: boolean = true) {
     const group = await getGroupFromRequest(req);
     const db = await getDb(group);
 
@@ -41,12 +41,14 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
             OR id IN (SELECT DISTINCT owner_id FROM OPTIONS WHERE year = ?)
 
             OR id IN (SELECT DISTINCT owner_id FROM STOCK_TRADES WHERE year = ?)
+            OR id IN (SELECT DISTINCT owner_id FROM TRADE_GROUPS WHERE year = ?)
         )`);
         params.push(parseInt(year)); // year = ?
         params.push(parseInt(year)); // DEPOSITS activity (via DAILY_NET_EQUITY)
         params.push(parseInt(year)); // OPTIONS activity
 
         params.push(parseInt(year)); // stock activity
+        params.push(parseInt(year)); // trade groups activity
     }
 
     if (userIds && userIds.length > 0) {
@@ -210,15 +212,19 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         (user as any).monthly_interest = interest || [];
 
         // Export trade groups
-        let tradeGroupsQuery = `SELECT owner_id, year, name, status, note, note_color, next_group, created_at, updated_at FROM TRADE_GROUPS WHERE owner_id = ?`;
-        const tradeGroupsParams: any[] = [user.id];
-        if (year && year !== 'All') {
-            tradeGroupsQuery += ` AND year = ?`;
-            tradeGroupsParams.push(parseInt(year));
+        if (includeTradeGroups) {
+            let tradeGroupsQuery = `SELECT owner_id, year, name, status, note, note_color, next_group, created_at, updated_at FROM TRADE_GROUPS WHERE owner_id = ?`;
+            const tradeGroupsParams: any[] = [user.id];
+            if (year && year !== 'All') {
+                tradeGroupsQuery += ` AND year = ?`;
+                tradeGroupsParams.push(parseInt(year));
+            }
+            tradeGroupsQuery += ` ORDER BY created_at ASC`;
+            const { results: tradeGroups } = await db.prepare(tradeGroupsQuery).bind(...tradeGroupsParams).all();
+            (user as any).trade_groups = tradeGroups || [];
+        } else {
+            (user as any).trade_groups = [];
         }
-        tradeGroupsQuery += ` ORDER BY created_at ASC`;
-        const { results: tradeGroups } = await db.prepare(tradeGroupsQuery).bind(...tradeGroupsParams).all();
-        (user as any).trade_groups = tradeGroups || [];
     }
 
     let minExportDate = Number.MAX_SAFE_INTEGER;
@@ -343,7 +349,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const year = searchParams.get('year');
 
-        const data = await executeExport(req, year, null, true, true, true, true, true, true);
+        const data = await executeExport(req, year, null, true, true, true, true, true, true, true);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);
@@ -358,15 +364,16 @@ export async function POST(req: NextRequest) {
         if (!admin) return NextResponse.json({ error: '權限不足' }, { status: 403 });
 
         const body = await req.json();
-        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords, includeStockRecords } = body;
+        const { year, userIds, includeMarketData, includeDepositRecords, includeOptionsRecords, includeInterestRecords, includeFeeRecords, includeStockRecords, includeTradeGroups } = body;
         // Default includeDepositRecords to true if undefined
         const safeIncludeDeposits = includeDepositRecords !== undefined ? includeDepositRecords : true;
         const safeIncludeOptions = includeOptionsRecords !== undefined ? includeOptionsRecords : true;
         const safeIncludeInterest = includeInterestRecords !== undefined ? includeInterestRecords : true;
         const safeIncludeFees = includeFeeRecords !== undefined ? includeFeeRecords : true;
         const safeIncludeStocks = includeStockRecords !== undefined ? includeStockRecords : true;
+        const safeIncludeTradeGroups = includeTradeGroups !== undefined ? includeTradeGroups : true;
 
-        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees, safeIncludeStocks);
+        const data = await executeExport(req, year, userIds || null, includeMarketData, safeIncludeDeposits, safeIncludeOptions, safeIncludeInterest, safeIncludeFees, safeIncludeStocks, safeIncludeTradeGroups);
         return NextResponse.json(data);
     } catch (error) {
         console.error('Export users error:', error);
