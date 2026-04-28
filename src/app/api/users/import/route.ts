@@ -50,6 +50,7 @@ interface ImportUser {
     last_auto_update_time?: number | null;
     last_auto_update_status?: string | null;
     last_auto_update_message?: string | null;
+    report_note?: string | null;
     created_at?: number;
     updated_at?: number;
 }
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
                     // Update existing user
                     await db.prepare(
                         `UPDATE USERS SET 
-                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, start_date = ?, fee_exempt_months = ?, account_capability = ?, operation_mode = ?, name = ?, api_key = ?, initial_interest = ?, auto_update_time = ?, last_auto_update_time = ?, last_auto_update_status = ?, last_auto_update_message = ?, updated_at = unixepoch()
+                         role = ?, management_fee = ?, ib_account = ?, phone = ?, avatar_url = ?, initial_cost = ?, initial_cash = ?, initial_management_fee = ?, initial_deposit = ?, start_date = ?, fee_exempt_months = ?, account_capability = ?, operation_mode = ?, name = ?, api_key = ?, initial_interest = ?, auto_update_time = ?, last_auto_update_time = ?, last_auto_update_status = ?, last_auto_update_message = ?, report_note = ?, updated_at = unixepoch()
                          WHERE id = ?`
                     ).bind(
                         user.role,
@@ -141,6 +142,7 @@ export async function POST(req: NextRequest) {
                         user.last_auto_update_time ?? null,
                         user.last_auto_update_status || null,
                         user.last_auto_update_message || null,
+                        user.report_note || null,
                         existing.id
                     ).run();
                     updated++;
@@ -155,8 +157,8 @@ export async function POST(req: NextRequest) {
 
                     // Insert new user
                     const { meta } = await db.prepare(
-                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, account_capability, operation_mode, name, api_key, initial_interest, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message, year, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                        `INSERT INTO USERS (user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, account_capability, operation_mode, name, api_key, initial_interest, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message, report_note, year, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                     ).bind(
                         user.user_id || null,
                         user.email,
@@ -181,6 +183,7 @@ export async function POST(req: NextRequest) {
                         user.last_auto_update_time ?? null,
                         user.last_auto_update_status || null,
                         user.last_auto_update_message || null,
+                        user.report_note || null,
                         targetYear,
                         createdAt,
                         updatedAt

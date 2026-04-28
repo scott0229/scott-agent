@@ -26,7 +26,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
     const group = await getGroupFromRequest(req);
     const db = await getDb(group);
 
-    let query = `SELECT id, user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months, account_capability, operation_mode, name, api_key, initial_interest, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message, created_at, updated_at
+    let query = `SELECT id, user_id, email, password, role, management_fee, ib_account, phone, avatar_url, initial_cost, initial_cash, initial_management_fee, initial_deposit, year, start_date, fee_exempt_months, account_capability, operation_mode, name, api_key, initial_interest, auto_update_time, last_auto_update_time, last_auto_update_status, last_auto_update_message, report_note, created_at, updated_at
             FROM USERS 
             WHERE email != 'admin'`;
 
