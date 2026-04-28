@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
     Table,
     TableBody,
@@ -430,6 +431,8 @@ export default function TradeGroupsPage() {
         return true;
     });
 
+    const totalProfit = filteredGroupStats.reduce((sum, g) => sum + (g.profit || 0), 0);
+
     return (
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10 max-w-[1400px]">
@@ -439,6 +442,16 @@ export default function TradeGroupsPage() {
                         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                     </h1>
                     <div className="flex items-center gap-2">
+                        {!isLoading && (
+                            <div className={cn(
+                                "mr-2 px-4 py-1.5 border rounded-md text-[15px] font-medium shadow-sm",
+                                totalProfit >= 0 
+                                    ? "bg-green-50/50 border-green-200/60 text-green-700" 
+                                    : "bg-red-50/50 border-red-200/60 text-red-700"
+                            )}>
+                                總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </div>
+                        )}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
