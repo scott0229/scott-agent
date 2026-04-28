@@ -400,6 +400,9 @@ export default function AdminUsersPage() {
                     const typeChar = opt.type === 'CALL' ? 'C' : 'P';
                     desc = `${opt.underlying} ${monthName}${dayStr}'${yearStr} ${opt.strike_price}${typeChar}`;
                 }
+                if (opt.trade_group) {
+                    desc += ` (${opt.trade_group})`;
+                }
                 const isSeller = opt.quantity < 0;
                 const quantityStr = isSeller ? opt.quantity : Math.abs(opt.quantity);
                 report += `${quantityStr}口 ${desc}\n`;
