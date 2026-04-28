@@ -22,10 +22,17 @@ export async function GET(request: NextRequest) {
         const group = await getGroupFromRequest(request);
         const db = await getDb(group);
 
-        // Fetch up to 1000 latest reports for safety
-        const records = await db.prepare(
-            'SELECT bucket_key, filename FROM report_archives WHERE filename LIKE ? ORDER BY statement_date DESC LIMIT 1000'
-        ).bind(`%${accountId}_%`).all<{ bucket_key: string, filename: string }>();
+        let records;
+        if (accountId === 'All') {
+            records = await db.prepare(
+                'SELECT bucket_key, filename FROM report_archives ORDER BY statement_date DESC LIMIT 5000'
+            ).all<{ bucket_key: string, filename: string }>();
+        } else {
+            // Fetch up to 1000 latest reports for safety
+            records = await db.prepare(
+                'SELECT bucket_key, filename FROM report_archives WHERE filename LIKE ? ORDER BY statement_date DESC LIMIT 1000'
+            ).bind(`%${accountId}_%`).all<{ bucket_key: string, filename: string }>();
+        }
 
         if (!records.results || records.results.length === 0) {
             return NextResponse.json({ error: 'No reports found for this account' }, { status: 404 });
@@ -55,7 +62,8 @@ export async function GET(request: NextRequest) {
 
         const headers = new Headers();
         headers.set('Content-Type', 'application/zip');
-        headers.set('Content-Disposition', `attachment; filename="${accountId}_historical_reports.zip"`);
+        const downloadFilename = accountId === 'All' ? 'all_historical_reports.zip' : `${accountId}_historical_reports.zip`;
+        headers.set('Content-Disposition', `attachment; filename="${downloadFilename}"`);
 
         return new NextResponse(zipContent as unknown as BodyInit, {
             headers,

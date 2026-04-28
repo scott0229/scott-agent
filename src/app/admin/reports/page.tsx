@@ -289,6 +289,14 @@ export default function HistoricalReportsPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    <Button 
+                        variant="outline" 
+                        onClick={() => window.location.href = '/api/reports/export?accountId=All'}
+                        className="gap-2 hover:bg-accent hover:text-accent-foreground"
+                    >
+                        <Download className="h-4 w-4" />
+                        下載全部
+                    </Button>
                 </div>
             </div>
 
