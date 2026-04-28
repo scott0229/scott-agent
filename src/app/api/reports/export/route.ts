@@ -45,20 +45,23 @@ export async function GET(request: NextRequest) {
 
         const zip = new JSZip();
         
-        // Fetch files sequentially to avoid hitting R2 rate limits or memory bursts in worker
-        for (const record of records.results) {
-            try {
-                const object = await env.R2.get(record.bucket_key);
-                if (object) {
-                    const arrayBuffer = await object.arrayBuffer();
-                    zip.file(record.filename, arrayBuffer);
+        const chunkSize = 20;
+        for (let i = 0; i < records.results.length; i += chunkSize) {
+            const chunk = records.results.slice(i, i + chunkSize);
+            await Promise.all(chunk.map(async (record) => {
+                try {
+                    const object = await env.R2.get(record.bucket_key);
+                    if (object) {
+                        const arrayBuffer = await object.arrayBuffer();
+                        zip.file(record.filename, arrayBuffer);
+                    }
+                } catch (err) {
+                    console.warn(`Failed to fetch file ${record.filename} from R2 for export:`, err);
                 }
-            } catch (err) {
-                console.warn(`Failed to fetch file ${record.filename} from R2 for export:`, err);
-            }
+            }));
         }
 
-        const zipContent = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const zipContent = await zip.generateAsync({ type: 'uint8array', compression: 'STORE' });
 
         const headers = new Headers();
         headers.set('Content-Type', 'application/zip');
@@ -121,19 +124,23 @@ export async function POST(request: NextRequest) {
 
         const zip = new JSZip();
         
-        for (const record of records.results) {
-            try {
-                const object = await env.R2.get(record.bucket_key);
-                if (object) {
-                    const arrayBuffer = await object.arrayBuffer();
-                    zip.file(record.filename, arrayBuffer);
+        const chunkSize = 20;
+        for (let i = 0; i < records.results.length; i += chunkSize) {
+            const chunk = records.results.slice(i, i + chunkSize);
+            await Promise.all(chunk.map(async (record) => {
+                try {
+                    const object = await env.R2.get(record.bucket_key);
+                    if (object) {
+                        const arrayBuffer = await object.arrayBuffer();
+                        zip.file(record.filename, arrayBuffer);
+                    }
+                } catch (err) {
+                    console.warn(`Failed to fetch file ${record.filename} from R2 for export:`, err);
                 }
-            } catch (err) {
-                console.warn(`Failed to fetch file ${record.filename} from R2 for export:`, err);
-            }
+            }));
         }
 
-        const zipContent = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const zipContent = await zip.generateAsync({ type: 'uint8array', compression: 'STORE' });
 
         const headers = new Headers();
         headers.set('Content-Type', 'application/zip');

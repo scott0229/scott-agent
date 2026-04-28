@@ -153,8 +153,15 @@ export default function HistoricalReportsPage() {
             setDownloadProgress(70);
             
             if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || '下載失敗');
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || '下載失敗');
+                } else {
+                    const text = await res.text();
+                    console.error('Download error response:', text.substring(0, 200));
+                    throw new Error(`伺服器錯誤 (${res.status})。可能是檔案過多導致超時，請分批下載。`);
+                }
             }
             
             const blob = await res.blob();
