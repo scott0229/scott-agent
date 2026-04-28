@@ -152,14 +152,13 @@ export default function HistoricalReportsPage() {
             for (const accountId of accountsArr) {
                 try {
                     const res = await fetch(`/api/reports/export?accountId=${accountId}`);
+                    const user = users.find(u => u.ib_account === accountId);
+                    const folderName = user?.user_id || accountId;
                     
                     if (res.ok) {
                         const blob = await res.blob();
                         const tempZip = await JSZip.loadAsync(blob);
                         const filePromises: Promise<void>[] = [];
-                        
-                        const user = users.find(u => u.ib_account === accountId);
-                        const folderName = user?.user_id || accountId;
 
                         tempZip.forEach((relativePath, file) => {
                             if (!file.dir) {
