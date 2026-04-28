@@ -298,20 +298,19 @@ export async function GET(
 
         // 9. Get open positions
         const { results: openOptions } = await db.prepare(`
-            SELECT SUM(O.quantity) as quantity, O.to_date, O.type, O.underlying, O.strike_price, TG.name as trade_group, SUM(O.premium) as premium
-            FROM OPTIONS O
-            LEFT JOIN TRADE_GROUPS TG ON O.group_id = TG.id
-            WHERE O.owner_id = ? AND O.year = ? AND O.operation = 'Open'
-            GROUP BY O.to_date, O.underlying, O.type, O.strike_price, TG.name
+            SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, group_id as trade_group, SUM(premium) as premium
+            FROM OPTIONS
+            WHERE owner_id = ? AND year = ? AND operation = 'Open'
+            GROUP BY to_date, underlying, type, strike_price, group_id
             ORDER BY 
-                CASE WHEN SUM(O.quantity) < 0 THEN 1 ELSE 2 END,
-                CASE O.underlying
+                CASE WHEN SUM(quantity) < 0 THEN 1 ELSE 2 END,
+                CASE underlying
                     WHEN 'QQQ' THEN 1
                     WHEN 'QLD' THEN 2
                     WHEN 'TQQQ' THEN 3
                     ELSE 4
                 END,
-                O.underlying, O.to_date, O.type, TG.name
+                underlying, to_date, type, group_id
         `).bind(userId, currentYear).all();
 
         return NextResponse.json({
