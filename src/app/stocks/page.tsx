@@ -337,8 +337,18 @@ export default function StockTradingPage() {
 
     const displayYear = selectedYear === 'All' ? new Date().getFullYear() : parseInt(selectedYear);
 
-
-
+    const totalProfit = useMemo(() => {
+        return sortedTrades.reduce((sum, trade) => {
+            const isClosed = trade.status === 'Closed';
+            let pnl = 0;
+            if (isClosed && trade.close_price) {
+                pnl = (trade.close_price - trade.open_price) * trade.quantity;
+            } else if (!isClosed && trade.current_market_price) {
+                pnl = (trade.current_market_price - trade.open_price) * trade.quantity;
+            }
+            return sum + pnl;
+        }, 0);
+    }, [sortedTrades]);
 
     return (
         <TooltipProvider delayDuration={300}>
@@ -346,6 +356,14 @@ export default function StockTradingPage() {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">{mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 股票交易</h1>
                     <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
+                            totalProfit >= 0 
+                                ? "text-green-700" 
+                                : "text-red-700"
+                        )}>
+                            總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
 
                         <Tooltip>
                             <TooltipTrigger asChild>
