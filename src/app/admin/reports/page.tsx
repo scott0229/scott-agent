@@ -157,11 +157,17 @@ export default function HistoricalReportsPage() {
                         const blob = await res.blob();
                         const tempZip = await JSZip.loadAsync(blob);
                         const filePromises: Promise<void>[] = [];
+                        
+                        const user = users.find(u => u.ib_account === accountId);
+                        const folderName = user?.user_id || accountId;
+
                         tempZip.forEach((relativePath, file) => {
                             if (!file.dir) {
                                 filePromises.push(
                                     file.async('uint8array').then(content => {
-                                        finalZip.file(relativePath, content);
+                                        // Remove any existing folder structure from relativePath if it exists (e.g. 'reports/file.htm')
+                                        const fileName = relativePath.split('/').pop() || relativePath;
+                                        finalZip.file(`${folderName}/${fileName}`, content);
                                     })
                                 );
                             }
