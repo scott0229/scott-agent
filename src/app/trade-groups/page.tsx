@@ -444,10 +444,10 @@ export default function TradeGroupsPage() {
                     <div className="flex items-center gap-2">
                         {!isLoading && (
                             <div className={cn(
-                                "mr-2 px-4 py-1.5 border rounded-md text-[15px] font-medium shadow-sm",
+                                "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
                                 totalProfit >= 0 
-                                    ? "bg-green-50/50 border-green-200/60 text-green-700" 
-                                    : "bg-red-50/50 border-red-200/60 text-red-700"
+                                    ? "text-green-700" 
+                                    : "text-red-700"
                             )}>
                                 總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </div>
@@ -551,7 +551,7 @@ export default function TradeGroupsPage() {
                             ) : (
                                 filteredGroupStats.map((group, index) => (
                                     <TableRow key={`${group.ownerId}_${group.name}`}>
-                                        <TableCell className="text-center text-[13px] text-foreground font-mono">{index + 1}</TableCell>
+                                        <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">
                                                 {group.note?.trim() ? (
