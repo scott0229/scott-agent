@@ -1756,9 +1756,9 @@ export default function AdminUsersPage() {
                                             );
                                         })}
                                     </pre>
-                                    <div className="mt-3 pt-3 border-t border-orange-100">
+                                    <div className="mt-3 pt-3 border-t border-amber-200">
                                         <textarea
-                                            className="w-full text-sm border-2 border-orange-200 focus:border-orange-400 focus:ring-1 focus:ring-orange-400 p-2 text-orange-900 bg-orange-50/30 rounded-md resize-none outline-none transition-colors placeholder:text-orange-300"
+                                            className="w-full text-sm border-2 border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 p-2 text-amber-950 bg-amber-50/50 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
                                             placeholder="在此輸入筆記 (不會包含在寄送內容中)"
                                             rows={2}
                                             defaultValue={users.find(u => u.id === userId)?.report_note || ''}
