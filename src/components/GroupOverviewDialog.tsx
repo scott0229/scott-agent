@@ -276,11 +276,12 @@ export function GroupOverviewDialog({
         if (!ownerId || !year) return;
         setGroupStats(prev => prev.map(g => g.name === groupName ? { ...g, note: newNote } : g));
         try {
+            const currentOwnerId = localUserId ? (users?.find(u => u.user_id === localUserId || u.email === localUserId)?.id || localUserId) : ownerId;
             const res = await fetch(`/api/trade-groups/note`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ownerId,
+                    ownerId: currentOwnerId,
                     year: year === 'All' ? new Date().getFullYear() : year,
                     name: groupName,
                     note: newNote || null
@@ -301,11 +302,12 @@ export function GroupOverviewDialog({
         
         setGroupStats(prev => prev.map(g => g.name === groupName ? { ...g, note_color: nextColor } : g));
         try {
+            const currentOwnerId = localUserId ? (users?.find(u => u.user_id === localUserId || u.email === localUserId)?.id || localUserId) : ownerId;
             const res = await fetch(`/api/trade-groups/note`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ownerId,
+                    ownerId: currentOwnerId,
                     year: year === 'All' ? new Date().getFullYear() : year,
                     name: groupName,
                     note_color: nextColor

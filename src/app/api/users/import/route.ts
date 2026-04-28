@@ -41,6 +41,7 @@ interface ImportUser {
     monthly_interest?: any[];
     stock_trades?: any[];
     monthly_fees?: any[];
+    trade_groups?: any[];
     password?: string;
     name?: string | null;
     api_key?: string | null;
@@ -502,6 +503,39 @@ export async function POST(req: NextRequest) {
                             } catch (feeErr) {
                                 console.error(`Failed to import monthly fee for user ${user.email}:`, feeErr);
                             }
+                        }
+                    }
+                }
+
+                // Import trade groups
+                if (user.trade_groups && Array.isArray(user.trade_groups) && targetUserId) {
+                    for (const group of user.trade_groups) {
+                        if (!group.name || group.year === undefined) continue;
+
+                        try {
+                            const groupYear = group.year || targetYear;
+                            await db.prepare(
+                                `INSERT INTO TRADE_GROUPS (owner_id, year, name, status, note, note_color, next_group, created_at, updated_at)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 ON CONFLICT(owner_id, year, name) DO UPDATE SET 
+                                 status = excluded.status,
+                                 note = excluded.note,
+                                 note_color = excluded.note_color,
+                                 next_group = excluded.next_group,
+                                 updated_at = excluded.updated_at`
+                            ).bind(
+                                targetUserId, 
+                                groupYear, 
+                                group.name, 
+                                group.status || 'Active', 
+                                group.note || null, 
+                                group.note_color || null, 
+                                group.next_group || null, 
+                                group.created_at || Math.floor(Date.now() / 1000), 
+                                group.updated_at || Math.floor(Date.now() / 1000)
+                            ).run();
+                        } catch (grpErr) {
+                            console.error(`Failed to import trade group for user ${user.email}:`, grpErr);
                         }
                     }
                 }

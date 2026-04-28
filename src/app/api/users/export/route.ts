@@ -208,6 +208,17 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         interestQuery += ` ORDER BY year ASC, month ASC`;
         const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
         (user as any).monthly_interest = interest || [];
+
+        // Export trade groups
+        let tradeGroupsQuery = `SELECT owner_id, year, name, status, note, note_color, next_group, created_at, updated_at FROM TRADE_GROUPS WHERE owner_id = ?`;
+        const tradeGroupsParams: any[] = [user.id];
+        if (year && year !== 'All') {
+            tradeGroupsQuery += ` AND year = ?`;
+            tradeGroupsParams.push(parseInt(year));
+        }
+        tradeGroupsQuery += ` ORDER BY created_at ASC`;
+        const { results: tradeGroups } = await db.prepare(tradeGroupsQuery).bind(...tradeGroupsParams).all();
+        (user as any).trade_groups = tradeGroups || [];
     }
 
     let minExportDate = Number.MAX_SAFE_INTEGER;
