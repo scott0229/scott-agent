@@ -11,7 +11,9 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import {
     DropdownMenu,
@@ -45,6 +47,11 @@ export default function HistoricalReportsPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectedAccountId, setSelectedAccountId] = useState<string>('All');
+    const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+    const [selectedDownloadAccounts, setSelectedDownloadAccounts] = useState<Set<string>>(new Set());
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(0);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dirInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -119,6 +126,62 @@ export default function HistoricalReportsPage() {
             toast({ variant: 'destructive', title: '刪除失敗', description: '發生系統錯誤' });
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    const handleDownloadAllClick = () => {
+        const allAccounts = Object.keys(groupedReports);
+        setSelectedDownloadAccounts(new Set(allAccounts));
+        setDownloadProgress(0);
+        setIsDownloading(false);
+        setDownloadDialogOpen(true);
+    };
+
+    const confirmDownloadAll = async () => {
+        if (selectedDownloadAccounts.size === 0) return;
+        
+        try {
+            setIsDownloading(true);
+            setDownloadProgress(10);
+            
+            const res = await fetch('/api/reports/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountIds: Array.from(selectedDownloadAccounts) })
+            });
+            
+            setDownloadProgress(70);
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || '下載失敗');
+            }
+            
+            const blob = await res.blob();
+            setDownloadProgress(100);
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.download = `selected_historical_reports_${dateStr}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            setTimeout(() => {
+                setDownloadDialogOpen(false);
+                setIsDownloading(false);
+            }, 500);
+            
+        } catch (error: any) {
+            setIsDownloading(false);
+            toast({
+                variant: 'destructive',
+                title: '下載失敗',
+                description: error.message
+            });
         }
     };
 
@@ -291,7 +354,7 @@ export default function HistoricalReportsPage() {
                     </DropdownMenu>
                     <Button 
                         variant="outline" 
-                        onClick={() => window.location.href = '/api/reports/export?accountId=All'}
+                        onClick={handleDownloadAllClick}
                         className="gap-2 hover:bg-accent hover:text-accent-foreground"
                     >
                         <Download className="h-4 w-4" />
@@ -458,6 +521,94 @@ export default function HistoricalReportsPage() {
                             />
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={downloadDialogOpen} onOpenChange={(open) => {
+                if (!isDownloading) setDownloadDialogOpen(open);
+            }}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>批次下載報表</DialogTitle>
+                        <DialogDescription>
+                            請選擇要下載的帳戶，將會為您打包成一個 ZIP 壓縮檔。
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4">
+                        <div className="flex items-center space-x-2 mb-4 pb-4 border-b">
+                            <Checkbox 
+                                id="select-all-accounts"
+                                checked={selectedDownloadAccounts.size === Object.keys(groupedReports).length && Object.keys(groupedReports).length > 0}
+                                onCheckedChange={(checked) => {
+                                    if (checked) {
+                                        setSelectedDownloadAccounts(new Set(Object.keys(groupedReports)));
+                                    } else {
+                                        setSelectedDownloadAccounts(new Set());
+                                    }
+                                }}
+                                disabled={isDownloading}
+                            />
+                            <label htmlFor="select-all-accounts" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                                全選 ({Object.keys(groupedReports).length} 個帳戶)
+                            </label>
+                        </div>
+                        
+                        <div className="max-h-[250px] overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                            {Object.entries(groupedReports)
+                                .sort(([accountIdA], [accountIdB]) => {
+                                    const aliasA = users.find(u => u.ib_account === accountIdA)?.user_id || accountIdA;
+                                    const aliasB = users.find(u => u.ib_account === accountIdB)?.user_id || accountIdB;
+                                    return aliasA.localeCompare(aliasB);
+                                })
+                                .map(([accountId, accountReports]) => {
+                                    const user = users.find(u => u.ib_account === accountId);
+                                    const displayName = user?.user_id || accountId;
+                                    return (
+                                        <div key={accountId} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`download-${accountId}`}
+                                                checked={selectedDownloadAccounts.has(accountId)}
+                                                onCheckedChange={(checked) => {
+                                                    const newSet = new Set(selectedDownloadAccounts);
+                                                    if (checked) newSet.add(accountId);
+                                                    else newSet.delete(accountId);
+                                                    setSelectedDownloadAccounts(newSet);
+                                                }}
+                                                disabled={isDownloading}
+                                            />
+                                            <label htmlFor={`download-${accountId}`} className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
+                                                {displayName} <span className="text-muted-foreground ml-1">({accountReports.length} 份)</span>
+                                            </label>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                        
+                        {isDownloading && (
+                            <div className="mt-6 space-y-2">
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>打包下載中...</span>
+                                    <span>{downloadProgress}%</span>
+                                </div>
+                                <Progress value={downloadProgress} className="h-2" />
+                            </div>
+                        )}
+                    </div>
+                    
+                    <DialogFooter>
+                        {!isDownloading && (
+                            <Button variant="outline" onClick={() => setDownloadDialogOpen(false)}>
+                                取消
+                            </Button>
+                        )}
+                        <Button 
+                            onClick={confirmDownloadAll} 
+                            disabled={isDownloading || selectedDownloadAccounts.size === 0}
+                        >
+                            {isDownloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 處理中</> : '開始下載'}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
