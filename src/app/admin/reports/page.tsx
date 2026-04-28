@@ -142,32 +142,44 @@ export default function HistoricalReportsPage() {
         
         try {
             setIsDownloading(true);
-            setDownloadProgress(10);
+            setDownloadProgress(0);
             
-            const res = await fetch('/api/reports/export', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountIds: Array.from(selectedDownloadAccounts) })
-            });
+            const JSZip = (await import('jszip')).default;
+            const finalZip = new JSZip();
+            const accountsArr = Array.from(selectedDownloadAccounts);
+            let processed = 0;
             
-            setDownloadProgress(70);
-            
-            if (!res.ok) {
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const errorData = await res.json();
-                    throw new Error(errorData.error || '下載失敗');
-                } else {
-                    const text = await res.text();
-                    console.error('Download error response:', text.substring(0, 200));
-                    throw new Error(`伺服器錯誤 (${res.status})。可能是檔案過多導致超時，請分批下載。`);
+            for (const accountId of accountsArr) {
+                try {
+                    const res = await fetch(`/api/reports/export?accountId=${accountId}`);
+                    
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        const tempZip = await JSZip.loadAsync(blob);
+                        tempZip.forEach((relativePath, file) => {
+                            finalZip.file(relativePath, file.async('blob'));
+                        });
+                    } else {
+                        console.warn(`Failed to download ${accountId}`);
+                    }
+                } catch (err) {
+                    console.error(`Error fetching zip for ${accountId}:`, err);
                 }
+                
+                processed++;
+                setDownloadProgress(Math.floor((processed / accountsArr.length) * 80));
             }
             
-            const blob = await res.blob();
+            if (Object.keys(finalZip.files).length === 0) {
+                throw new Error('無法取得任何報表檔案');
+            }
+            
+            setDownloadProgress(85);
+            const finalBlob = await finalZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            
             setDownloadProgress(100);
             
-            const url = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(finalBlob);
             const a = document.createElement('a');
             a.href = url;
             const dateStr = new Date().toISOString().split('T')[0];
