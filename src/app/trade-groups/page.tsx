@@ -442,16 +442,14 @@ export default function TradeGroupsPage() {
                         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                     </h1>
                     <div className="flex items-center gap-2">
-                        {!isLoading && (
-                            <div className={cn(
-                                "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
-                                totalProfit >= 0 
-                                    ? "text-green-700" 
-                                    : "text-red-700"
-                            )}>
-                                總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                            </div>
-                        )}
+                        <div className={cn(
+                            "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
+                            totalProfit >= 0 
+                                ? "text-green-700" 
+                                : "text-red-700"
+                        )}>
+                            總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
