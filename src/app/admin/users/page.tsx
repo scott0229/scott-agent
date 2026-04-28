@@ -55,6 +55,7 @@ interface User {
     total_profit?: number;
     current_net_equity?: number;
     stock_trades_count?: number;
+    trade_groups_count?: number;
     strategies_count?: number;
     start_date?: string;
     fee_exempt_months?: number;
