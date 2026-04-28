@@ -558,10 +558,12 @@ export async function POST(req: NextRequest) {
                                     mappedCloseGroupId = existingGroupMap.get(`${trade.year || targetYear}-${String(trade.close_group_id).trim()}`) || null;
                                 }
                             }
-                            if (mappedGroupId || mappedCloseGroupId) {
+                            const includeInOptionsVal = trade.include_in_options !== undefined && trade.include_in_options !== null ? Number(trade.include_in_options) : 0;
+                            
+                            if (mappedGroupId || mappedCloseGroupId || trade.include_in_options !== undefined) {
                                 updateStockStmts.push(
-                                    db.prepare(`UPDATE STOCK_TRADES SET group_id = COALESCE(?, group_id), close_group_id = COALESCE(?, close_group_id) WHERE id = ?`)
-                                    .bind(mappedGroupId || null, mappedCloseGroupId || null, existingId)
+                                    db.prepare(`UPDATE STOCK_TRADES SET group_id = COALESCE(?, group_id), close_group_id = COALESCE(?, close_group_id), include_in_options = ? WHERE id = ?`)
+                                    .bind(mappedGroupId || null, mappedCloseGroupId || null, includeInOptionsVal, existingId)
                                 );
                             }
                             
@@ -622,7 +624,7 @@ export async function POST(req: NextRequest) {
                                 trade.close_note_color || null,
                                 trade.has_separator ? 1 : 0,
                                 trade.close_has_separator ? 1 : 0,
-                                trade.include_in_options ? 1 : 0,
+                                trade.include_in_options !== undefined && trade.include_in_options !== null ? Number(trade.include_in_options) : 0,
                                 mappedGroupId || null,
                                 mappedCloseGroupId || null,
                                 createdAt,
