@@ -190,26 +190,36 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
 
         // Export monthly_fees
-        let feesQuery = `SELECT year, month, amount FROM monthly_fees WHERE user_id = ?`;
-        const feesParams: any[] = [user.id];
-        if (year && year !== 'All') {
-            feesQuery += ` AND year = ?`;
-            feesParams.push(parseInt(year));
+        try {
+            let feesQuery = `SELECT year, month, amount FROM monthly_fees WHERE user_id = ?`;
+            const feesParams: any[] = [user.id];
+            if (year && year !== 'All') {
+                feesQuery += ` AND year = ?`;
+                feesParams.push(parseInt(year));
+            }
+            feesQuery += ` ORDER BY year ASC, month ASC`;
+            const { results: fees } = await db.prepare(feesQuery).bind(...feesParams).all();
+            (user as any).monthly_fees = fees || [];
+        } catch (e) {
+            console.error(`Failed to export monthly_fees for user ${user.id}`, e);
+            (user as any).monthly_fees = [];
         }
-        feesQuery += ` ORDER BY year ASC, month ASC`;
-        const { results: fees } = await db.prepare(feesQuery).bind(...feesParams).all();
-        (user as any).monthly_fees = fees || [];
 
         // Export monthly_interest
-        let interestQuery = `SELECT year, month, interest FROM monthly_interest WHERE user_id = ?`;
-        const interestParams: any[] = [user.id];
-        if (year && year !== 'All') {
-            interestQuery += ` AND year = ?`;
-            interestParams.push(parseInt(year));
+        try {
+            let interestQuery = `SELECT year, month, interest FROM monthly_interest WHERE user_id = ?`;
+            const interestParams: any[] = [user.id];
+            if (year && year !== 'All') {
+                interestQuery += ` AND year = ?`;
+                interestParams.push(parseInt(year));
+            }
+            interestQuery += ` ORDER BY year ASC, month ASC`;
+            const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
+            (user as any).monthly_interest = interest || [];
+        } catch (e) {
+            console.error(`Failed to export monthly_interest for user ${user.id}`, e);
+            (user as any).monthly_interest = [];
         }
-        interestQuery += ` ORDER BY year ASC, month ASC`;
-        const { results: interest } = await db.prepare(interestQuery).bind(...interestParams).all();
-        (user as any).monthly_interest = interest || [];
 
         // Export trade groups
         if (includeTradeGroups) {
