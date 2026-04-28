@@ -340,7 +340,6 @@ export default function AdminUsersPage() {
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
-        report += `年標準差 : ${formatPercent(data.annualStdDev)}\n`;
         report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
         report += `----------------------------------------\n`;
 
