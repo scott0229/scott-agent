@@ -174,10 +174,11 @@ export default function HistoricalReportsPage() {
                         });
                         await Promise.all(filePromises);
                     } else {
-                        console.warn(`Failed to download ${accountId}`);
+                        const errText = await res.text();
+                        throw new Error(`無法下載帳戶 ${folderName}: ${res.status} - ${errText.substring(0, 50)}`);
                     }
-                } catch (err) {
-                    console.error(`Error fetching zip for ${accountId}:`, err);
+                } catch (err: any) {
+                    throw new Error(`處理帳戶 ${accountId} 時發生錯誤: ${err.message}`);
                 }
                 
                 processed++;
