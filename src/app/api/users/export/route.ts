@@ -145,7 +145,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
                 id, status, operation, open_date, to_date, settlement_date, days_to_expire, days_held,
                 quantity, underlying, type, strike_price, collateral, premium,
                 final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price,
-                note, note_color, has_separator, created_at, updated_at
+                note, note_color, has_separator, group_id, created_at, updated_at
             FROM OPTIONS 
             WHERE owner_id = ?
         `;
@@ -169,7 +169,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
         let stocksQuery = `
             SELECT 
                 id, symbol, status, open_date, close_date, open_price, close_price, quantity, code, year, source, close_source,
-                note, close_note, note_color, close_note_color, has_separator, close_has_separator, include_in_options, created_at, updated_at
+                note, close_note, note_color, close_note_color, has_separator, close_has_separator, include_in_options, group_id, close_group_id, created_at, updated_at
             FROM STOCK_TRADES 
             WHERE owner_id = ?
         `;
@@ -223,7 +223,7 @@ async function executeExport(req: NextRequest, year: string | null, userIds: num
 
         // Export trade groups
         if (includeTradeGroups) {
-            let tradeGroupsQuery = `SELECT owner_id, year, name, status, note, note_color, next_group, created_at, updated_at FROM TRADE_GROUPS WHERE owner_id = ?`;
+            let tradeGroupsQuery = `SELECT id, owner_id, year, name, status, note, note_color, next_group, created_at, updated_at FROM TRADE_GROUPS WHERE owner_id = ?`;
             const tradeGroupsParams: any[] = [user.id];
             if (year && year !== 'All') {
                 tradeGroupsQuery += ` AND year = ?`;

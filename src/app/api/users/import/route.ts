@@ -280,6 +280,62 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
+                // Import trade groups first, so we can map their IDs for options and stocks
+                const groupIdMap = new Map<number, number>();
+                if (user.trade_groups && Array.isArray(user.trade_groups) && targetUserId) {
+                    for (const group of user.trade_groups) {
+                        if (!group.name || group.year === undefined) continue;
+
+                        try {
+                            const groupYear = group.year || targetYear;
+                            
+                            // Check if group exists
+                            let existingGroup = await db.prepare(
+                                `SELECT id FROM TRADE_GROUPS WHERE owner_id = ? AND year = ? AND name = ?`
+                            ).bind(targetUserId, groupYear, group.name).first();
+                            
+                            let newGroupId;
+                            if (existingGroup) {
+                                newGroupId = existingGroup.id;
+                                await db.prepare(
+                                    `UPDATE TRADE_GROUPS SET 
+                                     status = ?, note = ?, note_color = ?, next_group = ?, updated_at = ?
+                                     WHERE id = ?`
+                                ).bind(
+                                    group.status || 'Active', 
+                                    group.note || null, 
+                                    group.note_color || null, 
+                                    group.next_group || null, 
+                                    group.updated_at || Math.floor(Date.now() / 1000),
+                                    newGroupId
+                                ).run();
+                            } else {
+                                const result = await db.prepare(
+                                    `INSERT INTO TRADE_GROUPS (owner_id, year, name, status, note, note_color, next_group, created_at, updated_at)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                                ).bind(
+                                    targetUserId, 
+                                    groupYear, 
+                                    group.name, 
+                                    group.status || 'Active', 
+                                    group.note || null, 
+                                    group.note_color || null, 
+                                    group.next_group || null, 
+                                    group.created_at || Math.floor(Date.now() / 1000), 
+                                    group.updated_at || Math.floor(Date.now() / 1000)
+                                ).run();
+                                newGroupId = result.meta.last_row_id;
+                            }
+                            
+                            if (group.id && newGroupId) {
+                                groupIdMap.set(group.id, newGroupId as number);
+                            }
+                        } catch (grpErr) {
+                            console.error(`Failed to import trade group for user ${user.email}:`, grpErr);
+                        }
+                    }
+                }
+
                 // Import nested options trading records
                 // Create ID mapping: old option ID -> new option ID
                 const optionIdMap = new Map<number, number>();
@@ -312,21 +368,23 @@ export async function POST(req: NextRequest) {
                         return true;
                     });
 
-                    // Batch INSERT all new options in one db.batch() call
+                    // Batch INSERT all new options in chunked db.batch() calls
                     if (newOptions.length > 0) {
                         const stmts = newOptions.map((option: any) => {
                             const code = option.code || generateCode();
                             const optionYear = option.year || targetYear;
                             const createdAt = option.created_at || Math.floor(Date.now() / 1000);
                             const updatedAt = option.updated_at || Math.floor(Date.now() / 1000);
+                            const mappedGroupId = option.group_id ? groupIdMap.get(option.group_id) : null;
+                            
                             return db.prepare(
                                 `INSERT INTO OPTIONS (
                                     owner_id, user_id, status, operation, open_date, to_date, settlement_date,
                                     days_to_expire, days_held,
                                     quantity, underlying, type, strike_price, collateral, premium,
                                     final_profit, profit_percent, delta, iv, capital_efficiency, code, year, underlying_price,
-                                    note, note_color, has_separator, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                                    note, note_color, has_separator, group_id, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                             ).bind(
                                 targetUserId,
                                 user.user_id || null,
@@ -354,19 +412,27 @@ export async function POST(req: NextRequest) {
                                 option.note || null,
                                 option.note_color || null,
                                 option.has_separator ? 1 : 0,
+                                mappedGroupId || null,
                                 createdAt,
                                 updatedAt
                             );
                         });
 
                         try {
-                            const results = await db.batch(stmts);
-                            // Map old IDs to new IDs for strategy linking
-                            for (let r = 0; r < results.length; r++) {
-                                const option = newOptions[r];
-                                const newId = results[r]?.meta?.last_row_id;
-                                if (option.id && newId) {
-                                    optionIdMap.set(option.id, newId as number);
+                            // Chunk size of 50 to avoid Cloudflare D1 batch limit
+                            const BATCH_SIZE = 50;
+                            for (let i = 0; i < stmts.length; i += BATCH_SIZE) {
+                                const chunkStmts = stmts.slice(i, i + BATCH_SIZE);
+                                const chunkOptions = newOptions.slice(i, i + BATCH_SIZE);
+                                const results = await db.batch(chunkStmts);
+                                
+                                // Map old IDs to new IDs for strategy linking
+                                for (let r = 0; r < results.length; r++) {
+                                    const option = chunkOptions[r];
+                                    const newId = results[r]?.meta?.last_row_id;
+                                    if (option.id && newId) {
+                                        optionIdMap.set(option.id, newId as number);
+                                    }
                                 }
                             }
                         } catch (optErr) {
@@ -406,19 +472,22 @@ export async function POST(req: NextRequest) {
                         return true;
                     });
 
-                    // Batch INSERT all new trades in one db.batch() call
+                    // Batch INSERT all new trades in chunked db.batch() calls
                     if (newTrades.length > 0) {
                         const stmts = newTrades.map((trade: any) => {
                             const code = trade.code || generateCode();
                             const tradeYear = trade.year || targetYear;
                             const createdAt = trade.created_at || Math.floor(Date.now() / 1000);
                             const updatedAt = trade.updated_at || Math.floor(Date.now() / 1000);
+                            const mappedGroupId = trade.group_id ? groupIdMap.get(trade.group_id) : null;
+                            const mappedCloseGroupId = trade.close_group_id ? groupIdMap.get(trade.close_group_id) : null;
+                            
                             return db.prepare(
                                 `INSERT INTO STOCK_TRADES (
                                     owner_id, user_id, symbol, status, open_date, close_date, 
                                     open_price, close_price, quantity, code, year, source, close_source, 
-                                    note, close_note, note_color, close_note_color, has_separator, close_has_separator, include_in_options, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                                    note, close_note, note_color, close_note_color, has_separator, close_has_separator, include_in_options, group_id, close_group_id, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                             ).bind(
                                 targetUserId,
                                 user.user_id || null,
@@ -440,18 +509,25 @@ export async function POST(req: NextRequest) {
                                 trade.has_separator ? 1 : 0,
                                 trade.close_has_separator ? 1 : 0,
                                 trade.include_in_options ? 1 : 0,
+                                mappedGroupId || null,
+                                mappedCloseGroupId || null,
                                 createdAt,
                                 updatedAt
                             );
                         });
 
                         try {
-                            const results = await db.batch(stmts);
-                            for (let r = 0; r < results.length; r++) {
-                                const trade = newTrades[r];
-                                const newId = results[r]?.meta?.last_row_id;
-                                if (trade.id && newId) {
-                                    stockIdMap.set(trade.id, newId as number);
+                            const BATCH_SIZE = 50;
+                            for (let i = 0; i < stmts.length; i += BATCH_SIZE) {
+                                const chunkStmts = stmts.slice(i, i + BATCH_SIZE);
+                                const chunkTrades = newTrades.slice(i, i + BATCH_SIZE);
+                                const results = await db.batch(chunkStmts);
+                                for (let r = 0; r < results.length; r++) {
+                                    const trade = chunkTrades[r];
+                                    const newId = results[r]?.meta?.last_row_id;
+                                    if (trade.id && newId) {
+                                        stockIdMap.set(trade.id, newId as number);
+                                    }
                                 }
                             }
                         } catch (stockErr) {
@@ -503,39 +579,6 @@ export async function POST(req: NextRequest) {
                             } catch (feeErr) {
                                 console.error(`Failed to import monthly fee for user ${user.email}:`, feeErr);
                             }
-                        }
-                    }
-                }
-
-                // Import trade groups
-                if (user.trade_groups && Array.isArray(user.trade_groups) && targetUserId) {
-                    for (const group of user.trade_groups) {
-                        if (!group.name || group.year === undefined) continue;
-
-                        try {
-                            const groupYear = group.year || targetYear;
-                            await db.prepare(
-                                `INSERT INTO TRADE_GROUPS (owner_id, year, name, status, note, note_color, next_group, created_at, updated_at)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                 ON CONFLICT(owner_id, year, name) DO UPDATE SET 
-                                 status = excluded.status,
-                                 note = excluded.note,
-                                 note_color = excluded.note_color,
-                                 next_group = excluded.next_group,
-                                 updated_at = excluded.updated_at`
-                            ).bind(
-                                targetUserId, 
-                                groupYear, 
-                                group.name, 
-                                group.status || 'Active', 
-                                group.note || null, 
-                                group.note_color || null, 
-                                group.next_group || null, 
-                                group.created_at || Math.floor(Date.now() / 1000), 
-                                group.updated_at || Math.floor(Date.now() / 1000)
-                            ).run();
-                        } catch (grpErr) {
-                            console.error(`Failed to import trade group for user ${user.email}:`, grpErr);
                         }
                     }
                 }
