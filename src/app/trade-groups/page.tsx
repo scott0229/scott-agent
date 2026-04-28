@@ -602,7 +602,17 @@ export default function TradeGroupsPage() {
                                                 {group.name}
                                             </button>
                                         </TableCell>
-                                        <TableCell className="text-center">{group.contentTypes}</TableCell>
+                                        <TableCell className="text-center text-foreground">
+                                            {(() => {
+                                                if (!group.contentTypes) return '-';
+                                                let parts = group.contentTypes.split('、');
+                                                if (parts.includes('CALL') && parts.includes('PUT')) {
+                                                    parts = parts.filter(p => p !== 'CALL' && p !== 'PUT');
+                                                    parts.push('雙腿');
+                                                }
+                                                return parts.join('、');
+                                            })()}
+                                        </TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
                                         <TableCell className="whitespace-nowrap">
                                             {formatOptionTicker(group.latestTrade)}
