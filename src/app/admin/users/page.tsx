@@ -1760,7 +1760,7 @@ export default function AdminUsersPage() {
                                     </pre>
                                     <div className="mt-3">
                                         <textarea
-                                            className="w-full text-sm border-2 border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 p-2 text-amber-950 bg-amber-50/50 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
+                                            className="w-full text-sm border-none focus:ring-0 p-2 text-black bg-yellow-100 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
                                             placeholder="在此輸入筆記"
                                             rows={4}
                                             defaultValue={users.find(u => u.id === userId)?.report_note || ''}
