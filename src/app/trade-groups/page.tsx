@@ -100,10 +100,15 @@ export default function TradeGroupsPage() {
 
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
         // Fetch users
         const fetchUsers = async () => {
             try {
-                const res = await fetch(`/api/users?mode=selection&roles=customer`);
+                const yearParam = selectedYear === 'All' ? '' : `&year=${selectedYear}`;
+                const res = await fetch(`/api/users?mode=selection&roles=customer${yearParam}`);
                 const data = await res.json();
                 
                 // Deduplicate users by user_id or email
@@ -123,7 +128,7 @@ export default function TradeGroupsPage() {
             }
         };
         fetchUsers();
-    }, []);
+    }, [mounted, selectedYear]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -433,6 +438,31 @@ export default function TradeGroupsPage() {
 
     const totalProfit = filteredGroupStats.reduce((sum, g) => sum + (g.profit || 0), 0);
 
+    let totalCash = 0;
+    let totalNetEquity = 0;
+    let totalPutCapital = 0;
+    let totalDebt = 0;
+
+    if (selectedUserValue !== 'All') {
+        const u = users.find(u => u.user_id === selectedUserValue || u.email === selectedUserValue);
+        if (u) {
+            totalCash = u.current_cash_balance || 0;
+            totalNetEquity = u.current_net_equity !== undefined ? u.current_net_equity : ((u.initial_cost || 0) + (u.net_deposit || 0) + (u.total_profit || 0));
+            totalPutCapital = u.open_put_covered_capital || 0;
+            totalDebt = Math.abs(Math.min(0, u.current_cash_balance || 0));
+        }
+    } else {
+        for (const u of users) {
+            totalCash += (u.current_cash_balance || 0);
+            totalNetEquity += u.current_net_equity !== undefined ? u.current_net_equity : ((u.initial_cost || 0) + (u.net_deposit || 0) + (u.total_profit || 0));
+            totalPutCapital += (u.open_put_covered_capital || 0);
+            totalDebt += Math.abs(Math.min(0, u.current_cash_balance || 0));
+        }
+    }
+
+    const marginUsed = totalPutCapital + totalDebt;
+    const marginRate = totalNetEquity > 0 ? (marginUsed / totalNetEquity) * 100 : 0;
+
     return (
         <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10 max-w-[1400px]">
@@ -442,6 +472,15 @@ export default function TradeGroupsPage() {
                         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
                     </h1>
                     <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
+                            totalCash >= 0 ? "text-green-700" : "text-red-700"
+                        )}>
+                            現金 {totalCash > 0 ? '+' : ''}{Math.round(totalCash).toLocaleString('en-US')}
+                        </div>
+                        <div className="px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground">
+                            融資 {marginRate.toFixed(1)}%
+                        </div>
                         <div className={cn(
                             "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
                             totalProfit >= 0 
