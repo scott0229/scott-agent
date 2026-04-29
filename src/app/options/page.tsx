@@ -309,14 +309,12 @@ export default function OptionsPage() {
                                             <div className="bg-muted/40 border-b">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[16%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
+                                                        <col className="w-[15%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
                                                     </colgroup>
                                                     <thead>
                                                         <tr className="text-[13px] font-medium text-muted-foreground bg-muted/40">
@@ -328,9 +326,7 @@ export default function OptionsPage() {
                                                             </th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">總損益</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT</th>
-                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT勝率</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
-                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">股票損益</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">利息收支</th>
                                                         </tr>
@@ -342,14 +338,12 @@ export default function OptionsPage() {
                                             <div className="relative bg-white">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[16%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
+                                                        <col className="w-[15%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
                                                     </colgroup>
                                                     <tbody className="text-[13px]">
                                                         {Array.from({ length: 12 }, (_, i) => {
@@ -374,14 +368,8 @@ export default function OptionsPage() {
                                                                     <td className={`px-1 text-center h-7 ${Math.round(stat.put_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.put_profit).toLocaleString()}
                                                                     </td>
-                                                                    <td className="px-1 text-center h-7">
-                                                                        {stat.put_win_rate !== null ? `${stat.put_win_rate}%` : '-'}
-                                                                    </td>
                                                                     <td className={`px-1 text-center h-7 ${Math.round(stat.call_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.call_profit).toLocaleString()}
-                                                                    </td>
-                                                                    <td className="px-1 text-center h-7">
-                                                                        {stat.call_win_rate !== null ? `${stat.call_win_rate}%` : '-'}
                                                                     </td>
                                                                     <td className={`px-1 text-center h-7 ${Math.round(stat.stock_pnl || 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.stock_pnl || 0).toLocaleString()}
@@ -400,14 +388,12 @@ export default function OptionsPage() {
                                             <div className="bg-muted/40 border-t">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
-                                                        <col className="w-[16%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
-                                                        <col className="w-[12%]" />
+                                                        <col className="w-[15%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
+                                                        <col className="w-[17%]" />
                                                     </colgroup>
                                                     <tbody>
                                                         <tr>
@@ -418,24 +404,8 @@ export default function OptionsPage() {
                                                             <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
                                                             </td>
-                                                            <td className="px-1 text-center h-7">
-                                                                {(() => {
-                                                                    const stats = client.monthly_stats.filter(s => s.put_win_rate !== null);
-                                                                    if (stats.length === 0) return '-';
-                                                                    const avg = Math.round(stats.reduce((sum, s) => sum + (s.put_win_rate || 0), 0) / stats.length);
-                                                                    return `${avg}%`;
-                                                                })()}
-                                                            </td>
                                                             <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
-                                                            </td>
-                                                            <td className="px-1 text-center h-7">
-                                                                {(() => {
-                                                                    const stats = client.monthly_stats.filter(s => s.call_win_rate !== null);
-                                                                    if (stats.length === 0) return '-';
-                                                                    const avg = Math.round(stats.reduce((sum, s) => sum + (s.call_win_rate || 0), 0) / stats.length);
-                                                                    return `${avg}%`;
-                                                                })()}
                                                             </td>
                                                             <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)).toLocaleString()}
