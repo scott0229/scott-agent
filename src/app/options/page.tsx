@@ -35,6 +35,7 @@ interface UserStats {
     call_win_rate: number | null;
     turnover?: number;
     stock_pnl?: number;
+    interest?: number;
 }
 
 interface User {
@@ -315,6 +316,7 @@ export default function OptionsPage() {
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
+                                                        <col className="w-[12%]" />
                                                     </colgroup>
                                                     <thead>
                                                         <tr className="text-[13px] font-medium text-muted-foreground bg-muted/40">
@@ -330,6 +332,7 @@ export default function OptionsPage() {
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL勝率</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">股票損益</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">利息收支</th>
                                                         </tr>
                                                     </thead>
                                                 </table>
@@ -340,6 +343,7 @@ export default function OptionsPage() {
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
                                                         <col className="w-[16%]" />
+                                                        <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
@@ -382,6 +386,9 @@ export default function OptionsPage() {
                                                                     <td className={`px-1 text-center h-7 ${Math.round(stat.stock_pnl || 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.stock_pnl || 0).toLocaleString()}
                                                                     </td>
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.interest || 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                                        {Math.round(stat.interest || 0).toLocaleString()}
+                                                                    </td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -394,6 +401,7 @@ export default function OptionsPage() {
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
                                                         <col className="w-[16%]" />
+                                                        <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
                                                         <col className="w-[12%]" />
@@ -431,6 +439,9 @@ export default function OptionsPage() {
                                                             </td>
                                                             <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)).toLocaleString()}
+                                                            </td>
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                                {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0)).toLocaleString()}
                                                             </td>
                                                         </tr>
                                                     </tbody>

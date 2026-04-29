@@ -225,9 +225,49 @@ export async function GET(req: NextRequest) {
                     });
 
                     // Add interest data to userStatsMap
+                    try {
+                        const equityRecords = await db.prepare(`SELECT user_id, date, cash_balance FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
+                        const { fetchFredRatesForYear, calculateDailyInterest } = await import('@/lib/fred');
+                        const fredRateMap = await fetchFredRatesForYear(year as string);
+                        
+                        const uEqMap = new Map<number, any[]>();
+                        for (const r of (equityRecords.results as any[])) {
+                            if (!uEqMap.has(r.user_id)) uEqMap.set(r.user_id, []);
+                            uEqMap.get(r.user_id)!.push(r);
+                        }
+                        
+                        for (const [uid, uEq] of uEqMap.entries()) {
+                            if (!userStatsMap.has(uid)) userStatsMap.set(uid, {});
+                            const userStats = userStatsMap.get(uid);
+                            
+                            for (let i = 0; i < uEq.length; i++) {
+                                const row = uEq[i];
+                                const todayInterest = calculateDailyInterest(row.cash_balance ?? 0, row.date, fredRateMap);
+                                let recordInterest = todayInterest;
+                                if (i > 0) {
+                                    const prevDate = uEq[i - 1].date as number;
+                                    const gapDays = Math.round((row.date - prevDate) / 86400);
+                                    if (gapDays > 1) {
+                                        const prevDayInterest = calculateDailyInterest(uEq[i - 1].cash_balance ?? 0, prevDate, fredRateMap);
+                                        recordInterest = prevDayInterest * (gapDays - 1) + todayInterest;
+                                    }
+                                }
+                                
+                                const dateObj = new Date(row.date * 1000);
+                                const monthStr = dateObj.getUTCMonth() + 1;
+                                const formattedMonth = monthStr.toString().padStart(2, '0');
+                                
+                                if (!userStats[formattedMonth]) {
+                                    userStats[formattedMonth] = { total: 0, put: 0, call: 0, interest: 0, turnover: 0, put_win: 0, put_total: 0, call_win: 0, call_total: 0, stock_pnl: 0 };
+                                }
+                                userStats[formattedMonth].interest = (userStats[formattedMonth].interest || 0) + recordInterest;
+                                userStats[formattedMonth].total += recordInterest;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error calculating monthly interest in users api:', e);
+                    }
 
-
-                    // Attach monthly_stats to each user
                     (users as any[]).forEach((user: any) => {
                         const userMonthlyData = userStatsMap.get(user.id);
 
