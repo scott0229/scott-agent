@@ -30,6 +30,7 @@ interface User {
     last_update_date?: number;
     current_net_equity?: number;
     start_date?: string;
+    total_daily_interest?: number;
 }
 
 interface OptionsSummaryPanelProps {
@@ -487,6 +488,21 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 })}
                             </tr>
                         )}
+                        {/* Total Interest */}
+                        <tr className="border-t hover:bg-secondary/20 bg-white">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">利息收支</td>
+
+                            {users.map(user => {
+                                const userKey = user.user_id || user.id.toString();
+                                const isVisible = columnVisibility.users[userKey] !== false;
+                                const val = user.total_daily_interest || 0;
+                                return isVisible ? (
+                                    <td key={user.id} className={`h-7 py-1 px-2 text-center ${val < 0 ? 'bg-pink-50' : ''}`}>
+                                        {formatMoney(val)}
+                                    </td>
+                                ) : null;
+                            })}
+                        </tr>
 
                     </tbody>
                 </table>

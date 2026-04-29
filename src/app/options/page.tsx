@@ -128,6 +128,7 @@ export default function OptionsPage() {
                     if (eqData.success && eqData.data) {
                         const map = new Map<number, EquityHistoryItem[]>();
                         const currentNetEquityMap = new Map<number, number>();
+                        const totalDailyInterestMap = new Map<number, number>();
                         for (const user of eqData.data) {
                             if (user.equity_history) {
                                 map.set(user.id, user.equity_history);
@@ -135,13 +136,17 @@ export default function OptionsPage() {
                             if (user.current_net_equity !== undefined) {
                                 currentNetEquityMap.set(user.id, user.current_net_equity);
                             }
+                            if (user.total_daily_interest !== undefined) {
+                                totalDailyInterestMap.set(user.id, user.total_daily_interest);
+                            }
                         }
                         setEquityDataMap(map);
 
-                        // Attach current_net_equity to users
+                        // Attach current_net_equity and total_daily_interest to users
                         parsedClients = parsedClients.map((c: User) => ({
                             ...c,
-                            current_net_equity: currentNetEquityMap.get(c.id)
+                            current_net_equity: currentNetEquityMap.get(c.id),
+                            total_daily_interest: totalDailyInterestMap.get(c.id)
                         }));
                     }
                 } catch (e) {
