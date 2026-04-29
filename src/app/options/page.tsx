@@ -74,7 +74,7 @@ export default function OptionsPage() {
     // Changed: Track expanded user ID for inline display instead of dialog
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
-    const [sortOrder, setSortOrder] = useState('margin-desc');
+    const [sortOrder, setSortOrder] = useState('premium-rate-desc');
     const [equityDataMap, setEquityDataMap] = useState<Map<number, EquityHistoryItem[]>>(new Map());
     const router = useRouter();
 
