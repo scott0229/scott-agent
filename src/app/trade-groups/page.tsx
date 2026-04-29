@@ -479,7 +479,7 @@ export default function TradeGroupsPage() {
                             融資 <span className="font-medium">{marginRate.toFixed(1)}%</span>
                         </div>
                         <div className="mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            總盈虧 <span className={totalProfit >= 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                            群組盈虧 <span className={totalProfit >= 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                         <Tooltip>
                             <TooltipTrigger asChild>
