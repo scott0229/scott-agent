@@ -584,10 +584,7 @@ export default function TradeGroupsPage() {
                                         <React.Fragment key={`${group.ownerId}_${group.name}`}>
                                             {isBoundary && (
                                                 <TableRow className="bg-slate-100/80 hover:bg-slate-100/80 border-y-2 border-slate-200">
-                                                    <TableCell colSpan={12} className="h-12 text-center p-0 align-middle">
-                                                        <span className="inline-block bg-white text-slate-500 text-xs font-bold px-4 py-1.5 rounded-full border shadow-sm tracking-widest">
-                                                            已 終 止 群 組
-                                                        </span>
+                                                    <TableCell colSpan={12} className="h-6 text-center p-0 align-middle">
                                                     </TableCell>
                                                 </TableRow>
                                             )}
