@@ -176,7 +176,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
         const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
-        const annualPremium = annualPutPremium + annualCallPremium + (settings.includeStockDiffInPremium === false ? 0 : annualStockPnl);
+        const annualPremium = annualPutPremium + annualCallPremium + (settings.includeStockDiffInPremium === false ? 0 : annualStockPnl) + (user.total_daily_interest || 0);
 
         // Daily Premium = annual total / trading days so far (from user's start_date)
         const userStartDate = user.start_date
