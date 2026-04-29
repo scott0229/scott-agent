@@ -252,7 +252,7 @@ export async function GET(
             .filter((s: any) => s.month >= startMonth && s.month <= endMonth)
             .reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
 
-        const annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
+        let annualPremium = monthlyStats.reduce((sum: number, s: any) => sum + (s.total_profit || 0), 0);
 
         // Calculate targets - Use initial cost instead of current equity
         const initialCost = (user.initial_cost || 0) + totalDeposit;
@@ -274,20 +274,44 @@ export async function GET(
 
         // Calculate daily interest using FRED rate
         let dailyInterest = 0;
-        const cashNum = Number(cashBalance) || 0;
-        if (cashNum < 0 && latestEquity?.date) {
-            const dateNum = Number(latestEquity.date);
-            try {
-                const fredRateMap = await fetchFredRatesForYear(currentYear);
-                dailyInterest = calculateDailyInterest(cashNum, dateNum, fredRateMap);
-            } catch (err) {
-                console.warn('Failed to fetch FRED rates for report, using fallback:', err);
-                // Fallback: use hardcoded rate (3.64% + spread) / 360
+        let totalDailyInterest = 0;
+        try {
+            const fredRateMap = await fetchFredRatesForYear(currentYear);
+            
+            // Calculate today's interest
+            const cashNum = Number(cashBalance) || 0;
+            if (cashNum < 0 && latestEquity?.date) {
+                dailyInterest = calculateDailyInterest(cashNum, Number(latestEquity.date), fredRateMap);
+            }
+
+            // Calculate total accumulated interest
+            for (let i = 0; i < uEq.length; i++) {
+                const row = uEq[i] as any;
+                const todayInterest = calculateDailyInterest(row.cash_balance ?? 0, row.date, fredRateMap);
+                let recordInterest = todayInterest;
+                if (i > 0) {
+                    const prevDate = (uEq[i - 1] as any).date as number;
+                    const gapDays = Math.round((row.date - prevDate) / 86400);
+                    if (gapDays > 1) {
+                        const prevDayInterest = calculateDailyInterest((uEq[i - 1] as any).cash_balance ?? 0, prevDate, fredRateMap);
+                        recordInterest = prevDayInterest * (gapDays - 1) + todayInterest;
+                    }
+                }
+                totalDailyInterest += recordInterest;
+            }
+        } catch (err) {
+            console.warn('Failed to fetch FRED rates for report, using fallback:', err);
+            // Fallback for today's interest
+            const cashNum = Number(cashBalance) || 0;
+            if (cashNum < 0) {
                 const loanAmount = Math.abs(cashNum);
                 const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
                 dailyInterest = -(loanAmount * (3.64 + spread) / 100 / 360);
             }
         }
+
+        // Add accumulated interest to annual premium
+        annualPremium += totalDailyInterest;
 
         const highestEquityResult = await db.prepare(`
             SELECT MAX(net_equity) as max_net_equity
