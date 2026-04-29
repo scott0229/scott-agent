@@ -578,10 +578,18 @@ export default function TradeGroupsPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredGroupStats.map((group, index) => (
-                                    <TableRow key={`${group.ownerId}_${group.name}`}>
-                                        <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
-                                        <TableCell>
+                                filteredGroupStats.map((group, index) => {
+                                    const isBoundary = index > 0 && filteredGroupStats[index - 1].status === 'Active' && group.status === 'Terminated';
+                                    return (
+                                        <React.Fragment key={`${group.ownerId}_${group.name}`}>
+                                            {isBoundary && (
+                                                <TableRow className="border-none hover:bg-transparent">
+                                                    <TableCell colSpan={12} className="h-8 p-0 border-none bg-transparent"></TableCell>
+                                                </TableRow>
+                                            )}
+                                            <TableRow>
+                                                <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
+                                                <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">
                                                 {group.note?.trim() ? (
                                                     <button 
@@ -700,8 +708,10 @@ export default function TradeGroupsPage() {
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
-                                    </TableRow>
-                                ))
+                                            </TableRow>
+                                        </React.Fragment>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>
