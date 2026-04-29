@@ -324,7 +324,7 @@ export default function OptionsPage() {
                                                                     {displayName}
                                                                 </span>
                                                             </th>
-                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">總損益</th>
+                                                            <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground border-r-2 border-border/60">總損益</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">PUT</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">CALL</th>
                                                             <th className="text-center h-7 px-1 py-1.5 font-medium text-foreground">股票損益</th>
@@ -362,7 +362,7 @@ export default function OptionsPage() {
                                                             return (
                                                                 <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                                                                     <td className="px-1 text-center h-7">{stat.month}月</td>
-                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.total_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(stat.total_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                         {Math.round(stat.total_profit).toLocaleString()}
                                                                     </td>
                                                                     <td className={`px-1 text-center h-7 ${Math.round(stat.put_profit) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
@@ -398,7 +398,7 @@ export default function OptionsPage() {
                                                     <tbody>
                                                         <tr>
                                                             <td className="px-1 text-center h-7"></td>
-                                                            <td className={`px-1 text-center h-7 ${Math.round(client.total_profit ?? 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(client.total_profit ?? 0) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
                                                                 {Math.round(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
                                                             <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)) < 0 ? 'bg-pink-50 text-red-600' : ''}`}>
