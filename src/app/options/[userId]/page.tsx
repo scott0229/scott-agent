@@ -859,7 +859,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="py-1">
                                             {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
                                         </TableCell>
-                                        <TableCell className={`py-1 ${opt.quantity > 0 ? 'text-green-700' : (opt.type === 'STK' && opt.quantity < 0) ? 'text-red-600' : ''}`}>
+                                        <TableCell className="py-1">
                                             {opt.quantity.toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className="py-1 font-mono text-sm">

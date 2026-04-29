@@ -306,7 +306,7 @@ export function GroupTradesDialog({
                                             </TableCell>
                                             <TableCell className="py-1">{formatDate(opt.open_date)}</TableCell>
                                             <TableCell className="py-1">{formatDate(opt.settlement_date)}</TableCell>
-                                            <TableCell className={`py-1 font-mono font-medium ${opt.quantity > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                            <TableCell className="py-1 font-mono text-foreground">
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
                                             <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
