@@ -228,7 +228,7 @@ export async function GET(req: NextRequest) {
                     try {
                         const equityRecords = await db.prepare(`SELECT user_id, date, cash_balance FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
                         const { fetchFredRatesForYear, calculateDailyInterest } = await import('@/lib/fred');
-                        const fredRateMap = await fetchFredRatesForYear(year as string);
+                        const fredRateMap = await fetchFredRatesForYear(parseInt(year as string));
                         
                         const uEqMap = new Map<number, any[]>();
                         for (const r of (equityRecords.results as any[])) {
