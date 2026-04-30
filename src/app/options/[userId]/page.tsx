@@ -86,6 +86,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [selectedOperation, setSelectedOperation] = useState<string>('All');
     const [selectedGroup, setSelectedGroup] = useState<string>('NoFilter');
+    const [sortFilter, setSortFilter] = useState<string>('CloseDate');
     const [hideStocks, setHideStocks] = useState<boolean>(false);
 
     const SEPARATOR_COLORS = [
@@ -553,9 +554,16 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         return underlyingMatch && typeMatch && statusMatch && operationMatch && groupMatch;
     });
 
-    // Sort options: strictly by open_date desc
+    // Sort options:
     const sortedOptions = filteredOptions.sort((a, b) => {
-        return b.open_date - a.open_date;
+        if (sortFilter === 'CloseDate') {
+            const aClose = a.settlement_date || Number.MAX_SAFE_INTEGER;
+            const bClose = b.settlement_date || Number.MAX_SAFE_INTEGER;
+            if (aClose !== bClose) return bClose - aClose; // Open positions (Infinity) first, then desc
+            return b.open_date - a.open_date; // if both open or same close date, sort by open_date
+        } else {
+            return b.open_date - a.open_date;
+        }
     });
 
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
@@ -662,6 +670,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         {g} {groupStatuses[g] === 'Terminated' ? '(已終止)' : ''}
                                     </SelectItem>
                                 ))}
+                            </SelectContent>
+                        </Select>
+                        
+                        <Select value={sortFilter} onValueChange={setSortFilter}>
+                            <SelectTrigger className="w-[150px] focus:ring-0 focus:ring-offset-0"><SelectValue placeholder="排序方式" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="CloseDate">依平倉日排序</SelectItem>
+                                <SelectItem value="OpenDate">依開倉日排序</SelectItem>
                             </SelectContent>
                         </Select>
                         
