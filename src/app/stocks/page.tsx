@@ -404,21 +404,6 @@ export default function StockTradingPage() {
                             </div>
                         )}
 
-                        {/* Status Filter */}
-                        <div className="w-[150px]">
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="所有狀態" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="All">所有狀態</SelectItem>
-                                    <SelectItem value="Open">Open</SelectItem>
-                                    <SelectItem value="Closed">Closed</SelectItem>
-                                    <SelectItem value="Assigned">被指派</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
                         {/* Symbol Filter */}
                         <div className="w-[150px]">
                             <Select value={symbolFilter || "All"} onValueChange={(val) => setSymbolFilter(val === "All" ? "" : val)}>
@@ -430,6 +415,21 @@ export default function StockTradingPage() {
                                     {[...new Set(trades.map(t => t.symbol))].sort().map(sym => (
                                         <SelectItem key={sym} value={sym}>{sym}</SelectItem>
                                     ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Status Filter */}
+                        <div className="w-[150px]">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="所有狀態" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">所有狀態</SelectItem>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
+                                    <SelectItem value="Assigned">被指派</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
