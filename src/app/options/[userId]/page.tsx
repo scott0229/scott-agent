@@ -414,12 +414,12 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
         }
         const typeChar = opt.type === 'PUT' ? 'P' : 'C';
         const strike = opt.strike_price;
-        if (!opt.to_date) return `${underlying} - ${strike}${typeChar}`;
+        if (!opt.to_date) return <>{underlying} - <span className="underline underline-offset-2">{strike}{typeChar}</span></>;
         const d = new Date(opt.to_date * 1000);
         const mon = MONTH_ABBR[d.getMonth()];
         const day = d.getDate();
         const yr = d.getFullYear().toString().slice(-2);
-        return `${underlying} ${mon}${day}'${yr} ${strike}${typeChar}`;
+        return <>{underlying} {mon}{day}'{yr} <span className="underline underline-offset-2">{strike}{typeChar}</span></>;
     };
 
     const calculateDays = (start: number, end: number | null) => {
