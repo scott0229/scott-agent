@@ -205,8 +205,10 @@ export default function TradeGroupsPage() {
                     
                     if (opt.type === 'STK') {
                         stat.types.add(opt.underlying || '股票');
-                        stat.holdingShares += opt.quantity || 0;
-                        stat.holdingCost += (opt.quantity || 0) * (opt.underlying_price || 0);
+                        if (opt.status === 'Open') {
+                            stat.holdingShares += opt.quantity || 0;
+                            stat.holdingCost += (opt.quantity || 0) * (opt.underlying_price || 0);
+                        }
                     }
                     else if (opt.type === 'CALL') stat.types.add('CALL');
                     else if (opt.type === 'PUT') stat.types.add('PUT');
