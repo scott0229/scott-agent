@@ -690,6 +690,7 @@ export default function TradeGroupsPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
+                                                    <SelectItem value="無" hideCheck>無</SelectItem>
                                                     {[
                                                         'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
                                                         'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
