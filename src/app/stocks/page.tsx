@@ -85,6 +85,7 @@ export default function StockTradingPage() {
     const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
     const [statusFilter, setStatusFilter] = useState<string>("All");
     const [symbolFilter, setSymbolFilter] = useState("");
+    const [sortFilter, setSortFilter] = useState<string>("CloseDate");
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [tradeToEdit, setTradeToEdit] = useState<StockTrade | null>(null);
@@ -205,8 +206,22 @@ export default function StockTradingPage() {
         return true;
     });
 
-    // Use backend's sorting order - no client-side re-sorting
-    const sortedTrades = filteredTrades;
+    const sortedTrades = useMemo(() => {
+        let result = [...filteredTrades];
+        if (sortFilter === 'CloseDate') {
+            result.sort((a, b) => {
+                const aClose = a.close_date || Number.MAX_SAFE_INTEGER;
+                const bClose = b.close_date || Number.MAX_SAFE_INTEGER;
+                if (aClose !== bClose) return bClose - aClose; // Open positions (Infinity) first, then desc
+                return b.open_date - a.open_date; // if both open or same close date, sort by open_date
+            });
+        } else if (sortFilter === 'OpenDate') {
+            result.sort((a, b) => {
+                return b.open_date - a.open_date;
+            });
+        }
+        return result;
+    }, [filteredTrades, sortFilter]);
 
     // Check if any filter is active
     const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
@@ -434,9 +449,18 @@ export default function StockTradingPage() {
                             </Select>
                         </div>
 
-
-
-
+                        {/* Sorter */}
+                        <div className="w-[120px]">
+                            <Select value={sortFilter} onValueChange={setSortFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="排序方式" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CloseDate">平倉日</SelectItem>
+                                    <SelectItem value="OpenDate">開倉日</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
                     </div>
                 </div>
