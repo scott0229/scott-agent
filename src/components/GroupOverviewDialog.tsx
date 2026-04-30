@@ -541,22 +541,24 @@ export function GroupOverviewDialog({
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell>
-                                            <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.name, val)}>
-                                                <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-slate-100 border-none shadow-none focus:ring-0">
-                                                    <SelectValue placeholder="-" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
-                                                    <SelectItem value="無" hideCheck>無</SelectItem>
-                                                    {[
-                                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
-                                                        'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
-                                                        'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
-                                                    ].map(n => (
-                                                        <SelectItem key={n} value={n} hideCheck>{n}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            {group.status === 'Terminated' && (
+                                                <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.name, val)}>
+                                                    <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-slate-100 border-none shadow-none focus:ring-0">
+                                                        <SelectValue placeholder="-" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
+                                                        <SelectItem value="無" hideCheck>無</SelectItem>
+                                                        {[
+                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                            'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
+                                                            'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
+                                                        ].map(n => (
+                                                            <SelectItem key={n} value={n} hideCheck>{n}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.name, val)}>
