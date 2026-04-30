@@ -126,6 +126,12 @@ export async function GET(req: NextRequest) {
                 const { results: users } = await db.prepare(query).bind(...params).all();
 
                 // Get monthly statistics for each user if year is specified
+                const combinedDailyPremiumMap = new Map<string, number>();
+                const addDailyPremium = (owner_id: number, dateSecs: number, profit: number) => {
+                    const key = `${owner_id}-${dateSecs}`;
+                    combinedDailyPremiumMap.set(key, (combinedDailyPremiumMap.get(key) || 0) + profit);
+                };
+
                 if (year && year !== 'All') {
                     const statsQuery = `
                     SELECT 
@@ -262,6 +268,9 @@ export async function GET(req: NextRequest) {
                                 }
                                 userStats[formattedMonth].interest = (userStats[formattedMonth].interest || 0) + recordInterest;
                                 userStats[formattedMonth].total += recordInterest;
+
+                                const startOfDay = Math.floor(Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate()) / 1000);
+                                addDailyPremium(uid, startOfDay, recordInterest);
                             }
                         }
                     } catch (e) {
@@ -341,10 +350,8 @@ export async function GET(req: NextRequest) {
                         `;
                         const { results: stockResults } = await db.prepare(dailyStockQuery).bind(todayTimestamp, year).all();
 
-                        const combinedMap = new Map<string, number>();
                         const addResult = (row: any) => {
-                            const key = `${row.owner_id}-${row.date}`;
-                            combinedMap.set(key, (combinedMap.get(key) || 0) + (row.daily_profit || 0));
+                            addDailyPremium(row.owner_id, row.date, row.daily_profit || 0);
                         };
                         
                         (optionsResults as any[]).forEach(addResult);
@@ -353,7 +360,7 @@ export async function GET(req: NextRequest) {
                         // Build map: userId -> [{date, daily_profit}]
                         const dailyPremiumMap = new Map<number, { date: number; daily_profit: number }[]>();
                         
-                        combinedMap.forEach((daily_profit, key) => {
+                        combinedDailyPremiumMap.forEach((daily_profit, key) => {
                             const [ownerIdStr, dateStr] = key.split('-');
                             const owner_id = parseInt(ownerIdStr, 10);
                             const date = parseInt(dateStr, 10);
