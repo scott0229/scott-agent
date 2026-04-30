@@ -280,7 +280,7 @@ export async function GET(
             
             // Calculate today's interest
             const cashNum = Number(cashBalance) || 0;
-            if (cashNum < 0 && latestEquity?.date) {
+            if (latestEquity?.date) {
                 dailyInterest = calculateDailyInterest(cashNum, Number(latestEquity.date), fredRateMap);
             }
 
@@ -307,6 +307,10 @@ export async function GET(
                 const loanAmount = Math.abs(cashNum);
                 const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
                 dailyInterest = -(loanAmount * (3.64 + spread) / 100 / 360);
+            } else if (cashNum > 10000) {
+                const interestAmount = cashNum - 10000;
+                const annualRate = Math.max(0, 3.64 - 0.5) / 100;
+                dailyInterest = (interestAmount * annualRate) / 360;
             }
         }
 
