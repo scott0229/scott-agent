@@ -450,14 +450,14 @@ export default function StockTradingPage() {
                         </div>
 
                         {/* Sorter */}
-                        <div className="w-[120px]">
+                        <div className="w-[150px]">
                             <Select value={sortFilter} onValueChange={setSortFilter}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="排序方式" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="CloseDate">平倉日</SelectItem>
-                                    <SelectItem value="OpenDate">開倉日</SelectItem>
+                                    <SelectItem value="CloseDate">依平倉日排序</SelectItem>
+                                    <SelectItem value="OpenDate">依開倉日排序</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
