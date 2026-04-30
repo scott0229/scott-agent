@@ -99,9 +99,7 @@ export function calculateDailyInterest(
     dateUnix: number,
     rateMap: Record<string, number>
 ): number {
-    if (cashBalance >= 0) return 0;
-
-    const loanAmount = Math.abs(cashBalance);
+    if (cashBalance >= 0 && cashBalance <= 10000) return 0;
 
     // Get the matching month key
     const date = new Date(dateUnix * 1000);
@@ -117,13 +115,21 @@ export function calculateDailyInterest(
         }
     }
 
-    const spread = getIBProSpread(loanAmount);
-    const annualRate = (fedRate + spread) / 100;
-
-    // IB uses 360-day convention
-    const dailyInterest = loanAmount * annualRate / 360;
-
-    return -dailyInterest; // Negative = expense
+    if (cashBalance > 10000) {
+        // Positive cash interest (IB pays Benchmark - 0.5% for balances over 10k)
+        const annualRate = Math.max(0, fedRate - 0.5) / 100;
+        const interestAmount = cashBalance - 10000;
+        // IB uses 360-day convention for USD
+        return (interestAmount * annualRate) / 360;
+    } else {
+        // Negative cash interest (margin loan)
+        const loanAmount = Math.abs(cashBalance);
+        const spread = getIBProSpread(loanAmount);
+        const annualRate = (fedRate + spread) / 100;
+        // IB uses 360-day convention
+        const dailyInterest = loanAmount * annualRate / 360;
+        return -dailyInterest; // Negative = expense
+    }
 }
 
 /**
