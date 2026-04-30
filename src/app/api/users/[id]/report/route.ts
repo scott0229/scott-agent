@@ -257,7 +257,16 @@ export async function GET(
         // Calculate targets - Use initial cost instead of current equity
         const initialCost = (user.initial_cost || 0) + totalDeposit;
         const premiumTargetPercent = parseFloat(req.nextUrl.searchParams.get('premiumTargetPercent') || '4');
-        const annualTarget = Math.round(initialCost * (premiumTargetPercent / 100));
+        
+        const targetStartOfYear = new Date(Date.UTC(currentYear, 0, 1));
+        const targetEndOfYear = new Date(Date.UTC(currentYear, 11, 31));
+        const totalDaysInYear = (targetEndOfYear.getTime() - targetStartOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
+        const userStartObj = user.start_date ? new Date(user.start_date) : targetStartOfYear;
+        const effectiveStart = userStartObj > targetStartOfYear ? userStartObj : targetStartOfYear;
+        const activeDaysInYear = (targetEndOfYear.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24) + 1;
+        const proRataRatio = activeDaysInYear / totalDaysInYear;
+
+        const annualTarget = Math.round(initialCost * (premiumTargetPercent / 100) * proRataRatio);
         const quarterlyTarget = Math.round(annualTarget / 4);
 
         // 8. Get margin rate

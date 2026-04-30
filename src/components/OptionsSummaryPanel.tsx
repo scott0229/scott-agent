@@ -169,7 +169,15 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const quarterPremium = quarterPutPremium + quarterCallPremium + (settings.includeStockDiffInPremium === false ? 0 : quarterStockPnl);
 
         // QX Target - Use initial cost instead of current equity
-        const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100));
+        const startOfYear = new Date(Number(displayYear), 0, 1);
+        const endOfYear = new Date(Number(displayYear), 11, 31);
+        const totalDaysInYear = (endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
+        const userStartObj = user.start_date ? new Date(user.start_date) : startOfYear;
+        const effectiveStart = userStartObj > startOfYear ? userStartObj : startOfYear;
+        const activeDaysInYear = (endOfYear.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24) + 1;
+        const proRataRatio = activeDaysInYear / totalDaysInYear;
+
+        const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100) * proRataRatio);
         const quarterTarget = Math.round(annualTarget / 4);
 
         // Annual Premium components
