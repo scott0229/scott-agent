@@ -216,7 +216,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1200px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent className="sm:max-w-[1400px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
