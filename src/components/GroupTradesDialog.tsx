@@ -378,7 +378,7 @@ export function GroupTradesDialog({
                                                     {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                                 </TableCell>
                                             )}
-                                            <TableCell className={`py-1 ${rollProfit && rollProfit > 0 ? 'text-green-700 font-medium' : rollProfit && rollProfit < 0 ? 'text-red-600 font-medium' : ''}`}>
+                                            <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-green-700' : rollProfit && rollProfit < 0 ? 'text-red-600' : ''}`}>
                                                 {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '-'}
                                             </TableCell>
                                             <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
