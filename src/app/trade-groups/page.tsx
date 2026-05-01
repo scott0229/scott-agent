@@ -81,6 +81,7 @@ interface GroupStat {
     holdingShares?: number;
     holdingAvgPrice?: number;
     underlyings?: string[];
+    id?: number;
 }
 
 export default function TradeGroupsPage() {
@@ -94,7 +95,7 @@ export default function TradeGroupsPage() {
     const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
     const [groupStats, setGroupStats] = useState<GroupStat[]>([]);
     const [allTrades, setAllTrades] = useState<any[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number, ownerName: string} | null>(null);
+    const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number, ownerName: string, id?: number} | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
@@ -278,7 +279,8 @@ export default function TradeGroupsPage() {
                         next_group: dbGroup.next_group,
                         holdingShares: stat.holdingShares,
                         holdingAvgPrice: stat.holdingShares !== 0 ? Math.abs(stat.holdingCost / stat.holdingShares) : 0,
-                        underlyings: Array.from(stat.underlyings)
+                        underlyings: Array.from(stat.underlyings),
+                        id: dbGroup.id
                     };
                 });
 
@@ -640,7 +642,7 @@ export default function TradeGroupsPage() {
                                             <button 
                                                 type="button"
                                                 onClick={() => {
-                                                    setSelectedGroup({name: group.name, ownerId: group.ownerId, ownerName: group.ownerName});
+                                                    setSelectedGroup({name: group.name, ownerId: group.ownerId, ownerName: group.ownerName, id: group.id});
                                                 }}
                                                 className="text-foreground hover:text-foreground/80 hover:underline cursor-pointer"
                                             >
@@ -734,8 +736,15 @@ export default function TradeGroupsPage() {
                     groupName={selectedGroup.name}
                     ownerName={selectedGroup.ownerName}
                     availableGroups={groupStats.filter(g => g.ownerId === selectedGroup.ownerId).map(g => ({name: g.name, status: g.status}))}
-                    onGroupSelect={(name) => setSelectedGroup({ ...selectedGroup, name })}
-                    trades={allTrades.filter(t => t.group_id === selectedGroup.name && t.owner_id === selectedGroup.ownerId)}
+                    onGroupSelect={(name) => {
+                        const newGroup = groupStats.find(g => g.ownerId === selectedGroup.ownerId && g.name === name);
+                        if (newGroup) {
+                            setSelectedGroup({ ...selectedGroup, name, id: newGroup.id });
+                        } else {
+                            setSelectedGroup({ ...selectedGroup, name });
+                        }
+                    }}
+                    trades={allTrades.filter(t => (t.group_id === selectedGroup.name || t.group_id === selectedGroup.id) && t.owner_id === selectedGroup.ownerId)}
                 />
             )}
         </div>
