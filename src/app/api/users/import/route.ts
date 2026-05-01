@@ -286,7 +286,13 @@ export async function POST(req: NextRequest) {
                 // Import trade groups first, so we can map their IDs for options and stocks
                 const groupIdMap = new Map<number, number>();
                 const existingGroupMap = new Map<string, number>();
+                const groupIdToNameMap = new Map<number, string>();
                 if (user.trade_groups && Array.isArray(user.trade_groups) && targetUserId) {
+                    for (const group of user.trade_groups) {
+                        if (group.id && group.name) {
+                            groupIdToNameMap.set(Number(group.id), group.name);
+                        }
+                    }
                     // Pre-fetch all existing groups for this user to avoid sequential SELECTs
                     const existingGroupsRes = await db.prepare(
                         `SELECT id, year, name FROM TRADE_GROUPS WHERE owner_id = ?`
@@ -395,18 +401,18 @@ export async function POST(req: NextRequest) {
                             let mappedGroupId = null;
                             if (option.group_id) {
                                 if (typeof option.group_id === 'number' || !isNaN(Number(option.group_id))) {
-                                    mappedGroupId = groupIdMap.get(Number(option.group_id)) || null;
+                                    mappedGroupId = groupIdToNameMap.get(Number(option.group_id)) || String(option.group_id).trim();
                                 } else {
-                                    mappedGroupId = existingGroupMap.get(`${option.year || targetYear}-${String(option.group_id).trim()}`) || null;
+                                    mappedGroupId = String(option.group_id).trim();
                                 }
                             }
                             
                             let mappedCloseGroupId = null;
                             if (option.close_group_id) {
                                 if (typeof option.close_group_id === 'number' || !isNaN(Number(option.close_group_id))) {
-                                    mappedCloseGroupId = groupIdMap.get(Number(option.close_group_id)) || null;
+                                    mappedCloseGroupId = groupIdToNameMap.get(Number(option.close_group_id)) || String(option.close_group_id).trim();
                                 } else {
-                                    mappedCloseGroupId = existingGroupMap.get(`${option.year || targetYear}-${String(option.close_group_id).trim()}`) || null;
+                                    mappedCloseGroupId = String(option.close_group_id).trim();
                                 }
                             }
                             if (mappedGroupId) {
@@ -432,9 +438,9 @@ export async function POST(req: NextRequest) {
                             let mappedGroupId = null;
                             if (option.group_id) {
                                 if (typeof option.group_id === 'number' || !isNaN(Number(option.group_id))) {
-                                    mappedGroupId = groupIdMap.get(Number(option.group_id)) || null;
+                                    mappedGroupId = groupIdToNameMap.get(Number(option.group_id)) || String(option.group_id).trim();
                                 } else {
-                                    mappedGroupId = existingGroupMap.get(`${optionYear}-${String(option.group_id).trim()}`) || null;
+                                    mappedGroupId = String(option.group_id).trim();
                                 }
                             }
                             
@@ -547,18 +553,18 @@ export async function POST(req: NextRequest) {
                             let mappedGroupId = null;
                             if (trade.group_id) {
                                 if (typeof trade.group_id === 'number' || !isNaN(Number(trade.group_id))) {
-                                    mappedGroupId = groupIdMap.get(Number(trade.group_id)) || null;
+                                    mappedGroupId = groupIdToNameMap.get(Number(trade.group_id)) || String(trade.group_id).trim();
                                 } else {
-                                    mappedGroupId = existingGroupMap.get(`${trade.year || targetYear}-${String(trade.group_id).trim()}`) || null;
+                                    mappedGroupId = String(trade.group_id).trim();
                                 }
                             }
                             
                             let mappedCloseGroupId = null;
                             if (trade.close_group_id) {
                                 if (typeof trade.close_group_id === 'number' || !isNaN(Number(trade.close_group_id))) {
-                                    mappedCloseGroupId = groupIdMap.get(Number(trade.close_group_id)) || null;
+                                    mappedCloseGroupId = groupIdToNameMap.get(Number(trade.close_group_id)) || String(trade.close_group_id).trim();
                                 } else {
-                                    mappedCloseGroupId = existingGroupMap.get(`${trade.year || targetYear}-${String(trade.close_group_id).trim()}`) || null;
+                                    mappedCloseGroupId = String(trade.close_group_id).trim();
                                 }
                             }
                             const includeInOptionsVal = trade.include_in_options !== undefined && trade.include_in_options !== null ? Number(trade.include_in_options) : 0;
@@ -586,18 +592,18 @@ export async function POST(req: NextRequest) {
                             let mappedGroupId = null;
                             if (trade.group_id) {
                                 if (typeof trade.group_id === 'number' || !isNaN(Number(trade.group_id))) {
-                                    mappedGroupId = groupIdMap.get(Number(trade.group_id)) || null;
+                                    mappedGroupId = groupIdToNameMap.get(Number(trade.group_id)) || String(trade.group_id).trim();
                                 } else {
-                                    mappedGroupId = existingGroupMap.get(`${tradeYear}-${String(trade.group_id).trim()}`) || null;
+                                    mappedGroupId = String(trade.group_id).trim();
                                 }
                             }
                             
                             let mappedCloseGroupId = null;
                             if (trade.close_group_id) {
                                 if (typeof trade.close_group_id === 'number' || !isNaN(Number(trade.close_group_id))) {
-                                    mappedCloseGroupId = groupIdMap.get(Number(trade.close_group_id)) || null;
+                                    mappedCloseGroupId = groupIdToNameMap.get(Number(trade.close_group_id)) || String(trade.close_group_id).trim();
                                 } else {
-                                    mappedCloseGroupId = existingGroupMap.get(`${tradeYear}-${String(trade.close_group_id).trim()}`) || null;
+                                    mappedCloseGroupId = String(trade.close_group_id).trim();
                                 }
                             }
                             
