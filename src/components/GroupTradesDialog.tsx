@@ -179,6 +179,38 @@ export function GroupTradesDialog({
         return b.open_date - a.open_date;
     });
 
+    const runningDataMap = React.useMemo(() => {
+        const map: Record<number, { total: number; avgPrice: number | null }> = {};
+        const stockTrades = localTrades.filter(t => t.type === 'STK');
+        
+        const grouped: Record<string, any[]> = {};
+        stockTrades.forEach(t => {
+            const key = t.underlying;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+        });
+
+        Object.values(grouped).forEach(group => {
+            group.forEach(t => {
+                let total = 0;
+                let totalCost = 0;
+                group.forEach(l => {
+                    if (l.open_date <= t.open_date) {
+                        if (!l.settlement_date || l.settlement_date > t.open_date) {
+                            total += l.quantity;
+                            totalCost += l.quantity * l.underlying_price;
+                        }
+                    }
+                });
+                map[t.id] = {
+                    total,
+                    avgPrice: total > 0 ? totalCost / total : null
+                };
+            });
+        });
+        return map;
+    }, [localTrades]);
+
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
@@ -224,6 +256,7 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
+                                <TableHead className="text-center">當日總倉位</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
                                 <TableHead className="text-center">損益</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
@@ -232,7 +265,7 @@ export function GroupTradesDialog({
                         <TableBody>
                             {sortedOptions.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                                         尚無交易
                                     </TableCell>
                                 </TableRow>
@@ -312,6 +345,14 @@ export function GroupTradesDialog({
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
                                             <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
+                                            <TableCell className="py-1 text-center whitespace-nowrap">
+                                                {opt.type === 'STK' && runningDataMap[opt.id]?.total > 0 ? (
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <span>{runningDataMap[opt.id].total.toLocaleString()}</span>
+                                                        <span className="text-[13px] text-foreground">(均價 {runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                                                    </div>
+                                                ) : '-'}
+                                            </TableCell>
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
