@@ -259,6 +259,7 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">當日總倉位</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
                                 {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
+                                <TableHead className="text-center">展期收益</TableHead>
                                 <TableHead className="text-center">損益</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             </TableRow>
@@ -272,6 +273,21 @@ export function GroupTradesDialog({
                                 </TableRow>
                             ) : (
                                 sortedOptions.map((opt, index) => {
+                                    let rollProfit: number | null = null;
+                                    if (opt.type !== 'STK') {
+                                        const prevTrade = sortedOptions.find((t, j) => 
+                                            j > index && 
+                                            t.type === opt.type &&
+                                            t.underlying === opt.underlying &&
+                                            t.settlement_date != null &&
+                                            formatDate(t.settlement_date) === formatDate(opt.open_date)
+                                        );
+                                        
+                                        if (prevTrade && opt.premium != null && prevTrade.premium != null && prevTrade.final_profit != null) {
+                                            rollProfit = opt.premium - (prevTrade.premium - prevTrade.final_profit);
+                                        }
+                                    }
+
                                     return (
                                         <TableRow
                                             key={opt.id}
@@ -362,6 +378,9 @@ export function GroupTradesDialog({
                                                     {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                                 </TableCell>
                                             )}
+                                            <TableCell className={`py-1 ${rollProfit && rollProfit > 0 ? 'text-green-700 font-medium' : rollProfit && rollProfit < 0 ? 'text-red-600 font-medium' : ''}`}>
+                                                {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '-'}
+                                            </TableCell>
                                             <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
