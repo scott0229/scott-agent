@@ -214,24 +214,60 @@ export function GroupTradesDialog({
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
-    const claimedRollSources = new Set<number>();
     const rollProfitsMap = new Map<number, number>();
+    
+    // Group trades by Date + Underlying + Type for batch roll detection (handles 1-to-1, 1-to-N, N-to-M splits)
+    const dateGroups = new Map<string, { closedTrades: typeof sortedOptions, openedTrades: typeof sortedOptions }>();
+    
+    sortedOptions.forEach(t => {
+        if (t.type === 'STK') return;
+        
+        // Record as opened trade
+        const openDateStr = formatDate(t.open_date);
+        const keyOpen = `${openDateStr}_${t.underlying}_${t.type}`;
+        if (!dateGroups.has(keyOpen)) {
+            dateGroups.set(keyOpen, { closedTrades: [], openedTrades: [] });
+        }
+        dateGroups.get(keyOpen)!.openedTrades.push(t);
+        
+        // Record as closed trade
+        if (t.settlement_date) {
+            const closeDateStr = formatDate(t.settlement_date);
+            const keyClose = `${closeDateStr}_${t.underlying}_${t.type}`;
+            if (!dateGroups.has(keyClose)) {
+                dateGroups.set(keyClose, { closedTrades: [], openedTrades: [] });
+            }
+            dateGroups.get(keyClose)!.closedTrades.push(t);
+        }
+    });
 
-    sortedOptions.forEach((opt, index) => {
-        if (opt.type !== 'STK') {
-            const prevTrade = sortedOptions.find((t, j) => 
-                j > index && 
-                !claimedRollSources.has(t.id) &&
-                t.type === opt.type &&
-                t.underlying === opt.underlying &&
-                t.quantity === opt.quantity &&
-                t.settlement_date != null &&
-                formatDate(t.settlement_date) === formatDate(opt.open_date)
-            );
+    dateGroups.forEach(group => {
+        if (group.closedTrades.length > 0 && group.openedTrades.length > 0) {
+            const sumQClosed = group.closedTrades.reduce((sum, t) => sum + t.quantity, 0);
+            const sumQOpened = group.openedTrades.reduce((sum, t) => sum + t.quantity, 0);
             
-            if (prevTrade && opt.premium != null && prevTrade.premium != null && prevTrade.final_profit != null) {
-                rollProfitsMap.set(opt.id, opt.premium - (prevTrade.premium - prevTrade.final_profit));
-                claimedRollSources.add(prevTrade.id);
+            // Only consider it a valid roll if the net quantities match perfectly
+            if (sumQClosed === sumQOpened && sumQClosed !== 0) {
+                let totalCostToClose = 0;
+                let canCalculate = true;
+                
+                for (const ct of group.closedTrades) {
+                    if (ct.premium == null || ct.final_profit == null) {
+                        canCalculate = false;
+                        break;
+                    }
+                    totalCostToClose += (ct.premium - ct.final_profit);
+                }
+                
+                if (canCalculate) {
+                    for (const ot of group.openedTrades) {
+                        if (ot.premium != null) {
+                            const proportion = ot.quantity / sumQOpened;
+                            const allocatedCost = totalCostToClose * proportion;
+                            rollProfitsMap.set(ot.id, ot.premium - allocatedCost);
+                        }
+                    }
+                }
             }
         }
     });
