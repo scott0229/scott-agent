@@ -10,7 +10,11 @@ interface AdminSettings {
     premiumTargetPercent: number;
     includeStockDiffInPremium: boolean;
     reportCcEmail1?: string;
+    reportCcEnabled1?: boolean;
     reportCcEmail2?: string;
+    reportCcEnabled2?: boolean;
+    reportCcEmail3?: string;
+    reportCcEnabled3?: boolean;
 }
 
 interface AdminSettingsContextType {
@@ -28,7 +32,11 @@ const defaultSettings: AdminSettings = {
     premiumTargetPercent: 4,
     includeStockDiffInPremium: true,
     reportCcEmail1: '',
+    reportCcEnabled1: true,
     reportCcEmail2: '',
+    reportCcEnabled2: true,
+    reportCcEmail3: '',
+    reportCcEnabled3: true,
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);

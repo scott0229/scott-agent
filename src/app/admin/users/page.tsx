@@ -492,7 +492,11 @@ export default function AdminUsersPage() {
                         report: reportData.report,
                         userName: reportData.userName,
                         dateStr,
-                        ccEmails: [settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '')
+                        ccEmails: [
+                            settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
+                            settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
+                            settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
+                        ].filter(e => e && typeof e === 'string' && e.trim() !== '')
                     }),
                 });
                 if (res.ok) {
@@ -1716,7 +1720,11 @@ export default function AdminUsersPage() {
                                                                 report, 
                                                                 userName, 
                                                                 dateStr,
-                                                                ccEmails: [settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '')
+                                                                ccEmails: [
+                                                                    settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
+                                                                    settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
+                                                                    settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
+                                                                ].filter(e => e && typeof e === 'string' && e.trim() !== '')
                                                             }),
                                                         });
                                                         const data = await res.json();
@@ -1862,6 +1870,7 @@ export default function AdminUsersPage() {
                             <AlertDialogAction onClick={confirmClearRecords}>
                                 確認清除
                             </AlertDialogAction>
+
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -1897,10 +1906,14 @@ export default function AdminUsersPage() {
                     }}
                     title="選擇要寄出報告的用戶"
                     description={
-                        (settings.reportCcEmail1 || settings.reportCcEmail2) ? (
+                        ((settings.reportCcEnabled1 && settings.reportCcEmail1) || (settings.reportCcEnabled2 && settings.reportCcEmail2) || (settings.reportCcEnabled3 && settings.reportCcEmail3)) ? (
                             <>
                                 將同步密件副本 (BCC) 至：<br />
-                                {[settings.reportCcEmail1, settings.reportCcEmail2].filter(e => e && e.trim() !== '').join(', ')}
+                                {[
+                                    settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
+                                    settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
+                                    settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
+                                ].filter(e => e && typeof e === 'string' && e.trim() !== '').join(', ')}
                             </>
                         ) : undefined
                     }

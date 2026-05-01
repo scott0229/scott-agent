@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -355,7 +356,14 @@ export function UserProfileMenu() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                        <Label htmlFor="report-cc-email-1">同步報表 1</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox 
+                                                id="report-cc-enabled-1" 
+                                                checked={settings.reportCcEnabled1 !== false} 
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled1', !!v)} 
+                                            />
+                                            <Label htmlFor="report-cc-email-1" className="cursor-pointer">同步報表 1</Label>
+                                        </div>
                                         <Input
                                             id="report-cc-email-1"
                                             name="report-cc-email-1"
@@ -367,13 +375,39 @@ export function UserProfileMenu() {
                                         />
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                        <Label htmlFor="report-cc-email-2">同步報表 2</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox 
+                                                id="report-cc-enabled-2" 
+                                                checked={settings.reportCcEnabled2 !== false} 
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled2', !!v)} 
+                                            />
+                                            <Label htmlFor="report-cc-email-2" className="cursor-pointer">同步報表 2</Label>
+                                        </div>
                                         <Input
                                             id="report-cc-email-2"
                                             name="report-cc-email-2"
                                             type="text"
                                             value={settings.reportCcEmail2 || ''}
                                             onChange={(e) => updateSetting('reportCcEmail2', e.target.value)}
+                                            placeholder="輸入 Email (選填)"
+                                            autoComplete="new-password"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox 
+                                                id="report-cc-enabled-3" 
+                                                checked={settings.reportCcEnabled3 !== false} 
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled3', !!v)} 
+                                            />
+                                            <Label htmlFor="report-cc-email-3" className="cursor-pointer">同步報表 3</Label>
+                                        </div>
+                                        <Input
+                                            id="report-cc-email-3"
+                                            name="report-cc-email-3"
+                                            type="text"
+                                            value={settings.reportCcEmail3 || ''}
+                                            onChange={(e) => updateSetting('reportCcEmail3', e.target.value)}
                                             placeholder="輸入 Email (選填)"
                                             autoComplete="new-password"
                                         />
