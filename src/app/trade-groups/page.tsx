@@ -87,6 +87,7 @@ export default function TradeGroupsPage() {
     const { selectedYear } = useYearFilter();
     const [mounted, setMounted] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
+    const [isUsersLoaded, setIsUsersLoaded] = useState(false);
     const [selectedUserValue, setSelectedUserValue] = useState<string>('All');
     const [selectedSymbolValue, setSelectedSymbolValue] = useState<string>('All');
     const [selectedStatusValue, setSelectedStatusValue] = useState<string>('All');
@@ -125,13 +126,15 @@ export default function TradeGroupsPage() {
                 setUsers(uniqueUsers);
             } catch (error) {
                 console.error("Failed to fetch users", error);
+            } finally {
+                setIsUsersLoaded(true);
             }
         };
         fetchUsers();
     }, [mounted, selectedYear]);
 
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || !isUsersLoaded) return;
         const loadGroupData = async () => {
             setIsLoading(true);
             try {
@@ -318,7 +321,7 @@ export default function TradeGroupsPage() {
         };
 
         loadGroupData();
-    }, [mounted, selectedYear, selectedUserValue, users, toast]);
+    }, [mounted, isUsersLoaded, selectedYear, selectedUserValue, users, toast]);
 
     const handleNoteUpdate = async (ownerId: number, groupName: string, newNote: string) => {
         const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
