@@ -256,7 +256,7 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
-                                <TableHead className="text-center">當日總倉位</TableHead>
+                                <TableHead className="text-center">累積倉位</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
                                 {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">展期收益</TableHead>
