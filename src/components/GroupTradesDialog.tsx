@@ -214,6 +214,28 @@ export function GroupTradesDialog({
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
+    const claimedRollSources = new Set<number>();
+    const rollProfitsMap = new Map<number, number>();
+
+    sortedOptions.forEach((opt, index) => {
+        if (opt.type !== 'STK') {
+            const prevTrade = sortedOptions.find((t, j) => 
+                j > index && 
+                !claimedRollSources.has(t.id) &&
+                t.type === opt.type &&
+                t.underlying === opt.underlying &&
+                t.quantity === opt.quantity &&
+                t.settlement_date != null &&
+                formatDate(t.settlement_date) === formatDate(opt.open_date)
+            );
+            
+            if (prevTrade && opt.premium != null && prevTrade.premium != null && prevTrade.final_profit != null) {
+                rollProfitsMap.set(opt.id, opt.premium - (prevTrade.premium - prevTrade.final_profit));
+                claimedRollSources.add(prevTrade.id);
+            }
+        }
+    });
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[1400px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -273,21 +295,7 @@ export function GroupTradesDialog({
                                 </TableRow>
                             ) : (
                                 sortedOptions.map((opt, index) => {
-                                    let rollProfit: number | null = null;
-                                    if (opt.type !== 'STK') {
-                                        const prevTrade = sortedOptions.find((t, j) => 
-                                            j > index && 
-                                            t.type === opt.type &&
-                                            t.underlying === opt.underlying &&
-                                            t.quantity === opt.quantity &&
-                                            t.settlement_date != null &&
-                                            formatDate(t.settlement_date) === formatDate(opt.open_date)
-                                        );
-                                        
-                                        if (prevTrade && opt.premium != null && prevTrade.premium != null && prevTrade.final_profit != null) {
-                                            rollProfit = opt.premium - (prevTrade.premium - prevTrade.final_profit);
-                                        }
-                                    }
+                                    const rollProfit = rollProfitsMap.has(opt.id) ? rollProfitsMap.get(opt.id) : null;
 
                                     return (
                                         <TableRow
