@@ -243,15 +243,90 @@ export function GroupTradesDialog({
 
     dateGroups.forEach(group => {
         if (group.closedTrades.length > 0 && group.openedTrades.length > 0) {
-            const sumQClosed = group.closedTrades.reduce((sum, t) => sum + t.quantity, 0);
-            const sumQOpened = group.openedTrades.reduce((sum, t) => sum + t.quantity, 0);
+            let matchedC = group.closedTrades;
+            let matchedO = group.openedTrades;
             
-            // Only consider it a valid roll if the net quantities match perfectly
-            if (sumQClosed === sumQOpened && sumQClosed !== 0) {
+            const sumC = matchedC.reduce((sum, t) => sum + t.quantity, 0);
+            const sumO = matchedO.reduce((sum, t) => sum + t.quantity, 0);
+            
+            let isMatch = false;
+            
+            if (sumC === sumO && sumC !== 0) {
+                isMatch = true;
+            } else if (matchedC.length <= 10 && matchedO.length <= 10) {
+                // Try subset matching for complex splits/merges
+                const getSubsets = (arr: typeof sortedOptions) => {
+                    const subsets: (typeof sortedOptions)[] = [];
+                    const n = arr.length;
+                    for (let i = 1; i < (1 << n); i++) {
+                        const subset = [];
+                        for (let j = 0; j < n; j++) {
+                            if ((i & (1 << j))) subset.push(arr[j]);
+                        }
+                        subsets.push(subset);
+                    }
+                    return subsets;
+                };
+                
+                const subsetsC = getSubsets(matchedC);
+                const subsetsO = getSubsets(matchedO);
+                
+                let found = false;
+                // Prefer matching ALL closed trades to a subset of open trades
+                for (const subO of subsetsO) {
+                    if (subO.reduce((s, t) => s + t.quantity, 0) === sumC && sumC !== 0) {
+                        matchedO = subO;
+                        isMatch = true;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // Prefer matching ALL open trades to a subset of closed trades
+                if (!found) {
+                    for (const subC of subsetsC) {
+                        if (subC.reduce((s, t) => s + t.quantity, 0) === sumO && sumO !== 0) {
+                            matchedC = subC;
+                            isMatch = true;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Find largest partial match
+                if (!found) {
+                    let bestMatch: { c: typeof sortedOptions, o: typeof sortedOptions, qty: number } | null = null;
+                    for (const subC of subsetsC) {
+                        const sC = subC.reduce((s, t) => s + t.quantity, 0);
+                        if (sC === 0) continue;
+                        for (const subO of subsetsO) {
+                            const sO = subO.reduce((s, t) => s + t.quantity, 0);
+                            if (sC === sO) {
+                                if (!bestMatch || Math.abs(sC) > Math.abs(bestMatch.qty)) {
+                                    bestMatch = { c: subC, o: subO, qty: sC };
+                                }
+                            }
+                        }
+                    }
+                    if (bestMatch) {
+                        matchedC = bestMatch.c;
+                        matchedO = bestMatch.o;
+                        isMatch = true;
+                    }
+                }
+            }
+
+            const isSelfMatch = (cArr: typeof sortedOptions, oArr: typeof sortedOptions) => {
+                if (cArr.length === 0 || oArr.length === 0) return false;
+                return cArr.every(c => oArr.some(o => o.id === c.id)) && oArr.every(o => cArr.some(c => c.id === o.id));
+            };
+
+            if (isMatch && !isSelfMatch(matchedC, matchedO)) {
                 let totalCostToClose = 0;
                 let canCalculate = true;
                 
-                for (const ct of group.closedTrades) {
+                for (const ct of matchedC) {
                     if (ct.premium == null || ct.final_profit == null) {
                         canCalculate = false;
                         break;
@@ -260,9 +335,10 @@ export function GroupTradesDialog({
                 }
                 
                 if (canCalculate) {
-                    for (const ot of group.openedTrades) {
+                    const finalSumO = matchedO.reduce((sum, t) => sum + t.quantity, 0);
+                    for (const ot of matchedO) {
                         if (ot.premium != null) {
-                            const proportion = ot.quantity / sumQOpened;
+                            const proportion = ot.quantity / finalSumO;
                             const allocatedCost = totalCostToClose * proportion;
                             rollProfitsMap.set(ot.id, ot.premium - allocatedCost);
                         }
