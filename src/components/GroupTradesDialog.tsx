@@ -279,6 +279,7 @@ export function GroupTradesDialog({
                                             j > index && 
                                             t.type === opt.type &&
                                             t.underlying === opt.underlying &&
+                                            t.quantity === opt.quantity &&
                                             t.settlement_date != null &&
                                             formatDate(t.settlement_date) === formatDate(opt.open_date)
                                         );
