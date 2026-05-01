@@ -258,6 +258,7 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center">標的</TableHead>
                                 <TableHead className="text-center">當日總倉位</TableHead>
                                 <TableHead className="text-center">當時股價</TableHead>
+                                {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">損益</TableHead>
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             </TableRow>
@@ -356,6 +357,11 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
+                                            {settings.showPremium && (
+                                                <TableCell className="py-1 text-center">
+                                                    {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
+                                                </TableCell>
+                                            )}
                                             <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
