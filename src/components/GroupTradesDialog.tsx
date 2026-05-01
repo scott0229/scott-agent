@@ -348,8 +348,8 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1 text-center whitespace-nowrap">
                                                 {opt.type === 'STK' && runningDataMap[opt.id]?.total > 0 ? (
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <span>{runningDataMap[opt.id].total.toLocaleString()}</span>
-                                                        <span className="text-[13px] text-foreground">(均價 {runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                                                        <span>股{runningDataMap[opt.id].total.toLocaleString()},</span>
+                                                        <span className="text-[13px] text-foreground">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 ) : '-'}
                                             </TableCell>

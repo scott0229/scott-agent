@@ -618,8 +618,8 @@ export default function StockTradingPage() {
                                                 {runningDataMap[trade.id]?.total > 0 
                                                     ? (
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <span>{runningDataMap[trade.id].total.toLocaleString()}</span>
-                                                            <span className="text-[13px] text-foreground">(均價 {formatMoney(runningDataMap[trade.id].avgPrice)})</span>
+                                                            <span>股{runningDataMap[trade.id].total.toLocaleString()},</span>
+                                                            <span className="text-[13px] text-foreground">均{formatMoney(runningDataMap[trade.id].avgPrice)}</span>
                                                         </div>
                                                     )
                                                     : '-'}
