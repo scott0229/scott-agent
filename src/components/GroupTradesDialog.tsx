@@ -427,7 +427,7 @@ export function GroupTradesDialog({
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
                                             <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-green-700' : rollProfit && rollProfit < 0 ? 'text-red-600' : ''}`}>
-                                                {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '-'}
+                                                {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (opt.type === 'STK' ? '' : '-')}
                                             </TableCell>
                                             {settings.showTradeCode && (
                                                 <TableCell className="py-1 text-xs text-muted-foreground font-mono">{opt.code || '-'}</TableCell>
