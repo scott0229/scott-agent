@@ -597,7 +597,7 @@ export default function TradeGroupsPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             )}
-                                            <TableRow>
+                                            <TableRow className="hover:bg-blue-50">
                                                 <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
                                                 <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">
@@ -682,7 +682,7 @@ export default function TradeGroupsPage() {
                                         <TableCell className="whitespace-nowrap">
                                             {group.holdingShares && group.holdingShares !== 0 ? (
                                                 <span className="text-foreground">
-                                                    股{Math.abs(group.holdingShares).toLocaleString('en-US')}，均{group.holdingAvgPrice?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                                                    股{Math.abs(group.holdingShares).toLocaleString('en-US')}，<span className="underline underline-offset-2">均{group.holdingAvgPrice?.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                                                 </span>
                                             ) : '-'}
                                         </TableCell>
