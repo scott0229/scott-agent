@@ -586,7 +586,9 @@ export default function TradeGroupsPage() {
                                 </TableRow>
                             ) : (
                                 filteredGroupStats.map((group, index) => {
-                                    const isBoundary = index > 0 && filteredGroupStats[index - 1].status === 'Active' && group.status === 'Terminated';
+                                    const isStatusBoundary = index > 0 && filteredGroupStats[index - 1].status === 'Active' && group.status === 'Terminated';
+                                    const isUserBoundary = index > 0 && selectedUserValue === 'All' && selectedStatusValue === 'All' && selectedSymbolValue === 'All' && filteredGroupStats[index - 1].ownerId !== group.ownerId;
+                                    const isBoundary = isStatusBoundary || isUserBoundary;
                                     return (
                                         <React.Fragment key={`${group.ownerId}_${group.name}`}>
                                             {isBoundary && (
