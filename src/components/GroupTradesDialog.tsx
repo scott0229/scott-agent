@@ -228,6 +228,14 @@ export function GroupTradesDialog({
         ? `+${totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
         : (totalNetCashInflow < 0 ? totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '0');
 
+    const totalOpenCostToClose = sortedOptions
+        .filter(opt => opt.type !== 'STK' && (opt.operation === 'Open' || !opt.settlement_date))
+        .reduce((sum, opt) => sum + ((opt.premium || 0) - (opt.final_profit || 0)), 0);
+
+    const formattedOpenCost = totalOpenCostToClose > 0 
+        ? `+${totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
+        : (totalOpenCostToClose === 0 ? "0" : totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
+
     const rollProfitsMap = new Map<number, number>();
     
     // Group trades by Date + Underlying + Type for batch roll detection (handles 1-to-1, 1-to-N, N-to-M splits)
@@ -384,17 +392,16 @@ export function GroupTradesDialog({
                         ) : (
                             <span>{groupName}</span>
                         )}
-                        {formattedPnL && (
-                            <span className="text-sm font-normal text-foreground ml-2">
-                                ，損益 <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>
-                            </span>
-                        )}
                     </DialogTitle>
                 </DialogHeader>
                 
                 {sortedOptions.some(opt => opt.type !== 'STK') && (
                     <div className="text-[15px] font-medium text-foreground mt-2 px-1">
-                        總淨現金流入 <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                        總現金流入 <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                        <span className="mx-1">，</span>
+                        平倉成本 <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
+                        <span className="mx-1">，</span>
+                        總損益 <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
                     </div>
                 )}
                 
