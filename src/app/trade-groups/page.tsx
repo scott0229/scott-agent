@@ -71,6 +71,7 @@ interface GroupStat {
     count: number;
     profit: number;
     netCashInflow: number;
+    openCostToClose: number;
     startDate: number;
     endDate: number;
     latestTrade: any;
@@ -190,7 +191,7 @@ export default function TradeGroupsPage() {
                 setAllTrades(currentOptions);
 
                 // 2. Calculate local stats grouped by ownerId + groupName
-                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, netCashInflow: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
+                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, netCashInflow: number, openCostToClose: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
                 
                 currentOptions.forEach((opt: any) => {
                     const groupName = opt.group_id?.toString().trim();
@@ -202,7 +203,7 @@ export default function TradeGroupsPage() {
                     const mapKey = `${optOwnerId}_${groupName}`;
 
                     if (!statsMap.has(mapKey)) {
-                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, netCashInflow: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
+                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, netCashInflow: 0, openCostToClose: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
                     }
                     const stat = statsMap.get(mapKey)!;
                     stat.count += 1;
@@ -213,6 +214,12 @@ export default function TradeGroupsPage() {
                             stat.netCashInflow += (opt.premium || 0);
                         } else {
                             stat.netCashInflow += (opt.final_profit || 0);
+                        }
+                        if (opt.status === 'Open' && opt.operation !== 'Expired' && opt.operation !== 'Assigned') {
+                            const currentPrice = opt.current_market_price || 0;
+                            const quantity = opt.quantity || 0;
+                            const multiplier = 100;
+                            stat.openCostToClose += (currentPrice * quantity * multiplier);
                         }
                     }
                     
@@ -279,6 +286,7 @@ export default function TradeGroupsPage() {
                         count: stat.count,
                         profit: stat.profit,
                         netCashInflow: stat.netCashInflow,
+                        openCostToClose: stat.openCostToClose,
                         startDate: stat.minDate,
                         endDate: stat.maxDate,
                         latestTrade: stat.latestTrade,
@@ -582,8 +590,8 @@ export default function TradeGroupsPage() {
                                 <TableHead>最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">現金流入</TableHead>
+                                <TableHead className="text-center">平倉費用</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="w-[100px] text-center">接手群組</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -689,28 +697,11 @@ export default function TradeGroupsPage() {
                                         <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-green-700' : group.netCashInflow < 0 ? 'text-red-700' : ''}`}>
                                             {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
                                         </TableCell>
+                                        <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-slate-600' : ''}`}>
+                                            {group.openCostToClose > 0 ? '+' : ''}{group.openCostToClose === 0 ? '-' : Math.round(group.openCostToClose).toLocaleString('en-US')}
+                                        </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
-                                        </TableCell>
-                                        <TableCell>
-                                            {group.status === 'Terminated' && (
-                                                <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.ownerId, group.name, val)}>
-                                                    <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-slate-100 border-none shadow-none focus:ring-0">
-                                                        <SelectValue placeholder="-" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
-                                                        <SelectItem value="無" hideCheck>無</SelectItem>
-                                                        {[
-                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
-                                                            'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
-                                                            'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
-                                                        ].map(n => (
-                                                            <SelectItem key={n} value={n} hideCheck>{n}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.ownerId, group.name, val)}>
