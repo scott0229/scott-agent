@@ -577,7 +577,6 @@ export default function TradeGroupsPage() {
                                 <TableHead className="min-w-[150px]"></TableHead>
                                 <TableHead className="w-[120px]">帳戶</TableHead>
                                 <TableHead>群組</TableHead>
-                                <TableHead className="text-center">內容</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
                                 <TableHead>最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
@@ -591,7 +590,7 @@ export default function TradeGroupsPage() {
                         <TableBody>
                             {filteredGroupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -604,7 +603,7 @@ export default function TradeGroupsPage() {
                                         <React.Fragment key={`${group.ownerId}_${group.name}`}>
                                             {isBoundary && (
                                                 <TableRow className="bg-background hover:bg-background">
-                                                    <TableCell colSpan={13} className="h-6 text-center p-0 align-middle">
+                                                    <TableCell colSpan={12} className="h-6 text-center p-0 align-middle">
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -661,17 +660,6 @@ export default function TradeGroupsPage() {
                                             >
                                                 {group.name}
                                             </button>
-                                        </TableCell>
-                                        <TableCell className="text-center text-foreground">
-                                            {(() => {
-                                                if (!group.contentTypes) return '-';
-                                                let parts = group.contentTypes.split('、');
-                                                if (parts.includes('CALL') && parts.includes('PUT')) {
-                                                    parts = parts.filter(p => p !== 'CALL' && p !== 'PUT');
-                                                    parts.push('雙腿');
-                                                }
-                                                return parts.join('、');
-                                            })()}
                                         </TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
                                         <TableCell className="whitespace-nowrap">
