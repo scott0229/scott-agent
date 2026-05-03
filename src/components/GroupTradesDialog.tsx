@@ -396,12 +396,19 @@ export function GroupTradesDialog({
                 </DialogHeader>
                 
                 {sortedOptions.some(opt => opt.type !== 'STK') && (
-                    <div className="text-[15px] font-medium text-foreground mt-2 px-1">
-                        總現金流入 <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
-                        <span className="mx-1">，</span>
-                        平倉成本 <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
-                        <span className="mx-1">，</span>
-                        總損益 <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
+                    <div className="flex flex-wrap items-center gap-3 mt-3 px-1">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
+                            <span className="text-foreground">總現金流入</span>
+                            <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
+                            <span className="text-foreground">平倉成本</span>
+                            <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
+                            <span className="text-foreground">總損益</span>
+                            <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
+                        </div>
                     </div>
                 )}
                 
