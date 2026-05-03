@@ -392,25 +392,24 @@ export function GroupTradesDialog({
                         ) : (
                             <span>{groupName}</span>
                         )}
+                        {sortedOptions.some(opt => opt.type !== 'STK') && (
+                            <div className="flex flex-wrap items-center gap-2 ml-2">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                    <span className="text-foreground">總現金流入</span>
+                                    <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                    <span className="text-foreground">平倉成本</span>
+                                    <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                    <span className="text-foreground">總損益</span>
+                                    <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
+                                </div>
+                            </div>
+                        )}
                     </DialogTitle>
                 </DialogHeader>
-                
-                {sortedOptions.some(opt => opt.type !== 'STK') && (
-                    <div className="flex flex-wrap items-center gap-3 mt-3 px-1">
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
-                            <span className="text-foreground">總現金流入</span>
-                            <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
-                            <span className="text-foreground">平倉成本</span>
-                            <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-[15px] font-medium">
-                            <span className="text-foreground">總損益</span>
-                            <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
-                        </div>
-                    </div>
-                )}
                 
                 <div className="bg-white rounded-lg shadow-sm border overflow-x-auto mt-3">
                     <Table className="whitespace-nowrap">
