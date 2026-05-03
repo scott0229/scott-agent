@@ -72,6 +72,7 @@ interface GroupStat {
     profit: number;
     netCashInflow: number;
     openCostToClose: number;
+    stockProfit: number;
     startDate: number;
     endDate: number;
     latestTrade: any;
@@ -83,6 +84,7 @@ interface GroupStat {
     holdingShares?: number;
     holdingAvgPrice?: number;
     underlyings?: string[];
+    types: Set<string>;
     id?: number;
 }
 
@@ -283,6 +285,7 @@ export default function TradeGroupsPage() {
                         profit: stat.profit,
                         netCashInflow: stat.netCashInflow,
                         openCostToClose: stat.openCostToClose,
+                        stockProfit: stat.stockProfit,
                         startDate: stat.minDate,
                         endDate: stat.maxDate,
                         latestTrade: stat.latestTrade,
@@ -294,6 +297,7 @@ export default function TradeGroupsPage() {
                         holdingShares: stat.holdingShares,
                         holdingAvgPrice: stat.holdingShares !== 0 ? Math.abs(stat.holdingCost / stat.holdingShares) : 0,
                         underlyings: Array.from(stat.underlyings),
+                        types: stat.types,
                         id: dbGroup.id
                     };
                 });
