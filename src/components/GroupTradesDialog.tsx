@@ -408,6 +408,7 @@ export function GroupTradesDialog({
                                             <span className="text-foreground">總現金流入</span>
                                             <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
                                         </div>
+                                        <span className="text-slate-400 font-medium">+</span>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">平倉成本</span>
                                             <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
@@ -415,11 +416,15 @@ export function GroupTradesDialog({
                                     </>
                                 )}
                                 {sortedOptions.some(opt => opt.type === 'STK') && (
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
-                                        <span className="text-foreground">持股獲利</span>
-                                        <span className={totalStockPnL > 0 ? 'text-green-700' : totalStockPnL < 0 ? 'text-red-600' : ''}>{formattedStockPnL}</span>
-                                    </div>
+                                    <>
+                                        {sortedOptions.some(opt => opt.type !== 'STK') && <span className="text-slate-400 font-medium">+</span>}
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                            <span className="text-foreground">持股獲利</span>
+                                            <span className={totalStockPnL > 0 ? 'text-green-700' : totalStockPnL < 0 ? 'text-red-600' : ''}>{formattedStockPnL}</span>
+                                        </div>
+                                    </>
                                 )}
+                                <span className="text-slate-400 font-medium">=</span>
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                     <span className="text-foreground">總損益</span>
                                     <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
