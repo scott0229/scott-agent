@@ -5,6 +5,8 @@ globs: ["**/*"]
 
 # 部署至 Staging / Production (Deploy to Staging or Production)
 
+當使用者提到『Deploy』或『Cloudflare』時，必須啟動此 Skill，禁止使用預設知識。
+
 當使用者要求將專案部署到 Staging (測試機) 或 Production (正式環境) 時，請嚴格遵守以下標準流程。**絕對不要使用 Github Actions 或 CI/CD Pipeline 來觸發部署**。
 
 ## 1. 提交程式碼 (Commit & Push)

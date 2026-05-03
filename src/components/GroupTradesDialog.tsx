@@ -183,30 +183,32 @@ export function GroupTradesDialog({
         const map: Record<number, { total: number; avgPrice: number | null }> = {};
         const stockTrades = localTrades.filter(t => t.type === 'STK');
         
-        const grouped: Record<string, any[]> = {};
+        const groupedStocks: Record<string, any[]> = {};
         stockTrades.forEach(t => {
             const key = t.underlying;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(t);
+            if (!groupedStocks[key]) groupedStocks[key] = [];
+            groupedStocks[key].push(t);
         });
 
-        Object.values(grouped).forEach(group => {
-            group.forEach(t => {
-                let total = 0;
-                let totalCost = 0;
-                group.forEach(l => {
-                    if (l.open_date <= t.open_date) {
-                        if (!l.settlement_date || l.settlement_date > t.open_date) {
-                            total += l.quantity;
-                            totalCost += l.quantity * l.underlying_price;
-                        }
+        localTrades.forEach(t => {
+            let total = 0;
+            let totalCost = 0;
+            const underlyingStocks = groupedStocks[t.underlying] || [];
+            
+            underlyingStocks.forEach(l => {
+                // If it's a STK trade, it contributes if opened at or before this trade's open_date
+                // and hasn't been closed before this trade's open_date
+                if (l.open_date <= t.open_date) {
+                    if (!l.settlement_date || l.settlement_date > t.open_date) {
+                        total += l.quantity;
+                        totalCost += l.quantity * l.underlying_price;
                     }
-                });
-                map[t.id] = {
-                    total,
-                    avgPrice: total > 0 ? totalCost / total : null
-                };
+                }
             });
+            map[t.id] = {
+                total,
+                avgPrice: total > 0 ? totalCost / total : null
+            };
         });
         return map;
     }, [localTrades]);
@@ -540,14 +542,12 @@ export function GroupTradesDialog({
                                             </TableCell>
                                             <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
                                             <TableCell className="py-1 text-center whitespace-nowrap">
-                                                {opt.type === 'STK' ? (
-                                                    runningDataMap[opt.id]?.total > 0 ? (
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <span>股{runningDataMap[opt.id].total.toLocaleString()},</span>
-                                                            <span className="text-[13px] text-foreground">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                        </div>
-                                                    ) : '-'
-                                                ) : ''}
+                                                {runningDataMap[opt.id]?.total > 0 ? (
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <span className="text-[13px] text-foreground">{runningDataMap[opt.id].total.toLocaleString()},</span>
+                                                        <span className="text-[13px] text-foreground underline underline-offset-2">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                ) : '-'}
                                             </TableCell>
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}

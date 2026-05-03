@@ -498,13 +498,13 @@ export default function TradeGroupsPage() {
                     </h1>
                     <div className="flex items-center gap-2">
                         <div className="px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            現金 <span className={totalCash >= 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>{totalCash > 0 ? '+' : ''}{Math.round(totalCash).toLocaleString('en-US')}</span>
+                            現金 <span className={totalCash >= 0 ? "text-green-700" : "text-red-700"}>{totalCash > 0 ? '+' : ''}{Math.round(totalCash).toLocaleString('en-US')}</span>
                         </div>
                         <div className="px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            融資 <span className="font-medium">{marginRate.toFixed(1)}%</span>
+                            融資 <span>{marginRate.toFixed(1)}%</span>
                         </div>
                         <div className="mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            群組盈虧 <span className={totalProfit >= 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                            盈虧 <span className={totalProfit >= 0 ? "text-green-700" : "text-red-700"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -543,19 +543,6 @@ export default function TradeGroupsPage() {
                         </SelectContent>
                     </Select>
                     <Select
-                        value={selectedStatusValue}
-                        onValueChange={(val) => setSelectedStatusValue(val)}
-                    >
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="選擇狀態" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="All">所有狀態</SelectItem>
-                            <SelectItem value="Active">進行中</SelectItem>
-                            <SelectItem value="Terminated">已終止</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select
                         value={selectedSymbolValue}
                         onValueChange={(val) => setSelectedSymbolValue(val)}
                     >
@@ -569,6 +556,19 @@ export default function TradeGroupsPage() {
                                     {sym}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={selectedStatusValue}
+                        onValueChange={(val) => setSelectedStatusValue(val)}
+                    >
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="選擇狀態" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">所有狀態</SelectItem>
+                            <SelectItem value="Active">進行中</SelectItem>
+                            <SelectItem value="Terminated">已終止</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

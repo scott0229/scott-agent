@@ -37,6 +37,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
+import { StockTradesTable } from '@/components/StockTradesTable';
 import { StockTradeDialog } from '@/components/StockTradeDialog';
 import { TransferStockDialog } from '@/components/TransferStockDialog';
 import { Pencil, FilterX, ArrowRightLeft } from "lucide-react";
@@ -465,234 +466,23 @@ export default function StockTradingPage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-secondary hover:bg-secondary">
-                                <TableHead className="w-[50px] text-center"></TableHead>
-                                <TableHead className="text-left"></TableHead>
-                                <TableHead className="text-center w-[95px]"></TableHead>
-                                <TableHead className="text-center">持有者</TableHead>
-                                <TableHead className="text-center">開倉日</TableHead>
-                                <TableHead className="text-center">平倉日</TableHead>
-                                <TableHead className="text-center">標的</TableHead>
-                                <TableHead className="text-center">股數</TableHead>
-                                <TableHead className="text-center">開倉價</TableHead>
-                                <TableHead className="text-center">平倉價</TableHead>
-                                <TableHead className="text-center">當前股價</TableHead>
-                                <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="text-center">當日總倉位</TableHead>
-                                <TableHead className="text-center">盈虧列入期權</TableHead>
-                                {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
-                                <TableHead className="text-right"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedTrades.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={13} className="h-24 text-center">
-                                        無交易紀錄
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                sortedTrades.map((trade, index) => {
-                                    const isClosed = trade.status === 'Closed';
-
-                                    // Calculate P/L based on trade status
-                                    let pnl: number | null = null;
-                                    if (isClosed && trade.close_price) {
-                                        // For closed positions: use close_price
-                                        pnl = Math.round((trade.close_price - trade.open_price) * trade.quantity * 100) / 100;
-                                    } else if (!isClosed && trade.current_market_price) {
-                                        // For holding positions: use current_market_price (收盤價)
-                                        pnl = Math.round((trade.current_market_price - trade.open_price) * trade.quantity * 100) / 100;
-                                    }
-
-                                    return (
-                                        <TableRow key={trade.id} className="h-[40px]">
-                                            <TableCell className="text-center text-muted-foreground font-mono py-1">
-                                                <div className="flex items-center justify-center gap-4">
-                                                    <span>{sortedTrades.length - index}</span>
-                                                    {trade.note?.trim() ? (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleColorToggle(trade.id, trade.note_color);
-                                                            }}
-                                                            className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                                trade.note_color === 'red' ? 'bg-red-500' : trade.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
-                                                            }`}
-                                                            title="切換註解顏色"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-4 h-4 shrink-0" />
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-1 min-w-[180px]">
-                                                <input 
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                    style={{ color: trade.note_color === 'red' ? '#7f1d1d' : trade.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
-                                                    maxLength={50}
-                                                    defaultValue={trade.note || ''}
-                                                    placeholder="..."
-                                                    onBlur={(e) => {
-                                                        if (e.target.value !== (trade.note || '')) {
-                                                            handleNoteUpdate(trade.id, e.target.value);
-                                                        }
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            e.currentTarget.blur();
-                                                        }
-                                                    }}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="py-1 min-w-[95px]">
-                                                {trade.include_in_options === 1 && (
-                                                    <Select 
-                                                        value={trade.group_id ? String(trade.group_id) : "none"} 
-                                                        onValueChange={(val) => handleGroupUpdate(trade.id, val === "none" ? null : val)}
-                                                    >
-                                                        <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
-                                                            trade.group_id && String(trade.group_id).endsWith('-0') 
-                                                                ? 'bg-yellow-100 hover:bg-yellow-200' 
-                                                                : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                    ? 'bg-green-100 hover:bg-green-200'
-                                                                    : 'bg-slate-100 hover:bg-slate-200'
-                                                        }`}>
-                                                            <SelectValue placeholder="-" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
-                                                            {[
-                                                                'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
-                                                                'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
-                                                                'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
-                                                            ].map(n => (
-                                                                <SelectItem key={n} value={n}>{n}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                <span
-                                                    className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
-                                                    onClick={() => setSelectedUserFilter(trade.user_id || '')}
-                                                    title={`點擊過濾 ${trade.user_id} 的交易`}
-                                                >
-                                                    {trade.user_id || '-'}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                {formatDate(trade.open_date)}
-                                                {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
-                                            </TableCell>
-                                            <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
-                                                {trade.close_date ? formatDate(trade.close_date) : 'Open'}
-                                                {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
-                                                {trade.close_source === 'transfer' && <span className="text-xs text-gray-500 font-medium ml-1">(Transferred)</span>}
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                <span
-                                                    className="cursor-pointer hover:text-primary hover:underline hover:font-semibold transition-all duration-150"
-                                                    onClick={() => setSymbolFilter(trade.symbol)}
-                                                    title={`點擊過濾 ${trade.symbol} 的交易`}
-                                                >
-                                                    {trade.symbol}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">{trade.quantity.toLocaleString()}</TableCell>
-                                            <TableCell className="text-center py-1">{formatMoney(trade.open_price)}</TableCell>
-                                            <TableCell className="text-center py-1">
-                                                {trade.close_price ? formatMoney(trade.close_price) : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
-                                            </TableCell>
-                                            <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
-                                                {pnl !== null ? formatPnL(pnl) : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-center py-1 whitespace-nowrap">
-                                                {runningDataMap[trade.id]?.total > 0 
-                                                    ? (
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <span>股{runningDataMap[trade.id].total.toLocaleString()},</span>
-                                                            <span className="text-[13px] text-foreground">均{formatMoney(runningDataMap[trade.id].avgPrice)}</span>
-                                                        </div>
-                                                    )
-                                                    : '-'}
-                                            </TableCell>
-                                            <TableCell className="text-center py-1">
-                                                <button
-                                                    onClick={() => handleToggleIncludeInOptions(trade)}
-                                                    className={cn(
-                                                        "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
-                                                        trade.include_in_options === 1
-                                                            ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
-                                                            : trade.include_in_options === 2
-                                                                ? "bg-red-100 border-red-400 text-red-700 hover:bg-red-200"
-                                                                : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
-                                                    )}
-                                                >
-                                                    {trade.include_in_options === 1 ? '✓' : trade.include_in_options === 2 ? '✕' : ''}
-                                                </button>
-                                            </TableCell>
-                                            {settings.showTradeCode && (
-                                                <TableCell className="text-center font-mono text-sm py-1">
-                                                    {trade.code || '-'}
-                                                </TableCell>
-                                            )}
-                                            <TableCell className="py-1">
-                                                <div className="flex justify-end gap-1">
-                                                    {canEdit(trade) && (
-                                                        <>
-                                                            {!isClosed && (
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => { setTradeToTransfer(trade); setTransferDialogOpen(true); }}
-                                                                            className="text-muted-foreground hover:text-orange-500 hover:bg-orange-50"
-                                                                        >
-                                                                            <ArrowRightLeft className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>手動轉倉 (平倉)</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => { setTradeToEdit(trade); setDialogOpen(true); }}
-                                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>編輯</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-
-
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                <StockTradesTable 
+                    sortedTrades={sortedTrades}
+                    runningDataMap={runningDataMap}
+                    settings={settings}
+                    currentUser={currentUser}
+                    onColorToggle={handleColorToggle}
+                    onNoteUpdate={handleNoteUpdate}
+                    onGroupUpdate={handleGroupUpdate}
+                    onToggleIncludeInOptions={handleToggleIncludeInOptions}
+                    onUserClick={setSelectedUserFilter}
+                    onSymbolClick={setSymbolFilter}
+                    onTransferClick={(trade) => { setTradeToTransfer(trade); setTransferDialogOpen(true); }}
+                    onEditClick={(trade) => { setTradeToEdit(trade); setDialogOpen(true); }}
+                    formatMoney={formatMoney}
+                    formatPnL={formatPnL}
+                    formatDate={formatDate}
+                />
 
                 <StockTradeDialog
                     open={dialogOpen}
