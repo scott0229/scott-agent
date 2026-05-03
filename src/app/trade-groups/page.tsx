@@ -577,10 +577,10 @@ export default function TradeGroupsPage() {
                                 <TableHead className="min-w-[150px]"></TableHead>
                                 <TableHead className="w-[120px]">帳戶</TableHead>
                                 <TableHead>群組</TableHead>
+                                <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
                                 <TableHead>最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
-                                <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">現金流入</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="w-[100px] text-center">接手群組</TableHead>
@@ -661,6 +661,7 @@ export default function TradeGroupsPage() {
                                                 {group.name}
                                             </button>
                                         </TableCell>
+                                        <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
                                         <TableCell className="whitespace-nowrap">
                                             {formatOptionTicker(group.latestTrade)}
@@ -685,7 +686,6 @@ export default function TradeGroupsPage() {
                                                 </span>
                                             ) : '-'}
                                         </TableCell>
-                                        <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-green-700' : group.netCashInflow < 0 ? 'text-red-700' : ''}`}>
                                             {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
                                         </TableCell>
