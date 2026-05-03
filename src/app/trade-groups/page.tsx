@@ -583,7 +583,7 @@ export default function TradeGroupsPage() {
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[40px] text-center"></TableHead>
                                 <TableHead className="min-w-[150px]"></TableHead>
-                                <TableHead className="w-[120px]">帳戶</TableHead>
+                                <TableHead className="w-[90px]">帳戶</TableHead>
                                 <TableHead>群組</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
@@ -593,7 +593,7 @@ export default function TradeGroupsPage() {
                                 <TableHead className="text-center">平倉費用</TableHead>
                                 <TableHead className="text-center">持股獲利</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="w-[120px] text-center">狀態</TableHead>
+                                <TableHead className="w-[80px] text-center">狀態</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -709,7 +709,7 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.ownerId, group.name, val)}>
-                                                <SelectTrigger hideIcon className={`h-8 w-[100px] text-[13px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
+                                                <SelectTrigger hideIcon className={`h-8 w-[80px] text-[13px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
