@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText, CandlestickChart } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -153,21 +153,7 @@ export function Navbar() {
                         variant={pathname.startsWith('/stocks') ? "default" : "ghost"}
                         className="gap-2"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-4 w-4"
-                        >
-                            <path d="M3 3v18h18" />
-                            <path d="m19 9-5 5-4-4-3 3" />
-                        </svg>
+                        <CandlestickChart className="h-4 w-4" />
                         股票交易
                     </Button>
                 </Link>
