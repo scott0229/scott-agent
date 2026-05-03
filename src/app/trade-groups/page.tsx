@@ -70,6 +70,7 @@ interface GroupStat {
     name: string;
     count: number;
     profit: number;
+    netCashInflow: number;
     startDate: number;
     endDate: number;
     latestTrade: any;
@@ -189,7 +190,7 @@ export default function TradeGroupsPage() {
                 setAllTrades(currentOptions);
 
                 // 2. Calculate local stats grouped by ownerId + groupName
-                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
+                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, netCashInflow: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
                 
                 currentOptions.forEach((opt: any) => {
                     const groupName = opt.group_id?.toString().trim();
@@ -201,11 +202,19 @@ export default function TradeGroupsPage() {
                     const mapKey = `${optOwnerId}_${groupName}`;
 
                     if (!statsMap.has(mapKey)) {
-                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
+                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, netCashInflow: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
                     }
                     const stat = statsMap.get(mapKey)!;
                     stat.count += 1;
                     stat.profit += (opt.final_profit || 0);
+                    
+                    if (opt.type !== 'STK') {
+                        if (opt.operation === 'Open' || !opt.settlement_date) {
+                            stat.netCashInflow += (opt.premium || 0);
+                        } else {
+                            stat.netCashInflow += (opt.final_profit || 0);
+                        }
+                    }
                     
                     if (opt.type === 'STK') {
                         stat.types.add(opt.underlying || '股票');
@@ -269,6 +278,7 @@ export default function TradeGroupsPage() {
                         name: actualName,
                         count: stat.count,
                         profit: stat.profit,
+                        netCashInflow: stat.netCashInflow,
                         startDate: stat.minDate,
                         endDate: stat.maxDate,
                         latestTrade: stat.latestTrade,
@@ -572,6 +582,7 @@ export default function TradeGroupsPage() {
                                 <TableHead>最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
+                                <TableHead className="text-center">現金流入</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="w-[100px] text-center">接手群組</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
@@ -580,7 +591,7 @@ export default function TradeGroupsPage() {
                         <TableBody>
                             {filteredGroupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -593,7 +604,7 @@ export default function TradeGroupsPage() {
                                         <React.Fragment key={`${group.ownerId}_${group.name}`}>
                                             {isBoundary && (
                                                 <TableRow className="bg-background hover:bg-background">
-                                                    <TableCell colSpan={12} className="h-6 text-center p-0 align-middle">
+                                                    <TableCell colSpan={13} className="h-6 text-center p-0 align-middle">
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -687,6 +698,9 @@ export default function TradeGroupsPage() {
                                             ) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
+                                        <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-green-700' : group.netCashInflow < 0 ? 'text-red-700' : ''}`}>
+                                            {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
+                                        </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
