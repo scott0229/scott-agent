@@ -214,6 +214,20 @@ export function GroupTradesDialog({
     const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
+    const totalNetCashInflow = sortedOptions
+        .filter(opt => opt.type !== 'STK')
+        .reduce((sum, opt) => {
+            if (opt.operation === 'Open' || !opt.settlement_date) {
+                return sum + (opt.premium || 0);
+            } else {
+                return sum + (opt.final_profit || 0);
+            }
+        }, 0);
+    
+    const formattedNetCash = totalNetCashInflow > 0 
+        ? `+${totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
+        : (totalNetCashInflow < 0 ? totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '0');
+
     const rollProfitsMap = new Map<number, number>();
     
     // Group trades by Date + Underlying + Type for batch roll detection (handles 1-to-1, 1-to-N, N-to-M splits)
@@ -378,7 +392,13 @@ export function GroupTradesDialog({
                     </DialogTitle>
                 </DialogHeader>
                 
-                <div className="bg-white rounded-lg shadow-sm border overflow-x-auto mt-4">
+                {sortedOptions.some(opt => opt.type !== 'STK') && (
+                    <div className="text-[15px] font-medium text-foreground mt-2 px-1">
+                        總淨現金流入 <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                    </div>
+                )}
+                
+                <div className="bg-white rounded-lg shadow-sm border overflow-x-auto mt-3">
                     <Table className="whitespace-nowrap">
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
