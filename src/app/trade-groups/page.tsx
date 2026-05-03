@@ -212,14 +212,9 @@ export default function TradeGroupsPage() {
                     if (opt.type !== 'STK') {
                         if (opt.operation === 'Open' || !opt.settlement_date) {
                             stat.netCashInflow += (opt.premium || 0);
+                            stat.openCostToClose += ((opt.premium || 0) - (opt.final_profit || 0));
                         } else {
                             stat.netCashInflow += (opt.final_profit || 0);
-                        }
-                        if (opt.status === 'Open' && opt.operation !== 'Expired' && opt.operation !== 'Assigned') {
-                            const currentPrice = opt.current_market_price || 0;
-                            const quantity = opt.quantity || 0;
-                            const multiplier = 100;
-                            stat.openCostToClose += (currentPrice * quantity * multiplier);
                         }
                     }
                     
