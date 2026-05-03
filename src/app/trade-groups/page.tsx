@@ -692,8 +692,8 @@ export default function TradeGroupsPage() {
                                         <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-green-700' : group.netCashInflow < 0 ? 'text-red-700' : ''}`}>
                                             {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
                                         </TableCell>
-                                        <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-slate-600' : ''}`}>
-                                            {group.openCostToClose > 0 ? '+' : ''}{group.openCostToClose === 0 ? '-' : Math.round(group.openCostToClose).toLocaleString('en-US')}
+                                        <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-red-700' : group.openCostToClose < 0 ? 'text-green-700' : ''}`}>
+                                            {group.openCostToClose > 0 ? '-' : (group.openCostToClose < 0 ? '+' : '')}{group.openCostToClose === 0 ? '-' : Math.abs(Math.round(group.openCostToClose)).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}

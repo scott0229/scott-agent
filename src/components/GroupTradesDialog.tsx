@@ -233,8 +233,8 @@ export function GroupTradesDialog({
         .reduce((sum, opt) => sum + ((opt.premium || 0) - (opt.final_profit || 0)), 0);
 
     const formattedOpenCost = totalOpenCostToClose > 0 
-        ? `+${totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
-        : (totalOpenCostToClose === 0 ? "0" : totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
+        ? `-${totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
+        : (totalOpenCostToClose === 0 ? "0" : `+${Math.abs(totalOpenCostToClose).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
 
     const rollProfitsMap = new Map<number, number>();
     
