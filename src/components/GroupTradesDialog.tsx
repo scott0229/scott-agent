@@ -236,6 +236,14 @@ export function GroupTradesDialog({
         ? `-${totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
         : (totalOpenCostToClose === 0 ? "0" : `+${Math.abs(totalOpenCostToClose).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
 
+    const totalStockPnL = sortedOptions
+        .filter(opt => opt.type === 'STK')
+        .reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
+
+    const formattedStockPnL = totalStockPnL > 0 
+        ? `+${totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
+        : (totalStockPnL === 0 ? "0" : totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
+
     const rollProfitsMap = new Map<number, number>();
     
     // Group trades by Date + Underlying + Type for batch roll detection (handles 1-to-1, 1-to-N, N-to-M splits)
@@ -392,16 +400,26 @@ export function GroupTradesDialog({
                         ) : (
                             <span>{groupName}</span>
                         )}
-                        {sortedOptions.some(opt => opt.type !== 'STK') && (
+                        {sortedOptions.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2 ml-2">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
-                                    <span className="text-foreground">總現金流入</span>
-                                    <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
-                                    <span className="text-foreground">平倉成本</span>
-                                    <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
-                                </div>
+                                {sortedOptions.some(opt => opt.type !== 'STK') && (
+                                    <>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                            <span className="text-foreground">總現金流入</span>
+                                            <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                            <span className="text-foreground">平倉成本</span>
+                                            <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {sortedOptions.some(opt => opt.type === 'STK') && (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                        <span className="text-foreground">持股獲利</span>
+                                        <span className={totalStockPnL > 0 ? 'text-green-700' : totalStockPnL < 0 ? 'text-red-600' : ''}>{formattedStockPnL}</span>
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                     <span className="text-foreground">總損益</span>
                                     <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
