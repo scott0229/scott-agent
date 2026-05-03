@@ -191,7 +191,7 @@ export default function TradeGroupsPage() {
                 setAllTrades(currentOptions);
 
                 // 2. Calculate local stats grouped by ownerId + groupName
-                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, netCashInflow: number, openCostToClose: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
+                const statsMap = new Map<string, { ownerId: number, count: number, profit: number, netCashInflow: number, openCostToClose: number, stockProfit: number, minDate: number, maxDate: number, latestTrade: any, types: Set<string>, holdingShares: number, holdingCost: number, underlyings: Set<string> }>();
                 
                 currentOptions.forEach((opt: any) => {
                     const groupName = opt.group_id?.toString().trim();
@@ -203,7 +203,7 @@ export default function TradeGroupsPage() {
                     const mapKey = `${optOwnerId}_${groupName}`;
 
                     if (!statsMap.has(mapKey)) {
-                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, netCashInflow: 0, openCostToClose: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
+                        statsMap.set(mapKey, { ownerId: optOwnerId, count: 0, profit: 0, netCashInflow: 0, openCostToClose: 0, stockProfit: 0, minDate: tradeDate, maxDate: tradeDate, latestTrade: opt, types: new Set<string>(), holdingShares: 0, holdingCost: 0, underlyings: new Set<string>() });
                     }
                     const stat = statsMap.get(mapKey)!;
                     stat.count += 1;
@@ -220,6 +220,7 @@ export default function TradeGroupsPage() {
                     
                     if (opt.type === 'STK') {
                         stat.types.add(opt.underlying || '股票');
+                        stat.stockProfit += (opt.final_profit || 0);
                         if (opt.status === 'Open') {
                             stat.holdingShares += opt.quantity || 0;
                             stat.holdingCost += (opt.quantity || 0) * (opt.underlying_price || 0);
@@ -586,6 +587,7 @@ export default function TradeGroupsPage() {
                                 <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">現金流入</TableHead>
                                 <TableHead className="text-center">平倉費用</TableHead>
+                                <TableHead className="text-center">持股獲利</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
                             </TableRow>
@@ -593,7 +595,7 @@ export default function TradeGroupsPage() {
                         <TableBody>
                             {filteredGroupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -694,6 +696,9 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-red-700' : group.openCostToClose < 0 ? 'text-green-700' : ''}`}>
                                             {group.openCostToClose > 0 ? '-' : (group.openCostToClose < 0 ? '+' : '')}{group.openCostToClose === 0 ? '-' : Math.abs(Math.round(group.openCostToClose)).toLocaleString('en-US')}
+                                        </TableCell>
+                                        <TableCell className={`text-center font-medium ${group.stockProfit > 0 ? 'text-green-700' : group.stockProfit < 0 ? 'text-red-700' : ''}`}>
+                                            {!Array.from(group.types).some(t => t !== 'CALL' && t !== 'PUT') && group.stockProfit === 0 ? '-' : (group.stockProfit > 0 ? '+' : '') + Math.round(group.stockProfit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
