@@ -587,7 +587,7 @@ export default function TradeGroupsPage() {
                                 <TableHead>群組</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
-                                <TableHead className="w-[180px]">最後交易</TableHead>
+                                <TableHead className="w-[240px]">最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">現金流入</TableHead>
                                 <TableHead className="text-center">平倉費用</TableHead>
@@ -672,9 +672,9 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
-                                        <TableCell className="max-w-[180px]">
-                                            <div className="flex items-center min-w-0">
-                                                <div className="truncate flex-shrink">
+                                        <TableCell className="whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div>
                                                     {formatOptionTicker(group.latestTrade)}
                                                 </div>
                                                 {group.latestTrade && (() => {
