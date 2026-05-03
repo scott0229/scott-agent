@@ -587,7 +587,7 @@ export default function TradeGroupsPage() {
                                 <TableHead>群組</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">起始日</TableHead>
-                                <TableHead>最後交易</TableHead>
+                                <TableHead className="w-[180px]">最後交易</TableHead>
                                 <TableHead>持股成本</TableHead>
                                 <TableHead className="text-center">現金流入</TableHead>
                                 <TableHead className="text-center">平倉費用</TableHead>
@@ -672,21 +672,25 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className="text-center">{formatDate(group.startDate)}</TableCell>
-                                        <TableCell className="whitespace-nowrap">
-                                            {formatOptionTicker(group.latestTrade)}
-                                            {group.latestTrade && (() => {
-                                                const op = group.latestTrade.operation || 'Open';
-                                                let badgeClass = "ml-2 px-2 py-0.5 rounded-sm text-xs font-medium ";
-                                                if (op === 'Assigned') badgeClass += "text-red-600 bg-red-50";
-                                                else if (op === 'Expired') badgeClass += "bg-green-50 text-green-700 rounded-full";
-                                                else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
-                                                else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
-                                                else badgeClass += "text-slate-600";
-                                                
-                                                return (
-                                                    <span className={badgeClass}>{op}</span>
-                                                );
-                                            })()}
+                                        <TableCell className="max-w-[180px]">
+                                            <div className="flex items-center min-w-0">
+                                                <div className="truncate flex-shrink">
+                                                    {formatOptionTicker(group.latestTrade)}
+                                                </div>
+                                                {group.latestTrade && (() => {
+                                                    const op = group.latestTrade.operation || 'Open';
+                                                    let badgeClass = "ml-2 flex-shrink-0 px-2 py-0.5 rounded-sm text-xs font-medium ";
+                                                    if (op === 'Assigned') badgeClass += "text-red-600 bg-red-50";
+                                                    else if (op === 'Expired') badgeClass += "bg-green-50 text-green-700 rounded-full";
+                                                    else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
+                                                    else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
+                                                    else badgeClass += "text-slate-600";
+                                                    
+                                                    return (
+                                                        <span className={badgeClass}>{op}</span>
+                                                    );
+                                                })()}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="whitespace-nowrap">
                                             {group.holdingShares && group.holdingShares !== 0 ? (
