@@ -606,8 +606,8 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1 text-center whitespace-nowrap">
                                                 {runningDataMap[opt.id]?.total > 0 ? (
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <span className="text-[13px] text-foreground">{runningDataMap[opt.id].total.toLocaleString()},</span>
-                                                        <span className="text-[13px] text-foreground underline underline-offset-2">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        <span className="text-foreground">{runningDataMap[opt.id].total.toLocaleString()},</span>
+                                                        <span className="text-foreground underline underline-offset-2">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                     </div>
                                                 ) : '-'}
                                             </TableCell>
