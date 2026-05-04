@@ -414,7 +414,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1400px] max-h-[85vh] flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1000px]' : 'sm:max-w-[1400px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader className="shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                         <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
@@ -493,7 +493,7 @@ export function GroupTradesDialog({
                                 <TableHead className="text-center w-[110px]">群組</TableHead>
                                 {!isOpenOptionsOnly && <TableHead className="text-center">操作</TableHead>}
                                 <TableHead className="text-center">開倉日</TableHead>
-                                <TableHead className="text-center">平倉日</TableHead>
+                                {!isOpenOptionsOnly && <TableHead className="text-center">平倉日</TableHead>}
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
                                 {!isOpenOptionsOnly && <TableHead className="text-center">累積持股</TableHead>}
@@ -591,9 +591,11 @@ export function GroupTradesDialog({
                                                 </TableCell>
                                             )}
                                             <TableCell className="py-1">{formatDate(opt.open_date)}</TableCell>
-                                            <TableCell className="py-1">
-                                                {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
-                                            </TableCell>
+                                            {!isOpenOptionsOnly && (
+                                                <TableCell className="py-1">
+                                                    {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="py-1 font-mono text-foreground">
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
