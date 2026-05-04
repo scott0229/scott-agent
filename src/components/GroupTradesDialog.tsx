@@ -191,8 +191,14 @@ export function GroupTradesDialog({
         }
     };
 
-    // Sort trades: strictly by open_date desc
+    // Sort trades: by owner_name (if shown) then strictly by open_date desc
     const sortedOptions = [...localTrades].sort((a, b) => {
+        if (showAccountColumn) {
+            const nameA = a.owner_name || '';
+            const nameB = b.owner_name || '';
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+        }
         return b.open_date - a.open_date;
     });
 
