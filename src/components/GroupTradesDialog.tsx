@@ -73,6 +73,7 @@ export function GroupTradesDialog({
     trades,
     hideOwnerSuffix = false,
     hideSummary = false,
+    showAccountColumn = false,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
