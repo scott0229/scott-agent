@@ -102,6 +102,7 @@ export default function TradeGroupsPage() {
     const [allTrades, setAllTrades] = useState<any[]>([]);
     const [selectedGroup, setSelectedGroup] = useState<{name: string, ownerId: number, ownerName: string, id?: number} | null>(null);
     const [isUserStockDialogOpen, setIsUserStockDialogOpen] = useState(false);
+    const [isOpenOptionsDialogOpen, setIsOpenOptionsDialogOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
@@ -574,13 +575,22 @@ export default function TradeGroupsPage() {
                         </SelectContent>
                     </Select>
                     {selectedUserValue !== 'All' && (
-                        <Button 
-                            variant="outline" 
-                            className="ml-2 font-normal"
-                            onClick={() => setIsUserStockDialogOpen(true)}
-                        >
-                            股票交易記錄
-                        </Button>
+                        <>
+                            <Button 
+                                variant="outline" 
+                                className="font-normal"
+                                onClick={() => setIsOpenOptionsDialogOpen(true)}
+                            >
+                                未平倉期權
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="ml-2 font-normal"
+                                onClick={() => setIsUserStockDialogOpen(true)}
+                            >
+                                股票交易記錄
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
@@ -759,6 +769,23 @@ export default function TradeGroupsPage() {
                         }
                     }}
                     trades={allTrades.filter(t => (t.group_id === selectedGroup.name || t.group_id === selectedGroup.id) && t.owner_id === selectedGroup.ownerId)}
+                />
+            )}
+
+            {selectedUserValue !== 'All' && (
+                <GroupTradesDialog
+                    isOpen={isOpenOptionsDialogOpen}
+                    onOpenChange={setIsOpenOptionsDialogOpen}
+                    groupName="未平倉期權"
+                    ownerName={selectedUserValue}
+                    trades={allTrades.filter(t => 
+                        t.type !== 'STK' && 
+                        (t.operation === 'Open' || !t.settlement_date) && 
+                        t.owner_id === (() => {
+                            const u = users.find(user => user.user_id === selectedUserValue || user.email === selectedUserValue);
+                            return u ? u.id : 0;
+                        })()
+                    )}
                 />
             )}
 
