@@ -417,7 +417,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1000px]' : 'sm:max-w-[1400px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1150px]' : 'sm:max-w-[1400px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader className="shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                         <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
