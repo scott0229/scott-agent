@@ -79,6 +79,8 @@ export function GroupTradesDialog({
     availableGroups?: {name: string, status: string}[];
     onGroupSelect?: (groupName: string) => void;
     trades: any[];
+    hideOwnerSuffix?: boolean;
+    hideSummary?: boolean;
 }) {
     const { settings } = useAdminSettings();
     const { toast } = useToast();
@@ -385,7 +387,7 @@ export function GroupTradesDialog({
             <DialogContent className="sm:max-w-[1400px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <span>{ownerName ? `${ownerName} 群組` : '群組交易明細'}</span>
+                        <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
                         {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
                             <Select value={groupName} onValueChange={onGroupSelect}>
                                 <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 bg-slate-100 hover:bg-slate-200 transition-colors">
@@ -402,7 +404,7 @@ export function GroupTradesDialog({
                         ) : (
                             <span>{groupName}</span>
                         )}
-                        {sortedOptions.length > 0 && (
+                        {!hideSummary && sortedOptions.length > 0 && (
                             <div className="flex flex-wrap items-center gap-2 ml-2">
                                 {sortedOptions.some(opt => opt.type !== 'STK') && (
                                     <>

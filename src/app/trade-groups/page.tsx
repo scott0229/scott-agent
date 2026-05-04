@@ -778,6 +778,8 @@ export default function TradeGroupsPage() {
                     onOpenChange={setIsOpenOptionsDialogOpen}
                     groupName="未平倉期權"
                     ownerName={selectedUserValue}
+                    hideOwnerSuffix={true}
+                    hideSummary={true}
                     trades={allTrades.filter(t => 
                         t.type !== 'STK' && 
                         (t.operation === 'Open' || !t.settlement_date) && 
