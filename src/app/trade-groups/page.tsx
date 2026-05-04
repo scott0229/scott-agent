@@ -782,6 +782,7 @@ export default function TradeGroupsPage() {
                 hideOwnerSuffix={true}
                 hideSummary={true}
                 showAccountColumn={selectedUserValue === 'All'}
+                isOpenOptionsOnly={true}
                 trades={allTrades.filter(t => 
                     t.type !== 'STK' && 
                     (t.operation === 'Open' || !t.settlement_date) && 

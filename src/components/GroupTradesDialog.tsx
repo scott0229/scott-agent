@@ -74,6 +74,7 @@ export function GroupTradesDialog({
     hideOwnerSuffix = false,
     hideSummary = false,
     showAccountColumn = false,
+    isOpenOptionsOnly = false,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -85,6 +86,7 @@ export function GroupTradesDialog({
     hideOwnerSuffix?: boolean;
     hideSummary?: boolean;
     showAccountColumn?: boolean;
+    isOpenOptionsOnly?: boolean;
 }) {
     const { settings } = useAdminSettings();
     const { toast } = useToast();
@@ -483,16 +485,16 @@ export function GroupTradesDialog({
                                 <TableHead className="text-left min-w-[200px] max-w-[300px]"></TableHead>
                                 {showAccountColumn && <TableHead className="text-center w-[90px]">帳戶</TableHead>}
                                 <TableHead className="text-center w-[110px]">群組</TableHead>
-                                <TableHead className="text-center">操作</TableHead>
+                                {!isOpenOptionsOnly && <TableHead className="text-center">操作</TableHead>}
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
-                                <TableHead className="text-center">累積持股</TableHead>
+                                {!isOpenOptionsOnly && <TableHead className="text-center">累積持股</TableHead>}
                                 <TableHead className="text-center">當時股價</TableHead>
-                                {settings.showPremium && <TableHead className="text-center">權利金</TableHead>}
+                                {settings.showPremium && !isOpenOptionsOnly && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">損益</TableHead>
-                                <TableHead className="text-center">展期收益</TableHead>
+                                {!isOpenOptionsOnly && <TableHead className="text-center">展期收益</TableHead>}
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             </TableRow>
                         </TableHeader>
@@ -565,21 +567,23 @@ export function GroupTradesDialog({
                                                     {opt.group_id || '-'}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-1 min-w-[100px]">
-                                                {opt.operation === 'Open' || !opt.operation ? (
-                                                    <Badge variant="secondary" className="bg-yellow-50 text-slate-700 hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
-                                                ) : opt.operation === 'Assigned' ? (
-                                                    <Badge variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
-                                                ) : opt.operation === 'Expired' ? (
-                                                    <Badge variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100 border-none shadow-sm font-medium">Expired</Badge>
-                                                ) : opt.operation === 'Transferred' ? (
-                                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none shadow-sm font-medium">Transferred</Badge>
-                                                ) : opt.operation === 'Closed' ? (
-                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-none shadow-sm font-medium">Closed</Badge>
-                                                ) : (
-                                                    <Badge variant="outline">{opt.operation}</Badge>
-                                                )}
-                                            </TableCell>
+                                            {!isOpenOptionsOnly && (
+                                                <TableCell className="py-1 min-w-[100px]">
+                                                    {opt.operation === 'Open' || !opt.operation ? (
+                                                        <Badge variant="secondary" className="bg-yellow-50 text-slate-700 hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
+                                                    ) : opt.operation === 'Assigned' ? (
+                                                        <Badge variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
+                                                    ) : opt.operation === 'Expired' ? (
+                                                        <Badge variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100 border-none shadow-sm font-medium">Expired</Badge>
+                                                    ) : opt.operation === 'Transferred' ? (
+                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none shadow-sm font-medium">Transferred</Badge>
+                                                    ) : opt.operation === 'Closed' ? (
+                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-none shadow-sm font-medium">Closed</Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">{opt.operation}</Badge>
+                                                    )}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="py-1">{formatDate(opt.open_date)}</TableCell>
                                             <TableCell className="py-1">
                                                 {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
@@ -588,18 +592,20 @@ export function GroupTradesDialog({
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
                                             <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
-                                            <TableCell className="py-1 text-center whitespace-nowrap">
-                                                {runningDataMap[opt.id]?.total > 0 ? (
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <span className="text-[13px] text-foreground">{runningDataMap[opt.id].total.toLocaleString()},</span>
-                                                        <span className="text-[13px] text-foreground underline underline-offset-2">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                    </div>
-                                                ) : '-'}
-                                            </TableCell>
+                                            {!isOpenOptionsOnly && (
+                                                <TableCell className="py-1 text-center whitespace-nowrap">
+                                                    {runningDataMap[opt.id]?.total > 0 ? (
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <span className="text-[13px] text-foreground">{runningDataMap[opt.id].total.toLocaleString()},</span>
+                                                            <span className="text-[13px] text-foreground underline underline-offset-2">均{runningDataMap[opt.id].avgPrice?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        </div>
+                                                    ) : '-'}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="py-1">
                                                 {opt.underlying_price != null ? Number(opt.underlying_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                             </TableCell>
-                                            {settings.showPremium && (
+                                            {settings.showPremium && !isOpenOptionsOnly && (
                                                 <TableCell className="py-1 text-center">
                                                     {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                                 </TableCell>
@@ -607,9 +613,11 @@ export function GroupTradesDialog({
                                             <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
-                                            <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-green-700' : rollProfit && rollProfit < 0 ? 'text-red-600' : ''}`}>
-                                                {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (opt.type === 'STK' ? '' : '-')}
-                                            </TableCell>
+                                            {!isOpenOptionsOnly && (
+                                                <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-green-700' : rollProfit && rollProfit < 0 ? 'text-red-600' : ''}`}>
+                                                    {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (opt.type === 'STK' ? '' : '-')}
+                                                </TableCell>
+                                            )}
                                             {settings.showTradeCode && (
                                                 <TableCell className="py-1 text-xs text-muted-foreground font-mono">{opt.code || '-'}</TableCell>
                                             )}
