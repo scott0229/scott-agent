@@ -97,6 +97,12 @@ export function GroupTradesDialog({
         setLocalTrades(trades);
     }, [trades]);
 
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedUnderlying('All');
+        }
+    }, [isOpen]);
+
     const handleNoteUpdate = async (trade: any, newNote: string) => {
         const previousNote = trade.note;
         if (previousNote === newNote) return;
