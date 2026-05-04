@@ -386,8 +386,8 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[1400px] max-h-[85vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[1400px] max-h-[85vh] flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader className="shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                         <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
                         {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
@@ -440,9 +440,9 @@ export function GroupTradesDialog({
                     </DialogTitle>
                 </DialogHeader>
                 
-                <div className="bg-white rounded-lg shadow-sm border overflow-x-auto mt-3">
-                    <Table className="whitespace-nowrap">
-                        <TableHeader>
+                <div className="bg-white rounded-lg shadow-sm border overflow-auto mt-3 flex-1 min-h-0">
+                    <Table className="whitespace-nowrap relative">
+                        <TableHeader className="sticky top-0 z-10 bg-secondary shadow-sm">
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="text-center w-[60px] px-2"></TableHead>
                                 <TableHead className="text-left min-w-[200px] max-w-[300px]"></TableHead>
