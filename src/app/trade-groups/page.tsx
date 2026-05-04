@@ -193,6 +193,10 @@ export default function TradeGroupsPage() {
                 const userMap = new Map();
                 users.forEach(u => userMap.set(u.id, u.user_id || u.email));
 
+                currentOptions.forEach((opt: any) => {
+                    opt.owner_name = userMap.get(opt.owner_id) || `User ${opt.owner_id}`;
+                });
+
                 setAllTrades(currentOptions);
 
                 // 2. Calculate local stats grouped by ownerId + groupName
@@ -574,23 +578,21 @@ export default function TradeGroupsPage() {
                             <SelectItem value="Terminated">已終止</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Button 
+                        variant="outline" 
+                        className="font-normal"
+                        onClick={() => setIsOpenOptionsDialogOpen(true)}
+                    >
+                        未平倉期權
+                    </Button>
                     {selectedUserValue !== 'All' && (
-                        <>
-                            <Button 
-                                variant="outline" 
-                                className="font-normal"
-                                onClick={() => setIsOpenOptionsDialogOpen(true)}
-                            >
-                                未平倉期權
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                className="ml-2 font-normal"
-                                onClick={() => setIsUserStockDialogOpen(true)}
-                            >
-                                股票交易記錄
-                            </Button>
-                        </>
+                        <Button 
+                            variant="outline" 
+                            className="ml-2 font-normal"
+                            onClick={() => setIsUserStockDialogOpen(true)}
+                        >
+                            股票交易記錄
+                        </Button>
                     )}
                 </div>
             </div>
@@ -772,24 +774,23 @@ export default function TradeGroupsPage() {
                 />
             )}
 
-            {selectedUserValue !== 'All' && (
-                <GroupTradesDialog
-                    isOpen={isOpenOptionsDialogOpen}
-                    onOpenChange={setIsOpenOptionsDialogOpen}
-                    groupName="未平倉期權"
-                    ownerName={selectedUserValue}
-                    hideOwnerSuffix={true}
-                    hideSummary={true}
-                    trades={allTrades.filter(t => 
-                        t.type !== 'STK' && 
-                        (t.operation === 'Open' || !t.settlement_date) && 
-                        t.owner_id === (() => {
-                            const u = users.find(user => user.user_id === selectedUserValue || user.email === selectedUserValue);
-                            return u ? u.id : 0;
-                        })()
-                    )}
-                />
-            )}
+            <GroupTradesDialog
+                isOpen={isOpenOptionsDialogOpen}
+                onOpenChange={setIsOpenOptionsDialogOpen}
+                groupName="未平倉期權"
+                ownerName={selectedUserValue === 'All' ? '全部的帳戶' : selectedUserValue}
+                hideOwnerSuffix={true}
+                hideSummary={true}
+                showAccountColumn={selectedUserValue === 'All'}
+                trades={allTrades.filter(t => 
+                    t.type !== 'STK' && 
+                    (t.operation === 'Open' || !t.settlement_date) && 
+                    (selectedUserValue === 'All' || t.owner_id === (() => {
+                        const u = users.find(user => user.user_id === selectedUserValue || user.email === selectedUserValue);
+                        return u ? u.id : 0;
+                    })())
+                )}
+            />
 
             {selectedUserValue !== 'All' && (
                 <UserStockTradesDialog

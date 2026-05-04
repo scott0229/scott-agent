@@ -83,6 +83,7 @@ export function GroupTradesDialog({
     trades: any[];
     hideOwnerSuffix?: boolean;
     hideSummary?: boolean;
+    showAccountColumn?: boolean;
 }) {
     const { settings } = useAdminSettings();
     const { toast } = useToast();
@@ -446,7 +447,8 @@ export function GroupTradesDialog({
                             <TableRow className="bg-secondary hover:bg-secondary">
                                 <TableHead className="text-center w-[60px] px-2"></TableHead>
                                 <TableHead className="text-left min-w-[200px] max-w-[300px]"></TableHead>
-                                <TableHead className="text-center w-[110px]"></TableHead>
+                                {showAccountColumn && <TableHead className="text-center w-[90px]">帳戶</TableHead>}
+                                <TableHead className="text-center w-[110px]">群組</TableHead>
                                 <TableHead className="text-center">操作</TableHead>
                                 <TableHead className="text-center">開倉日</TableHead>
                                 <TableHead className="text-center">平倉日</TableHead>
@@ -511,6 +513,13 @@ export function GroupTradesDialog({
                                                     }}
                                                 />
                                             </TableCell>
+                                            {showAccountColumn && (
+                                                <TableCell className="py-1 text-center text-xs font-medium text-slate-600">
+                                                    <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded">
+                                                        {opt.owner_name || '-'}
+                                                    </span>
+                                                </TableCell>
+                                            )}
                                             <TableCell className="py-1 min-w-[110px]">
                                                 <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${
                                                     opt.group_id && String(opt.group_id).endsWith('-0') 
