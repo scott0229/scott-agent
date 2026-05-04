@@ -576,10 +576,10 @@ export default function TradeGroupsPage() {
                     {selectedUserValue !== 'All' && (
                         <Button 
                             variant="outline" 
-                            className="ml-2 font-medium"
+                            className="ml-2 font-normal"
                             onClick={() => setIsUserStockDialogOpen(true)}
                         >
-                            股票交易
+                            股票交易記錄
                         </Button>
                     )}
                 </div>
