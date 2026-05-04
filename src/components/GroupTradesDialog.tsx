@@ -75,6 +75,7 @@ export function GroupTradesDialog({
     hideSummary = false,
     showAccountColumn = false,
     isOpenOptionsOnly = false,
+    stockTradesContext = [],
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -87,6 +88,7 @@ export function GroupTradesDialog({
     hideSummary?: boolean;
     showAccountColumn?: boolean;
     isOpenOptionsOnly?: boolean;
+    stockTradesContext?: any[];
 }) {
     const { settings } = useAdminSettings();
     const { toast } = useToast();
@@ -213,11 +215,11 @@ export function GroupTradesDialog({
 
     const runningDataMap = React.useMemo(() => {
         const map: Record<number, { total: number; avgPrice: number | null }> = {};
-        const stockTrades = localTrades.filter(t => t.type === 'STK');
+        const stockTrades = stockTradesContext.length > 0 ? stockTradesContext : localTrades.filter(t => t.type === 'STK');
         
         const groupedStocks: Record<string, any[]> = {};
         stockTrades.forEach(t => {
-            const key = t.underlying;
+            const key = `${t.owner_id}_${t.underlying}`;
             if (!groupedStocks[key]) groupedStocks[key] = [];
             groupedStocks[key].push(t);
         });
@@ -225,7 +227,8 @@ export function GroupTradesDialog({
         localTrades.forEach(t => {
             let total = 0;
             let totalCost = 0;
-            const underlyingStocks = groupedStocks[t.underlying] || [];
+            const key = `${t.owner_id}_${t.underlying}`;
+            const underlyingStocks = groupedStocks[key] || [];
             
             underlyingStocks.forEach(l => {
                 // If it's a STK trade, it contributes if opened at or before this trade's open_date
@@ -243,7 +246,7 @@ export function GroupTradesDialog({
             };
         });
         return map;
-    }, [localTrades]);
+    }, [localTrades, stockTradesContext]);
 
     const totalPnL = filteredSortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');

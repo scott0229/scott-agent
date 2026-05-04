@@ -791,6 +791,13 @@ export default function TradeGroupsPage() {
                         return u ? u.id : 0;
                     })())
                 )}
+                stockTradesContext={allTrades.filter(t => 
+                    t.type === 'STK' && 
+                    (selectedUserValue === 'All' || t.owner_id === (() => {
+                        const u = users.find(user => user.user_id === selectedUserValue || user.email === selectedUserValue);
+                        return u ? u.id : 0;
+                    })())
+                )}
             />
 
             {selectedUserValue !== 'All' && (
