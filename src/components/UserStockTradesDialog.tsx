@@ -214,7 +214,7 @@ export function UserStockTradesDialog({ isOpen, onOpenChange, ownerId, ownerName
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[1400px] w-[95vw] max-h-[85vh] flex flex-col p-6">
                 <DialogHeader className="mb-4">
-                    <DialogTitle className="text-2xl font-bold">{ownerName} 的股票交易 ({year === 'All' ? new Date().getFullYear() : year})</DialogTitle>
+                    <DialogTitle className="text-2xl font-bold">{ownerName} 的股票交易記錄</DialogTitle>
                 </DialogHeader>
                 
                 <div className={`flex-1 overflow-auto rounded-md border ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
