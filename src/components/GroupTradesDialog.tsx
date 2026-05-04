@@ -453,7 +453,7 @@ export function GroupTradesDialog({
                             </Select>
                         )}
                         {!hideSummary && filteredSortedOptions.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 ml-auto text-base font-normal">
+                            <div className="flex flex-wrap items-center gap-2 ml-2 text-base font-normal">
                                 {filteredSortedOptions.some(opt => opt.type !== 'STK') && (
                                     <>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
