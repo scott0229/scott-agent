@@ -533,7 +533,7 @@ export default function TradeGroupsPage() {
                         value={selectedUserValue}
                         onValueChange={(val) => setSelectedUserValue(val)}
                     >
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[140px]">
                             <SelectValue placeholder="選擇用戶" />
                         </SelectTrigger>
                         <SelectContent>
@@ -549,7 +549,7 @@ export default function TradeGroupsPage() {
                         value={selectedSymbolValue}
                         onValueChange={(val) => setSelectedSymbolValue(val)}
                     >
-                        <SelectTrigger className="w-[150px]">
+                        <SelectTrigger className="w-[110px]">
                             <SelectValue placeholder="選擇標的" />
                         </SelectTrigger>
                         <SelectContent>
@@ -565,7 +565,7 @@ export default function TradeGroupsPage() {
                         value={selectedStatusValue}
                         onValueChange={(val) => setSelectedStatusValue(val)}
                     >
-                        <SelectTrigger className="w-[150px]">
+                        <SelectTrigger className="w-[110px]">
                             <SelectValue placeholder="選擇狀態" />
                         </SelectTrigger>
                         <SelectContent>
