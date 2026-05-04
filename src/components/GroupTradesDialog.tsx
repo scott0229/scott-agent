@@ -71,6 +71,8 @@ export function GroupTradesDialog({
     availableGroups = [],
     onGroupSelect,
     trades,
+    hideOwnerSuffix = false,
+    hideSummary = false,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
