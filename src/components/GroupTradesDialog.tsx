@@ -89,6 +89,7 @@ export function GroupTradesDialog({
     const { settings } = useAdminSettings();
     const { toast } = useToast();
     const [localTrades, setLocalTrades] = useState<any[]>(trades);
+    const [selectedUnderlying, setSelectedUnderlying] = useState<string>('All');
 
     useEffect(() => {
         setLocalTrades(trades);
@@ -185,6 +186,23 @@ export function GroupTradesDialog({
         return b.open_date - a.open_date;
     });
 
+    const availableUnderlyings = React.useMemo(() => {
+        const set = new Set<string>();
+        localTrades.forEach(t => {
+            if (t.underlying) set.add(t.underlying);
+        });
+        return Array.from(set).sort();
+    }, [localTrades]);
+
+    const filteredSortedOptions = React.useMemo(() => {
+        return sortedOptions.filter(opt => {
+            if (selectedUnderlying !== 'All' && opt.underlying !== selectedUnderlying) {
+                return false;
+            }
+            return true;
+        });
+    }, [sortedOptions, selectedUnderlying]);
+
     const runningDataMap = React.useMemo(() => {
         const map: Record<number, { total: number; avgPrice: number | null }> = {};
         const stockTrades = localTrades.filter(t => t.type === 'STK');
@@ -219,10 +237,10 @@ export function GroupTradesDialog({
         return map;
     }, [localTrades]);
 
-    const totalPnL = sortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
+    const totalPnL = filteredSortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
     const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
-    const totalNetCashInflow = sortedOptions
+    const totalNetCashInflow = filteredSortedOptions
         .filter(opt => opt.type !== 'STK')
         .reduce((sum, opt) => {
             if (opt.operation === 'Open' || !opt.settlement_date) {
@@ -236,7 +254,7 @@ export function GroupTradesDialog({
         ? `+${totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
         : (totalNetCashInflow < 0 ? totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '0');
 
-    const totalOpenCostToClose = sortedOptions
+    const totalOpenCostToClose = filteredSortedOptions
         .filter(opt => opt.type !== 'STK' && (opt.operation === 'Open' || !opt.settlement_date))
         .reduce((sum, opt) => sum + ((opt.premium || 0) - (opt.final_profit || 0)), 0);
 
@@ -244,7 +262,7 @@ export function GroupTradesDialog({
         ? `-${totalOpenCostToClose.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
         : (totalOpenCostToClose === 0 ? "0" : `+${Math.abs(totalOpenCostToClose).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
 
-    const totalStockPnL = sortedOptions
+    const totalStockPnL = filteredSortedOptions
         .filter(opt => opt.type === 'STK')
         .reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
 
@@ -408,9 +426,24 @@ export function GroupTradesDialog({
                         ) : (
                             <span>{groupName}</span>
                         )}
-                        {!hideSummary && sortedOptions.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 ml-2">
-                                {sortedOptions.some(opt => opt.type !== 'STK') && (
+                        {availableUnderlyings.length > 1 && (
+                            <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
+                                <SelectTrigger className="w-[120px] h-8 text-[14px] font-normal border-none shadow-none bg-slate-100 hover:bg-slate-200 focus:ring-0 ml-2">
+                                    <SelectValue placeholder="標的篩選" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">全部標的</SelectItem>
+                                    {availableUnderlyings.map(sym => (
+                                        <SelectItem key={sym} value={sym}>
+                                            {sym}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {!hideSummary && filteredSortedOptions.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 ml-auto text-base font-normal">
+                                {filteredSortedOptions.some(opt => opt.type !== 'STK') && (
                                     <>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">總現金流入</span>
@@ -423,9 +456,9 @@ export function GroupTradesDialog({
                                         </div>
                                     </>
                                 )}
-                                {sortedOptions.some(opt => opt.type === 'STK') && (
+                                {filteredSortedOptions.some(opt => opt.type === 'STK') && (
                                     <>
-                                        {sortedOptions.some(opt => opt.type !== 'STK') && <span className="text-slate-400 font-medium">+</span>}
+                                        {filteredSortedOptions.some(opt => opt.type !== 'STK') && <span className="text-slate-400 font-medium">+</span>}
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">持股獲利</span>
                                             <span className={totalStockPnL > 0 ? 'text-green-700' : totalStockPnL < 0 ? 'text-red-600' : ''}>{formattedStockPnL}</span>
@@ -464,14 +497,14 @@ export function GroupTradesDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sortedOptions.length === 0 ? (
+                            {filteredSortedOptions.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                                         尚無交易
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                sortedOptions.map((opt, index) => {
+                                filteredSortedOptions.map((opt, index) => {
                                     const rollProfit = rollProfitsMap.has(opt.id) ? rollProfitsMap.get(opt.id) : null;
 
                                     return (
@@ -481,7 +514,7 @@ export function GroupTradesDialog({
                                         >
                                             <TableCell className="py-1 w-[60px] px-2">
                                                 <div className="flex items-center justify-end gap-3 pr-2">
-                                                    <span className="text-muted-foreground">{sortedOptions.length - index}</span>
+                                                    <span className="text-muted-foreground">{filteredSortedOptions.length - index}</span>
                                                     {opt.note?.trim() ? (
                                                         <button
                                                             type="button"
