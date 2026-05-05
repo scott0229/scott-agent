@@ -50,13 +50,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: '無效的憑證' }, { status: 401 });
     }
 
-    const { userId, avatarUrl, currentPassword, newPassword, apiKey, autoUpdateTime } = await req.json() as {
+    const { userId, avatarUrl, currentPassword, newPassword, apiKey, autoUpdateTime, preferences } = await req.json() as {
       userId?: string;
       avatarUrl?: string;
       currentPassword?: string;
       newPassword?: string;
       apiKey?: string;
       autoUpdateTime?: string;
+      preferences?: string;
     };
 
     const group = payload.group || 'advisor';
@@ -115,6 +116,10 @@ export async function PUT(req: NextRequest) {
     if (autoUpdateTime !== undefined) {
       updateQuery += ', auto_update_time = ?';
       updateParams.push(autoUpdateTime);
+    }
+    if (preferences !== undefined) {
+      updateQuery += ', preferences = ?';
+      updateParams.push(preferences);
     }
 
     updateQuery += ' WHERE id = ?';

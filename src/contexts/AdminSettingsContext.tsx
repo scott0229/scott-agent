@@ -20,6 +20,7 @@ interface AdminSettings {
 interface AdminSettingsContextType {
     settings: AdminSettings;
     updateSetting: (key: keyof AdminSettings, value: boolean | number | string) => void;
+    setAllSettings: (newSettings: Partial<AdminSettings>) => void;
 }
 
 const STORAGE_KEY = 'scott-agent-admin-settings';
@@ -67,8 +68,18 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
         });
     };
 
+    const setAllSettings = (newSettings: Partial<AdminSettings>) => {
+        setSettings(prev => {
+            const next = { ...prev, ...newSettings };
+            if (typeof window !== 'undefined') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            }
+            return next;
+        });
+    };
+
     return (
-        <AdminSettingsContext.Provider value={{ settings, updateSetting }}>
+        <AdminSettingsContext.Provider value={{ settings, updateSetting, setAllSettings }}>
             {children}
         </AdminSettingsContext.Provider>
     );

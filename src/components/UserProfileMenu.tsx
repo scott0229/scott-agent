@@ -41,6 +41,7 @@ interface User {
     user_id: string | null;
     avatar_url: string | null;
     role?: string;
+    preferences?: string;
 }
 
 export function UserProfileMenu() {
@@ -59,7 +60,7 @@ export function UserProfileMenu() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const { toast } = useToast();
-    const { settings, updateSetting } = useAdminSettings();
+    const { settings, updateSetting, setAllSettings } = useAdminSettings();
 
     const fetchUser = async () => {
         try {
@@ -72,7 +73,14 @@ export function UserProfileMenu() {
                     console.log('UserProfileMenu - User role:', data.user.role);
                     setEditUserId(data.user.user_id || '');
                     setEditAvatarUrl(data.user.avatar_url || '');
-
+                    if (data.user.preferences) {
+                        try {
+                            const prefs = JSON.parse(data.user.preferences);
+                            setAllSettings(prefs);
+                        } catch (e) {
+                            console.error('Failed to parse preferences', e);
+                        }
+                    }
                 }
             }
         } catch (error) {
@@ -158,7 +166,8 @@ export function UserProfileMenu() {
         try {
             const payload: any = {
                 userId: editUserId,
-                avatarUrl: editAvatarUrl || null
+                avatarUrl: editAvatarUrl || null,
+                preferences: JSON.stringify(settings)
             };
 
             // Include password fields if changing password
