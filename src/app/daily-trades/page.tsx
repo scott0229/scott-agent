@@ -96,6 +96,27 @@ export default function DailyTradesPage() {
                     setDate(availableDates[nextIndex]);
                 }
                 return;
+            } else {
+                // Current date is not in availableDates (e.g. empty weekend or typed URL)
+                // Find nearest available date based on direction
+                if (offset > 0) {
+                    // Find older date
+                    const older = availableDates.find(d => d < date);
+                    if (older) {
+                        setDate(older);
+                        return;
+                    }
+                } else {
+                    // Find newer date
+                    const newer = [...availableDates].reverse().find(d => d > date);
+                    if (newer) {
+                        setDate(newer);
+                        return;
+                    }
+                }
+                // Fallback to latest available date
+                setDate(availableDates[0]);
+                return;
             }
         }
         
@@ -229,9 +250,9 @@ export default function DailyTradesPage() {
             if (canCalc) {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
-                lines.push(`[展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}]`);
+                lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
             } else {
-                lines.push(`[展期]`);
+                lines.push(`展期`);
             }
 
             rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
@@ -385,8 +406,9 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
+                                        const isRollHighlight = line.startsWith('展期盈虧:') || line === '展期';
                                         return (
-                                            <span key={i}>
+                                            <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-amber-900 font-medium' : ''}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
                                             </span>
                                         );
