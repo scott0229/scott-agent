@@ -289,21 +289,22 @@ export default function DailyTradesPage() {
                 totalPremiumOpened += o.price;
             });
             
+            const rollSegments: string[] = [];
+            
             let daysDiffStr = '';
-            let strikeDiffStr = '';
             if (rg.opened.length > 0 && rg.closed.length > 0) {
                 const openToDate = rg.opened[0].to_date;
                 const closeToDate = rg.closed[0].to_date;
                 if (openToDate && closeToDate) {
                     const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
-                    daysDiffStr = ` ${daysDiff}, `;
+                    daysDiffStr = ` ${daysDiff} 天`;
                 }
 
                 const newOpt = rg.opened[0];
                 const oldOpt = rg.closed[0];
                 const strikeDiff = newOpt.strike_price - oldOpt.strike_price;
                 if (strikeDiff !== 0) {
-                    strikeDiffStr = `${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點, `;
+                    rollSegments.push(`調 ${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點`);
                 }
             }
 
@@ -320,7 +321,7 @@ export default function DailyTradesPage() {
                         diff = oldOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
-                        itmString = `, 行權價打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        itmString = `價落後 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                     }
                 }
             }
@@ -328,18 +329,14 @@ export default function DailyTradesPage() {
             if (canCalc) {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
-                if (daysDiffStr) {
-                    lines.push(`${strikeDiffStr}展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
-                } else {
-                    lines.push(`${strikeDiffStr}展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
-                }
-            } else {
-                if (daysDiffStr) {
-                    lines.push(`${strikeDiffStr}展期${daysDiffStr.slice(0, -1)}${itmString}`);
-                } else {
-                    lines.push(`${strikeDiffStr}展期${itmString}`);
-                }
+                rollSegments.push(`盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
             }
+            
+            if (itmString) {
+                rollSegments.push(itmString);
+            }
+
+            lines.push(`展期${daysDiffStr}${rollSegments.length > 0 ? ', ' + rollSegments.join(', ') : ''}`);
 
             rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
             rg.closed.forEach(c => lines.push(formatOptionTrade(c)));
@@ -372,12 +369,12 @@ export default function DailyTradesPage() {
                         const expiryDate = new Date(trade.to_date * 1000);
                         expiryDate.setHours(0, 0, 0, 0);
                         const days = Math.round((expiryDate.getTime() - tradeDate.getTime()) / 86400000);
-                        dteStr = `，到期 ${days} 天`;
+                        dteStr = `, 到期 ${days} 天`;
                     }
-                    const premiumStr = trade.price != null ? `，權利金 ${Math.abs(trade.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                    const premiumStr = trade.price != null ? `, 權利金 ${Math.abs(trade.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
                     prefixLine = `開新倉${dteStr}${premiumStr}\n`;
                 } else {
-                    const profitStr = trade.profit != null ? `，盈虧 ${trade.profit > 0 ? '+' : ''}${trade.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                    const profitStr = trade.profit != null ? `, 盈虧 ${trade.profit > 0 ? '+' : ''}${trade.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
                     prefixLine = `平倉${profitStr}\n`;
                 }
                 
@@ -404,7 +401,7 @@ export default function DailyTradesPage() {
                 
                 <div className="flex items-center gap-2">
                     <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                        <SelectTrigger className="w-[140px] bg-white/50 dark:bg-black/50">
+                        <SelectTrigger className="w-[140px] h-10 bg-white/50 dark:bg-black/50">
                             <SelectValue placeholder="全部帳戶" />
                         </SelectTrigger>
                         <SelectContent>
@@ -417,19 +414,19 @@ export default function DailyTradesPage() {
                         </SelectContent>
                     </Select>
 
-                    <div className="flex items-center gap-2 bg-white/50 dark:bg-black/50 p-1 rounded-md border shadow-sm">
-                        <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
+                    <div className="flex items-center h-10 bg-white/50 dark:bg-black/50 rounded-md border shadow-sm">
+                        <Button variant="ghost" size="icon" className="h-full rounded-r-none" onClick={() => changeDate(-1)}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                    <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"ghost"}
-                                className={cn(
-                                    "w-[140px] justify-center text-center font-normal px-2 hover:bg-transparent",
-                                    !date && "text-muted-foreground"
-                                )}
-                            >
+                        <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"ghost"}
+                                    className={cn(
+                                        "w-[140px] h-full justify-center text-center font-normal px-2 hover:bg-transparent rounded-none border-x border-border/50",
+                                        !date && "text-muted-foreground"
+                                    )}
+                                >
                                 {date ? (
                                     <span>
                                         {date.replace(/-/g, '/')} ({['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()]})
@@ -463,12 +460,12 @@ export default function DailyTradesPage() {
                                 }}
                                 initialFocus
                             />
-                        </PopoverContent>
-                    </Popover>
-                    <Button variant="ghost" size="icon" onClick={() => changeDate(1)}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <Button variant="ghost" size="icon" className="h-full rounded-l-none" onClick={() => changeDate(1)}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -522,21 +519,25 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
                                         
-                                        if (isRollHighlight && line.includes(', 行權價打穿')) {
-                                            const [mainPart, itmPart] = line.split(', 行權價打穿');
-                                            return (
-                                                <span key={i}>
-                                                    <span className="bg-amber-100/80 px-1 rounded text-foreground font-medium">
-                                                        {mainPart}, <span className="text-red-700">行權價打穿{itmPart}</span>
-                                                    </span>
-                                                    {i < arr.length - 1 ? '\n' : ''}
-                                                </span>
-                                            );
-                                        }
+                                        const parts = line.split(/(盈虧 [+-]?[\d,]+(?:\.\d+)?|價落後 [\d,]+(?:\.\d+)?)/);
+                                        const renderedParts = parts.map((part, pIndex) => {
+                                            if (part.startsWith('盈虧 ')) {
+                                                const numStr = part.replace('盈虧 ', '');
+                                                const num = parseFloat(numStr.replace(/,/g, ''));
+                                                const colorClass = num > 0 ? 'text-green-700' : num < 0 ? 'text-red-700' : '';
+                                                return <span key={pIndex}>盈虧 <span className={colorClass}>{numStr}</span></span>;
+                                            } else if (part.startsWith('價落後 ')) {
+                                                return <span key={pIndex} className="text-red-700">{part}</span>;
+                                            }
+                                            return <span key={pIndex}>{part}</span>;
+                                        });
 
                                         return (
-                                            <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
-                                                {line}{i < arr.length - 1 ? '\n' : ''}
+                                            <span key={i}>
+                                                <span className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
+                                                    {renderedParts}
+                                                </span>
+                                                {i < arr.length - 1 ? '\n' : ''}
                                             </span>
                                         );
                                     })}
