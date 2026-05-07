@@ -408,7 +408,7 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.startsWith('展期盈虧:') || line === '展期';
                                         return (
-                                            <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-amber-900 font-medium' : ''}>
+                                            <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
                                             </span>
                                         );
