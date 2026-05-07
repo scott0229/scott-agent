@@ -220,7 +220,17 @@ export default function DailyTradesPage() {
                                         setIsCalendarOpen(false);
                                     }
                                 }}
-                                disabled={(d) => d.getDay() === 0 || d.getDay() === 6 || isMarketHoliday(d)}
+                                disabled={(d) => {
+                                    if (d.getDay() === 0 || d.getDay() === 6 || isMarketHoliday(d)) return true;
+                                    if (availableDates && availableDates.length > 0) {
+                                        const y = d.getFullYear();
+                                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                                        const day = String(d.getDate()).padStart(2, '0');
+                                        const dateStr = `${y}-${m}-${day}`;
+                                        return !availableDates.includes(dateStr);
+                                    }
+                                    return false;
+                                }}
                                 initialFocus
                             />
                         </PopoverContent>
