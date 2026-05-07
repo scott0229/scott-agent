@@ -213,9 +213,6 @@ export default function DailyTradesPage() {
         // Format rolls
         rollGroups.forEach(rg => {
             const lines: string[] = [];
-            lines.push(`[展期]`);
-            rg.closed.forEach(c => lines.push(formatOptionTrade(c)));
-            rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
             
             let canCalc = true;
             let totalCostToClose = 0;
@@ -232,8 +229,14 @@ export default function DailyTradesPage() {
             if (canCalc) {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
-                lines.push(`(展期收益: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })})`);
+                lines.push(`[展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}]`);
+            } else {
+                lines.push(`[展期]`);
             }
+
+            rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
+            rg.closed.forEach(c => lines.push(formatOptionTrade(c)));
+            
             optionChunks.push(lines.join('\n'));
         });
 
