@@ -382,7 +382,7 @@ export default function DailyTradesPage() {
                             <Button
                                 variant={"ghost"}
                                 className={cn(
-                                    "w-[140px] justify-center text-center font-normal px-2 hover:bg-transparent text-lg",
+                                    "w-[140px] justify-center text-center font-normal px-2 hover:bg-transparent",
                                     !date && "text-muted-foreground"
                                 )}
                             >
