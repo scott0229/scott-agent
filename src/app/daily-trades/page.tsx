@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { US_MARKET_HOLIDAYS, isMarketHoliday } from '@/lib/holidays';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -16,6 +17,7 @@ export default function DailyTradesPage() {
     const [date, setDate] = useState<string>('');
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     // Initialize date to the last valid trading day
     useEffect(() => {
@@ -83,6 +85,49 @@ export default function DailyTradesPage() {
         }).format(val);
     };
 
+    const generateTradesText = (userGroup: any) => {
+        let text = ``;
+        if (date) {
+            const d = new Date(date);
+            const dateStr = `${d.getFullYear().toString().slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            text += `交易日期 : ${dateStr}\n`;
+            text += `----------------------------------------\n`;
+        }
+        
+        userGroup.trades.forEach((trade: any) => {
+            const isBuy = trade.quantity > 0;
+            const displayQty = Math.abs(trade.quantity);
+            let actionText = '';
+            
+            if (trade.asset_type === 'stock') {
+                actionText = trade.action_type === 'open' ? '買入' : '賣出';
+            } else {
+                if (trade.action_type === 'open') {
+                    actionText = isBuy ? '買權 (BTO)' : '賣權 (STO)';
+                } else {
+                    actionText = isBuy ? '平倉 (STC)' : '平倉 (BTC)';
+                }
+            }
+            
+            const symbolStr = trade.asset_type === 'stock' 
+                ? trade.symbol 
+                : `${trade.symbol} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
+                
+            const unit = trade.asset_type === 'stock' ? '股' : '口';
+            
+            text += `${actionText} ${symbolStr} ${displayQty}${unit}\n`;
+            
+            if (trade.action_type === 'open' || trade.asset_type === 'stock') {
+                text += `成交價 : ${formatMoney(trade.price)}\n`;
+            } else {
+                const profitStr = trade.profit >= 0 ? `+${formatMoney(trade.profit)}` : formatMoney(trade.profit);
+                text += `平倉損益 : ${profitStr}\n`;
+            }
+            text += `----------------------------------------\n`;
+        });
+        return text;
+    };
+
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -131,106 +176,43 @@ export default function DailyTradesPage() {
                     <p className="text-lg">這個日期沒有任何交易記錄</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {data.map((userGroup: any) => (
-                        <Card key={userGroup.user.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="bg-muted/30 pb-4 border-b">
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10 border shadow-sm">
-                                        <AvatarImage src={userGroup.user.avatar_url || ''} />
-                                        <AvatarFallback>{(userGroup.user.name || userGroup.user.user_id || '?').substring(0, 2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <CardTitle className="text-lg">{userGroup.user.name || userGroup.user.user_id}</CardTitle>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                            {userGroup.user.ib_account || '無 IB 帳號'}
-                                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {data.map((userGroup: any) => {
+                        const reportText = generateTradesText(userGroup);
+                        const userName = userGroup.user.name || userGroup.user.user_id;
+                        
+                        return (
+                            <div key={userGroup.user.id} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-semibold text-sm">{userName} 當日交易</h3>
+                                    <div className="flex gap-0.5 items-center">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                                const fullText = `${userName} 當日交易\n${reportText}`;
+                                                navigator.clipboard.writeText(fullText);
+                                                toast({ title: "已複製", description: `${userName} 的當日交易已複製` });
+                                            }}
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </Button>
                                     </div>
-                                    <Badge variant="outline" className="ml-auto bg-background">
-                                        {userGroup.trades.length} 筆
-                                    </Badge>
                                 </div>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="divide-y">
-                                    {userGroup.trades.map((trade: any) => {
-                                        const isBuy = trade.quantity > 0;
-                                        const displayQty = Math.abs(trade.quantity);
-                                        
-                                        // Determine text color based on action and type
-                                        let actionText = '';
-                                        let actionColor = '';
-                                        
-                                        if (trade.asset_type === 'stock') {
-                                            if (trade.action_type === 'open') {
-                                                actionText = '買入';
-                                                actionColor = 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20';
-                                            } else {
-                                                actionText = '賣出';
-                                                actionColor = 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20';
-                                            }
-                                        } else {
-                                            // Options
-                                            if (trade.action_type === 'open') {
-                                                if (isBuy) {
-                                                    actionText = '買權 (BTO)';
-                                                    actionColor = 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20';
-                                                } else {
-                                                    actionText = '賣權 (STO)';
-                                                    actionColor = 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20';
-                                                }
-                                            } else {
-                                                if (isBuy) {
-                                                    actionText = '平倉 (STC)';
-                                                    actionColor = 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20';
-                                                } else {
-                                                    actionText = '平倉 (BTC)';
-                                                    actionColor = 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20';
-                                                }
-                                            }
-                                        }
-
+                                <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
+                                    {reportText.split('\n').map((line, i, arr) => {
+                                        const isHighlighted = line.includes('(STO)') || line.includes('(BTO)') || line.includes('(BTC)') || line.includes('(STC)') || line.startsWith('買入') || line.startsWith('賣出');
                                         return (
-                                            <div key={`${trade.asset_type}-${trade.action_type}-${trade.id}`} className="flex items-center justify-between p-4 hover:bg-muted/10 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${actionColor}`}>
-                                                        {actionText}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-semibold flex items-center gap-1">
-                                                            {trade.symbol}
-                                                            {trade.asset_type === 'option' && (
-                                                                <span className="text-xs font-normal text-muted-foreground ml-1">
-                                                                    {trade.strike_price}{trade.option_type === 'CALL' ? 'C' : 'P'}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            {trade.asset_type === 'stock' ? '股票' : '期權'} • {displayQty} {trade.asset_type === 'stock' ? '股' : '口'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    {trade.action_type === 'open' || trade.asset_type === 'stock' ? (
-                                                        <div className="font-medium">
-                                                            {formatMoney(trade.price)}
-                                                        </div>
-                                                    ) : (
-                                                        <div className={`font-medium ${trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {trade.profit >= 0 ? '+' : ''}{formatMoney(trade.profit)}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {trade.action_type === 'open' ? '成交價' : (trade.asset_type === 'option' ? '平倉損益' : '平倉價')}
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
+                                                {line}{i < arr.length - 1 ? '\n' : ''}
+                                            </span>
                                         );
                                     })}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                </pre>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
