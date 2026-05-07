@@ -115,23 +115,20 @@ export default function DailyTradesPage() {
             text += `----------------------------------------\n`;
         }
         
-        const stocks = userGroup.trades.filter((t: any) => t.asset_type === 'stock');
-        const options = userGroup.trades.filter((t: any) => t.asset_type === 'option');
+        const lines: string[] = [];
 
-        if (stocks.length > 0) {
-            stocks.forEach((trade: any) => {
-                const qtyStr = trade.quantity > 0 ? `+${formatNumber(trade.quantity)}` : `${formatNumber(trade.quantity)}`;
-                if (trade.action_type === 'open') {
-                    text += `${trade.symbol} ${qtyStr} 股 (成本 ${formatMoney(trade.price)})\n`;
-                } else {
-                    text += `${trade.symbol} ${qtyStr} 股 (平倉價 ${formatMoney(trade.price)})\n`;
-                }
-            });
-            if (options.length > 0) text += `\n`;
-        }
-
-        if (options.length > 0) {
-            options.forEach((trade: any) => {
+        userGroup.trades.forEach((trade: any) => {
+            if (trade.asset_type === 'stock') {
+                const action = trade.quantity > 0 ? '買' : '賣';
+                const qtyStr = formatNumber(Math.abs(trade.quantity));
+                
+                const priceNum = new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(trade.price || 0);
+                
+                lines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
+            } else if (trade.asset_type === 'option') {
                 const qtyStr = trade.quantity > 0 ? `+${trade.quantity}` : `${trade.quantity}`;
                 
                 let expiryStr = '';
@@ -146,14 +143,11 @@ export default function DailyTradesPage() {
 
                 const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
                 
-                if (trade.action_type === 'open') {
-                    text += `${qtyStr}口 ${symbolStr} (成交價 ${formatMoney(trade.price)})\n`;
-                } else {
-                    const profitStr = trade.profit >= 0 ? `+${formatMoney(trade.profit)}` : formatMoney(trade.profit);
-                    text += `${qtyStr}口 ${symbolStr} (平倉損益 ${profitStr})\n`;
-                }
-            });
-        }
+                lines.push(`${qtyStr}口 ${symbolStr}`);
+            }
+        });
+        
+        text += lines.join('\n----------------------------------------\n');
         return text;
     };
 
