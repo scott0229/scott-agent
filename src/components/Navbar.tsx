@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText, CandlestickChart } from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText, CandlestickChart, Calendar as CalendarIcon } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -123,6 +123,16 @@ export function Navbar() {
             </div>
 
             <div className="flex gap-2 items-center">
+
+                <Link href="/daily-trades" prefetch={true}>
+                    <Button
+                        variant={pathname.startsWith('/daily-trades') ? "default" : "ghost"}
+                        className="gap-2"
+                    >
+                        <CalendarIcon className="h-4 w-4" />
+                        當日交易
+                    </Button>
+                </Link>
 
                 <Link href="/trade-groups" prefetch={true}>
                     <Button
