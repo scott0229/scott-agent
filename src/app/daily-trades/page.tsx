@@ -119,7 +119,6 @@ export default function DailyTradesPage() {
         const options = userGroup.trades.filter((t: any) => t.asset_type === 'option');
 
         if (stocks.length > 0) {
-            text += `股票：\n`;
             stocks.forEach((trade: any) => {
                 const qtyStr = trade.quantity > 0 ? `+${formatNumber(trade.quantity)}` : `${formatNumber(trade.quantity)}`;
                 if (trade.action_type === 'open') {
@@ -132,7 +131,6 @@ export default function DailyTradesPage() {
         }
 
         if (options.length > 0) {
-            text += `期權：\n`;
             options.forEach((trade: any) => {
                 const qtyStr = trade.quantity > 0 ? `+${trade.quantity}` : `${trade.quantity}`;
                 
@@ -233,9 +231,8 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isHighlighted = line.startsWith('股票：') || line.startsWith('期權：');
                                         return (
-                                            <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1 font-bold" : ""}>
+                                            <span key={i}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
                                             </span>
                                         );
