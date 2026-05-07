@@ -632,7 +632,7 @@ export default function AdminUsersPage() {
             const a = document.createElement('a');
             a.href = url;
             const dateStr = new Date().toISOString().split('T')[0];
-            a.download = `users_export_${dateStr}_(${data.count}).json`;
+            a.download = `${data.count}_users_export_${dateStr}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
