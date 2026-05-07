@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { US_MARKET_HOLIDAYS, isMarketHoliday } from '@/lib/holidays';
+import { US_MARKET_HOLIDAYS, isMarketHoliday, getTradingDaysDiff } from '@/lib/holidays';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -276,7 +276,7 @@ export default function DailyTradesPage() {
                 const openToDate = rg.opened[0].to_date;
                 const closeToDate = rg.closed[0].to_date;
                 if (openToDate && closeToDate) {
-                    const daysDiff = Math.round((openToDate - closeToDate) / 86400);
+                    const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
                     daysDiffStr = ` ${daysDiff} 天，`;
                 }
             }

@@ -44,3 +44,29 @@ export const isMarketHoliday = (date: Date): boolean => {
     const dateStr = `${year}-${month}-${day}`;
     return US_MARKET_HOLIDAYS.includes(dateStr);
 };
+
+export const getTradingDaysDiff = (startTimestamp: number, endTimestamp: number): number => {
+    // Both are unix timestamps in seconds
+    const start = new Date(startTimestamp * 1000);
+    const end = new Date(endTimestamp * 1000);
+    
+    // Normalize to midnight to avoid time-of-day edge cases
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    // Ensure start is before end
+    let current = start < end ? new Date(start) : new Date(end);
+    const target = start < end ? new Date(end) : new Date(start);
+    const sign = start <= end ? 1 : -1;
+    
+    let days = 0;
+    while (current < target) {
+        current.setDate(current.getDate() + 1);
+        const dayOfWeek = current.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isMarketHoliday(current)) {
+            days++;
+        }
+    }
+    
+    return days * sign;
+};
