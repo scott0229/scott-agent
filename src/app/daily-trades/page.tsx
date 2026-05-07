@@ -17,6 +17,7 @@ export default function DailyTradesPage() {
     const [date, setDate] = useState<string>('');
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [availableDates, setAvailableDates] = useState<string[]>([]);
     const { toast } = useToast();
 
     // Initialize date to the latest date with data, or fallback to the last valid trading day
@@ -26,6 +27,9 @@ export default function DailyTradesPage() {
                 const res = await fetch(`/api/daily-trades/latest-date?year=${selectedYear}`);
                 if (res.ok) {
                     const json = await res.json();
+                    if (json.availableDates) {
+                        setAvailableDates(json.availableDates);
+                    }
                     if (json.latestDate) {
                         setDate(json.latestDate);
                         return;
@@ -78,6 +82,18 @@ export default function DailyTradesPage() {
 
     const changeDate = (offset: number) => {
         if (!date) return;
+        
+        if (availableDates.length > 0) {
+            const currentIndex = availableDates.indexOf(date);
+            if (currentIndex !== -1) {
+                const nextIndex = currentIndex - offset;
+                if (nextIndex >= 0 && nextIndex < availableDates.length) {
+                    setDate(availableDates[nextIndex]);
+                }
+                return;
+            }
+        }
+        
         const current = new Date(date);
         current.setDate(current.getDate() + offset);
         

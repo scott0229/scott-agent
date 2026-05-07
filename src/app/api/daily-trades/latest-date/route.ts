@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
 
         const userIds = users.map((u: any) => u.id);
 
-        const latestQuery = `
-            SELECT MAX(d) as latestDate FROM (
+        const datesQuery = `
+            SELECT DISTINCT d as availableDate FROM (
                 SELECT date(datetime(open_date, 'unixepoch')) as d FROM STOCK_TRADES WHERE owner_id IN (${userIds.join(',')}) AND open_date IS NOT NULL
                 UNION
                 SELECT date(datetime(close_date, 'unixepoch')) as d FROM STOCK_TRADES WHERE owner_id IN (${userIds.join(',')}) AND close_date IS NOT NULL
@@ -47,13 +47,14 @@ export async function GET(req: NextRequest) {
                 SELECT date(datetime(open_date, 'unixepoch')) as d FROM OPTIONS WHERE owner_id IN (${userIds.join(',')}) AND open_date IS NOT NULL
                 UNION
                 SELECT date(datetime(settlement_date, 'unixepoch')) as d FROM OPTIONS WHERE owner_id IN (${userIds.join(',')}) AND settlement_date IS NOT NULL
-            )
+            ) ORDER BY availableDate DESC
         `;
 
-        const { results } = await db.prepare(latestQuery).all();
-        const latestDate = results?.[0]?.latestDate || null;
+        const { results } = await db.prepare(datesQuery).all();
+        const availableDates = results?.map((r: any) => r.availableDate) || [];
+        const latestDate = availableDates[0] || null;
 
-        return NextResponse.json({ latestDate });
+        return NextResponse.json({ latestDate, availableDates });
     } catch (error: any) {
         console.error('Failed to fetch latest date:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
