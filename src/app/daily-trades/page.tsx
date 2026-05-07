@@ -382,7 +382,7 @@ export default function DailyTradesPage() {
                             <Button
                                 variant={"ghost"}
                                 className={cn(
-                                    "w-[160px] justify-between text-center font-normal px-2 hover:bg-transparent",
+                                    "w-[140px] justify-center text-center font-normal px-2 hover:bg-transparent text-lg",
                                     !date && "text-muted-foreground"
                                 )}
                             >
@@ -391,7 +391,6 @@ export default function DailyTradesPage() {
                                         {date.replace(/-/g, '/')} ({['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()]})
                                     </span>
                                 ) : <span>選擇日期</span>}
-                                <CalendarIcon className="h-4 w-4 opacity-50" />
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="center">
