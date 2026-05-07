@@ -207,7 +207,7 @@ export default function NetEquityPage() {
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex justify-between items-center">
                 <h1 className="text-3xl font-bold">
-                    {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 績效總覽
+                    {selectedYear === 'All' ? new Date().getFullYear() : selectedYear} 績效分析
                 </h1>
                 <div className="flex items-center gap-2">
                     <Select value={sortOrder} onValueChange={setSortOrder}>

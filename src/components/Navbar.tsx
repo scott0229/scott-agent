@@ -176,7 +176,7 @@ export function Navbar() {
                             className="gap-2"
                         >
                             <LineChart className="h-4 w-4" />
-                            績效總覽
+                            績效分析
                         </Button>
                     </Link>
                 )}
