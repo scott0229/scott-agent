@@ -115,7 +115,8 @@ export default function DailyTradesPage() {
             text += `----------------------------------------\n`;
         }
         
-        const lines: string[] = [];
+        const stockLines: string[] = [];
+        const optionLines: string[] = [];
 
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
@@ -127,7 +128,7 @@ export default function DailyTradesPage() {
                     maximumFractionDigits: 2
                 }).format(trade.price || 0);
                 
-                lines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
+                stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
             } else if (trade.asset_type === 'option') {
                 const qtyStr = trade.quantity > 0 ? `+${trade.quantity}` : `${trade.quantity}`;
                 
@@ -143,11 +144,17 @@ export default function DailyTradesPage() {
 
                 const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
                 
-                lines.push(`${qtyStr}口 ${symbolStr}`);
+                optionLines.push(`${qtyStr}口 ${symbolStr}`);
             }
         });
         
-        text += lines.join('\n----------------------------------------\n');
+        const sections: string[] = [];
+        if (stockLines.length > 0) sections.push(stockLines.join('\n'));
+        if (optionLines.length > 0) sections.push(optionLines.join('\n'));
+        
+        if (sections.length > 0) {
+            text += sections.join('\n----------------------------------------\n');
+        }
         return text;
     };
 
