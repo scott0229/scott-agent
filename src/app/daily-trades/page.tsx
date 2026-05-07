@@ -20,6 +20,7 @@ export default function DailyTradesPage() {
     const { selectedYear } = useYearFilter();
     const [date, setDate] = useState<string>('');
     const [data, setData] = useState<any[]>([]);
+    const [marketDataMap, setMarketDataMap] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [availableDates, setAvailableDates] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -72,8 +73,10 @@ export default function DailyTradesPage() {
                 if (res.ok) {
                     const json = await res.json();
                     setData(json.data || []);
+                    setMarketDataMap(json.marketData || {});
                 } else {
                     setData([]);
+                    setMarketDataMap({});
                 }
             } catch (err) {
                 console.error(err);
@@ -278,19 +281,36 @@ export default function DailyTradesPage() {
                 }
             }
 
+            let itmString = '';
+            if (rg.opened.length > 0) {
+                const newOpt = rg.opened[0];
+                const currentPrice = marketDataMap[newOpt.symbol];
+                if (currentPrice != null) {
+                    let diff = 0;
+                    if (newOpt.option_type === 'CALL') {
+                        diff = currentPrice - newOpt.strike_price;
+                    } else if (newOpt.option_type === 'PUT') {
+                        diff = newOpt.strike_price - currentPrice;
+                    }
+                    if (diff > 0) {
+                        itmString = `，股價被打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+                    }
+                }
+            }
+
             if (canCalc) {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
                 if (daysDiffStr) {
-                    lines.push(`展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+                    lines.push(`展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
                 } else {
-                    lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+                    lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
                 }
             } else {
                 if (daysDiffStr) {
-                    lines.push(`展期${daysDiffStr.slice(0, -1)}`);
+                    lines.push(`展期${daysDiffStr.slice(0, -1)}${itmString}`);
                 } else {
-                    lines.push(`展期`);
+                    lines.push(`展期${itmString}`);
                 }
             }
 

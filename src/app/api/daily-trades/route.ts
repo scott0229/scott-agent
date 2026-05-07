@@ -91,7 +91,17 @@ export async function GET(req: NextRequest) {
             };
         }).filter((u: any) => u.trades.length > 0);
 
-        return NextResponse.json({ data: groupedData });
+        const { results: marketPrices } = await db.prepare(`
+            SELECT symbol, close_price FROM market_prices 
+            WHERE date = (SELECT MAX(date) FROM market_prices AS mp2 WHERE mp2.symbol = market_prices.symbol)
+        `).all();
+        
+        const marketDataMap: Record<string, number> = {};
+        marketPrices?.forEach((mp: any) => {
+            marketDataMap[mp.symbol] = mp.close_price;
+        });
+
+        return NextResponse.json({ data: groupedData, marketData: marketDataMap });
     } catch (error: any) {
         console.error('Failed to fetch daily trades:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
