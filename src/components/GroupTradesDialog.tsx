@@ -386,6 +386,16 @@ export function GroupTradesDialog({
                         matchedC = bestMatch.c;
                         matchedO = bestMatch.o;
                         isMatch = true;
+                    } else {
+                        // Fallback: If no subset quantity matches EXACTLY, but they share the same direction (e.g. both Short),
+                        // treat all closed and opened trades on this day as a complex unbalanced roll (e.g., close -1, open -3).
+                        const signC = Math.sign(sumC);
+                        const signO = Math.sign(sumO);
+                        if (signC !== 0 && signC === signO) {
+                            matchedC = group.closedTrades;
+                            matchedO = group.openedTrades;
+                            isMatch = true;
+                        }
                     }
                 }
             }
