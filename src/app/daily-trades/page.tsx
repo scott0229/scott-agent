@@ -278,14 +278,14 @@ export default function DailyTradesPage() {
                 const closeToDate = rg.closed[0].to_date;
                 if (openToDate && closeToDate) {
                     const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
-                    daysDiffStr = ` ${daysDiff} 天，`;
+                    daysDiffStr = ` ${daysDiff}, `;
                 }
 
                 const newOpt = rg.opened[0];
                 const oldOpt = rg.closed[0];
                 const strikeDiff = newOpt.strike_price - oldOpt.strike_price;
                 if (strikeDiff !== 0) {
-                    strikeDiffStr = `${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點，`;
+                    strikeDiffStr = `${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點, `;
                 }
             }
 
@@ -301,7 +301,7 @@ export default function DailyTradesPage() {
                         diff = newOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
-                        itmString = `，行權價打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        itmString = `, 行權價打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                     }
                 }
             }
@@ -488,13 +488,13 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
                                         
-                                        if (isRollHighlight && line.includes('，行權價打穿')) {
-                                            const [mainPart, itmPart] = line.split('，行權價打穿');
+                                        if (isRollHighlight && line.includes(', 行權價打穿')) {
+                                            const [mainPart, itmPart] = line.split(', 行權價打穿');
                                             return (
                                                 <span key={i}>
                                                     <span className="bg-amber-100/80 px-1 rounded text-foreground font-medium">
                                                         {mainPart}
-                                                        <span className="text-red-700">，行權價打穿{itmPart}</span>
+                                                        <span className="text-red-700">, 行權價打穿{itmPart}</span>
                                                     </span>
                                                     {i < arr.length - 1 ? '\n' : ''}
                                                 </span>
