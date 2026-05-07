@@ -168,13 +168,13 @@ export default function DailyTradesPage() {
         const closeGroups: Record<string, any[]> = {};
         
         optionOpens.forEach((t: any) => {
-            const key = `${t.symbol}_${t.option_type}`;
+            const key = `${t.symbol}_${t.option_type}_${t.group_id || 'no_group'}`;
             if (!openGroups[key]) openGroups[key] = [];
             openGroups[key].push(t);
         });
         
         optionCloses.forEach((t: any) => {
-            const key = `${t.symbol}_${t.option_type}`;
+            const key = `${t.symbol}_${t.option_type}_${t.group_id || 'no_group'}`;
             if (!closeGroups[key]) closeGroups[key] = [];
             closeGroups[key].push(t);
         });
