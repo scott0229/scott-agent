@@ -13,6 +13,7 @@ import { US_MARKET_HOLIDAYS, isMarketHoliday, getTradingDaysDiff } from '@/lib/h
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,24 @@ export default function DailyTradesPage() {
     const [loading, setLoading] = useState(true);
     const [availableDates, setAvailableDates] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [selectedAccount, setSelectedAccount] = useState<string>('all');
+    const [allAccounts, setAllAccounts] = useState<any[]>([]);
     const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const res = await fetch(`/api/users?mode=selection&year=${selectedYear}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    setAllAccounts(json.users || []);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchUsers();
+    }, [selectedYear]);
 
     // Initialize date to the latest date with data, or fallback to the last valid trading day
     useEffect(() => {
@@ -290,15 +308,16 @@ export default function DailyTradesPage() {
             }
 
             let itmString = '';
-            if (rg.opened.length > 0) {
+            if (rg.opened.length > 0 && rg.closed.length > 0) {
                 const newOpt = rg.opened[0];
+                const oldOpt = rg.closed[0];
                 const currentPrice = marketDataMap[newOpt.symbol];
                 if (currentPrice != null) {
                     let diff = 0;
-                    if (newOpt.option_type === 'CALL') {
-                        diff = currentPrice - newOpt.strike_price;
-                    } else if (newOpt.option_type === 'PUT') {
-                        diff = newOpt.strike_price - currentPrice;
+                    if (oldOpt.option_type === 'CALL') {
+                        diff = currentPrice - oldOpt.strike_price;
+                    } else if (oldOpt.option_type === 'PUT') {
+                        diff = oldOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
                         itmString = `, 行權價打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
@@ -376,15 +395,32 @@ export default function DailyTradesPage() {
         return text;
     };
 
+    const filteredData = selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount);
+
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold">當日交易</h1>
                 
-                <div className="flex items-center gap-2 bg-white/50 dark:bg-black/50 p-1 rounded-md border shadow-sm">
-                    <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
+                <div className="flex items-center gap-2">
+                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                        <SelectTrigger className="w-[140px] bg-white/50 dark:bg-black/50">
+                            <SelectValue placeholder="全部帳戶" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部帳戶</SelectItem>
+                            {allAccounts.map(user => (
+                                <SelectItem key={user.user_id} value={user.user_id}>
+                                    {user.user_id}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center gap-2 bg-white/50 dark:bg-black/50 p-1 rounded-md border shadow-sm">
+                        <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
                     <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                             <Button
@@ -433,6 +469,7 @@ export default function DailyTradesPage() {
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
+                </div>
             </div>
 
             {loading ? (
@@ -454,14 +491,14 @@ export default function DailyTradesPage() {
                         </Card>
                     ))}
                 </div>
-            ) : data.length === 0 ? (
+            ) : filteredData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
                     <CalendarIcon className="h-12 w-12 mb-4 opacity-20" />
                     <p className="text-lg">這個日期沒有任何交易記錄</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {data.map((userGroup: any) => {
+                    {filteredData.map((userGroup: any) => {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
                         
