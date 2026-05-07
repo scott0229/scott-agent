@@ -11,6 +11,10 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy } from 'lucid
 import { useToast } from '@/hooks/use-toast';
 import { US_MARKET_HOLIDAYS, isMarketHoliday } from '@/lib/holidays';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function DailyTradesPage() {
     const { selectedYear } = useYearFilter();
@@ -18,6 +22,7 @@ export default function DailyTradesPage() {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [availableDates, setAvailableDates] = useState<string[]>([]);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const { toast } = useToast();
 
     // Initialize date to the latest date with data, or fallback to the last valid trading day
@@ -183,14 +188,37 @@ export default function DailyTradesPage() {
                     <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="relative">
-                        <Input 
-                            type="date" 
-                            value={date} 
-                            onChange={handleDateChange}
-                            className="w-[140px] border-none bg-transparent shadow-none focus-visible:ring-0 cursor-pointer"
-                        />
-                    </div>
+                    <Popover modal={true} open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"ghost"}
+                                className={cn(
+                                    "w-[140px] justify-between text-center font-normal px-2 hover:bg-transparent",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                {date ? date.replace(/-/g, '/') : <span>選擇日期</span>}
+                                <CalendarIcon className="h-4 w-4 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="center">
+                            <Calendar
+                                mode="single"
+                                selected={date ? new Date(date) : undefined}
+                                onSelect={(selectedDate) => {
+                                    if (selectedDate) {
+                                        const y = selectedDate.getFullYear();
+                                        const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                        const d = String(selectedDate.getDate()).padStart(2, '0');
+                                        setDate(`${y}-${m}-${d}`);
+                                        setIsCalendarOpen(false);
+                                    }
+                                }}
+                                disabled={(d) => d.getDay() === 0 || d.getDay() === 6 || isMarketHoliday(d)}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
                     <Button variant="ghost" size="icon" onClick={() => changeDate(1)}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
