@@ -141,8 +141,9 @@ export default function DailyTradesPage() {
 
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
-                const action = trade.quantity > 0 ? '買' : '賣';
-                const qtyStr = formatNumber(Math.abs(trade.quantity));
+                const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
+                const action = transactionQty > 0 ? '買' : '賣';
+                const qtyStr = formatNumber(Math.abs(transactionQty));
                 
                 const priceNum = new Intl.NumberFormat('en-US', {
                     minimumFractionDigits: 2,
@@ -151,7 +152,8 @@ export default function DailyTradesPage() {
                 
                 stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
             } else if (trade.asset_type === 'option') {
-                const qtyStr = trade.quantity > 0 ? `+${trade.quantity}` : `${trade.quantity}`;
+                const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
+                const qtyStr = transactionQty > 0 ? `+${transactionQty}` : `${transactionQty}`;
                 
                 let expiryStr = '';
                 if (trade.to_date) {
@@ -193,11 +195,15 @@ export default function DailyTradesPage() {
                             <Button
                                 variant={"ghost"}
                                 className={cn(
-                                    "w-[140px] justify-between text-center font-normal px-2 hover:bg-transparent",
+                                    "w-[160px] justify-between text-center font-normal px-2 hover:bg-transparent",
                                     !date && "text-muted-foreground"
                                 )}
                             >
-                                {date ? date.replace(/-/g, '/') : <span>選擇日期</span>}
+                                {date ? (
+                                    <span>
+                                        {date.replace(/-/g, '/')} ({['日', '一', '二', '三', '四', '五', '六'][new Date(date).getDay()]})
+                                    </span>
+                                ) : <span>選擇日期</span>}
                                 <CalendarIcon className="h-4 w-4 opacity-50" />
                             </Button>
                         </PopoverTrigger>
