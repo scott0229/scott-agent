@@ -534,16 +534,17 @@ export default function DailyTradesPage() {
                         return (
                             <div key={userGroup.user.id} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-sm">{userName} 當日交易</h3>
+                                    <h3 className="font-semibold text-sm">{userName} {date ? `- ${date.substring(5).replace('-', '/')} ` : ''}交易記錄</h3>
                                     <div className="flex gap-0.5 items-center">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="h-6 w-6"
                                             onClick={() => {
-                                                const fullText = `${userName} 當日交易\n${reportText}`;
+                                                const dateStr = date ? `- ${date.substring(5).replace('-', '/')} ` : '';
+                                                const fullText = `${userName} ${dateStr}交易記錄\n${reportText}`;
                                                 navigator.clipboard.writeText(fullText);
-                                                toast({ title: "已複製", description: `${userName} 的當日交易已複製` });
+                                                toast({ title: "已複製", description: `${userName} 的交易記錄已複製` });
                                             }}
                                         >
                                             <Copy className="h-3.5 w-3.5" />
