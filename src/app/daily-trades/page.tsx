@@ -217,6 +217,7 @@ export default function DailyTradesPage() {
                     rollGroups.push({ closed: matchedC, opened: matchedO });
                 } else {
                     // Try 1-to-1 exact match
+                    let stillHasUnmatched = false;
                     matchedC.forEach(c => {
                         if (matchedCloseIds.has(c.id)) return;
                         const oIndex = matchedO.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
@@ -225,8 +226,28 @@ export default function DailyTradesPage() {
                             matchedCloseIds.add(c.id);
                             matchedOpenIds.add(o.id);
                             rollGroups.push({ closed: [c], opened: [o] });
+                        } else {
+                            stillHasUnmatched = true;
                         }
                     });
+
+                    // Fallback: If there are still unmatched trades in this group, but they share the same direction
+                    // (e.g. both Short), treat them as a complex unbalanced roll (e.g. close -1, open -3).
+                    if (stillHasUnmatched || matchedO.some(o => !matchedOpenIds.has(o.id))) {
+                        const remainingC = matchedC.filter(c => !matchedCloseIds.has(c.id));
+                        const remainingO = matchedO.filter(o => !matchedOpenIds.has(o.id));
+                        
+                        if (remainingC.length > 0 && remainingO.length > 0) {
+                            const remSumC = remainingC.reduce((s, t) => s + t.quantity, 0);
+                            const remSumO = remainingO.reduce((s, t) => s + t.quantity, 0);
+                            
+                            if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
+                                remainingC.forEach(c => matchedCloseIds.add(c.id));
+                                remainingO.forEach(o => matchedOpenIds.add(o.id));
+                                rollGroups.push({ closed: remainingC, opened: remainingO });
+                            }
+                        }
+                    }
                 }
             }
         });
