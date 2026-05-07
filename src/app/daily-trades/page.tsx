@@ -293,7 +293,7 @@ export default function DailyTradesPage() {
                         diff = newOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
-                        itmString = `，股價被打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+                        itmString = `，股價被打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                     }
                 }
             }
