@@ -344,6 +344,8 @@ export default function DailyTradesPage() {
             optionChunks.push(lines.join('\n'));
         });
 
+        const unmatchedOptions: any[] = [];
+
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
                 const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
@@ -359,27 +361,60 @@ export default function DailyTradesPage() {
             } else if (trade.asset_type === 'option') {
                 if (trade.action_type === 'open' && matchedOpenIds.has(trade.id)) return;
                 if (trade.action_type === 'close' && matchedCloseIds.has(trade.id)) return;
-                
-                let prefixLine = '';
-                if (trade.action_type === 'open') {
-                    let dteStr = '';
-                    if (trade.to_date && date) {
-                        const tradeDate = new Date(date);
-                        tradeDate.setHours(0, 0, 0, 0);
-                        const expiryDate = new Date(trade.to_date * 1000);
-                        expiryDate.setHours(0, 0, 0, 0);
-                        const days = Math.round((expiryDate.getTime() - tradeDate.getTime()) / 86400000);
-                        dteStr = `, 到期 ${days} 天`;
-                    }
-                    const premiumStr = trade.price != null ? `, 權利金 ${Math.abs(trade.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
-                    prefixLine = `開新倉${dteStr}${premiumStr}\n`;
-                } else {
-                    const profitStr = trade.profit != null ? `, 盈虧 ${trade.profit > 0 ? '+' : ''}${trade.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
-                    prefixLine = `平倉${profitStr}\n`;
+                unmatchedOptions.push(trade);
+            }
+        });
+
+        const optionGroups: Record<string, any[]> = {};
+        unmatchedOptions.forEach((trade: any) => {
+            const key = `${trade.action_type}_${trade.symbol}_${trade.option_type}_${trade.strike_price}_${trade.to_date}`;
+            if (!optionGroups[key]) optionGroups[key] = [];
+            optionGroups[key].push(trade);
+        });
+
+        Object.values(optionGroups).forEach(group => {
+            const firstTrade = group[0];
+            let prefixLine = '';
+
+            if (firstTrade.action_type === 'open') {
+                let dteStr = '';
+                if (firstTrade.to_date && date) {
+                    const tradeDate = new Date(date);
+                    tradeDate.setHours(0, 0, 0, 0);
+                    const expiryDate = new Date(firstTrade.to_date * 1000);
+                    expiryDate.setHours(0, 0, 0, 0);
+                    const days = Math.round((expiryDate.getTime() - tradeDate.getTime()) / 86400000);
+                    dteStr = `, 到期 ${days} 天`;
                 }
                 
-                optionChunks.push(`${prefixLine}${formatOptionTrade(trade)}`);
+                let totalPremium = 0;
+                let hasPremium = false;
+                group.forEach(t => {
+                    if (t.price != null) {
+                        totalPremium += Math.abs(t.price);
+                        hasPremium = true;
+                    }
+                });
+                const premiumStr = hasPremium ? `, 權利金 ${totalPremium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                
+                prefixLine = `開新倉${dteStr}${premiumStr}\n`;
+            } else {
+                let totalProfit = 0;
+                let hasProfit = false;
+                group.forEach(t => {
+                    if (t.profit != null) {
+                        totalProfit += t.profit;
+                        hasProfit = true;
+                    }
+                });
+                
+                const profitStr = hasProfit ? `, 盈虧 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                prefixLine = `平倉${profitStr}\n`;
             }
+            
+            const lines = [prefixLine.trimEnd()];
+            group.forEach(t => lines.push(formatOptionTrade(t)));
+            optionChunks.push(lines.join('\n'));
         });
         
         const sections: string[] = [];
