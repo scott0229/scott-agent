@@ -247,12 +247,30 @@ export default function DailyTradesPage() {
                 totalPremiumOpened += o.price;
             });
             
+            let daysDiffStr = '';
+            if (rg.opened.length > 0 && rg.closed.length > 0) {
+                const openToDate = rg.opened[0].to_date;
+                const closeToDate = rg.closed[0].to_date;
+                if (openToDate && closeToDate) {
+                    const daysDiff = Math.round((openToDate - closeToDate) / 86400);
+                    daysDiffStr = ` ${daysDiff} 天，`;
+                }
+            }
+
             if (canCalc) {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
-                lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+                if (daysDiffStr) {
+                    lines.push(`展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+                } else {
+                    lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+                }
             } else {
-                lines.push(`展期`);
+                if (daysDiffStr) {
+                    lines.push(`展期${daysDiffStr.slice(0, -1)}`);
+                } else {
+                    lines.push(`展期`);
+                }
             }
 
             rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
@@ -406,7 +424,7 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isRollHighlight = line.startsWith('展期盈虧:') || line === '展期';
+                                        const isRollHighlight = line.startsWith('展期');
                                         return (
                                             <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
