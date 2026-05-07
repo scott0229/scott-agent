@@ -272,12 +272,20 @@ export default function DailyTradesPage() {
             });
             
             let daysDiffStr = '';
+            let strikeDiffStr = '';
             if (rg.opened.length > 0 && rg.closed.length > 0) {
                 const openToDate = rg.opened[0].to_date;
                 const closeToDate = rg.closed[0].to_date;
                 if (openToDate && closeToDate) {
                     const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
                     daysDiffStr = ` ${daysDiff} 天，`;
+                }
+
+                const newOpt = rg.opened[0];
+                const oldOpt = rg.closed[0];
+                const strikeDiff = newOpt.strike_price - oldOpt.strike_price;
+                if (strikeDiff !== 0) {
+                    strikeDiffStr = `${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點，`;
                 }
             }
 
@@ -293,7 +301,7 @@ export default function DailyTradesPage() {
                         diff = newOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
-                        itmString = `，股價被打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        itmString = `，行權價打穿 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                     }
                 }
             }
@@ -302,15 +310,15 @@ export default function DailyTradesPage() {
                 const rollProfit = totalPremiumOpened - totalCostToClose;
                 const sign = rollProfit > 0 ? '+' : '';
                 if (daysDiffStr) {
-                    lines.push(`展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
+                    lines.push(`${strikeDiffStr}展期${daysDiffStr}盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
                 } else {
-                    lines.push(`展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
+                    lines.push(`${strikeDiffStr}展期盈虧: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}${itmString}`);
                 }
             } else {
                 if (daysDiffStr) {
-                    lines.push(`展期${daysDiffStr.slice(0, -1)}${itmString}`);
+                    lines.push(`${strikeDiffStr}展期${daysDiffStr.slice(0, -1)}${itmString}`);
                 } else {
-                    lines.push(`展期${itmString}`);
+                    lines.push(`${strikeDiffStr}展期${itmString}`);
                 }
             }
 
@@ -478,15 +486,15 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isRollHighlight = line.startsWith('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
+                                        const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
                                         
-                                        if (isRollHighlight && line.includes('，股價被打穿')) {
-                                            const [mainPart, itmPart] = line.split('，股價被打穿');
+                                        if (isRollHighlight && line.includes('，行權價打穿')) {
+                                            const [mainPart, itmPart] = line.split('，行權價打穿');
                                             return (
                                                 <span key={i}>
                                                     <span className="bg-amber-100/80 px-1 rounded text-foreground font-medium">
                                                         {mainPart}
-                                                        <span className="text-red-700">，股價被打穿{itmPart}</span>
+                                                        <span className="text-red-700">，行權價打穿{itmPart}</span>
                                                     </span>
                                                     {i < arr.length - 1 ? '\n' : ''}
                                                 </span>
