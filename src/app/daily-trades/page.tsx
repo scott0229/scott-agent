@@ -487,7 +487,7 @@ export default function DailyTradesPage() {
                                                 <span key={i}>
                                                     <span className="bg-amber-100/80 px-1 rounded text-foreground font-medium">
                                                         {mainPart}
-                                                        <span className="text-red-700 font-bold">，股價被打穿{itmPart}</span>
+                                                        <span className="text-red-700">，股價被打穿{itmPart}</span>
                                                     </span>
                                                     {i < arr.length - 1 ? '\n' : ''}
                                                 </span>
