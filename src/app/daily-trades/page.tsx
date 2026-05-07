@@ -137,8 +137,107 @@ export default function DailyTradesPage() {
         }
         
         const stockLines: string[] = [];
-        const optionLines: string[] = [];
+        const optionChunks: string[] = [];
 
+        const formatOptionTrade = (trade: any) => {
+            const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
+            const qtyStr = transactionQty > 0 ? `+${transactionQty}` : `${transactionQty}`;
+            
+            let expiryStr = '';
+            if (trade.to_date) {
+                const expiryDate = new Date(trade.to_date * 1000);
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const monthName = months[expiryDate.getMonth()];
+                const dayStr = String(expiryDate.getDate()).padStart(2, '0');
+                const yearStr = String(expiryDate.getFullYear()).slice(2);
+                expiryStr = ` ${monthName}${dayStr}'${yearStr}`;
+            }
+
+            const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
+            return `${qtyStr}口 ${symbolStr}`;
+        };
+
+        // Identify rolls
+        const optionOpens = userGroup.trades.filter((t: any) => t.asset_type === 'option' && t.action_type === 'open');
+        const optionCloses = userGroup.trades.filter((t: any) => t.asset_type === 'option' && t.action_type === 'close');
+        
+        const matchedOpenIds = new Set();
+        const matchedCloseIds = new Set();
+        
+        const openGroups: Record<string, any[]> = {};
+        const closeGroups: Record<string, any[]> = {};
+        
+        optionOpens.forEach((t: any) => {
+            const key = `${t.symbol}_${t.option_type}`;
+            if (!openGroups[key]) openGroups[key] = [];
+            openGroups[key].push(t);
+        });
+        
+        optionCloses.forEach((t: any) => {
+            const key = `${t.symbol}_${t.option_type}`;
+            if (!closeGroups[key]) closeGroups[key] = [];
+            closeGroups[key].push(t);
+        });
+
+        const rollGroups: { closed: any[], opened: any[] }[] = [];
+
+        Object.keys(closeGroups).forEach(key => {
+            if (openGroups[key]) {
+                let matchedC = closeGroups[key].filter(t => !matchedCloseIds.has(t.id));
+                let matchedO = openGroups[key].filter(t => !matchedOpenIds.has(t.id));
+                if (matchedC.length === 0 || matchedO.length === 0) return;
+                
+                const sumC = matchedC.reduce((s, t) => s + t.quantity, 0);
+                const sumO = matchedO.reduce((s, t) => s + t.quantity, 0);
+                
+                if (sumC === sumO && sumC !== 0) {
+                    matchedC.forEach(t => matchedCloseIds.add(t.id));
+                    matchedO.forEach(t => matchedOpenIds.add(t.id));
+                    rollGroups.push({ closed: matchedC, opened: matchedO });
+                } else {
+                    // Try 1-to-1 exact match
+                    matchedC.forEach(c => {
+                        if (matchedCloseIds.has(c.id)) return;
+                        const oIndex = matchedO.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
+                        if (oIndex !== -1) {
+                            const o = matchedO[oIndex];
+                            matchedCloseIds.add(c.id);
+                            matchedOpenIds.add(o.id);
+                            rollGroups.push({ closed: [c], opened: [o] });
+                        }
+                    });
+                }
+            }
+        });
+
+        // Format rolls
+        rollGroups.forEach(rg => {
+            const lines: string[] = [];
+            lines.push(`[展期]`);
+            rg.closed.forEach(c => lines.push(formatOptionTrade(c)));
+            rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
+            
+            let canCalc = true;
+            let totalCostToClose = 0;
+            rg.closed.forEach(c => {
+                if (c.old_premium == null || c.profit == null) canCalc = false;
+                totalCostToClose += (c.old_premium - c.profit);
+            });
+            let totalPremiumOpened = 0;
+            rg.opened.forEach(o => {
+                if (o.price == null) canCalc = false;
+                totalPremiumOpened += o.price;
+            });
+            
+            if (canCalc) {
+                const rollProfit = totalPremiumOpened - totalCostToClose;
+                const sign = rollProfit > 0 ? '+' : '';
+                lines.push(`(展期收益: ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })})`);
+            }
+            optionChunks.push(lines.join('\n'));
+        });
+
+        const standaloneOptions: string[] = [];
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
                 const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
@@ -152,28 +251,19 @@ export default function DailyTradesPage() {
                 
                 stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
             } else if (trade.asset_type === 'option') {
-                const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
-                const qtyStr = transactionQty > 0 ? `+${transactionQty}` : `${transactionQty}`;
-                
-                let expiryStr = '';
-                if (trade.to_date) {
-                    const expiryDate = new Date(trade.to_date * 1000);
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const monthName = months[expiryDate.getMonth()];
-                    const dayStr = String(expiryDate.getDate()).padStart(2, '0');
-                    const yearStr = String(expiryDate.getFullYear()).slice(2);
-                    expiryStr = ` ${monthName}${dayStr}'${yearStr}`;
-                }
-
-                const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
-                
-                optionLines.push(`${qtyStr}口 ${symbolStr}`);
+                if (trade.action_type === 'open' && matchedOpenIds.has(trade.id)) return;
+                if (trade.action_type === 'close' && matchedCloseIds.has(trade.id)) return;
+                standaloneOptions.push(formatOptionTrade(trade));
             }
         });
+
+        if (standaloneOptions.length > 0) {
+            optionChunks.push(standaloneOptions.join('\n'));
+        }
         
         const sections: string[] = [];
         if (stockLines.length > 0) sections.push(stockLines.join('\n'));
-        if (optionLines.length > 0) sections.push(optionLines.join('\n'));
+        if (optionChunks.length > 0) sections.push(optionChunks.join('\n\n'));
         
         if (sections.length > 0) {
             text += sections.join('\n----------------------------------------\n');

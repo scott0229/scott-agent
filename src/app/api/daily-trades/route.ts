@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
         // 4. Option Closes/Settlements
         const { results: optionCloses } = await db.prepare(`
-            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, final_profit as profit, 'option' as asset_type, 'close' as action_type, to_date
+            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, final_profit as profit, premium as old_premium, 'option' as asset_type, 'close' as action_type, to_date
             FROM OPTIONS
             WHERE settlement_date IS NOT NULL AND date(datetime(settlement_date, 'unixepoch')) = ? AND owner_id IN (${userIds.join(',')})
         `).bind(dateStr).all();
