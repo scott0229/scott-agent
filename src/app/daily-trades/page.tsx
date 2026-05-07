@@ -19,23 +19,39 @@ export default function DailyTradesPage() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    // Initialize date to the last valid trading day
+    // Initialize date to the latest date with data, or fallback to the last valid trading day
     useEffect(() => {
-        let current = new Date();
-        // Keep going back until we find a non-weekend, non-holiday day
-        while (true) {
-            const dayOfWeek = current.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isMarketHoliday(current)) {
-                break;
+        const initDate = async () => {
+            try {
+                const res = await fetch(`/api/daily-trades/latest-date?year=${selectedYear}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.latestDate) {
+                        setDate(json.latestDate);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch latest date', err);
             }
-            current.setDate(current.getDate() - 1);
-        }
-        
-        const y = current.getFullYear();
-        const m = String(current.getMonth() + 1).padStart(2, '0');
-        const d = String(current.getDate()).padStart(2, '0');
-        setDate(`${y}-${m}-${d}`);
-    }, []);
+
+            // Fallback: Keep going back until we find a non-weekend, non-holiday day
+            let current = new Date();
+            while (true) {
+                const dayOfWeek = current.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isMarketHoliday(current)) {
+                    break;
+                }
+                current.setDate(current.getDate() - 1);
+            }
+            
+            const y = current.getFullYear();
+            const m = String(current.getMonth() + 1).padStart(2, '0');
+            const d = String(current.getDate()).padStart(2, '0');
+            setDate(`${y}-${m}-${d}`);
+        };
+        initDate();
+    }, [selectedYear]);
 
     useEffect(() => {
         if (!date) return;
