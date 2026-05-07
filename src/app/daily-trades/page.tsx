@@ -279,7 +279,6 @@ export default function DailyTradesPage() {
             optionChunks.push(lines.join('\n'));
         });
 
-        const standaloneOptions: string[] = [];
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
                 const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
@@ -295,13 +294,28 @@ export default function DailyTradesPage() {
             } else if (trade.asset_type === 'option') {
                 if (trade.action_type === 'open' && matchedOpenIds.has(trade.id)) return;
                 if (trade.action_type === 'close' && matchedCloseIds.has(trade.id)) return;
-                standaloneOptions.push(formatOptionTrade(trade));
+                
+                let prefixLine = '';
+                if (trade.action_type === 'open') {
+                    let dteStr = '';
+                    if (trade.to_date && date) {
+                        const tradeDate = new Date(date);
+                        tradeDate.setHours(0, 0, 0, 0);
+                        const expiryDate = new Date(trade.to_date * 1000);
+                        expiryDate.setHours(0, 0, 0, 0);
+                        const days = Math.round((expiryDate.getTime() - tradeDate.getTime()) / 86400000);
+                        dteStr = `，到期 ${days} 天`;
+                    }
+                    const premiumStr = trade.price != null ? `，權利金 ${Math.abs(trade.price).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                    prefixLine = `開新倉${dteStr}${premiumStr}\n`;
+                } else {
+                    const profitStr = trade.profit != null ? `，盈虧 ${trade.profit > 0 ? '+' : ''}${trade.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                    prefixLine = `平倉${profitStr}\n`;
+                }
+                
+                optionChunks.push(`${prefixLine}${formatOptionTrade(trade)}`);
             }
         });
-
-        if (standaloneOptions.length > 0) {
-            optionChunks.push(standaloneOptions.join('\n'));
-        }
         
         const sections: string[] = [];
         if (stockLines.length > 0) sections.push(stockLines.join('\n'));
@@ -424,7 +438,7 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isRollHighlight = line.startsWith('展期');
+                                        const isRollHighlight = line.startsWith('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
                                         return (
                                             <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
