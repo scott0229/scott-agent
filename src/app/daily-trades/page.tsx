@@ -101,6 +101,11 @@ export default function DailyTradesPage() {
         }).format(val);
     };
 
+    const formatNumber = (val: number | null | undefined) => {
+        if (val == null) return '-';
+        return new Intl.NumberFormat('en-US').format(val);
+    };
+
     const generateTradesText = (userGroup: any) => {
         let text = ``;
         if (date) {
@@ -110,37 +115,47 @@ export default function DailyTradesPage() {
             text += `----------------------------------------\n`;
         }
         
-        userGroup.trades.forEach((trade: any) => {
-            const isBuy = trade.quantity > 0;
-            const displayQty = Math.abs(trade.quantity);
-            let actionText = '';
-            
-            if (trade.asset_type === 'stock') {
-                actionText = trade.action_type === 'open' ? '買入' : '賣出';
-            } else {
+        const stocks = userGroup.trades.filter((t: any) => t.asset_type === 'stock');
+        const options = userGroup.trades.filter((t: any) => t.asset_type === 'option');
+
+        if (stocks.length > 0) {
+            text += `股票：\n`;
+            stocks.forEach((trade: any) => {
+                const qtyStr = trade.quantity > 0 ? `+${formatNumber(trade.quantity)}` : `${formatNumber(trade.quantity)}`;
                 if (trade.action_type === 'open') {
-                    actionText = isBuy ? '買權 (BTO)' : '賣權 (STO)';
+                    text += `${trade.symbol} ${qtyStr} 股 (成本 ${formatMoney(trade.price)})\n`;
                 } else {
-                    actionText = isBuy ? '平倉 (STC)' : '平倉 (BTC)';
+                    text += `${trade.symbol} ${qtyStr} 股 (平倉價 ${formatMoney(trade.price)})\n`;
                 }
-            }
-            
-            const symbolStr = trade.asset_type === 'stock' 
-                ? trade.symbol 
-                : `${trade.symbol} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
+            });
+            if (options.length > 0) text += `\n`;
+        }
+
+        if (options.length > 0) {
+            text += `期權：\n`;
+            options.forEach((trade: any) => {
+                const qtyStr = trade.quantity > 0 ? `+${trade.quantity}` : `${trade.quantity}`;
                 
-            const unit = trade.asset_type === 'stock' ? '股' : '口';
-            
-            text += `${actionText} ${symbolStr} ${displayQty}${unit}\n`;
-            
-            if (trade.action_type === 'open' || trade.asset_type === 'stock') {
-                text += `成交價 : ${formatMoney(trade.price)}\n`;
-            } else {
-                const profitStr = trade.profit >= 0 ? `+${formatMoney(trade.profit)}` : formatMoney(trade.profit);
-                text += `平倉損益 : ${profitStr}\n`;
-            }
-            text += `----------------------------------------\n`;
-        });
+                let expiryStr = '';
+                if (trade.to_date) {
+                    const expiryDate = new Date(trade.to_date * 1000);
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const monthName = months[expiryDate.getMonth()];
+                    const dayStr = String(expiryDate.getDate()).padStart(2, '0');
+                    const yearStr = String(expiryDate.getFullYear()).slice(2);
+                    expiryStr = ` ${monthName}${dayStr}'${yearStr}`;
+                }
+
+                const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
+                
+                if (trade.action_type === 'open') {
+                    text += `${qtyStr}口 ${symbolStr} (成交價 ${formatMoney(trade.price)})\n`;
+                } else {
+                    const profitStr = trade.profit >= 0 ? `+${formatMoney(trade.profit)}` : formatMoney(trade.profit);
+                    text += `${qtyStr}口 ${symbolStr} (平倉損益 ${profitStr})\n`;
+                }
+            });
+        }
         return text;
     };
 
@@ -218,9 +233,9 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isHighlighted = line.includes('(STO)') || line.includes('(BTO)') || line.includes('(BTC)') || line.includes('(STC)') || line.startsWith('買入') || line.startsWith('賣出');
+                                        const isHighlighted = line.startsWith('股票：') || line.startsWith('期權：');
                                         return (
-                                            <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
+                                            <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1 font-bold" : ""}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
                                             </span>
                                         );
