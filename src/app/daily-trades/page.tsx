@@ -480,6 +480,20 @@ export default function DailyTradesPage() {
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.startsWith('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
+                                        
+                                        if (isRollHighlight && line.includes('，股價被打穿')) {
+                                            const [mainPart, itmPart] = line.split('，股價被打穿');
+                                            return (
+                                                <span key={i}>
+                                                    <span className="bg-amber-100/80 px-1 rounded text-foreground font-medium">
+                                                        {mainPart}
+                                                        <span className="text-red-700 font-bold">，股價被打穿{itmPart}</span>
+                                                    </span>
+                                                    {i < arr.length - 1 ? '\n' : ''}
+                                                </span>
+                                            );
+                                        }
+
                                         return (
                                             <span key={i} className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
                                                 {line}{i < arr.length - 1 ? '\n' : ''}
