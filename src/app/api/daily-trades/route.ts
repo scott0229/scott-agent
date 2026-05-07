@@ -93,8 +93,13 @@ export async function GET(req: NextRequest) {
 
         const { results: marketPrices } = await db.prepare(`
             SELECT symbol, close_price FROM market_prices 
-            WHERE date = (SELECT MAX(date) FROM market_prices AS mp2 WHERE mp2.symbol = market_prices.symbol)
-        `).all();
+            WHERE date(datetime(date, 'unixepoch')) <= ?
+            AND date = (
+                SELECT MAX(date) FROM market_prices AS mp2 
+                WHERE mp2.symbol = market_prices.symbol 
+                AND date(datetime(mp2.date, 'unixepoch')) <= ?
+            )
+        `).bind(dateStr, dateStr).all();
         
         const marketDataMap: Record<string, number> = {};
         marketPrices?.forEach((mp: any) => {
