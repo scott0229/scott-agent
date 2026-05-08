@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, FilterX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { US_MARKET_HOLIDAYS, isMarketHoliday, getTradingDaysDiff } from '@/lib/holidays';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -435,6 +435,21 @@ export default function DailyTradesPage() {
                 <h1 className="text-3xl font-bold">當日交易</h1>
                 
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 bg-white/50 dark:bg-black/50"
+                        title="重置條件"
+                        onClick={() => {
+                            setSelectedAccount('all');
+                            if (availableDates && availableDates.length > 0) {
+                                const maxDate = availableDates.reduce((a, b) => a > b ? a : b);
+                                setDate(maxDate);
+                            }
+                        }}
+                    >
+                        <FilterX className="h-4 w-4 text-muted-foreground" />
+                    </Button>
                     <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                         <SelectTrigger className="w-[140px] h-10 bg-white/50 dark:bg-black/50">
                             <SelectValue placeholder="全部帳戶" />
