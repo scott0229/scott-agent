@@ -28,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { isMarketHoliday } from '@/lib/holidays';
 
@@ -46,6 +46,11 @@ export default function HistoricalReportsPage() {
     const [previewId, setPreviewId] = useState<number | null>(null);
     const [users, setUsers] = useState<any[]>([]);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
+    const [syncRemaining, setSyncRemaining] = useState<number | null>(null);
+    const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+    const [syncTotal, setSyncTotal] = useState(0);
+    const [syncProgress, setSyncProgress] = useState(0);
     const [selectedAccountId, setSelectedAccountId] = useState<string>('All');
     const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
     const [selectedDownloadAccounts, setSelectedDownloadAccounts] = useState<Set<string>>(new Set());
@@ -230,6 +235,61 @@ export default function HistoricalReportsPage() {
         dirInputRef.current?.click();
     };
 
+    const handleSync = async () => {
+        setSyncing(true);
+        setSyncDialogOpen(true);
+        setSyncRemaining(null);
+        setSyncTotal(0);
+        setSyncProgress(0);
+        let remaining = -1;
+        let currentTotal = 0;
+        let syncedSoFar = 0;
+        try {
+            while (remaining !== 0) {
+                const res = await fetch('/api/reports/sync', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    if (currentTotal === 0 && (data.synced > 0 || data.remaining > 0)) {
+                        currentTotal = data.remaining + data.synced;
+                        setSyncTotal(currentTotal);
+                    }
+                    
+                    syncedSoFar += data.synced;
+                    remaining = data.remaining;
+                    setSyncRemaining(remaining);
+                    
+                    if (currentTotal > 0) {
+                        setSyncProgress(Math.floor((syncedSoFar / currentTotal) * 100));
+                    }
+                    
+                    if (remaining === 0) {
+                        setSyncProgress(100);
+                        if (currentTotal > 0) {
+                            toast({ title: '匯入完成', description: `已成功將 ${currentTotal} 份報表同步至目前環境。` });
+                        }
+                        
+                        // We do not auto-close the dialog anymore, just refresh data
+                        setTimeout(() => {
+                            fetchData(false);
+                        }, 1000);
+                    }
+                } else {
+                    const data = await res.json();
+                    toast({ variant: 'destructive', title: '匯入失敗', description: data.error || '無法同步報表' });
+                    setSyncDialogOpen(false);
+                    break;
+                }
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: '匯入失敗', description: error.message || '發生錯誤' });
+            setSyncDialogOpen(false);
+        } finally {
+            setSyncing(false);
+            setSyncRemaining(null);
+        }
+    };
+
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         if (!files || files.length === 0) return;
@@ -386,6 +446,14 @@ export default function HistoricalReportsPage() {
                             <DropdownMenuItem onClick={handleDirClick} className="cursor-pointer">
                                 <FolderOpen className="h-4 w-4 mr-2" />
                                 資料夾
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={handleSync} 
+                                disabled={syncing}
+                                className="cursor-pointer"
+                            >
+                                {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ExternalLink className="h-4 w-4 mr-2" />}
+                                {syncing ? `同步中...` : (typeof window !== 'undefined' && (window.location.hostname === 'scott-agent.com' || window.location.hostname === 'www.scott-agent.com') ? '自測試站匯入' : '自正式站匯入')}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -643,6 +711,53 @@ export default function HistoricalReportsPage() {
                             {isDownloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 處理中</> : '開始下載'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Sync Progress Dialog */}
+            <Dialog open={syncDialogOpen} onOpenChange={(open) => {
+                if (!syncing) setSyncDialogOpen(open);
+            }}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {typeof window !== 'undefined' && (window.location.hostname === 'scott-agent.com' || window.location.hostname === 'www.scott-agent.com') ? '自測試站匯入報表' : '自正式站匯入報表'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="py-6">
+                        {syncTotal > 0 ? (
+                            <div className="space-y-4">
+                                <div className="flex justify-between text-sm font-medium mb-1">
+                                    <span className="text-black">進度：{syncTotal - (syncRemaining || 0)} / {syncTotal} 份</span>
+                                    <span className="text-black">{syncProgress}%</span>
+                                </div>
+                                <Progress value={syncProgress} className="h-3 w-full" />
+                                {syncRemaining !== null && syncRemaining > 0 && (
+                                    <p className="text-sm text-black text-center mt-2 flex items-center justify-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> 
+                                        正在同步剩餘 {syncRemaining} 份檔案，請稍候...
+                                    </p>
+                                )}
+                                {syncProgress === 100 && (
+                                    <p className="text-sm text-black font-medium text-center mt-2 flex items-center justify-center gap-1">
+                                        同步完成！
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-4 space-y-4 text-center">
+                                {syncProgress === 100 ? (
+                                    <p className="text-sm text-black">目前環境已與來源環境同步，無新報表需匯入。</p>
+                                ) : (
+                                    <>
+                                        <Loader2 className="h-8 w-8 animate-spin text-black/50" />
+                                        <p className="text-sm text-black">正在查詢需要同步的檔案數量...</p>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

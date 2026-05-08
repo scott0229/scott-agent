@@ -31,6 +31,20 @@ database_id = "14920e85-355d-43b2-979b-d8ecc5477df8"
 binding = "R2"
 bucket_name = "scott-agent-staging"
 
+[[d1_databases]]
+binding = "DB_OTHER"
+database_name = "scott-agent-production"
+database_id = "15702662-aff7-4d53-ad2a-824a56882138"
+
+[[d1_databases]]
+binding = "DB_SCOTT_OTHER"
+database_name = "scott-agent-scott-production"
+database_id = "06504362-1040-417c-a1f1-e0cdc0c12604"
+
+[[r2_buckets]]
+binding = "R2_OTHER"
+bucket_name = "scott-agent-production"
+
 # Staging Environment
 [env.staging]
 name = "scott-agent-staging"
@@ -56,6 +70,20 @@ binding = "R2"
 bucket_name = "scott-agent-staging"
 preview_bucket_name = "scott-agent-staging"
 
+[[env.staging.d1_databases]]
+binding = "DB_OTHER"
+database_name = "scott-agent-production"
+database_id = "15702662-aff7-4d53-ad2a-824a56882138"
+
+[[env.staging.d1_databases]]
+binding = "DB_SCOTT_OTHER"
+database_name = "scott-agent-scott-production"
+database_id = "06504362-1040-417c-a1f1-e0cdc0c12604"
+
+[[env.staging.r2_buckets]]
+binding = "R2_OTHER"
+bucket_name = "scott-agent-production"
+
 # Production Environment
 [env.production]
 name = "scott-agent-production"
@@ -80,3 +108,17 @@ database_id = "06504362-1040-417c-a1f1-e0cdc0c12604"
 [[env.production.r2_buckets]]
 binding = "R2"
 bucket_name = "scott-agent-production"
+
+[[env.production.d1_databases]]
+binding = "DB_OTHER"
+database_name = "scott-agent-staging"
+database_id = "74a8a0c6-840f-4f3c-ac44-cddec222bf4f"
+
+[[env.production.d1_databases]]
+binding = "DB_SCOTT_OTHER"
+database_name = "scott-agent-scott-staging"
+database_id = "14920e85-355d-43b2-979b-d8ecc5477df8"
+
+[[env.production.r2_buckets]]
+binding = "R2_OTHER"
+bucket_name = "scott-agent-staging"
