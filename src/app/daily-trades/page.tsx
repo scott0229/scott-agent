@@ -321,7 +321,7 @@ export default function DailyTradesPage() {
                         diff = oldOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
-                        itmString = `價落後 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        itmString = `被突破 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                     }
                 }
             }
@@ -570,14 +570,14 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
                                         
-                                        const parts = line.split(/(盈虧 [+-]?[\d,]+(?:\.\d+)?|價落後 [\d,]+(?:\.\d+)?)/);
+                                        const parts = line.split(/(盈虧 [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?)/);
                                         const renderedParts = parts.map((part, pIndex) => {
                                             if (part.startsWith('盈虧 ')) {
                                                 const numStr = part.replace('盈虧 ', '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
                                                 const colorClass = num > 0 ? 'text-green-700' : num < 0 ? 'text-red-700' : '';
                                                 return <span key={pIndex}>盈虧 <span className={colorClass}>{numStr}</span></span>;
-                                            } else if (part.startsWith('價落後 ')) {
+                                            } else if (part.startsWith('被突破 ')) {
                                                 return <span key={pIndex} className="text-red-700">{part}</span>;
                                             }
                                             return <span key={pIndex}>{part}</span>;
