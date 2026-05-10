@@ -433,6 +433,7 @@ export default function DailyTradesPage() {
                     hideProfit = true;
                 } else if (firstTrade.operation === 'Expired') {
                     operationStr = '到期';
+                    hideProfit = true;
                 } else if (firstTrade.operation === 'Closed') {
                     operationStr = '平倉';
                 } else if (firstTrade.operation) {
