@@ -297,14 +297,14 @@ export default function DailyTradesPage() {
                 const closeToDate = rg.closed[0].to_date;
                 if (openToDate && closeToDate) {
                     const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
-                    daysDiffStr = ` ${daysDiff} 天`;
+                    daysDiffStr = ` ${daysDiff}`;
                 }
 
                 const newOpt = rg.opened[0];
                 const oldOpt = rg.closed[0];
                 const strikeDiff = newOpt.strike_price - oldOpt.strike_price;
                 if (strikeDiff !== 0) {
-                    rollSegments.push(`調 ${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} 點`);
+                    rollSegments.push(`調價 ${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
                 }
             }
 
@@ -349,15 +349,33 @@ export default function DailyTradesPage() {
         userGroup.trades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
                 const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
-                const action = transactionQty > 0 ? '買' : '賣';
+                let action = transactionQty > 0 ? '買' : '賣';
+                
+                const isAssigned = (trade.action_type === 'open' && trade.source?.toLowerCase() === 'assigned') || 
+                                   (trade.action_type === 'close' && trade.close_source?.toLowerCase() === 'assigned');
+                if (isAssigned) {
+                    action += '-指派';
+                }
+                
                 const qtyStr = formatNumber(Math.abs(transactionQty));
                 
                 const priceNum = new Intl.NumberFormat('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
                 }).format(trade.price || 0);
                 
-                stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均價 ${priceNum})`);
+                let profitStr = '';
+                if (trade.action_type === 'close' && trade.open_price != null) {
+                    const profit = (trade.price - trade.open_price) * Math.abs(transactionQty);
+                    const profitNum = new Intl.NumberFormat('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    }).format(Math.abs(profit));
+                    const sign = profit > 0 ? '+' : (profit < 0 ? '-' : '');
+                    profitStr = `，盈虧 ${sign}${profitNum}`;
+                }
+                
+                stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均 ${priceNum}${profitStr})`);
             } else if (trade.asset_type === 'option') {
                 if (trade.action_type === 'open' && matchedOpenIds.has(trade.id)) return;
                 if (trade.action_type === 'close' && matchedCloseIds.has(trade.id)) return;
@@ -408,8 +426,21 @@ export default function DailyTradesPage() {
                     }
                 });
                 
-                const profitStr = hasProfit ? `, 盈虧 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
-                prefixLine = `平倉${profitStr}\n`;
+                let operationStr = '平倉';
+                let hideProfit = false;
+                if (firstTrade.operation === 'Assigned') {
+                    operationStr = '到期, 被行權';
+                    hideProfit = true;
+                } else if (firstTrade.operation === 'Expired') {
+                    operationStr = '到期';
+                } else if (firstTrade.operation === 'Closed') {
+                    operationStr = '平倉';
+                } else if (firstTrade.operation) {
+                    operationStr = firstTrade.operation;
+                }
+                
+                const profitStr = (hasProfit && !hideProfit) ? `, 盈虧 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+                prefixLine = `${operationStr}${profitStr}\n`;
             }
             
             const lines = [prefixLine.trimEnd()];
@@ -568,16 +599,17 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
-                                        const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉');
+                                        const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
                                         
-                                        const parts = line.split(/(盈虧 [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?)/);
+                                        const parts = line.split(/((?:盈虧|損益) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
                                         const renderedParts = parts.map((part, pIndex) => {
-                                            if (part.startsWith('盈虧 ')) {
-                                                const numStr = part.replace('盈虧 ', '');
+                                            if (part.startsWith('盈虧 ') || part.startsWith('損益 ')) {
+                                                const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : '損益 ';
+                                                const numStr = part.replace(prefix, '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
                                                 const colorClass = num > 0 ? 'text-green-700' : num < 0 ? 'text-red-700' : '';
-                                                return <span key={pIndex}>盈虧 <span className={colorClass}>{numStr}</span></span>;
-                                            } else if (part.startsWith('被突破 ')) {
+                                                return <span key={pIndex}>{prefix}<span className={colorClass}>{numStr}</span></span>;
+                                            } else if (part.startsWith('被突破 ') || part === '被行權') {
                                                 return <span key={pIndex} className="text-red-700">{part}</span>;
                                             }
                                             return <span key={pIndex}>{part}</span>;
