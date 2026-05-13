@@ -1770,7 +1770,7 @@ export default function AdminUsersPage() {
                                         <textarea
                                             className="w-full text-sm border-none focus:ring-0 p-2 text-black bg-yellow-100 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
                                             placeholder="在此輸入筆記"
-                                            rows={4}
+                                            rows={5}
                                             defaultValue={users.find(u => u.id === userId)?.report_note || ''}
                                             onBlur={async (e) => {
                                                 const val = e.target.value;
