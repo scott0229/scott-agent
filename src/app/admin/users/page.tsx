@@ -1756,17 +1756,7 @@ export default function AdminUsersPage() {
                                             </Button>
                                         </div>
                                     </div>
-                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
-                                        {report.split('\n').map((line, i, arr) => {
-                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('期權收益率 :') || line.startsWith('帳戶淨值 :');
-                                            return (
-                                                <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
-                                                    {line}{i < arr.length - 1 ? '\n' : ''}
-                                                </span>
-                                            );
-                                        })}
-                                    </pre>
-                                    <div className="mt-3">
+                                    <div className="mb-3">
                                         <textarea
                                             className="w-full text-sm border-none focus:ring-0 p-2 text-black bg-yellow-100 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
                                             placeholder="在此輸入筆記"
@@ -1786,6 +1776,16 @@ export default function AdminUsersPage() {
                                             }}
                                         />
                                     </div>
+                                    <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
+                                        {report.split('\n').map((line, i, arr) => {
+                                            const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('期權收益率 :') || line.startsWith('帳戶淨值 :');
+                                            return (
+                                                <span key={i} className={isHighlighted ? "bg-yellow-100 rounded px-1 -ml-1" : ""}>
+                                                    {line}{i < arr.length - 1 ? '\n' : ''}
+                                                </span>
+                                            );
+                                        })}
+                                    </pre>
                                 </div>
                             ))}
                         </div>
