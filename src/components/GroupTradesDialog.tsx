@@ -588,7 +588,7 @@ export function GroupTradesDialog({
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
                                                             ? 'bg-green-100'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'bg-blue-100'
+                                                                ? 'bg-purple-100'
                                                                 : 'bg-slate-100'
                                                 }`}>
                                                     {opt.group_id || '-'}
