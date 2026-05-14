@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { clearUserSelectionCache } from '@/lib/user-cache';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -19,6 +20,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         await db.prepare('UPDATE USERS SET report_note = ? WHERE id = ?')
             .bind(reportNote || null, params.id)
             .run();
+            
+        clearUserSelectionCache();
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,0 +1,1 @@
+ALTER TABLE USERS ADD COLUMN report_note TEXT;
