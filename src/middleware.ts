@@ -10,24 +10,20 @@ export async function middleware(request: NextRequest) {
   const verifiedToken = token ? await verifyToken(token) : null;
   const isAuthenticated = !!verifiedToken;
 
-  // 1. Authenticated users trying to access Login page -> Redirect to Project List
-  if (isAuthenticated && pathname === '/login') {
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  // 1. Authenticated users at Auth pages -> Redirect to Project List (or dashboard)
+  if (isAuthenticated && isAuthPage) {
     return NextResponse.redirect(new URL('/project-list', request.url));
   }
 
-  // 2. Authenticated users at root -> Redirect to Project List
-  if (isAuthenticated && pathname === '/') {
-    return NextResponse.redirect(new URL('/project-list', request.url));
+  // 2. Root path redirect
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL(isAuthenticated ? '/project-list' : '/login', request.url));
   }
 
-  // 3. Unauthenticated users trying to access protected routes -> Redirect to Login
-  // Protected routes: /project-list, /project, and anything under them
-  if (!isAuthenticated && (pathname.startsWith('/project-list') || pathname.startsWith('/project/'))) {
-      return NextResponse.redirect(new URL('/login', request.url));
-  }
-  
-  // 4. Unauthenticated users at root -> Redirect to Login
-  if (!isAuthenticated && pathname === '/') {
+  // 3. Unauthenticated users accessing protected pages -> Redirect to Login
+  if (!isAuthenticated && !isAuthPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -35,5 +31,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/project-list/:path*', '/project/:path*'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.png).*)'],
 };
