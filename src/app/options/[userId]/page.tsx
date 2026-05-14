@@ -808,7 +808,9 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                         ? 'bg-yellow-100 hover:bg-yellow-200' 
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
                                                             ? 'bg-green-100 hover:bg-green-200'
-                                                            : 'bg-slate-100 hover:bg-slate-200'
+                                                            : opt.group_id && String(opt.group_id).endsWith('-4')
+                                                                ? 'bg-blue-100 hover:bg-blue-200'
+                                                                : 'bg-slate-100 hover:bg-slate-200'
                                                 }`}>
                                                     <SelectValue placeholder="-" />
                                                 </SelectTrigger>
