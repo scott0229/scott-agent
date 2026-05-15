@@ -191,7 +191,7 @@ export function StockTradesTable({
                                                                 ? 'bg-green-100 text-green-900 hover:bg-green-200'
                                                                 : trade.group_id && String(trade.group_id).endsWith('-4')
                                                                     ? 'bg-purple-100 text-purple-900 hover:bg-purple-200'
-                                                                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+                                                                    : 'bg-muted text-foreground hover:bg-muted/80'
                                                     }`}>
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
