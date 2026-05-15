@@ -133,7 +133,7 @@ export default function ItemDetailPage({
         </div>
 
         {/* Main Item Card */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg overflow-hidden border-l-4 border-l-primary">
+        <Card className="bg-card/90 backdrop-blur-sm shadow-lg overflow-hidden border-l-4 border-l-primary">
           <CardHeader className="border-b bg-secondary/10 pb-4">
             <div className="flex justify-between items-start">
               <div className="space-y-4 flex-1">

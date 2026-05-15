@@ -157,7 +157,7 @@ export default function NetEquityPage() {
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
         // Cream background, gold border, brown text for all values (positive, negative, drawdown)
-        const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
+        const colorClass = "bg-note-badge text-note-badge-fg border-note-badge-border";
 
         // Display positive value for drawdown as per user request
         const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
@@ -251,44 +251,44 @@ export default function NetEquityPage() {
                                                 <td className="py-2 px-2 w-[25%]"></td>
                                                 <td className="py-1 px-2 text-center font-bold w-[25%]">
                                                     <div
-                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-card/10"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             router.push(`/net-equity/${user.id}`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#2563eb]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-blue" />
                                                         <span>{user.user_id || 'scott'}</span>
                                                     </div>
                                                 </td>
                                                 <td className="py-1 px-2 text-center font-bold w-[25%]">
                                                     <div
-                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-card/10"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             router.push(`/net-equity/${user.id}/benchmark/QQQ`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-green" />
                                                         <span>QQQ</span>
                                                     </div>
                                                 </td>
                                                 <td className="py-1 px-2 text-center font-bold w-[25%]">
                                                     <div
-                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                                                        className="inline-flex items-center justify-center gap-1.5 cursor-pointer rounded-md px-2 py-0.5 transition-colors hover:bg-black/5 dark:hover:bg-card/10"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             router.push(`/net-equity/${user.id}/benchmark/QLD`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#f97316]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-orange" />
                                                         <span>QLD</span>
                                                     </div>
                                                 </td>
                                             </tr>
                                         </thead>
                                         <tbody className="text-[13px]">
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">最後更新日</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {user.equity_history && user.equity_history.length > 0 ? (() => {
@@ -309,7 +309,7 @@ export default function NetEquityPage() {
                                                     })() : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t-2 border-border hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">當前淨值</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatMoney(user.current_net_equity || 0)}
@@ -321,7 +321,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatMoney(user.qldStats.currentEquity) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">成本</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatMoney((user.initial_cost || 0) + (user.total_deposit || 0))}
@@ -333,7 +333,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatMoney(user.qldStats.startEquity + (user.total_deposit || 0)) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">淨利潤</td>
                                                 <td className={cn("h-7 py-1 px-2 text-center", (user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0) < 0 && "bg-pink-50")}>
                                                     {formatMoney((user.current_net_equity || 0) - (user.initial_cost || 0) - (user.total_deposit || 0))}
@@ -345,7 +345,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatMoney(user.qldStats.currentEquity - user.qldStats.startEquity - (user.total_deposit || 0)) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">潛在融資</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {(() => {
@@ -359,7 +359,7 @@ export default function NetEquityPage() {
                                                 <td className="h-7 py-1 px-2 text-center">-</td>
                                                 <td className="h-7 py-1 px-2 text-center">-</td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">帳戶現金</td>
                                                 <td className={cn("h-7 py-1 px-2 text-center", (user.current_cash_balance || 0) < 0 && "bg-pink-50")}>
                                                     {user.current_cash_balance !== undefined ? formatMoney(user.current_cash_balance) : '0'}
@@ -371,7 +371,7 @@ export default function NetEquityPage() {
                                                     0
                                                 </td>
                                             </tr>
-                                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t-2 border-border hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">報酬率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.returnPercentage || 0} />
@@ -383,7 +383,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.returnPercentage} /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">最大回撤</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge value={user.stats?.maxDrawdown || 0} variant="drawdown" />
@@ -395,7 +395,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.maxDrawdown} variant="drawdown" /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">年化報酬率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedReturn || 0)}
@@ -407,7 +407,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedReturn) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">年化標準差</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {formatPercent(user.stats?.annualizedStdDev || 0)}
@@ -419,7 +419,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? formatPercent(user.qldStats.annualizedStdDev) : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">夏普值</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     <StatBadge
@@ -435,7 +435,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? <StatBadge value={user.qldStats.sharpeRatio || 0} variant="sharpe" format={(v) => v.toFixed(2)} /> : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
+                                            <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
                                                 <td className="h-7 py-1 px-2">新高次數</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {user.stats?.newHighCount || 0}
@@ -447,7 +447,7 @@ export default function NetEquityPage() {
                                                     {user.qldStats ? user.qldStats.newHighCount : '-'}
                                                 </td>
                                             </tr>
-                                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
+                                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
                                                 <td className="h-7 py-1 px-2">新高頻率</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {Math.round((user.stats?.newHighFreq || 0) * 100)}%

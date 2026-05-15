@@ -142,9 +142,9 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                             {sortedPayload.map((entry, index) => {
                                                 let name = entry.name;
                                                 let color = entry.color;
-                                                if (name === 'rate') { name = accountLabel; color = '#1d4ed8'; }
-                                                if (name === 'qqq_rate') { name = 'QQQ'; color = '#15803d'; }
-                                                if (name === 'qld_rate') { name = 'QLD'; color = '#c2410c'; }
+                                                if (name === 'rate') { name = accountLabel; color = 'var(--chart-blue-dark)'; }
+                                                if (name === 'qqq_rate') { name = 'QQQ'; color = 'var(--note-green)'; }
+                                                if (name === 'qld_rate') { name = 'QLD'; color = 'var(--chart-orange-dark)'; }
                                                 return (
                                                     <div key={index} style={{ color, padding: 0 }}>
                                                         {name} : {Number(entry.value).toFixed(2)}%
@@ -166,10 +166,10 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                         type="monotone"
                                         dataKey="qqq_rate"
                                         name="qqq_rate"
-                                        stroke="#22c55e"
+                                        stroke="var(--chart-green)"
                                         strokeWidth={2}
                                         dot={false}
-                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#22c55e' }}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--chart-green)' }}
                                     />
                                 )
                             }
@@ -181,10 +181,10 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                         type="monotone"
                                         dataKey="qld_rate"
                                         name="qld_rate"
-                                        stroke="#f97316"
+                                        stroke="var(--chart-orange)"
                                         strokeWidth={2}
                                         dot={false}
-                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--chart-orange)' }}
                                     />
                                 )
                             }
@@ -196,10 +196,10 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                         type="monotone"
                                         dataKey="rate"
                                         name="rate"
-                                        stroke="#2563eb"
+                                        stroke="var(--chart-blue)"
                                         strokeWidth={2}
                                         dot={false}
-                                        activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
+                                        activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--chart-blue)' }}
                                     />
                                 )
                             }
@@ -226,23 +226,23 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
             < div className="h-8 flex items-center justify-center gap-6 text-xs border-t bg-muted/10 select-none" >
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('account'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.account ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.account ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
-                    <div className="w-2 h-2 rounded-full bg-[#2563eb]" />
+                    <div className="w-2 h-2 rounded-full bg-chart-blue" />
                     <span className="text-muted-foreground font-medium">{accountLabel}</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('qqq'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.qqq ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.qqq ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
-                    <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
+                    <div className="w-2 h-2 rounded-full bg-chart-green" />
                     <span className="text-muted-foreground font-medium">QQQ</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('qld'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.qld ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.qld ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
-                    <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+                    <div className="w-2 h-2 rounded-full bg-chart-orange" />
                     <span className="text-muted-foreground font-medium">QLD</span>
                 </button>
             </div >

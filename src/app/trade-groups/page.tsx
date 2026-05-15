@@ -46,7 +46,7 @@ const formatOptionTicker = (opt: any) => {
     
     const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'}` : '';
     const quantityBlock = quantityStr ? (
-        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs mr-1 font-mono">{quantityStr}</span>
+        <span className="bg-muted px-1.5 py-0.5 rounded text-xs mr-1 font-mono">{quantityStr}</span>
     ) : null;
 
     const underlying = opt.underlying;
@@ -505,13 +505,13 @@ export default function TradeGroupsPage() {
                     </h1>
                     <div className="flex items-center gap-2">
                         <div className="px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            現金 <span className={totalCash >= 0 ? "text-green-700" : "text-red-700"}>{totalCash > 0 ? '+' : ''}{Math.round(totalCash).toLocaleString('en-US')}</span>
+                            現金 <span className={totalCash >= 0 ? "text-status-positive" : "text-status-negative"}>{totalCash > 0 ? '+' : ''}{Math.round(totalCash).toLocaleString('en-US')}</span>
                         </div>
                         <div className="px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
                             融資 <span>{marginRate.toFixed(1)}%</span>
                         </div>
                         <div className="mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
-                            盈虧 <span className={totalProfit >= 0 ? "text-green-700" : "text-red-700"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                            盈虧 <span className={totalProfit >= 0 ? "text-status-positive" : "text-status-negative"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -600,7 +600,7 @@ export default function TradeGroupsPage() {
             <div className={`space-y-4 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
 
                 
-                <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
                     <Table className="text-[13px]">
                         <TableHeader>
                             <TableRow className="bg-muted/50">
@@ -660,8 +660,8 @@ export default function TradeGroupsPage() {
                                                 )}
                                                 <input 
                                                     type="text" 
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                    style={{ color: group.note_color === 'red' ? '#7f1d1d' : group.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
+                                                    style={{ color: group.note_color === 'red' ? 'var(--note-red)' : group.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                     placeholder="..."
                                                     defaultValue={group.note || ''}
                                                     onBlur={(e) => {
@@ -703,11 +703,11 @@ export default function TradeGroupsPage() {
                                                 {group.latestTrade && (() => {
                                                     const op = group.latestTrade.operation || 'Open';
                                                     let badgeClass = "ml-2 flex-shrink-0 px-2 py-0.5 rounded-sm text-xs font-medium ";
-                                                    if (op === 'Assigned') badgeClass += "text-red-600 bg-red-50";
-                                                    else if (op === 'Expired') badgeClass += "bg-green-50 text-green-700 rounded-full";
+                                                    if (op === 'Assigned') badgeClass += "text-status-negative bg-status-negative-soft";
+                                                    else if (op === 'Expired') badgeClass += "bg-status-positive-soft text-status-positive rounded-full";
                                                     else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
-                                                    else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
-                                                    else badgeClass += "text-slate-600";
+                                                    else if (op === 'Closed') badgeClass += "bg-muted text-foreground rounded-full";
+                                                    else badgeClass += "text-muted-foreground";
                                                     
                                                     return (
                                                         <span className={badgeClass}>{op}</span>
@@ -722,16 +722,16 @@ export default function TradeGroupsPage() {
                                                 </span>
                                             ) : '-'}
                                         </TableCell>
-                                        <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-green-700' : group.netCashInflow < 0 ? 'text-red-700' : ''}`}>
+                                        <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-status-positive' : group.netCashInflow < 0 ? 'text-status-negative' : ''}`}>
                                             {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
                                         </TableCell>
-                                        <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-red-700' : group.openCostToClose < 0 ? 'text-green-700' : ''}`}>
+                                        <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-status-negative' : group.openCostToClose < 0 ? 'text-status-positive' : ''}`}>
                                             {group.openCostToClose > 0 ? '-' : (group.openCostToClose < 0 ? '+' : '')}{group.openCostToClose === 0 ? '-' : Math.abs(Math.round(group.openCostToClose)).toLocaleString('en-US')}
                                         </TableCell>
-                                        <TableCell className={`text-center font-medium ${group.stockProfit > 0 ? 'text-green-700' : group.stockProfit < 0 ? 'text-red-700' : ''}`}>
+                                        <TableCell className={`text-center font-medium ${group.stockProfit > 0 ? 'text-status-positive' : group.stockProfit < 0 ? 'text-status-negative' : ''}`}>
                                             {group.stockProfit === 0 ? '' : (group.stockProfit > 0 ? '+' : '') + Math.round(group.stockProfit).toLocaleString('en-US')}
                                         </TableCell>
-                                        <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
+                                        <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-status-positive' : group.profit < 0 ? 'text-status-negative' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell>

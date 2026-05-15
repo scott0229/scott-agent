@@ -76,6 +76,27 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Domain tokens — exposed as Tailwind utilities (bg-, text-, border-) */
+  --color-status-positive: var(--status-positive);
+  --color-status-positive-soft: var(--status-positive-soft);
+  --color-status-positive-border: var(--status-positive-border);
+  --color-status-negative: var(--status-negative);
+  --color-status-negative-soft: var(--status-negative-soft);
+  --color-status-negative-border: var(--status-negative-border);
+  --color-note-red: var(--note-red);
+  --color-note-green: var(--note-green);
+  --color-note-blue: var(--note-blue);
+  --color-note-badge: var(--note-badge);
+  --color-note-badge-fg: var(--note-badge-fg);
+  --color-note-badge-border: var(--note-badge-border);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-border: var(--destructive-border);
+  --color-chart-blue: var(--chart-blue);
+  --color-chart-blue-dark: var(--chart-blue-dark);
+  --color-chart-orange: var(--chart-orange);
+  --color-chart-orange-dark: var(--chart-orange-dark);
+  --color-chart-green: var(--chart-green);
 }
 
 :root {
@@ -116,6 +137,27 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 50);
   --sidebar-border: oklch(0.88 0.02 60);
   --sidebar-ring: oklch(0.55 0.08 20);
+
+  /* Domain palette */
+  --status-positive: #15803d;
+  --status-positive-soft: #f0fdf4;
+  --status-positive-border: #bbf7d0;
+  --status-negative: #b91c1c;
+  --status-negative-soft: #fef2f2;
+  --status-negative-border: #fecaca;
+  --note-red: #7f1d1d;
+  --note-green: #15803d;
+  --note-blue: #1e3a8a;
+  --note-badge: #fff9e5;
+  --note-badge-fg: #78350f;
+  --note-badge-border: #fcd34d;
+  --destructive-soft: #fef2f2;
+  --destructive-border: #fecaca;
+  --chart-blue: #2563eb;
+  --chart-blue-dark: #1d4ed8;
+  --chart-orange: #f97316;
+  --chart-orange-dark: #c2410c;
+  --chart-green: #22c55e;
 }
 
 .dark {
@@ -150,6 +192,27 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Domain palette - dark mode */
+  --status-positive: #4ade80;
+  --status-positive-soft: #052e16;
+  --status-positive-border: #166534;
+  --status-negative: #f87171;
+  --status-negative-soft: #450a0a;
+  --status-negative-border: #991b1b;
+  --note-red: #fca5a5;
+  --note-green: #86efac;
+  --note-blue: #93c5fd;
+  --note-badge: #422006;
+  --note-badge-fg: #fcd34d;
+  --note-badge-border: #92400e;
+  --destructive-soft: #450a0a;
+  --destructive-border: #991b1b;
+  --chart-blue: #60a5fa;
+  --chart-blue-dark: #3b82f6;
+  --chart-orange: #fb923c;
+  --chart-orange-dark: #f97316;
+  --chart-green: #4ade80;
 }
 
 @layer base {

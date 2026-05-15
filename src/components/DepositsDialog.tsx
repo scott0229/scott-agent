@@ -241,7 +241,7 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
                     </div>
 
                     {/* Scrollable Body */}
-                    <div className="flex-1 overflow-y-auto bg-white px-4">
+                    <div className="flex-1 overflow-y-auto bg-card px-4">
                         {isLoading ? (
                             <div className="flex h-24 items-center justify-center">
                                 載入中...
@@ -267,7 +267,7 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
                                                 "font-normal",
                                                 deposit.transaction_type === 'deposit'
                                                     ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                                    : "bg-red-100 text-red-700 hover:bg-red-100"
+                                                    : "bg-red-100 text-status-negative hover:bg-red-100"
                                             )}
                                         >
                                             {deposit.transaction_type === 'deposit' ? '入金' : '出金'}

@@ -208,12 +208,12 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                                 </div>
                                             )}
                                             {dataPoint && visible.equity && (
-                                                <div style={{ color: '#1d4ed8', padding: 0 }}>
+                                                <div style={{ color: 'var(--chart-blue-dark)', padding: 0 }}>
                                                     淨值 : {dataPoint.equityRate.toFixed(2)}% ({Math.round(dataPoint.rawEquity).toLocaleString()})
                                                 </div>
                                             )}
                                             {dataPoint && visible.premium && (
-                                                <div style={{ color: '#c2410c', padding: 0 }}>
+                                                <div style={{ color: 'var(--chart-orange-dark)', padding: 0 }}>
                                                     期權收益 : {dataPoint.premiumRate.toFixed(2)}% ({Math.round(dataPoint.rawPremium).toLocaleString()})
                                                 </div>
                                             )}
@@ -234,10 +234,10 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                     type="monotone"
                                     dataKey="equityRate"
                                     name="淨值"
-                                    stroke="#2563eb"
+                                    stroke="var(--chart-blue)"
                                     strokeWidth={2}
                                     dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#2563eb' }}
+                                    activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--chart-blue)' }}
                                 />
                             )}
 
@@ -247,10 +247,10 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                     type="monotone"
                                     dataKey="premiumRate"
                                     name="期權收益"
-                                    stroke="#f97316"
+                                    stroke="var(--chart-orange)"
                                     strokeWidth={2}
                                     dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#f97316' }}
+                                    activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--chart-orange)' }}
                                 />
                             )}
 
@@ -276,16 +276,16 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
             <div className="h-8 flex items-center justify-center gap-6 text-xs border-t bg-muted/10 select-none">
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('equity'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.equity ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.equity ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
-                    <div className="w-2 h-2 rounded-full bg-[#2563eb]" />
+                    <div className="w-2 h-2 rounded-full bg-chart-blue" />
                     <span className="text-muted-foreground font-medium">淨值</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('premium'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.premium ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.premium ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
-                    <div className="w-2 h-2 rounded-full bg-[#f97316]" />
+                    <div className="w-2 h-2 rounded-full bg-chart-orange" />
                     <span className="text-muted-foreground font-medium">期權收益</span>
                 </button>
             </div>

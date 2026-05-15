@@ -586,12 +586,12 @@ export default function HistoricalReportsPage() {
                                                             rows.push(
                                                                 <TableRow 
                                                                     key={`missing-${missingDateStr}-${accountId}`} 
-                                                                    className="bg-red-50/50 hover:bg-red-50/50 pointer-events-none"
+                                                                    className="bg-status-negative-soft/50 hover:bg-status-negative-soft/50 pointer-events-none"
                                                                 >
-                                                                    <TableCell className="font-medium px-4 w-[140px] py-1 whitespace-nowrap text-red-700">
+                                                                    <TableCell className="font-medium px-4 w-[140px] py-1 whitespace-nowrap text-status-negative">
                                                                         {missingDateStr} ({['日', '一', '二', '三', '四', '五', '六'][d.getDay()]})
                                                                     </TableCell>
-                                                                    <TableCell colSpan={2} className="py-1 text-sm text-red-700">
+                                                                    <TableCell colSpan={2} className="py-1 text-sm text-status-negative">
                                                                         檔案短缺
                                                                     </TableCell>
                                                                 </TableRow>
@@ -617,7 +617,7 @@ export default function HistoricalReportsPage() {
                         <DialogTitle>{reports.find(r => r.id === previewId)?.filename?.split('/').pop() || '報表預覽'}</DialogTitle>
                     </DialogHeader>
                     {previewId && (
-                        <div className="flex-1 w-full bg-white relative">
+                        <div className="flex-1 w-full bg-card relative">
                             {/* We use a sandbox to ensure styles don't leak, though the API already provides CSP headers. */}
                             <iframe 
                                 src={`/api/reports/${previewId}`} 

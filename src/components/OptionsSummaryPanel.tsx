@@ -256,13 +256,13 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     // --- Badge Component ---
     const StatBadge = ({ children }: { children: React.ReactNode }) => (
-        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]">
+        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-note-badge text-note-badge-fg border-note-badge-border">
             {children}
         </span>
     );
 
     return (
-        <div className="rounded-md border bg-white mb-8 overflow-hidden shadow-sm">
+        <div className="rounded-md border bg-card mb-8 overflow-hidden shadow-sm">
             <div>
                 <table className="w-full text-[13px] table-fixed">
                     <colgroup>
@@ -280,7 +280,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
-                                        className="inline-flex items-center justify-center w-6 h-6 text-slate-700 hover:text-slate-900 hover:bg-white rounded transition-colors cursor-pointer"
+                                        className="inline-flex items-center justify-center w-6 h-6 text-foreground hover:text-foreground hover:bg-card rounded transition-colors cursor-pointer"
                                         title="重置隱藏"
                                     >
                                         <RotateCcw className="w-4 h-4" />
@@ -288,8 +288,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                     <button
                                         onClick={saveVisibility}
                                         className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
-                                            ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
-                                            : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+                                            ? 'text-destructive hover:text-destructive hover:bg-destructive-soft'
+                                            : 'text-foreground hover:text-foreground hover:bg-card'
                                             }`}
                                         title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}
                                     >
@@ -306,7 +306,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                     <td key={user.id} className="text-center px-1 py-1 bg-muted/40 text-foreground overflow-hidden">
                                         <Link
                                             href={`/options/${user.user_id || user.id}`}
-                                            className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer font-bold"
+                                            className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-card/10 transition-colors cursor-pointer font-bold"
                                             title={user.user_id || user.email.split('@')[0]}
                                         >
                                             {user.user_id || user.email.split('@')[0]}
@@ -318,8 +318,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                     </thead>
                     <tbody className="text-[13px]">
                         {/* Last Update Date */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">最後更新日</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">最後更新日</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -335,8 +335,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Open Position Count */}
-                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">開倉數</td>
+                        <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">開倉數</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -346,7 +346,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                         <div className="flex items-center justify-center gap-1">
                                             <Link
                                                 href={`/options/${user.user_id || user.id}?year=All&operation=${encodeURIComponent('Open')}`}
-                                                className="cursor-pointer text-red-600 hover:text-red-700 hover:underline decoration-2 underline-offset-4 font-medium transition-colors"
+                                                className="cursor-pointer text-status-negative hover:text-status-negative hover:underline decoration-2 underline-offset-4 font-medium transition-colors"
                                             >
                                                 {user.active_count || 0}
                                             </Link>
@@ -363,8 +363,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Premium Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益率</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益率</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -381,8 +381,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Daily Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">每日期權收益</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">每日期權收益</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -395,8 +395,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Margin Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">潛在融資</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">潛在融資</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -409,8 +409,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Turnover Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">周轉率</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">周轉率</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -424,8 +424,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
 
                         {/* Annual Premium */}
-                        <tr className="border-t-2 border-gray-300 hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年</td>
+                        <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -438,8 +438,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Target */}
-                        <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -452,8 +452,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Put Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -466,8 +466,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Call Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();
@@ -481,8 +481,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Stock PnL */}
                         {settings.includeStockDiffInPremium !== false && (
-                            <tr className="border-t hover:bg-secondary/20 bg-slate-50/50">
-                                <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-slate-50/50 z-10 border-r whitespace-nowrap">股票損益-年</td>
+                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                                <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">股票損益-年</td>
 
                                 {users.map(user => {
                                     const userKey = user.user_id || user.id.toString();
@@ -497,8 +497,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             </tr>
                         )}
                         {/* Total Interest */}
-                        <tr className="border-t hover:bg-secondary/20 bg-white">
-                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-white z-10 border-r whitespace-nowrap">利息收支</td>
+                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                            <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">利息收支</td>
 
                             {users.map(user => {
                                 const userKey = user.user_id || user.id.toString();

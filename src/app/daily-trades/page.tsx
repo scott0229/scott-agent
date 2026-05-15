@@ -470,7 +470,7 @@ export default function DailyTradesPage() {
                     <Button
                         variant="outline"
                         size="icon"
-                        className="h-10 w-10 bg-white/50 dark:bg-black/50"
+                        className="h-10 w-10 bg-card/50 dark:bg-black/50"
                         title="重置條件"
                         onClick={() => {
                             setSelectedAccount('all');
@@ -483,7 +483,7 @@ export default function DailyTradesPage() {
                         <FilterX className="h-4 w-4 text-muted-foreground" />
                     </Button>
                     <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                        <SelectTrigger className="w-[140px] h-10 bg-white/50 dark:bg-black/50">
+                        <SelectTrigger className="w-[140px] h-10 bg-card/50 dark:bg-black/50">
                             <SelectValue placeholder="全部帳戶" />
                         </SelectTrigger>
                         <SelectContent>
@@ -496,7 +496,7 @@ export default function DailyTradesPage() {
                         </SelectContent>
                     </Select>
 
-                    <div className="flex items-center h-10 bg-white/50 dark:bg-black/50 rounded-md border shadow-sm">
+                    <div className="flex items-center h-10 bg-card/50 dark:bg-black/50 rounded-md border shadow-sm">
                         <Button variant="ghost" size="icon" className="h-full rounded-r-none" onClick={() => changeDate(-1)}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -554,7 +554,7 @@ export default function DailyTradesPage() {
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col h-[200px]">
+                        <div key={i} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col h-[200px]">
                             <div className="flex items-center justify-between mb-2">
                                 <Skeleton className="h-5 w-32" />
                                 <Skeleton className="h-6 w-6 rounded-md" />
@@ -579,7 +579,7 @@ export default function DailyTradesPage() {
                         const userName = userGroup.user.name || userGroup.user.user_id;
                         
                         return (
-                            <div key={userGroup.user.id} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
+                            <div key={userGroup.user.id} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-semibold text-sm">{userName} {date ? `- ${date.substring(5).replace('-', '/')} ` : ''}交易記錄</h3>
                                     <div className="flex gap-0.5 items-center">
@@ -608,10 +608,10 @@ export default function DailyTradesPage() {
                                                 const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : '損益 ';
                                                 const numStr = part.replace(prefix, '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
-                                                const colorClass = num > 0 ? 'text-green-700' : num < 0 ? 'text-red-700' : '';
+                                                const colorClass = num > 0 ? 'text-status-positive' : num < 0 ? 'text-status-negative' : '';
                                                 return <span key={pIndex}>{prefix}<span className={colorClass}>{numStr}</span></span>;
                                             } else if (part.startsWith('被突破 ') || part === '被行權') {
-                                                return <span key={pIndex} className="text-red-700">{part}</span>;
+                                                return <span key={pIndex} className="text-status-negative">{part}</span>;
                                             }
                                             return <span key={pIndex}>{part}</span>;
                                         });

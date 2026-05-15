@@ -31,9 +31,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { LogOut, User as UserIcon, Upload, Loader2, Edit, Eye } from 'lucide-react';
+import { LogOut, User as UserIcon, Upload, Loader2, Edit, Eye, Moon, Sun } from 'lucide-react';
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "@/contexts/AdminSettingsContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface User {
     id: number;
@@ -61,6 +63,7 @@ export function UserProfileMenu() {
     const router = useRouter();
     const { toast } = useToast();
     const { settings, updateSetting, setAllSettings } = useAdminSettings();
+    const { theme, setTheme } = useTheme();
 
     const fetchUser = async () => {
         try {
@@ -226,7 +229,7 @@ export function UserProfileMenu() {
                         <Edit className="mr-2 h-4 w-4" />
                         <span>設定</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>登出</span>
                     </DropdownMenuItem>
@@ -287,6 +290,25 @@ export function UserProfileMenu() {
                                     placeholder="設定您的暱稱"
                                     disabled={user.user_id === 'admin'}
                                 />
+                            </div>
+
+                            {/* Theme Toggle */}
+                            <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                <Label htmlFor="theme-toggle">外觀</Label>
+                                <div className="flex items-center gap-2">
+                                    {theme === 'dark' ? (
+                                        <Moon className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                        <Sun className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <span className="text-sm">{theme === 'dark' ? '深色模式' : '淺色模式'}</span>
+                                    <Switch
+                                        id="theme-toggle"
+                                        className="ml-auto"
+                                        checked={theme === 'dark'}
+                                        onCheckedChange={(v) => setTheme(v ? 'dark' : 'light')}
+                                    />
+                                </div>
                             </div>
 
 
@@ -461,7 +483,7 @@ export function UserProfileMenu() {
 
 
                             {error && (
-                                <div className="text-sm text-red-500 font-medium bg-red-50 p-2 rounded col-span-full">
+                                <div className="text-sm text-destructive font-medium bg-destructive-soft p-2 rounded col-span-full">
                                     {error}
                                 </div>
                             )}
