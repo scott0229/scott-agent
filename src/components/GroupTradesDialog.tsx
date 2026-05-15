@@ -597,15 +597,15 @@ export function GroupTradesDialog({
                                             {!isOpenOptionsOnly && (
                                                 <TableCell className="py-1 min-w-[100px]">
                                                     {opt.operation === 'Open' || !opt.operation ? (
-                                                        <Badge variant="secondary" className="bg-yellow-50 text-foreground hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
+                                                        <Badge variant="secondary" className="bg-note-badge text-note-badge-fg hover:bg-note-badge border-none shadow-sm font-medium">Open</Badge>
                                                     ) : opt.operation === 'Assigned' ? (
-                                                        <Badge variant="destructive" className="bg-status-negative-soft text-status-negative hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
+                                                        <Badge variant="destructive" className="bg-status-negative-soft text-status-negative hover:bg-status-negative-soft border-none shadow-sm font-medium">Assigned</Badge>
                                                     ) : opt.operation === 'Expired' ? (
-                                                        <Badge variant="secondary" className="bg-status-positive-soft text-status-positive hover:bg-green-100 border-none shadow-sm font-medium">Expired</Badge>
+                                                        <Badge variant="secondary" className="bg-status-positive-soft text-status-positive hover:bg-status-positive-soft border-none shadow-sm font-medium">Expired</Badge>
                                                     ) : opt.operation === 'Transferred' ? (
-                                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none shadow-sm font-medium">Transferred</Badge>
+                                                        <Badge variant="secondary" className="bg-note-blue/20 text-note-blue hover:bg-note-blue/20 border-none shadow-sm font-medium">Transferred</Badge>
                                                     ) : opt.operation === 'Closed' ? (
-                                                        <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted/80 border-none shadow-sm font-medium">Closed</Badge>
+                                                        <Badge variant="secondary" className="bg-secondary text-secondary-foreground hover:bg-secondary border-none shadow-sm font-medium">Closed</Badge>
                                                     ) : (
                                                         <Badge variant="outline">{opt.operation}</Badge>
                                                     )}
