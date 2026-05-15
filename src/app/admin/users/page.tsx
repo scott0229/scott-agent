@@ -1396,13 +1396,13 @@ export default function AdminUsersPage() {
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
-                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">系統管理員</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">系統管理員</Badge>;
             case 'manager':
-                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">管理者</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">管理者</Badge>;
             case 'trader':
-                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">交易員</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">交易員</Badge>;
             default:
-                return <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">客戶</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">客戶</Badge>;
         }
     };
 
@@ -1554,7 +1554,7 @@ export default function AdminUsersPage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-secondary hover:bg-secondary">
@@ -1749,7 +1749,7 @@ export default function AdminUsersPage() {
                                     return bEquity - aEquity;
                                 })
                                 .map(([userId, { userName, report }]) => (
-                                <div key={userId} className="bg-white rounded-lg border shadow-sm p-4 flex flex-col">
+                                <div key={userId} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
                                     <div className="flex items-center justify-between mb-2">
                                         <h3 className="font-semibold text-sm">{userName} 每日報告</h3>
                                         <div className="flex gap-0.5">
@@ -2240,7 +2240,7 @@ export default function AdminUsersPage() {
                                                             {opt.action === 'add' && <span className="text-status-positive">新增期權</span>}
                                                             {opt.action === 'close' && <span className="text-status-negative">平倉</span>}
                                                             {opt.action === 'assign' && <span className="text-purple-600">指派</span>}
-                                                            {opt.action === 'expire' && <span className="text-gray-500">到期</span>}
+                                                            {opt.action === 'expire' && <span className="text-muted-foreground">到期</span>}
                                                             {opt.action === 'close_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">平倉(無對應)</span>}
                                                             {opt.action === 'assign_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">指派(無對應)</span>}
                                                             {opt.action === 'expire_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">到期(無對應)</span>}

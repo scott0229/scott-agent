@@ -179,7 +179,7 @@ export default function BenchmarkDetailPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
                 {/* Header Info / Chart could go here if we wanted deeper analysis, but adhering to "looks like Net Equity Analysis" */}
 
                 {/* Chart Section - Reusing NetEquityChart?
@@ -229,7 +229,7 @@ export default function BenchmarkDetailPage() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <div className="flex justify-center">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
+                                        <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
                                             {record.close_price ? record.close_price.toFixed(2) : "未知"}
                                         </Badge>
                                     </div>
@@ -272,7 +272,7 @@ export default function BenchmarkDetailPage() {
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
                                     {basePrice > 0 ? (
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200">
+                                        <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
                                             {basePrice.toFixed(2)}
                                         </Badge>
                                     ) : '-'}

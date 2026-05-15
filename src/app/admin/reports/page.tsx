@@ -617,7 +617,7 @@ export default function HistoricalReportsPage() {
                         <DialogTitle>{reports.find(r => r.id === previewId)?.filename?.split('/').pop() || '報表預覽'}</DialogTitle>
                     </DialogHeader>
                     {previewId && (
-                        <div className="flex-1 w-full bg-white relative">
+                        <div className="flex-1 w-full bg-card relative">
                             {/* We use a sandbox to ensure styles don't leak, though the API already provides CSP headers. */}
                             <iframe 
                                 src={`/api/reports/${previewId}`} 

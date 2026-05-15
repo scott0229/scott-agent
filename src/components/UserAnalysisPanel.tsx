@@ -132,7 +132,7 @@ export function UserAnalysisPanel({ user, year }: UserAnalysisPanelProps) {
     if (!user) return null;
 
     return (
-        <Card ref={panelRef} className="w-full border shadow-sm bg-white p-0 rounded-lg overflow-hidden">
+        <Card ref={panelRef} className="w-full border shadow-sm bg-card p-0 rounded-lg overflow-hidden">
             <CardContent className="p-0">
                 {isLoading ? (
                     <div className="flex justify-center py-12">
@@ -157,17 +157,17 @@ export function UserAnalysisPanel({ user, year }: UserAnalysisPanelProps) {
                             </thead>
                             <tbody>
                                 {analysis.map((month) => (
-                                    <tr key={month.month} className="hover:bg-gray-100 odd:bg-white even:bg-gray-50">
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{month.month}月</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatPercent(month.put_win_rate)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatPercent(month.call_win_rate)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatPercent(month.total_win_rate)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatDecimal(month.put_delta)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatDecimal(month.call_delta)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatDecimal(month.total_delta)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatDecimal(month.avg_iv)}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{month.capital_efficiency > 0 ? `${month.capital_efficiency.toFixed(3)}%` : ''}</td>
-                                        <td className="border px-2 text-center whitespace-nowrap text-gray-900 h-7">{formatNumber(month.capital_flow)}</td>
+                                    <tr key={month.month} className="hover:bg-muted odd:bg-card even:bg-muted/30">
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{month.month}月</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatPercent(month.put_win_rate)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatPercent(month.call_win_rate)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatPercent(month.total_win_rate)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatDecimal(month.put_delta)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatDecimal(month.call_delta)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatDecimal(month.total_delta)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatDecimal(month.avg_iv)}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{month.capital_efficiency > 0 ? `${month.capital_efficiency.toFixed(3)}%` : ''}</td>
+                                        <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatNumber(month.capital_flow)}</td>
                                     </tr>
                                 ))}
                             </tbody>

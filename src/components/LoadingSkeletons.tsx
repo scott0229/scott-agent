@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function ProjectListSkeleton() {
     return (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
             <div className="p-4 border-b bg-secondary">
                 <div className="grid grid-cols-6 gap-4">
                     <Skeleton className="h-4 w-8" />

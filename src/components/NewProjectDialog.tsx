@@ -151,7 +151,7 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
                         type="checkbox"
                         checked={selectedUserIds.includes(user.id)}
                         onChange={() => handleUserToggle(user.id)}
-                        className="h-4 w-4 rounded border-gray-300"
+                        className="h-4 w-4 rounded border-border"
                       />
                       <span className="text-xs">
                         {user.user_id || user.email} ({user.role === 'customer' ? '客戶' : '交易員'})

@@ -241,7 +241,7 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
                     </div>
 
                     {/* Scrollable Body */}
-                    <div className="flex-1 overflow-y-auto bg-white px-4">
+                    <div className="flex-1 overflow-y-auto bg-card px-4">
                         {isLoading ? (
                             <div className="flex h-24 items-center justify-center">
                                 載入中...

@@ -287,7 +287,7 @@ export default function ProjectListPage() {
           {isLoading ? (
             <ProjectListSkeleton />
           ) : projects.length === 0 ? (
-            <Card className="text-center py-12 bg-white/80">
+            <Card className="text-center py-12 bg-card/80">
               <CardContent>
                 <div className="text-muted-foreground mb-4">
                   <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,7 +306,7 @@ export default function ProjectListPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary hover:bg-secondary">

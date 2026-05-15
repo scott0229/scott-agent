@@ -439,7 +439,7 @@ export function GroupTradesDialog({
                         <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
                         {availableGroups && availableGroups.length > 0 && onGroupSelect ? (
                             <Select value={groupName} onValueChange={onGroupSelect}>
-                                <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 bg-slate-100 hover:bg-slate-200 transition-colors">
+                                <SelectTrigger className="w-auto h-8 text-base font-semibold border-none shadow-none focus:ring-0 px-2 bg-muted hover:bg-muted/80 transition-colors">
                                     <SelectValue placeholder={groupName} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -455,7 +455,7 @@ export function GroupTradesDialog({
                         )}
                         {availableUnderlyings.length > 1 && (
                             <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
-                                <SelectTrigger className="w-[120px] h-8 text-[14px] font-normal border-none shadow-none bg-slate-100 hover:bg-slate-200 focus:ring-0 ml-2">
+                                <SelectTrigger className="w-[120px] h-8 text-[14px] font-normal border-none shadow-none bg-muted hover:bg-muted/80 focus:ring-0 ml-2">
                                     <SelectValue placeholder="標的篩選" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -472,12 +472,12 @@ export function GroupTradesDialog({
                             <div className="flex flex-wrap items-center gap-2 ml-2 text-base font-normal">
                                 {filteredSortedOptions.some(opt => opt.type !== 'STK') && (
                                     <>
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">總現金流入</span>
                                             <span className={totalNetCashInflow > 0 ? 'text-status-positive' : 'text-status-negative'}>{formattedNetCash}</span>
                                         </div>
-                                        <span className="text-slate-400 font-medium">+</span>
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                        <span className="text-muted-foreground font-medium">+</span>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">平倉成本</span>
                                             <span className={totalOpenCostToClose > 0 ? 'text-status-negative' : 'text-status-positive'}>{formattedOpenCost}</span>
                                         </div>
@@ -485,15 +485,15 @@ export function GroupTradesDialog({
                                 )}
                                 {filteredSortedOptions.some(opt => opt.type === 'STK') && (
                                     <>
-                                        {filteredSortedOptions.some(opt => opt.type !== 'STK') && <span className="text-slate-400 font-medium">+</span>}
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                        {filteredSortedOptions.some(opt => opt.type !== 'STK') && <span className="text-muted-foreground font-medium">+</span>}
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">持股獲利</span>
                                             <span className={totalStockPnL > 0 ? 'text-status-positive' : totalStockPnL < 0 ? 'text-status-negative' : ''}>{formattedStockPnL}</span>
                                         </div>
                                     </>
                                 )}
-                                <span className="text-slate-400 font-medium">=</span>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
+                                <span className="text-muted-foreground font-medium">=</span>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                     <span className="text-foreground">總損益</span>
                                     <span className={totalPnL > 0 ? 'text-status-positive' : 'text-status-negative'}>{formattedPnL}</span>
                                 </div>
@@ -502,7 +502,7 @@ export function GroupTradesDialog({
                     </DialogTitle>
                 </DialogHeader>
                 
-                <div className="bg-white rounded-lg shadow-sm border overflow-auto mt-3 flex-1 min-h-0">
+                <div className="bg-card rounded-lg shadow-sm border overflow-auto mt-3 flex-1 min-h-0">
                     <Table className="whitespace-nowrap relative">
                         <TableHeader className="sticky top-0 z-10 bg-secondary shadow-sm">
                             <TableRow className="bg-secondary hover:bg-secondary">
@@ -550,7 +550,7 @@ export function GroupTradesDialog({
                                                                 handleNoteColorToggle(opt);
                                                             }}
                                                             className={`w-4 h-4 rounded-full shrink-0 cursor-pointer shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                                opt.note_color === 'red' ? 'bg-status-negative-soft0' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
+                                                                opt.note_color === 'red' ? 'bg-red-500' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                             }`}
                                                             title="切換註解顏色"
                                                         />
@@ -575,7 +575,7 @@ export function GroupTradesDialog({
                                                 />
                                             </TableCell>
                                             {showAccountColumn && (
-                                                <TableCell className="py-1 text-center text-xs font-medium text-slate-600">
+                                                <TableCell className="py-1 text-center text-xs font-medium text-muted-foreground">
                                                     <span className="bg-primary/10 text-foreground px-2 py-0.5 rounded">
                                                         {opt.owner_name || '-'}
                                                     </span>
@@ -589,7 +589,7 @@ export function GroupTradesDialog({
                                                             ? 'bg-green-100'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
                                                                 ? 'bg-purple-100'
-                                                                : 'bg-slate-100'
+                                                                : 'bg-muted'
                                                 }`}>
                                                     {opt.group_id || '-'}
                                                 </div>
@@ -597,7 +597,7 @@ export function GroupTradesDialog({
                                             {!isOpenOptionsOnly && (
                                                 <TableCell className="py-1 min-w-[100px]">
                                                     {opt.operation === 'Open' || !opt.operation ? (
-                                                        <Badge variant="secondary" className="bg-yellow-50 text-slate-700 hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
+                                                        <Badge variant="secondary" className="bg-yellow-50 text-foreground hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
                                                     ) : opt.operation === 'Assigned' ? (
                                                         <Badge variant="destructive" className="bg-status-negative-soft text-status-negative hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
                                                     ) : opt.operation === 'Expired' ? (
@@ -605,7 +605,7 @@ export function GroupTradesDialog({
                                                     ) : opt.operation === 'Transferred' ? (
                                                         <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none shadow-sm font-medium">Transferred</Badge>
                                                     ) : opt.operation === 'Closed' ? (
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-none shadow-sm font-medium">Closed</Badge>
+                                                        <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted/80 border-none shadow-sm font-medium">Closed</Badge>
                                                     ) : (
                                                         <Badge variant="outline">{opt.operation}</Badge>
                                                     )}

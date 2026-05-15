@@ -468,7 +468,7 @@ export function GroupOverviewDialog({
                                                             handleColorToggle(group.name, group.note_color);
                                                         }}
                                                         className={`w-4 h-4 rounded-full flex-shrink-0 cursor-pointer shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                            group.note_color === 'red' ? 'bg-status-negative-soft0' : group.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
+                                                            group.note_color === 'red' ? 'bg-red-500' : group.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                         }`}
                                                         title="切換註解顏色"
                                                     />
@@ -477,7 +477,7 @@ export function GroupOverviewDialog({
                                                 )}
                                                 <input 
                                                     type="text" 
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                     style={{ color: group.note_color === 'red' ? 'var(--note-red)' : group.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                     placeholder="..."
                                                     defaultValue={group.note || ''}
@@ -521,8 +521,8 @@ export function GroupOverviewDialog({
                                                 if (op === 'Assigned') badgeClass += "text-status-negative bg-status-negative-soft";
                                                 else if (op === 'Expired') badgeClass += "bg-status-positive-soft text-status-positive rounded-full";
                                                 else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
-                                                else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
-                                                else badgeClass += "text-slate-600";
+                                                else if (op === 'Closed') badgeClass += "bg-muted text-foreground rounded-full";
+                                                else badgeClass += "text-muted-foreground";
                                                 
                                                 return (
                                                     <span className={badgeClass}>{op}</span>
@@ -543,7 +543,7 @@ export function GroupOverviewDialog({
                                         <TableCell>
                                             {group.status === 'Terminated' && (
                                                 <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.name, val)}>
-                                                    <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-slate-100 border-none shadow-none focus:ring-0">
+                                                    <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-muted border-none shadow-none focus:ring-0">
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
                                                     <SelectContent>

@@ -276,14 +276,14 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
             <div className="h-8 flex items-center justify-center gap-6 text-xs border-t bg-muted/10 select-none">
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('equity'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.equity ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.equity ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-chart-blue" />
                     <span className="text-muted-foreground font-medium">淨值</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('premium'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.premium ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.premium ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-chart-orange" />
                     <span className="text-muted-foreground font-medium">期權收益</span>

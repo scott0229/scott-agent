@@ -46,7 +46,7 @@ const formatOptionTicker = (opt: any) => {
     
     const quantityStr = opt.quantity != null ? `${opt.quantity}${opt.type === 'STK' ? '股' : '口'}` : '';
     const quantityBlock = quantityStr ? (
-        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-xs mr-1 font-mono">{quantityStr}</span>
+        <span className="bg-muted px-1.5 py-0.5 rounded text-xs mr-1 font-mono">{quantityStr}</span>
     ) : null;
 
     const underlying = opt.underlying;
@@ -600,7 +600,7 @@ export default function TradeGroupsPage() {
             <div className={`space-y-4 transition-opacity duration-200 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
 
                 
-                <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+                <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
                     <Table className="text-[13px]">
                         <TableHeader>
                             <TableRow className="bg-muted/50">
@@ -660,7 +660,7 @@ export default function TradeGroupsPage() {
                                                 )}
                                                 <input 
                                                     type="text" 
-                                                    className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
+                                                    className="w-full bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                     style={{ color: group.note_color === 'red' ? 'var(--note-red)' : group.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                     placeholder="..."
                                                     defaultValue={group.note || ''}
@@ -706,8 +706,8 @@ export default function TradeGroupsPage() {
                                                     if (op === 'Assigned') badgeClass += "text-status-negative bg-status-negative-soft";
                                                     else if (op === 'Expired') badgeClass += "bg-status-positive-soft text-status-positive rounded-full";
                                                     else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
-                                                    else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
-                                                    else badgeClass += "text-slate-600";
+                                                    else if (op === 'Closed') badgeClass += "bg-muted text-foreground rounded-full";
+                                                    else badgeClass += "text-muted-foreground";
                                                     
                                                     return (
                                                         <span className={badgeClass}>{op}</span>

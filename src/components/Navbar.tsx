@@ -65,7 +65,7 @@ export function Navbar() {
     ); // Show in descending order: 2026, 2025, ...
 
     return (
-        <nav className="sticky top-0 w-full z-50 p-4 flex justify-between gap-2 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-white/20 shadow-sm items-center">
+        <nav className="sticky top-0 w-full z-50 p-4 flex justify-between gap-2 bg-card/70 dark:bg-black/70 backdrop-blur-xl border-b border-foreground/15 shadow-sm items-center">
             {/* Year Filter - Only show on options pages */}
             <div className="flex items-center gap-2 ml-2">
                 {/* Year Filter - Always render to prevent layout shift, but disable when not applicable */}

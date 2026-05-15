@@ -708,7 +708,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
+            <div className="bg-card rounded-lg shadow-sm border overflow-x-auto">
                 <Table className="whitespace-nowrap">
                     <TableHeader>
                         <TableRow className="bg-secondary hover:bg-secondary">
@@ -781,7 +781,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
-                                                className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
+                                                className="w-full bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
                                                 style={{ color: opt.note_color === 'red' ? 'var(--note-red)' : opt.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                 maxLength={50}
                                                 defaultValue={opt.note || ''}

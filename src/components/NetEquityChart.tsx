@@ -226,21 +226,21 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
             < div className="h-8 flex items-center justify-center gap-6 text-xs border-t bg-muted/10 select-none" >
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('account'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.account ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.account ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-chart-blue" />
                     <span className="text-muted-foreground font-medium">{accountLabel}</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('qqq'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.qqq ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.qqq ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-chart-green" />
                     <span className="text-muted-foreground font-medium">QQQ</span>
                 </button>
                 <button
                     onClick={(e) => { e.stopPropagation(); toggle('qld'); }}
-                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${visible.qld ? 'opacity-100' : 'opacity-50 grayscale'}`}
+                    className={`flex items-center gap-1.5 transition-all px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-card/10 ${visible.qld ? 'opacity-100' : 'opacity-50 grayscale'}`}
                 >
                     <div className="w-2 h-2 rounded-full bg-chart-orange" />
                     <span className="text-muted-foreground font-medium">QLD</span>

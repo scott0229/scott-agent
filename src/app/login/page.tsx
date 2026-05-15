@@ -70,7 +70,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
+      <Card className="w-full max-w-sm shadow-xl bg-card/80 backdrop-blur-sm border-foreground/15">
         <CardHeader>
           <CardTitle className="text-2xl text-primary font-bold">思科金融</CardTitle>
 
@@ -88,7 +88,7 @@ export default function LoginPage() {
                     onClick={() => setGroup(g.value)}
                     className={`flex-1 py-2 px-3 text-sm font-medium transition-colors ${group === g.value
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-white/50 text-muted-foreground hover:bg-white/80'
+                      : 'bg-card/50 text-muted-foreground hover:bg-card/80'
                       }`}
                   >
                     {g.label}
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 required
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
                 autoComplete="off"
               />
             </div>
@@ -117,7 +117,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
               />
             </div>
             {error && (

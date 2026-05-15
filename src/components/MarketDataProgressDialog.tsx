@@ -116,7 +116,7 @@ export function MarketDataProgressDialog({ open, onOpenChange, userId, year, onC
         <Dialog open={open} onOpenChange={(newOpen) => isComplete && onOpenChange(newOpen)}>
             <DialogContent className="max-w-2xl bg-[#f5f1ed]">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                    <DialogTitle className="text-2xl font-semibold text-foreground flex items-center gap-2">
                         {isComplete && !isError && <Check className="h-6 w-6 text-[#a8736a]" />}
                         {isComplete && isError && <X className="h-6 w-6 text-destructive" />}
                         {isComplete ? (isError ? '更新失敗' : '更新成功') : '正在更新市場資料'}
@@ -127,13 +127,13 @@ export function MarketDataProgressDialog({ open, onOpenChange, userId, year, onC
                         {!isComplete && (
                             <div className="flex flex-col items-center justify-center py-8 space-y-4">
                                 <Loader2 className="h-12 w-12 animate-spin text-[#a8736a]" strokeWidth={2} />
-                                <p className="text-base text-gray-600">處理中，約需 1 分鐘</p>
+                                <p className="text-base text-muted-foreground">處理中，約需 1 分鐘</p>
                             </div>
                         )}
 
                         {isComplete && finalMessage && (
-                            <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
+                            <div className="bg-card rounded-lg p-4 border border-border">
+                                <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
                                     {finalMessage}
                                 </div>
                             </div>
@@ -144,7 +144,7 @@ export function MarketDataProgressDialog({ open, onOpenChange, userId, year, onC
                     <Button
                         onClick={() => onOpenChange(false)}
                         disabled={!isComplete}
-                        className="min-w-[100px] bg-[#a8736a] hover:bg-[#96655d] text-white disabled:bg-gray-300 disabled:text-gray-500"
+                        className="min-w-[100px] bg-[#a8736a] hover:bg-[#96655d] text-white disabled:bg-muted disabled:text-muted-foreground"
                         size="lg"
                     >
                         {isComplete ? '確定' : '更新中...'}

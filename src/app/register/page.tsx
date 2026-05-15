@@ -63,7 +63,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm shadow-xl bg-white/80 backdrop-blur-sm border-white/20">
+      <Card className="w-full max-w-sm shadow-xl bg-card/80 backdrop-blur-sm border-foreground/15">
         <CardHeader>
           <CardTitle className="text-2xl text-primary font-bold">建立帳戶</CardTitle>
           <CardDescription>
@@ -82,7 +82,7 @@ export default function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
               />
             </div>
             <div className="grid gap-2">
@@ -94,7 +94,7 @@ export default function RegisterPage() {
                 required
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
               />
             </div>
             <div className="grid gap-2">
@@ -105,7 +105,7 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
               />
             </div>
             <div className="grid gap-2">
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-white/50"
+                className="bg-card/50"
               />
             </div>
             {error && (

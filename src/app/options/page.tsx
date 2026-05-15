@@ -335,7 +335,7 @@ export default function OptionsPage() {
                                             </div>
 
                                             {/* Scrollable Body Table */}
-                                            <div className="relative bg-white">
+                                            <div className="relative bg-card">
                                                 <table className="w-full text-[13px] table-fixed">
                                                     <colgroup>
                                                         <col className="w-[15%]" />
@@ -360,7 +360,7 @@ export default function OptionsPage() {
                                                             const index = i;
                                                             const initialCost = (client.initial_cost || 0) + (client.net_deposit || 0);
                                                             return (
-                                                                <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
+                                                                <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-muted/30' : 'bg-card'}`}>
                                                                     <td className="px-1 text-center h-7">{stat.month}月</td>
                                                                     <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(stat.total_profit) < 0 ? 'bg-pink-50' : ''}`}>
                                                                         {Math.round(stat.total_profit).toLocaleString()}

@@ -274,10 +274,10 @@ export default function ProjectDetailPage() {
                 placeholder="搜尋任務..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-[200px] h-10 bg-white"
+                className="w-[200px] h-10 bg-card"
               />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-white focus:ring-0 focus:ring-offset-0">
+                <SelectTrigger className="w-[140px] bg-card focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="依狀態篩選" />
                 </SelectTrigger>
                 <SelectContent>
@@ -288,7 +288,7 @@ export default function ProjectDetailPage() {
                 </SelectContent>
               </Select>
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="w-[140px] bg-white focus:ring-0 focus:ring-offset-0">
+                <SelectTrigger className="w-[140px] bg-card focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="依指派人篩選" />
                 </SelectTrigger>
                 <SelectContent>
@@ -318,7 +318,7 @@ export default function ProjectDetailPage() {
         {isLoading ? (
           <div className="text-center py-12">載入中...</div>
         ) : items.length === 0 ? (
-          <Card className="text-center py-12 bg-white/80">
+          <Card className="text-center py-12 bg-card/80">
             <CardContent>
               <div className="text-muted-foreground mb-4">
                 <p className="text-lg">找不到任務</p>
@@ -327,7 +327,7 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary hover:bg-secondary">
