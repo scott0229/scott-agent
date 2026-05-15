@@ -223,7 +223,7 @@ export function StockTradesTable({
                                             {formatDate(trade.open_date)}
                                             {trade.source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50 text-pink-900")}>
+                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-status-negative-soft text-status-negative")}>
                                             {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                             {trade.close_source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                             {trade.close_source === 'transfer' && <span className="text-xs text-muted-foreground font-medium ml-1">(Transferred)</span>}
@@ -245,7 +245,7 @@ export function StockTradesTable({
                                         <TableCell className="text-center py-1">
                                             {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50 text-pink-900')}>
+                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-status-negative-soft text-status-negative')}>
                                             {pnl !== null ? formatPnL(pnl) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center py-1 whitespace-nowrap">

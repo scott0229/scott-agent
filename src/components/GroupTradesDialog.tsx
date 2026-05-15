@@ -537,7 +537,7 @@ export function GroupTradesDialog({
                                     return (
                                         <TableRow
                                             key={opt.id}
-                                            className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-pink-50' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
+                                            className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-status-negative-soft text-status-negative' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
                                         >
                                             <TableCell className="py-1 w-[60px] px-2">
                                                 <div className="flex items-center justify-end gap-3 pr-2">

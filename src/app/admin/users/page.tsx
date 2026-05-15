@@ -1650,21 +1650,21 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-pink-50 text-pink-900' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-status-negative-soft text-status-negative' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-pink-50 text-pink-900' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-pink-50 text-pink-900' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-status-negative-soft text-status-negative' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-status-negative-soft text-status-negative' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);
                                                         return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                                     })() : '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-pink-50 text-pink-900' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
                                                     ) : '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-pink-50 text-pink-900' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         (user.fee_exempt_months ?? 0) > 0 ? `${user.fee_exempt_months}個月` : '-'
                                                     ) : '-'}
@@ -1828,7 +1828,7 @@ export default function AdminUsersPage() {
                                         {report.split('\n').map((line, i, arr) => {
                                             const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('期權收益率 :') || line.startsWith('帳戶淨值 :');
                                             return (
-                                                <span key={i} className={isHighlighted ? "bg-yellow-100 text-yellow-900 rounded px-1 -ml-1" : ""}>
+                                                <span key={i} className={isHighlighted ? "bg-note-badge text-note-badge-fg rounded px-1 -ml-1" : ""}>
                                                     {line}{i < arr.length - 1 ? '\n' : ''}
                                                 </span>
                                             );
