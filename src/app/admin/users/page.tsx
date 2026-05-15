@@ -1396,13 +1396,13 @@ export default function AdminUsersPage() {
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
-                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">系統管理員</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">系統管理員</Badge>;
             case 'manager':
-                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">管理者</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">管理者</Badge>;
             case 'trader':
-                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">交易員</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">交易員</Badge>;
             default:
-                return <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">客戶</Badge>;
+                return <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">客戶</Badge>;
         }
     };
 
