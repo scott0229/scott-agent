@@ -758,7 +758,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             e.preventDefault();
                                             toggleSeparator(opt.id, opt.type, opt.has_separator);
                                         }}
-                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
+                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
                                     >
                                         <TableCell className="py-1">
                                             <div className="flex items-center justify-center gap-4">
@@ -837,7 +837,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 </span>
                                             </TableCell>
                                         )}
-                                        <TableCell className={`py-1 ${(opt.operation || 'Open') === 'Open' ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                        <TableCell className={`py-1 ${(opt.operation || 'Open') === 'Open' ? 'bg-note-badge text-foreground' : ''}`}>
                                             <div className="flex items-center justify-center gap-1">
                                                 {opt.operation === 'Assigned' ? (
                                                     <span
@@ -858,7 +858,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                                 Expired
                                                             </Badge>
                                                         ) : opt.operation === 'Transferred' ? (
-                                                            <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none font-normal text-sm px-2 py-0.5">
+                                                            <Badge className="bg-note-blue/20 text-note-blue hover:bg-note-blue/20 border-none font-normal text-sm px-2 py-0.5">
                                                                 Transferred
                                                             </Badge>
                                                         ) : (
@@ -898,7 +898,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                             </TableCell>
                                         )}
-                                        <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                        <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-note-badge text-foreground' : ''}`}>
                                             {opt.final_profit != null ? Math.round(opt.final_profit).toLocaleString('en-US') : '-'}
                                         </TableCell>
 
