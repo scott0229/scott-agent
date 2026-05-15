@@ -199,11 +199,11 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                             padding: '8px 12px',
                                             fontSize: '12px'
                                         }}>
-                                            <div style={{ color: '#374151', marginBottom: '4px', fontWeight: 500, backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>
+                                            <div style={{ color: 'var(--foreground)', marginBottom: '4px', fontWeight: 500, backgroundColor: 'var(--muted)', padding: '2px 6px', borderRadius: '4px' }}>
                                                 日期 : {label}
                                             </div>
                                             {exposureLabel && (
-                                                <div style={{ color: '#111827', marginBottom: '4px' }}>
+                                                <div style={{ color: 'var(--foreground)', marginBottom: '4px' }}>
                                                     調倉：{exposureLabel}
                                                 </div>
                                             )}
