@@ -736,7 +736,7 @@ export default function TradeGroupsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.ownerId, group.name, val)}>
-                                                <SelectTrigger hideIcon className={`h-8 w-[80px] text-[13px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-blue-50' : ''}`}>
+                                                <SelectTrigger hideIcon className={`h-8 w-[80px] text-[13px] mx-auto justify-center ${group.status === 'Terminated' ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-foreground'}`}>
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
