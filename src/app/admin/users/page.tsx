@@ -156,6 +156,8 @@ export default function AdminUsersPage() {
     const singleFileInputRef = useRef<HTMLInputElement>(null);
     const dirInputRef = useRef<HTMLInputElement>(null);
     const jsonImportRef = useRef<HTMLInputElement>(null);
+    const reportNoteSaveTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+    const reportNotePending = useRef<Map<number, string>>(new Map());
 
     const { toast } = useToast();
     const router = useRouter();
@@ -227,6 +229,56 @@ export default function AdminUsersPage() {
             fetchAllReports(users);
         }
     }, [settings.premiumTargetPercent]);
+
+    const saveReportNote = async (userId: number, val: string) => {
+        try {
+            const res = await fetch(`/api/users/${userId}/report-note`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reportNote: val })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (reportNotePending.current.get(userId) === val) {
+                reportNotePending.current.delete(userId);
+            }
+        } catch (err) {
+            console.error('Failed to save report note', err);
+            toast({ variant: "destructive", title: "儲存失敗", description: "每日報告註解未儲存，請重試" });
+        }
+    };
+
+    const scheduleReportNoteSave = (userId: number, val: string) => {
+        reportNotePending.current.set(userId, val);
+        const existing = reportNoteSaveTimers.current.get(userId);
+        if (existing) clearTimeout(existing);
+        const timer = setTimeout(() => {
+            reportNoteSaveTimers.current.delete(userId);
+            saveReportNote(userId, val);
+        }, 800);
+        reportNoteSaveTimers.current.set(userId, timer);
+    };
+
+    const flushReportNoteSave = async (userId: number, val: string) => {
+        const existing = reportNoteSaveTimers.current.get(userId);
+        if (existing) {
+            clearTimeout(existing);
+            reportNoteSaveTimers.current.delete(userId);
+            await saveReportNote(userId, val);
+        } else if (reportNotePending.current.has(userId)) {
+            await saveReportNote(userId, val);
+        }
+    };
+
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (reportNotePending.current.size > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, []);
 
     // Fetch all user reports for cards
     const fetchAllReports = async (usersList: User[]) => {
@@ -1765,18 +1817,10 @@ export default function AdminUsersPage() {
                                             onInput={(e) => {
                                                 const lines = e.currentTarget.value.split('\n').length;
                                                 e.currentTarget.rows = Math.min(Math.max(lines, 1), 6);
+                                                scheduleReportNoteSave(userId, e.currentTarget.value);
                                             }}
-                                            onBlur={async (e) => {
-                                                const val = e.target.value;
-                                                try {
-                                                    await fetch(`/api/users/${userId}/report-note`, {
-                                                        method: 'PUT',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ reportNote: val })
-                                                    });
-                                                } catch (err) {
-                                                    console.error('Failed to save report note', err);
-                                                }
+                                            onBlur={(e) => {
+                                                flushReportNoteSave(userId, e.target.value);
                                             }}
                                         />
                                     </div>
