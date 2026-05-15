@@ -192,6 +192,27 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Domain palette - dark mode */
+  --status-positive: #4ade80;
+  --status-positive-soft: #052e16;
+  --status-positive-border: #166534;
+  --status-negative: #f87171;
+  --status-negative-soft: #450a0a;
+  --status-negative-border: #991b1b;
+  --note-red: #fca5a5;
+  --note-green: #86efac;
+  --note-blue: #93c5fd;
+  --note-badge: #422006;
+  --note-badge-fg: #fcd34d;
+  --note-badge-border: #92400e;
+  --destructive-soft: #450a0a;
+  --destructive-border: #991b1b;
+  --chart-blue: #60a5fa;
+  --chart-blue-dark: #3b82f6;
+  --chart-orange: #fb923c;
+  --chart-orange-dark: #f97316;
+  --chart-green: #4ade80;
 }
 
 @layer base {
