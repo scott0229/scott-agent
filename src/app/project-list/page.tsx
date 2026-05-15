@@ -266,7 +266,7 @@ export default function ProjectListPage() {
                   <Button
                     variant="outline"
                     onClick={() => setDeleteAllOpen(true)}
-                    className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                    className="hover:bg-destructive-soft hover:text-destructive hover:border-destructive-border"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     刪除全部
@@ -391,7 +391,7 @@ export default function ProjectListPage() {
                                     e.stopPropagation();
                                     handleDelete(project.id);
                                   }}
-                                  className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                  className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

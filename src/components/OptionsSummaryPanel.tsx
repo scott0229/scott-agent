@@ -256,7 +256,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     // --- Badge Component ---
     const StatBadge = ({ children }: { children: React.ReactNode }) => (
-        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]">
+        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-note-badge text-note-badge-fg border-note-badge-border">
             {children}
         </span>
     );
@@ -288,7 +288,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                     <button
                                         onClick={saveVisibility}
                                         className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
-                                            ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                            ? 'text-destructive hover:text-destructive hover:bg-destructive-soft'
                                             : 'text-slate-700 hover:text-slate-900 hover:bg-white'
                                             }`}
                                         title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}
@@ -346,7 +346,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                         <div className="flex items-center justify-center gap-1">
                                             <Link
                                                 href={`/options/${user.user_id || user.id}?year=All&operation=${encodeURIComponent('Open')}`}
-                                                className="cursor-pointer text-red-600 hover:text-red-700 hover:underline decoration-2 underline-offset-4 font-medium transition-colors"
+                                                className="cursor-pointer text-status-negative hover:text-status-negative hover:underline decoration-2 underline-offset-4 font-medium transition-colors"
                                             >
                                                 {user.active_count || 0}
                                             </Link>

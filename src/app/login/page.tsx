@@ -121,7 +121,7 @@ export default function LoginPage() {
               />
             </div>
             {error && (
-              <div className="text-sm text-red-500 font-medium text-center bg-red-50 p-2 rounded">{error}</div>
+              <div className="text-sm text-destructive font-medium text-center bg-destructive-soft p-2 rounded">{error}</div>
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-4">

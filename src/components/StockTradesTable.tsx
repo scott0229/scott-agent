@@ -162,7 +162,7 @@ export function StockTradesTable({
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
                                                 className="w-full bg-transparent focus:outline-none px-1 text-left text-[13px] font-medium"
-                                                style={{ color: trade.note_color === 'red' ? '#7f1d1d' : trade.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
+                                                style={{ color: trade.note_color === 'red' ? 'var(--note-red)' : trade.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                 maxLength={50}
                                                 defaultValue={trade.note || ''}
                                                 placeholder="..."
@@ -221,11 +221,11 @@ export function StockTradesTable({
                                         )}
                                         <TableCell className="text-center py-1">
                                             {formatDate(trade.open_date)}
-                                            {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
+                                            {trade.source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                         </TableCell>
                                         <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
                                             {trade.close_date ? formatDate(trade.close_date) : 'Open'}
-                                            {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
+                                            {trade.close_source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                             {trade.close_source === 'transfer' && <span className="text-xs text-gray-500 font-medium ml-1">(Transferred)</span>}
                                         </TableCell>
                                         <TableCell className="text-center py-1">
@@ -264,9 +264,9 @@ export function StockTradesTable({
                                                 className={cn(
                                                     "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
                                                     trade.include_in_options === 1
-                                                        ? "bg-green-100 border-green-400 text-green-700 hover:bg-green-200"
+                                                        ? "bg-green-100 border-green-400 text-status-positive hover:bg-green-200"
                                                         : trade.include_in_options === 2
-                                                            ? "bg-red-100 border-red-400 text-red-700 hover:bg-red-200"
+                                                            ? "bg-red-100 border-red-400 text-status-negative hover:bg-red-200"
                                                             : "bg-gray-50 border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
                                                 )}
                                                 disabled={!onToggleIncludeInOptions}

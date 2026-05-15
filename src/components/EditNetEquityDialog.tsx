@@ -166,7 +166,7 @@ export function EditNetEquityDialog({ open, onOpenChange, onSuccess, recordToEdi
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4">
                     {error && (
-                        <div className="bg-red-50 text-red-600 px-4 py-2 rounded-md text-sm border border-red-200">
+                        <div className="bg-destructive-soft text-destructive px-4 py-2 rounded-md text-sm border border-destructive-border">
                             {error}
                         </div>
                     )}

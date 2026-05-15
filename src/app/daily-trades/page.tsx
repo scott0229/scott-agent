@@ -608,10 +608,10 @@ export default function DailyTradesPage() {
                                                 const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : '損益 ';
                                                 const numStr = part.replace(prefix, '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
-                                                const colorClass = num > 0 ? 'text-green-700' : num < 0 ? 'text-red-700' : '';
+                                                const colorClass = num > 0 ? 'text-status-positive' : num < 0 ? 'text-status-negative' : '';
                                                 return <span key={pIndex}>{prefix}<span className={colorClass}>{numStr}</span></span>;
                                             } else if (part.startsWith('被突破 ') || part === '被行權') {
-                                                return <span key={pIndex} className="text-red-700">{part}</span>;
+                                                return <span key={pIndex} className="text-status-negative">{part}</span>;
                                             }
                                             return <span key={pIndex}>{part}</span>;
                                         });

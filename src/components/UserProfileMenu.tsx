@@ -226,7 +226,7 @@ export function UserProfileMenu() {
                         <Edit className="mr-2 h-4 w-4" />
                         <span>設定</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>登出</span>
                     </DropdownMenuItem>
@@ -461,7 +461,7 @@ export function UserProfileMenu() {
 
 
                             {error && (
-                                <div className="text-sm text-red-500 font-medium bg-red-50 p-2 rounded col-span-full">
+                                <div className="text-sm text-destructive font-medium bg-destructive-soft p-2 rounded col-span-full">
                                     {error}
                                 </div>
                             )}

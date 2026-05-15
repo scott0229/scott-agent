@@ -732,7 +732,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
 
                             {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             <TableHead className="text-center whitespace-nowrap min-w-[75px] px-2">
-                                {formattedPnL && <span className={totalPnL > 0 ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>{formattedPnL}</span>}
+                                {formattedPnL && <span className={totalPnL > 0 ? 'text-status-positive font-medium' : 'text-status-negative font-medium'}>{formattedPnL}</span>}
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -782,7 +782,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="py-1 min-w-[180px]">
                                             <input 
                                                 className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
+                                                style={{ color: opt.note_color === 'red' ? 'var(--note-red)' : opt.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                 maxLength={50}
                                                 defaultValue={opt.note || ''}
                                                 placeholder="..."
@@ -841,7 +841,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             <div className="flex items-center justify-center gap-1">
                                                 {opt.operation === 'Assigned' ? (
                                                     <span
-                                                        className="text-red-600 bg-red-50 px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
+                                                        className="text-status-negative bg-status-negative-soft px-2 py-1 rounded-sm cursor-pointer hover:bg-red-100 hover:font-semibold transition-all duration-150"
                                                         onClick={() => setSelectedOperation(opt.operation || 'Open')}
                                                         title={`點擊過濾 ${opt.operation} 的交易`}
                                                     >
@@ -854,7 +854,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                         title={`點擊過濾 ${opt.operation || 'Open'} 的交易`}
                                                     >
                                                         {opt.operation === 'Expired' ? (
-                                                            <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-none font-normal text-sm px-2 py-0.5">
+                                                            <Badge className="bg-status-positive-soft text-status-positive hover:bg-green-100 border-none font-normal text-sm px-2 py-0.5">
                                                                 Expired
                                                             </Badge>
                                                         ) : opt.operation === 'Transferred' ? (

@@ -474,12 +474,12 @@ export function GroupTradesDialog({
                                     <>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">總現金流入</span>
-                                            <span className={totalNetCashInflow > 0 ? 'text-green-700' : 'text-red-600'}>{formattedNetCash}</span>
+                                            <span className={totalNetCashInflow > 0 ? 'text-status-positive' : 'text-status-negative'}>{formattedNetCash}</span>
                                         </div>
                                         <span className="text-slate-400 font-medium">+</span>
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">平倉成本</span>
-                                            <span className={totalOpenCostToClose > 0 ? 'text-red-600' : 'text-green-700'}>{formattedOpenCost}</span>
+                                            <span className={totalOpenCostToClose > 0 ? 'text-status-negative' : 'text-status-positive'}>{formattedOpenCost}</span>
                                         </div>
                                     </>
                                 )}
@@ -488,14 +488,14 @@ export function GroupTradesDialog({
                                         {filteredSortedOptions.some(opt => opt.type !== 'STK') && <span className="text-slate-400 font-medium">+</span>}
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                             <span className="text-foreground">持股獲利</span>
-                                            <span className={totalStockPnL > 0 ? 'text-green-700' : totalStockPnL < 0 ? 'text-red-600' : ''}>{formattedStockPnL}</span>
+                                            <span className={totalStockPnL > 0 ? 'text-status-positive' : totalStockPnL < 0 ? 'text-status-negative' : ''}>{formattedStockPnL}</span>
                                         </div>
                                     </>
                                 )}
                                 <span className="text-slate-400 font-medium">=</span>
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-md shadow-sm text-[14px] font-normal">
                                     <span className="text-foreground">總損益</span>
-                                    <span className={totalPnL > 0 ? 'text-green-700' : 'text-red-600'}>{formattedPnL}</span>
+                                    <span className={totalPnL > 0 ? 'text-status-positive' : 'text-status-negative'}>{formattedPnL}</span>
                                 </div>
                             </div>
                         )}
@@ -550,7 +550,7 @@ export function GroupTradesDialog({
                                                                 handleNoteColorToggle(opt);
                                                             }}
                                                             className={`w-4 h-4 rounded-full shrink-0 cursor-pointer shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                                opt.note_color === 'red' ? 'bg-red-500' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
+                                                                opt.note_color === 'red' ? 'bg-status-negative-soft0' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                             }`}
                                                             title="切換註解顏色"
                                                         />
@@ -563,7 +563,7 @@ export function GroupTradesDialog({
                                                 <input 
                                                     type="text"
                                                     className="w-full bg-transparent border-none focus:ring-0 focus:outline-none px-1 text-left text-[13px] font-medium truncate"
-                                                    style={{ color: opt.note_color === 'red' ? '#7f1d1d' : opt.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
+                                                    style={{ color: opt.note_color === 'red' ? 'var(--note-red)' : opt.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                     defaultValue={opt.note || ''}
                                                     placeholder="..."
                                                     onBlur={(e) => handleNoteUpdate(opt, e.target.value)}
@@ -599,9 +599,9 @@ export function GroupTradesDialog({
                                                     {opt.operation === 'Open' || !opt.operation ? (
                                                         <Badge variant="secondary" className="bg-yellow-50 text-slate-700 hover:bg-yellow-100 border-none shadow-sm font-medium">Open</Badge>
                                                     ) : opt.operation === 'Assigned' ? (
-                                                        <Badge variant="destructive" className="bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
+                                                        <Badge variant="destructive" className="bg-status-negative-soft text-status-negative hover:bg-red-100 border-none shadow-sm font-medium">Assigned</Badge>
                                                     ) : opt.operation === 'Expired' ? (
-                                                        <Badge variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100 border-none shadow-sm font-medium">Expired</Badge>
+                                                        <Badge variant="secondary" className="bg-status-positive-soft text-status-positive hover:bg-green-100 border-none shadow-sm font-medium">Expired</Badge>
                                                     ) : opt.operation === 'Transferred' ? (
                                                         <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-none shadow-sm font-medium">Transferred</Badge>
                                                     ) : opt.operation === 'Closed' ? (
@@ -639,11 +639,11 @@ export function GroupTradesDialog({
                                                     {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                                 </TableCell>
                                             )}
-                                            <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-green-700' : opt.final_profit && opt.final_profit < 0 ? 'text-red-600' : ''}`}>
+                                            <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-status-positive' : opt.final_profit && opt.final_profit < 0 ? 'text-status-negative' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
                                             {!isOpenOptionsOnly && (
-                                                <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-green-700' : rollProfit && rollProfit < 0 ? 'text-red-600' : ''}`}>
+                                                <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-status-positive' : rollProfit && rollProfit < 0 ? 'text-status-negative' : ''}`}>
                                                     {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (opt.type === 'STK' ? '' : '-')}
                                                 </TableCell>
                                             )}

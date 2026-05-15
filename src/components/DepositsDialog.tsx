@@ -267,7 +267,7 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
                                                 "font-normal",
                                                 deposit.transaction_type === 'deposit'
                                                     ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                                    : "bg-red-100 text-red-700 hover:bg-red-100"
+                                                    : "bg-red-100 text-status-negative hover:bg-red-100"
                                             )}
                                         >
                                             {deposit.transaction_type === 'deposit' ? '入金' : '出金'}

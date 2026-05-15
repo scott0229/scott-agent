@@ -518,7 +518,7 @@ export default function NetEquityDetailPage() {
                                         </Badge>
                                     </div>
                                 </TableCell>
-                                <TableCell className={`text-center py-1 ${record.cash_balance !== null && record.cash_balance !== undefined && record.cash_balance < 0 ? 'bg-red-50' : ''}`}>
+                                <TableCell className={`text-center py-1 ${record.cash_balance !== null && record.cash_balance !== undefined && record.cash_balance < 0 ? 'bg-status-negative-soft' : ''}`}>
                                     {record.cash_balance !== null && record.cash_balance !== undefined ? (
                                         formatMoney(record.cash_balance)
                                     ) : (
@@ -533,14 +533,14 @@ export default function NetEquityDetailPage() {
                                         "0"
                                     )}
                                 </TableCell>
-                                <TableCell className={`text-center py-1 ${record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? 'bg-red-50' : ''}`}>
+                                <TableCell className={`text-center py-1 ${record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? 'bg-status-negative-soft' : ''}`}>
                                     {record.management_fee !== null && record.management_fee !== undefined && record.management_fee !== 0 ? (
                                         formatMoney(record.management_fee)
                                     ) : (
                                         "0"
                                     )}
                                 </TableCell>
-                                <TableCell className={`text-center font-mono py-1 ${(record as any).deposit && (record as any).deposit !== 0 ? 'bg-red-50' : ''}`}>
+                                <TableCell className={`text-center font-mono py-1 ${(record as any).deposit && (record as any).deposit !== 0 ? 'bg-status-negative-soft' : ''}`}>
                                     {(record as any).deposit && (record as any).deposit !== 0 ? (
                                         formatMoney((record as any).deposit)
                                     ) : (
@@ -566,7 +566,7 @@ export default function NetEquityDetailPage() {
                                         </div>
                                     )}
                                 </TableCell>
-                                <TableCell className={`text-center py-1 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'bg-red-50' : ''}`}>
+                                <TableCell className={`text-center py-1 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'bg-status-negative-soft' : ''}`}>
                                     {(() => {
                                         const val = record.exposure_adjustment || 'none';
                                         if (val === 'buy_qqq') return '買入QQQ';
@@ -602,7 +602,7 @@ export default function NetEquityDetailPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => setRecordToDelete(record.id)}
-                                                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -629,7 +629,7 @@ export default function NetEquityDetailPage() {
                                     </Badge>
                                 </div>
                             </TableCell>
-                            <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-red-50' : ''}`}>{formatMoney(initialCash)}</TableCell>
+                            <TableCell className={`text-center font-mono font-normal ${initialCash < 0 ? 'bg-status-negative-soft' : ''}`}>{formatMoney(initialCash)}</TableCell>
 
                             <TableCell className="text-center font-mono font-normal text-muted-foreground">-</TableCell>
                             <TableCell className="text-center font-mono font-normal">

@@ -118,7 +118,7 @@ export function MarketDataProgressDialog({ open, onOpenChange, userId, year, onC
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
                         {isComplete && !isError && <Check className="h-6 w-6 text-[#a8736a]" />}
-                        {isComplete && isError && <X className="h-6 w-6 text-red-600" />}
+                        {isComplete && isError && <X className="h-6 w-6 text-destructive" />}
                         {isComplete ? (isError ? '更新失敗' : '更新成功') : '正在更新市場資料'}
                     </DialogTitle>
                 </DialogHeader>

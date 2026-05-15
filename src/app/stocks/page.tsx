@@ -375,8 +375,8 @@ export default function StockTradingPage() {
                         <div className={cn(
                             "mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm",
                             totalProfit >= 0 
-                                ? "text-green-700" 
-                                : "text-red-700"
+                                ? "text-status-positive" 
+                                : "text-status-negative"
                         )}>
                             總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>

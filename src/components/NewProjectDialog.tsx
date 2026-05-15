@@ -166,7 +166,7 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
             </div>
 
             {error && (
-              <div className="text-sm text-red-500 font-medium text-center bg-red-50 p-2 rounded">
+              <div className="text-sm text-destructive font-medium text-center bg-destructive-soft p-2 rounded">
                 {error}
               </div>
             )}

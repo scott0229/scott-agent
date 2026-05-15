@@ -176,7 +176,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
         // Cream background, gold border, brown text for all values (positive, negative, drawdown)
-        const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
+        const colorClass = "bg-note-badge text-note-badge-fg border-note-badge-border";
 
         // Display positive value for drawdown as per user request
         const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
@@ -232,7 +232,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <button
                                         onClick={saveVisibility}
                                         className={`inline-flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${hasSavedSettings
-                                            ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                            ? 'text-destructive hover:text-destructive hover:bg-destructive-soft'
                                             : 'text-slate-700 hover:text-slate-900 hover:bg-white'
                                             }`}
                                         title={hasSavedSettings ? "已記憶隱藏設定" : "記憶隱藏"}

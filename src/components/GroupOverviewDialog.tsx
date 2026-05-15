@@ -423,7 +423,7 @@ export function GroupOverviewDialog({
                             {(() => {
                                 const activeGroupsCount = groupStats.filter(g => g.status === 'Active').length;
                                 const totalProfit = groupStats.reduce((sum, g) => sum + g.profit, 0);
-                                const profitColorClass = totalProfit > 0 ? 'text-green-700 font-medium' : totalProfit < 0 ? 'text-red-700 font-medium' : '';
+                                const profitColorClass = totalProfit > 0 ? 'text-status-positive font-medium' : totalProfit < 0 ? 'text-status-negative font-medium' : '';
                                 return (
                                     <>
                                         {groupStats.length} 個群組收益總合 <span className={profitColorClass}>{totalProfit > 0 ? '+' : ''}{Math.round(totalProfit).toLocaleString('en-US')}</span>，{activeGroupsCount} 個群組進行中
@@ -468,7 +468,7 @@ export function GroupOverviewDialog({
                                                             handleColorToggle(group.name, group.note_color);
                                                         }}
                                                         className={`w-4 h-4 rounded-full flex-shrink-0 cursor-pointer shadow-sm transition-colors opacity-90 hover:opacity-100 ${
-                                                            group.note_color === 'red' ? 'bg-red-500' : group.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
+                                                            group.note_color === 'red' ? 'bg-status-negative-soft0' : group.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                         }`}
                                                         title="切換註解顏色"
                                                     />
@@ -478,7 +478,7 @@ export function GroupOverviewDialog({
                                                 <input 
                                                     type="text" 
                                                     className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-primary focus:outline-none transition-colors px-1 text-left text-[13px] font-medium"
-                                                    style={{ color: group.note_color === 'red' ? '#7f1d1d' : group.note_color === 'green' ? '#15803d' : '#1e3a8a' }}
+                                                    style={{ color: group.note_color === 'red' ? 'var(--note-red)' : group.note_color === 'green' ? 'var(--note-green)' : 'var(--note-blue)' }}
                                                     placeholder="..."
                                                     defaultValue={group.note || ''}
                                                     onBlur={(e) => {
@@ -518,8 +518,8 @@ export function GroupOverviewDialog({
                                             {group.latestTrade && (() => {
                                                 const op = group.latestTrade.operation || 'Open';
                                                 let badgeClass = "ml-2 px-2 py-0.5 rounded-sm text-xs font-medium ";
-                                                if (op === 'Assigned') badgeClass += "text-red-600 bg-red-50";
-                                                else if (op === 'Expired') badgeClass += "bg-green-50 text-green-700 rounded-full";
+                                                if (op === 'Assigned') badgeClass += "text-status-negative bg-status-negative-soft";
+                                                else if (op === 'Expired') badgeClass += "bg-status-positive-soft text-status-positive rounded-full";
                                                 else if (op === 'Transferred') badgeClass += "bg-blue-50 text-blue-700 rounded-full";
                                                 else if (op === 'Closed') badgeClass += "bg-slate-100 text-slate-700 rounded-full";
                                                 else badgeClass += "text-slate-600";
@@ -537,7 +537,7 @@ export function GroupOverviewDialog({
                                             ) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center">{group.count}</TableCell>
-                                        <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-green-700' : group.profit < 0 ? 'text-red-700' : ''}`}>
+                                        <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-status-positive' : group.profit < 0 ? 'text-status-negative' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell>

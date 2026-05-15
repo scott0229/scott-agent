@@ -416,7 +416,7 @@ export default function ProjectDetailPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteItem(item.id);

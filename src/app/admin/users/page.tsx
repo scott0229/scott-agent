@@ -1536,7 +1536,7 @@ export default function AdminUsersPage() {
                                     <Button
                                         onClick={() => setDeleteAllDialogOpen(true)}
                                         variant="outline"
-                                        className="font-normal hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                        className="font-normal hover:bg-destructive-soft hover:text-destructive hover:border-destructive-border"
                                     >
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         刪除全部
@@ -1701,7 +1701,7 @@ export default function AdminUsersPage() {
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                                        className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
                                                                     </Button>
@@ -1711,7 +1711,7 @@ export default function AdminUsersPage() {
                                                                         <Eraser className="h-4 w-4 mr-2" />
                                                                         清除交易記錄
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-red-600 focus:text-red-600">
+                                                                    <DropdownMenuItem onClick={() => handleDelete(user.id)} className="text-destructive focus:text-destructive">
                                                                         <Trash2 className="h-4 w-4 mr-2" />
                                                                         刪除帳號
                                                                     </DropdownMenuItem>
@@ -2152,8 +2152,8 @@ export default function AdminUsersPage() {
                                                         {ibStockPreview?.actions?.map((action: any, i: number) => (
                                                             <tr key={`stock-${i}`} className="border-t">
                                                                 <td className="p-1.5">
-                                                                    {action.type === 'open' && <span className="text-green-600">開倉</span>}
-                                                                    {action.type === 'close_full' && <span className="text-red-600">平倉</span>}
+                                                                    {action.type === 'open' && <span className="text-status-positive">開倉</span>}
+                                                                    {action.type === 'close_full' && <span className="text-status-negative">平倉</span>}
                                                                     {action.type === 'close_split' && <span className="text-orange-600">拆單平倉</span>}
                                                                 </td>
                                                                 <td className="p-1.5 font-mono">{action.symbol}</td>
@@ -2206,13 +2206,13 @@ export default function AdminUsersPage() {
                                                         <td className="p-1.5 font-mono">{pos.underlying}</td>
                                                         <td className="text-center p-1.5 font-mono">{pos.quantity}</td>
                                                         <td className="text-center p-1.5">
-                                                            <span className={pos.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
+                                                            <span className={pos.type === 'CALL' ? 'text-status-positive' : 'text-status-negative'}>
                                                                 {pos.type}
                                                             </span>
                                                         </td>
                                                         <td className="text-center p-1.5 font-mono">{pos.strikePrice}</td>
                                                         <td className="text-right p-1.5 font-mono">{pos.toDateStr}</td>
-                                                        <td className={`text-right p-1.5 font-mono ${pos.unrealizedPnl < 0 ? 'text-red-600' : ''}`}>${Math.round(pos.unrealizedPnl || 0).toLocaleString()}</td>
+                                                        <td className={`text-right p-1.5 font-mono ${pos.unrealizedPnl < 0 ? 'text-status-negative' : ''}`}>${Math.round(pos.unrealizedPnl || 0).toLocaleString()}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -2237,8 +2237,8 @@ export default function AdminUsersPage() {
                                                 {ibImportPreview.parsed.optionActions.map((opt: any, i: number) => (
                                                     <tr key={`opt-${i}`} className={`border-t ${opt.action === 'skip_close' ? 'opacity-40' : opt.action === 'skip_exists' ? 'opacity-60' : ''}`}>
                                                         <td className="p-1.5">
-                                                            {opt.action === 'add' && <span className="text-green-600">新增期權</span>}
-                                                            {opt.action === 'close' && <span className="text-red-600">平倉</span>}
+                                                            {opt.action === 'add' && <span className="text-status-positive">新增期權</span>}
+                                                            {opt.action === 'close' && <span className="text-status-negative">平倉</span>}
                                                             {opt.action === 'assign' && <span className="text-purple-600">指派</span>}
                                                             {opt.action === 'expire' && <span className="text-gray-500">到期</span>}
                                                             {opt.action === 'close_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">平倉(無對應)</span>}
@@ -2250,7 +2250,7 @@ export default function AdminUsersPage() {
                                                         <td className="p-1.5 font-mono">{opt.underlying}</td>
                                                         <td className="text-center p-1.5 font-mono">{opt.quantity}</td>
                                                         <td className="text-center p-1.5">
-                                                            <span className={opt.type === 'CALL' ? 'text-green-600' : 'text-red-600'}>
+                                                            <span className={opt.type === 'CALL' ? 'text-status-positive' : 'text-status-negative'}>
                                                                 {opt.type}
                                                             </span>
                                                         </td>
@@ -2264,7 +2264,7 @@ export default function AdminUsersPage() {
                                     )}
 
                                     {ibStockPreview?.warnings?.length > 0 && (
-                                        <div className="text-red-600 text-xs space-y-1">
+                                        <div className="text-destructive text-xs space-y-1">
                                             {ibStockPreview.warnings.map((w: string, i: number) => (
                                                 <p key={i}>{w}</p>
                                             ))}
@@ -2357,13 +2357,13 @@ export default function AdminUsersPage() {
                                                         </thead>
                                                         <tbody>
                                                             {batchResults.map((r, i) => (
-                                                                <tr key={i} className={`border-t ${r.status.startsWith('✗') ? 'bg-red-50' : ''}`}>
+                                                                <tr key={i} className={`border-t ${r.status.startsWith('✗') ? 'bg-destructive-soft' : ''}`}>
                                                                     <td className="p-1.5 font-mono whitespace-nowrap">{r.date}</td>
                                                                     <td className="p-1.5 whitespace-nowrap">{r.user}</td>
                                                                     <td className="p-1.5">
                                                                         {r.status.startsWith('✓') ? (
                                                                             <div className="flex items-center gap-1">
-                                                                                <Check className="text-green-700 h-4 w-4 stroke-[3] shrink-0" />
+                                                                                <Check className="text-status-positive h-4 w-4 stroke-[3] shrink-0" />
                                                                                 <span className="text-[13px]">{r.status.replace(/^✓\s*(年初更新|更新|已匯入)\s*/, '')}</span>
                                                                             </div>
                                                                         ) : (
@@ -2378,7 +2378,7 @@ export default function AdminUsersPage() {
                                             )}
 
                                             {batchError && (
-                                                <p className="text-[13px] text-red-600 bg-red-50 px-2 py-1.5 rounded">
+                                                <p className="text-[13px] text-destructive bg-destructive-soft px-2 py-1.5 rounded">
                                                     ❌ {batchError}
                                                 </p>
                                             )}

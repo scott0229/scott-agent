@@ -220,12 +220,12 @@ export function UserSelectionDialog({
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {user.statusLabel && (
-                                                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                                    <span className="text-xs font-medium text-status-positive bg-status-positive-soft px-2 py-0.5 rounded-full border border-green-200">
                                                         {user.statusLabel}
                                                     </span>
                                                 )}
                                                 {isCompleted && (
-                                                    <div className="flex items-center text-green-600 animate-in fade-in zoom-in duration-300">
+                                                    <div className="flex items-center text-status-positive animate-in fade-in zoom-in duration-300">
                                                         <Check className="h-4 w-4" />
                                                     </div>
                                                 )}

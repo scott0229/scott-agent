@@ -157,7 +157,7 @@ export default function NetEquityPage() {
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
         // Cream background, gold border, brown text for all values (positive, negative, drawdown)
-        const colorClass = "bg-[#FFF9E5] text-[#78350F] border-[#FCD34D]";
+        const colorClass = "bg-note-badge text-note-badge-fg border-note-badge-border";
 
         // Display positive value for drawdown as per user request
         const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
@@ -257,7 +257,7 @@ export default function NetEquityPage() {
                                                             router.push(`/net-equity/${user.id}`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#2563eb]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-blue" />
                                                         <span>{user.user_id || 'scott'}</span>
                                                     </div>
                                                 </td>
@@ -269,7 +269,7 @@ export default function NetEquityPage() {
                                                             router.push(`/net-equity/${user.id}/benchmark/QQQ`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-green" />
                                                         <span>QQQ</span>
                                                     </div>
                                                 </td>
@@ -281,7 +281,7 @@ export default function NetEquityPage() {
                                                             router.push(`/net-equity/${user.id}/benchmark/QLD`);
                                                         }}
                                                     >
-                                                        <div className="h-2 w-2 rounded-full bg-[#f97316]" />
+                                                        <div className="h-2 w-2 rounded-full bg-chart-orange" />
                                                         <span>QLD</span>
                                                     </div>
                                                 </td>
