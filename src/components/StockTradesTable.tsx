@@ -185,13 +185,13 @@ export function StockTradesTable({
                                                     onValueChange={(val) => onGroupUpdate && onGroupUpdate(trade.id, val === "none" ? null : val)}
                                                 >
                                                     <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
-                                                        trade.group_id && String(trade.group_id).endsWith('-0') 
-                                                            ? 'bg-yellow-100 hover:bg-yellow-200' 
+                                                        trade.group_id && String(trade.group_id).endsWith('-0')
+                                                            ? 'bg-yellow-100 text-yellow-900 hover:bg-yellow-200'
                                                             : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                ? 'bg-green-100 hover:bg-green-200'
+                                                                ? 'bg-green-100 text-green-900 hover:bg-green-200'
                                                                 : trade.group_id && String(trade.group_id).endsWith('-4')
-                                                                    ? 'bg-purple-100 hover:bg-purple-200'
-                                                                    : 'bg-slate-100 hover:bg-slate-200'
+                                                                    ? 'bg-purple-100 text-purple-900 hover:bg-purple-200'
+                                                                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
                                                     }`}>
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
@@ -223,7 +223,7 @@ export function StockTradesTable({
                                             {formatDate(trade.open_date)}
                                             {trade.source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50")}>
+                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-pink-50 text-pink-900")}>
                                             {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                             {trade.close_source === 'assigned' && <span className="text-xs text-green-700 font-medium ml-1">(被指派)</span>}
                                             {trade.close_source === 'transfer' && <span className="text-xs text-gray-500 font-medium ml-1">(Transferred)</span>}
@@ -245,7 +245,7 @@ export function StockTradesTable({
                                         <TableCell className="text-center py-1">
                                             {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50')}>
+                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-pink-50 text-pink-900')}>
                                             {pnl !== null ? formatPnL(pnl) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center py-1 whitespace-nowrap">

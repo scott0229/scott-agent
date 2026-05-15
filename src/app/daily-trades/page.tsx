@@ -618,7 +618,7 @@ export default function DailyTradesPage() {
 
                                         return (
                                             <span key={i}>
-                                                <span className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-foreground font-medium' : ''}>
+                                                <span className={isRollHighlight ? 'bg-amber-100/80 px-1 rounded text-amber-900 font-medium' : ''}>
                                                     {renderedParts}
                                                 </span>
                                                 {i < arr.length - 1 ? '\n' : ''}

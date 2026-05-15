@@ -804,13 +804,13 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 onValueChange={(val) => handleGroupUpdate(opt.id, opt.type, val === "none" ? null : val)}
                                             >
                                                 <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
-                                                    opt.group_id && String(opt.group_id).endsWith('-0') 
-                                                        ? 'bg-yellow-100 hover:bg-yellow-200' 
+                                                    opt.group_id && String(opt.group_id).endsWith('-0')
+                                                        ? 'bg-yellow-100 text-yellow-900 hover:bg-yellow-200'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
-                                                            ? 'bg-green-100 hover:bg-green-200'
+                                                            ? 'bg-green-100 text-green-900 hover:bg-green-200'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'bg-purple-100 hover:bg-purple-200'
-                                                                : 'bg-slate-100 hover:bg-slate-200'
+                                                                ? 'bg-purple-100 text-purple-900 hover:bg-purple-200'
+                                                                : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
                                                 }`}>
                                                     <SelectValue placeholder="-" />
                                                 </SelectTrigger>
