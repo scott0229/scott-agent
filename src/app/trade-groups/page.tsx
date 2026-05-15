@@ -639,7 +639,7 @@ export default function TradeGroupsPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             )}
-                                            <TableRow className="hover:bg-muted/50">
+                                            <TableRow className="hover:bg-blue-50 dark:hover:bg-blue-950/40">
                                                 <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
                                                 <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">
