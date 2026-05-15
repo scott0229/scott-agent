@@ -158,7 +158,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
                             <XAxis
                                 dataKey="dateStr"
-                                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
                                 minTickGap={30}
                                 interval="preserveStartEnd"
                                 padding={{ left: 10, right: 10 }}
@@ -172,7 +172,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                     const { x, y, payload, index } = props;
                                     if (index === 0) return null;
                                     return (
-                                        <text x={x} y={y} dy={4} textAnchor="end" fill="hsl(var(--muted-foreground))" fontSize={12}>
+                                        <text x={x} y={y} dy={4} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
                                             {formatPercent(payload.value)}
                                         </text>
                                     );
@@ -184,7 +184,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                 tickLine={false}
                             />
                             {/* 0% reference line */}
-                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} />
+                            <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.3} />
                             <Tooltip
                                 defaultIndex={chartData.length - 1}
                                 content={({ active, payload, label }) => {
@@ -195,7 +195,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
 
                                     return (
                                         <div style={{
-                                            backgroundColor: 'hsl(var(--popover))',
+                                            backgroundColor: 'var(--popover)',
                                             padding: '8px 12px',
                                             fontSize: '12px'
                                         }}>
@@ -224,7 +224,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                 contentStyle={{ border: 'none', padding: 0, background: 'transparent', boxShadow: 'none' }}
                                 wrapperStyle={{ pointerEvents: 'none', zIndex: 10, outline: 'none', border: 'none', boxShadow: 'none' }}
                                 itemStyle={{ border: 'none' }}
-                                cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                                 isAnimationActive={false}
                             />
 

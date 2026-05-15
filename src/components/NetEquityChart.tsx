@@ -57,7 +57,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                 y={y}
                 dy={4}
                 textAnchor="end"
-                fill="hsl(var(--muted-foreground))"
+                fill="var(--muted-foreground)"
                 fontSize={12}
             >
                 {formatPercent(payload.value)}
@@ -92,10 +92,10 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.3} />
+                            <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" opacity={0.3} />
                             <XAxis
                                 dataKey="dateStr"
-                                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
                                 minTickGap={30}
                                 interval="preserveStartEnd"
                                 padding={{ left: 10, right: 10 }}
@@ -127,7 +127,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
 
                                     return (
                                         <div style={{
-                                            backgroundColor: 'hsl(var(--popover))',
+                                            backgroundColor: 'var(--popover)',
                                             padding: '8px 12px',
                                             fontSize: '12px'
                                         }}>
@@ -156,7 +156,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                 }}
                                 position={{ x: 50, y: 5 }}
                                 wrapperStyle={{ pointerEvents: 'none', zIndex: 10 }}
-                                cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
 
                             {/* QQQ - Green */}
