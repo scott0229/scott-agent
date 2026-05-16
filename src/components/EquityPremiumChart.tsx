@@ -178,7 +178,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                     );
                                 }}
                                 tickCount={6}
-                                width={50}
+                                width={60}
                                 domain={['auto', 'auto']}
                                 axisLine={false}
                                 tickLine={false}
@@ -220,7 +220,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                         </div>
                                     );
                                 }}
-                                position={{ x: 50, y: 5 }}
+                                position={{ x: 65, y: 5 }}
                                 contentStyle={{ border: 'none', padding: 0, background: 'transparent', boxShadow: 'none' }}
                                 wrapperStyle={{ pointerEvents: 'none', zIndex: 10, outline: 'none', border: 'none', boxShadow: 'none' }}
                                 itemStyle={{ border: 'none' }}

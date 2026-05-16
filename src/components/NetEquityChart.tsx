@@ -106,7 +106,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                             <YAxis
                                 tick={CustomYTick}
                                 tickCount={5}
-                                width={45}
+                                width={60}
                                 domain={['auto', 'auto']}
                                 axisLine={false}
                                 tickLine={false}
@@ -154,7 +154,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                                         </div>
                                     );
                                 }}
-                                position={{ x: 50, y: 5 }}
+                                position={{ x: 65, y: 5 }}
                                 wrapperStyle={{ pointerEvents: 'none', zIndex: 10 }}
                                 cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
