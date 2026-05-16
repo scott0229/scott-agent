@@ -42,36 +42,40 @@ This project is a Next.js application deployed to Cloudflare Workers using OpenN
 
 ## Deployment
 
-### Staging
+**Primary path: GitHub Actions.** Push to `main` triggers two workflows in parallel:
 
-To deploy to the staging environment (separate D1 database and worker):
+- `.github/workflows/deploy-staging.yml` → `staging.scott-agent.com`
+- `.github/workflows/deploy-production.yml` → `scott-agent.com`
 
-1.  **Run Migrations**:
+Both run: `npm ci` → `migrate:{env}` → `build:cf` → `wrangler deploy --env {env}`. Manual re-runs via the Actions tab (`Run workflow`).
 
-    ```bash
-    npm run migrate:staging
-    ```
+> ⚠️ **Do not build / deploy from Windows.** OpenNext's bundler currently fails on Windows when the repo path contains spaces (this repo lives under `C:\Users\scott\my project\...`). `npm run deploy:*` works fine from CI's Ubuntu runners; locally on Windows it dies in `createServerBundle`. Use the CI workflows, or build from WSL / a no-space path if you must run it locally.
 
-2.  **Deploy**:
-    ```bash
-    npm run deploy:staging
-    ```
-    This script builds the OpenNext application and deploys it to the staging environment.
+### CI prerequisites (one-time setup)
 
-### Production
+Two GitHub repo secrets are required (Settings → Secrets and variables → Actions):
 
-To deploy to the production environment:
+| Secret | Value |
+|---|---|
+| `CLOUDFLARE_ACCOUNT_ID` | The account ID (also visible in `wrangler.toml`) |
+| `CLOUDFLARE_API_TOKEN` | Custom API token — see permissions below |
 
-1.  **Run Migrations**:
+**Cloudflare API token permissions** (create at https://dash.cloudflare.com/profile/api-tokens → Create Custom Token):
 
-    ```bash
-    npm run migrate:production
-    ```
+| Scope | Permission | Why |
+|---|---|---|
+| Account | `Workers Scripts · Edit` | `wrangler deploy` uploads the Worker |
+| Account | `D1 · Edit` | `wrangler d1 migrations apply` |
+| Account | `Workers R2 Storage · Edit` | R2 bucket bindings |
+| **Zone** | **`Workers Routes · Edit`** | **Required for `custom_domain = true` routes** — easy to miss; without it, `wrangler deploy` fails at the route-binding step with `Authentication error [code: 10000]` against `/zones/.../workers/routes` |
 
-2.  **Deploy**:
-    ```bash
-    npm run deploy:production
-    ```
+Account Resources: `Include` → the specific account. Zone Resources: `Include` → `All zones from an account` (only appears after adding a Zone-scoped permission like Workers Routes).
+
+### Local deploy (fallback, non-Windows only)
+
+```bash
+npm run deploy:staging      # or deploy:production
+```
 
 ## Development Notes
 
