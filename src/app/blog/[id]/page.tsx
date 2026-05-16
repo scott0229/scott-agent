@@ -3,11 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useTheme } from '@/contexts/ThemeContext';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,14 +18,6 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Pencil, Trash2, Loader2, CalendarDays } from 'lucide-react';
-
-import '@uiw/react-md-editor/markdown-editor.css';
-import '@uiw/react-markdown-preview/markdown.css';
-
-const Markdown = dynamic(
-    () => import('@uiw/react-md-editor').then((mod) => mod.default.Markdown),
-    { ssr: false }
-);
 
 interface BlogPost {
     id: number;
@@ -43,7 +33,6 @@ interface BlogPost {
 export default function BlogPostPage({ params }: { params: { id: string } }) {
     const router = useRouter();
     const { toast } = useToast();
-    const { theme } = useTheme();
     const postId = parseInt(params.id, 10);
     const [post, setPost] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
@@ -168,12 +157,10 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
                     </div>
                 </header>
 
-                <div data-color-mode={theme}>
-                    <Markdown
-                        source={post.content || ''}
-                        style={{ background: 'transparent' }}
-                    />
-                </div>
+                <div
+                    className="blog-content"
+                    dangerouslySetInnerHTML={{ __html: post.content || '' }}
+                />
             </article>
         </div>
     );
