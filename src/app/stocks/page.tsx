@@ -406,10 +406,10 @@ export default function StockTradingPage() {
                             <div className="w-[150px]">
                                 <Select value={selectedUserFilter} onValueChange={setSelectedUserFilter}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="所有用戶" />
+                                        <SelectValue placeholder="所有帳戶" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="All">所有用戶</SelectItem>
+                                    <SelectContent className="max-h-none">
+                                        <SelectItem value="All">所有帳戶</SelectItem>
                                         {users.map(u => (
                                             <SelectItem key={u.id} value={u.user_id || u.email}>
                                                 {u.user_id || u.email}

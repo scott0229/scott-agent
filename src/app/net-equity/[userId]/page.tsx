@@ -507,7 +507,7 @@ export default function NetEquityDetailPage() {
                             </TableRow>
                         )}
                         {filteredRecords.map((record) => (
-                            <TableRow key={record.id} className={`hover:bg-muted/50 h-9 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'border-t-2 border-t-orange-300' : ''}`}>
+                            <TableRow key={record.id} className={`h-9 ${record.exposure_adjustment && record.exposure_adjustment !== 'none' ? 'border-t-2 border-t-orange-300' : ''}`}>
                                 <TableCell className="text-center font-mono py-1">
                                     {formatDate(record.date)}
                                 </TableCell>
@@ -618,7 +618,7 @@ export default function NetEquityDetailPage() {
                             </TableRow>
                         ))}
                         {/* Initial Cost Row - Always Visible */}
-                        <TableRow className="hover:bg-muted/50 h-9">
+                        <TableRow className="h-9">
                             <TableCell className="text-center font-mono">
                                 帳戶起始
                             </TableCell>

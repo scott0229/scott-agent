@@ -486,7 +486,7 @@ export default function DailyTradesPage() {
                         <SelectTrigger className="w-[140px] h-10 bg-card/50 dark:bg-black/50">
                             <SelectValue placeholder="全部帳戶" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-none">
                             <SelectItem value="all">全部帳戶</SelectItem>
                             {allAccounts.map(user => (
                                 <SelectItem key={user.user_id} value={user.user_id}>

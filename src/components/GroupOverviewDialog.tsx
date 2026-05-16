@@ -402,8 +402,8 @@ export function GroupOverviewDialog({
                                 <SelectTrigger className="w-auto h-auto px-2 py-1 text-lg font-bold border-none bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0 gap-2">
                                     <SelectValue placeholder="選擇用戶" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="All">所有用戶</SelectItem>
+                                <SelectContent className="max-h-none">
+                                    <SelectItem value="All">所有帳戶</SelectItem>
                                     {users.map((user: any) => (
                                         <SelectItem key={user.id} value={user.user_id || user.email}>
                                             {user.user_id || user.email}

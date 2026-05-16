@@ -540,8 +540,8 @@ export default function TradeGroupsPage() {
                         <SelectTrigger className="w-[140px]">
                             <SelectValue placeholder="選擇用戶" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="All">所有用戶</SelectItem>
+                        <SelectContent className="max-h-none">
+                            <SelectItem value="All">所有帳戶</SelectItem>
                             {[...users].sort((a: any, b: any) => (a.user_id || a.email).localeCompare(b.user_id || b.email)).map((user: any) => (
                                 <SelectItem key={user.id} value={user.user_id || user.email}>
                                     {user.user_id || user.email}
@@ -639,7 +639,7 @@ export default function TradeGroupsPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             )}
-                                            <TableRow className="hover:bg-blue-50 dark:hover:bg-blue-950/40">
+                                            <TableRow>
                                                 <TableCell className="text-center text-[13px] text-foreground font-mono">{filteredGroupStats.length - index}</TableCell>
                                                 <TableCell>
                                             <div className="flex items-center gap-2 min-w-[150px]">

@@ -223,7 +223,7 @@ export default function BenchmarkDetailPage() {
                             </TableRow>
                         )}
                         {filteredRecords.map((record) => (
-                            <TableRow key={record.id} className="hover:bg-muted/50 group">
+                            <TableRow key={record.id} className="group">
                                 <TableCell className="text-center font-mono font-medium">
                                     {formatDate(record.date)}
                                 </TableCell>

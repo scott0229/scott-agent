@@ -592,8 +592,8 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                 <SelectTrigger className="w-auto min-w-[200px] h-auto px-3 py-2 text-3xl font-bold border border-input rounded-md bg-background gap-4 hover:bg-accent hover:text-accent-foreground transition-colors">
                                     <SelectValue placeholder="選擇用戶" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="All">所有用戶</SelectItem>
+                                <SelectContent className="max-h-none">
+                                    <SelectItem value="All">所有帳戶</SelectItem>
                                     {users.map((user) => (
                                         <SelectItem key={user.id} value={user.user_id || user.email}>
                                             {user.user_id || user.email}
@@ -966,7 +966,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                 ownerId={ownerId}
                 year={selectedYear}
                 onStatusChange={fetchGroupStatuses}
-                titlePrefix={params.userId !== 'All' ? params.userId : '所有用戶'}
+                titlePrefix={params.userId !== 'All' ? params.userId : '所有帳戶'}
                 users={users}
                 currentUserRole={currentUserRole}
                 selectedUserValue={selectedUserValue || params.userId}
