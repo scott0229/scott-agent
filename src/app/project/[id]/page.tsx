@@ -330,7 +330,7 @@ export default function ProjectDetailPage() {
           <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-secondary hover:bg-secondary">
+                <TableRow>
                   <TableHead className="w-[80px]">#</TableHead>
                   <TableHead>狀態</TableHead>
                   <TableHead className="w-[45%]">標題</TableHead>

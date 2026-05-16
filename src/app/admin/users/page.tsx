@@ -1556,7 +1556,7 @@ export default function AdminUsersPage() {
                 <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
                     <Table>
                         <TableHeader>
-                            <TableRow className="bg-secondary hover:bg-secondary">
+                            <TableRow>
                                 <TableHead className="w-[50px] text-center">#</TableHead>
                                 <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>

@@ -200,7 +200,7 @@ export default function BenchmarkDetailPage() {
 
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+                        <TableRow>
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">收盤價</TableHead>
                             <TableHead className="text-center font-bold text-foreground">股數</TableHead>

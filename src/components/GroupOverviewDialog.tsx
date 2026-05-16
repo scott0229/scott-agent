@@ -433,7 +433,7 @@ export function GroupOverviewDialog({
                         </div>
                         <Table className="text-[13px]">
                         <TableHeader>
-                            <TableRow className="bg-muted/50">
+                            <TableRow>
                                 <TableHead className="w-[40px] text-center"></TableHead>
                                 <TableHead className="min-w-[180px]"></TableHead>
                                 <TableHead>群組名稱</TableHead>

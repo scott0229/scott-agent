@@ -309,7 +309,7 @@ export default function ProjectListPage() {
             <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-secondary hover:bg-secondary">
+                  <TableRow>
                     <TableHead className="w-[50px] text-center">#</TableHead>
                     <TableHead>專案名稱</TableHead>
                     <TableHead className="text-center">任務數量</TableHead>

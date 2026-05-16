@@ -603,7 +603,7 @@ export default function TradeGroupsPage() {
                 <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
                     <Table className="text-[13px]">
                         <TableHeader>
-                            <TableRow className="bg-muted/50">
+                            <TableRow>
                                 <TableHead className="w-[40px] text-center"></TableHead>
                                 <TableHead className="min-w-[150px]"></TableHead>
                                 <TableHead className="w-[90px]">帳戶</TableHead>

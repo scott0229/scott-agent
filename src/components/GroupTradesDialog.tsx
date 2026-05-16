@@ -504,8 +504,8 @@ export function GroupTradesDialog({
                 
                 <div className="bg-card rounded-lg shadow-sm border overflow-auto mt-3 flex-1 min-h-0">
                     <Table className="whitespace-nowrap relative">
-                        <TableHeader className="sticky top-0 z-10 bg-secondary shadow-sm">
-                            <TableRow className="bg-secondary hover:bg-secondary">
+                        <TableHeader className="sticky top-0 z-10 bg-table-header-bg shadow-sm">
+                            <TableRow>
                                 <TableHead className="text-center w-[60px] px-2"></TableHead>
                                 <TableHead className="text-left min-w-[200px] max-w-[300px]"></TableHead>
                                 {showAccountColumn && <TableHead className="text-center w-[90px]">帳戶</TableHead>}

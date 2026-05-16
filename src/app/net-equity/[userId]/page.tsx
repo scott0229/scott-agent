@@ -481,7 +481,7 @@ export default function NetEquityDetailPage() {
             <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+                        <TableRow>
                             <TableHead className="w-[100px] text-center font-bold text-foreground">交易日</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶淨值</TableHead>
                             <TableHead className="text-center font-bold text-foreground">帳戶現金</TableHead>

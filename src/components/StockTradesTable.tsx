@@ -102,7 +102,7 @@ export function StockTradesTable({
             <div className="bg-card rounded-lg shadow-sm border overflow-x-auto">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-secondary hover:bg-secondary">
+                        <TableRow>
                             <TableHead className="w-[50px] text-center"></TableHead>
                             <TableHead className="text-left"></TableHead>
                             <TableHead className="text-center w-[95px]"></TableHead>

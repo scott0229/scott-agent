@@ -711,7 +711,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
             <div className="bg-card rounded-lg shadow-sm border overflow-x-auto">
                 <Table className="whitespace-nowrap">
                     <TableHeader>
-                        <TableRow className="bg-secondary hover:bg-secondary">
+                        <TableRow>
                             {/* Table Headers same as original */}
                             <TableHead className="text-center"></TableHead>
                             <TableHead className="text-left"></TableHead>
