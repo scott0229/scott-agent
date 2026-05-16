@@ -275,8 +275,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         })}
                     </colgroup>
                     <thead>
-                        <tr className="border-b bg-muted/40 text-[13px] font-medium">
-                            <td className="py-1 pl-3 pr-3 sticky left-0 bg-muted/40 z-10 border-r whitespace-nowrap">
+                        <tr className="border-b bg-table-header-bg text-[13px] font-medium">
+                            <td className="py-1 pl-3 pr-3 sticky left-0 bg-table-header-bg z-10 border-r whitespace-nowrap">
                                 <div className="flex items-center gap-1.5">
                                     <button
                                         onClick={resetVisibility}
@@ -303,7 +303,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 const isVisible = columnVisibility.users[userKey] !== false;
 
                                 return isVisible ? (
-                                    <td key={user.id} className="text-center px-1 py-1 bg-muted/40 text-foreground overflow-hidden">
+                                    <td key={user.id} className="text-center px-1 py-1 bg-table-header-bg text-foreground overflow-hidden">
                                         <Link
                                             href={`/options/${user.user_id || user.id}`}
                                             className="truncate px-0.5 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-card/10 transition-colors cursor-pointer font-bold"
@@ -318,7 +318,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                     </thead>
                     <tbody className="text-[13px]">
                         {/* Last Update Date */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">最後更新日</td>
 
                             {users.map(user => {
@@ -335,7 +335,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Open Position Count */}
-                        <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
+                        <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">開倉數</td>
 
                             {users.map(user => {
@@ -363,7 +363,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Premium Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益率</td>
 
                             {users.map(user => {
@@ -381,7 +381,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Daily Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                        <tr className="border-t hover:bg-table-row-hover bg-muted/30">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">每日期權收益</td>
 
                             {users.map(user => {
@@ -395,7 +395,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Margin Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">潛在融資</td>
 
                             {users.map(user => {
@@ -409,7 +409,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Turnover Rate */}
-                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                        <tr className="border-t hover:bg-table-row-hover bg-muted/30">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">周轉率</td>
 
                             {users.map(user => {
@@ -424,7 +424,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
 
                         {/* Annual Premium */}
-                        <tr className="border-t-2 border-border hover:bg-secondary/20 bg-card">
+                        <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年</td>
 
                             {users.map(user => {
@@ -438,7 +438,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Target */}
-                        <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                        <tr className="border-t hover:bg-table-row-hover bg-muted/30">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">期權收益-年-目標</td>
 
                             {users.map(user => {
@@ -452,7 +452,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Put Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年-PUT</td>
 
                             {users.map(user => {
@@ -466,7 +466,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Annual Call Premium */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年-CALL</td>
 
                             {users.map(user => {
@@ -481,7 +481,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
                         {/* Annual Stock PnL */}
                         {settings.includeStockDiffInPremium !== false && (
-                            <tr className="border-t hover:bg-secondary/20 bg-muted/30">
+                            <tr className="border-t hover:bg-table-row-hover bg-muted/30">
                                 <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-muted/30 z-10 border-r whitespace-nowrap">股票損益-年</td>
 
                                 {users.map(user => {
@@ -497,7 +497,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             </tr>
                         )}
                         {/* Total Interest */}
-                        <tr className="border-t hover:bg-secondary/20 bg-card">
+                        <tr className="border-t hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">利息收支</td>
 
                             {users.map(user => {
