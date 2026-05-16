@@ -346,7 +346,18 @@ export default function DailyTradesPage() {
 
         const unmatchedOptions: any[] = [];
 
-        userGroup.trades.forEach((trade: any) => {
+        const STOCK_SYMBOL_PRIORITY: Record<string, number> = { QQQ: 0, QLD: 1, TQQQ: 2 };
+        const stockSymbolRank = (s: string) => STOCK_SYMBOL_PRIORITY[s] ?? Number.MAX_SAFE_INTEGER;
+        const sortedTrades = [...userGroup.trades].sort((a: any, b: any) => {
+            if (a.asset_type !== 'stock' || b.asset_type !== 'stock') return 0;
+            if (a.action_type !== b.action_type) return a.action_type === 'open' ? -1 : 1;
+            const ra = stockSymbolRank(a.symbol);
+            const rb = stockSymbolRank(b.symbol);
+            if (ra !== rb) return ra - rb;
+            return a.symbol.localeCompare(b.symbol);
+        });
+
+        sortedTrades.forEach((trade: any) => {
             if (trade.asset_type === 'stock') {
                 const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
                 let action = transactionQty > 0 ? '買' : '賣';
