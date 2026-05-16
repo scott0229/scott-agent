@@ -396,7 +396,10 @@ export default function DailyTradesPage() {
 
         const optionGroups: Record<string, any[]> = {};
         unmatchedOptions.forEach((trade: any) => {
-            const key = `${trade.action_type}_${trade.symbol}_${trade.option_type}_${trade.strike_price}_${trade.to_date}`;
+            const isAssignedClose = trade.action_type === 'close' && trade.operation === 'Assigned';
+            const key = isAssignedClose
+                ? `close_${trade.symbol}_${trade.option_type}_assigned`
+                : `${trade.action_type}_${trade.symbol}_${trade.option_type}_${trade.strike_price}_${trade.to_date}`;
             if (!optionGroups[key]) optionGroups[key] = [];
             optionGroups[key].push(trade);
         });
