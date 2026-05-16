@@ -57,7 +57,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                 y={y}
                 dy={4}
                 textAnchor="end"
-                fill="var(--muted-foreground)"
+                fill="var(--foreground)"
                 fontSize={12}
             >
                 {formatPercent(payload.value)}
@@ -95,7 +95,7 @@ export function NetEquityChart({ data, initialCost, id, name }: NetEquityChartPr
                             <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" opacity={0.3} />
                             <XAxis
                                 dataKey="dateStr"
-                                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                                tick={{ fontSize: 12, fill: 'var(--foreground)' }}
                                 minTickGap={30}
                                 interval="preserveStartEnd"
                                 padding={{ left: 10, right: 10 }}

@@ -158,7 +158,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
                             <XAxis
                                 dataKey="dateStr"
-                                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                                tick={{ fontSize: 12, fill: 'var(--foreground)' }}
                                 minTickGap={30}
                                 interval="preserveStartEnd"
                                 padding={{ left: 10, right: 10 }}
@@ -172,7 +172,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
                                     const { x, y, payload, index } = props;
                                     if (index === 0) return null;
                                     return (
-                                        <text x={x} y={y} dy={4} textAnchor="end" fill="var(--muted-foreground)" fontSize={12}>
+                                        <text x={x} y={y} dy={4} textAnchor="end" fill="var(--foreground)" fontSize={12}>
                                             {formatPercent(payload.value)}
                                         </text>
                                     );
