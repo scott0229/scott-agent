@@ -225,7 +225,6 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     <button
                                         onClick={resetVisibility}
                                         className="inline-flex items-center justify-center w-6 h-6 text-foreground hover:text-foreground hover:bg-card rounded transition-colors cursor-pointer"
-                                        title="重置隱藏"
                                     >
                                         <RotateCcw className="w-4 h-4" />
                                     </button>

@@ -485,7 +485,6 @@ export default function DailyTradesPage() {
                         variant="outline"
                         size="icon"
                         className="h-10 w-10 bg-card/50 dark:bg-black/50"
-                        title="重置條件"
                         onClick={() => {
                             setSelectedAccount('all');
                             if (availableDates && availableDates.length > 0) {

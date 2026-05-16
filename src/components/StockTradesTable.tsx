@@ -145,7 +145,6 @@ export function StockTradesTable({
                                                         className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
                                                             trade.note_color === 'red' ? 'bg-red-500' : trade.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                         }`}
-                                                        title="切換註解顏色"
                                                     />
                                                 ) : (
                                                     <div className="w-4 h-4 shrink-0" />

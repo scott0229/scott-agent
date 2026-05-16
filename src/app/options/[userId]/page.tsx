@@ -757,7 +757,6 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                         className={`w-4 h-4 rounded-full shrink-0 shadow-sm transition-colors opacity-90 hover:opacity-100 ${
                                                             opt.note_color === 'red' ? 'bg-red-500' : opt.note_color === 'green' ? 'bg-green-600' : 'bg-blue-500'
                                                         }`}
-                                                        title="切換註解顏色"
                                                     />
                                                 ) : (
                                                     <div className="w-4 h-4 shrink-0" />
