@@ -22,7 +22,7 @@ const content = `<figure style="margin:28px 0;padding:0;">
     <text x="42" y="125" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">700</text>
     <line x1="48" y1="121" x2="540" y2="121" stroke="#eee0d0" stroke-width="0.8"/>
     <line x1="48" y1="147" x2="540" y2="147" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,4"/>
-    <text x="544" y="151" font-size="11" font-weight="700" fill="#d97706" font-family="sans-serif">$692 strike</text>
+    <text x="540" y="142" font-size="11" font-weight="700" fill="#d97706" text-anchor="end" font-family="sans-serif">$692 strike</text>
     <polyline points="80,85 164,78 248,98 332,73 416,57 500,92" fill="none" stroke="#22a37f" stroke-width="2.5" stroke-linejoin="round"/>
     <circle cx="80" cy="85" r="3" fill="#22a37f"/>
     <circle cx="164" cy="78" r="3" fill="#22a37f"/>
