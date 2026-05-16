@@ -828,7 +828,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         </TableCell>
                                         {params.userId === 'All' && (
                                             <TableCell className="py-1">
-                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 border border-slate-200">
+                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-user-badge text-user-badge-fg border border-user-badge-border">
                                                     {/* Try to find user display name from users list if possible, else just ID */}
                                                     {(() => {
                                                         const u = users.find(u => u.user_id === opt.user_id || u.id.toString() === opt.user_id);

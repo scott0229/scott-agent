@@ -90,6 +90,9 @@
   --color-note-badge: var(--note-badge);
   --color-note-badge-fg: var(--note-badge-fg);
   --color-note-badge-border: var(--note-badge-border);
+  --color-user-badge: var(--user-badge);
+  --color-user-badge-fg: var(--user-badge-fg);
+  --color-user-badge-border: var(--user-badge-border);
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-border: var(--destructive-border);
   --color-chart-blue: var(--chart-blue);
@@ -160,6 +163,9 @@
   --note-badge: #fff9e5;
   --note-badge-fg: #78350f;
   --note-badge-border: #fcd34d;
+  --user-badge: #f1f5f9;
+  --user-badge-fg: #334155;
+  --user-badge-border: #e2e8f0;
   --destructive-soft: #fef2f2;
   --destructive-border: #fecaca;
   --chart-blue: #2563eb;
@@ -224,6 +230,9 @@
   --note-badge: #5e2c0c;
   --note-badge-fg: #fcd34d;
   --note-badge-border: #92400e;
+  --user-badge: #334155;
+  --user-badge-fg: #e2e8f0;
+  --user-badge-border: #475569;
   --destructive-soft: #450a0a;
   --destructive-border: #991b1b;
   --chart-blue: #60a5fa;
