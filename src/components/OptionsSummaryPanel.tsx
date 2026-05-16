@@ -256,7 +256,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
 
     // --- Badge Component ---
     const StatBadge = ({ children }: { children: React.ReactNode }) => (
-        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-note-badge text-note-badge-fg border-note-badge-border">
+        <span className="inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-normal bg-status-positive-soft text-status-positive border-status-positive-border">
             {children}
         </span>
     );
