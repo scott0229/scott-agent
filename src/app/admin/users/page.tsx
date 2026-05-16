@@ -1545,7 +1545,6 @@ export default function AdminUsersPage() {
                                 <Button
                                     onClick={() => { setEditingUser(null); setDialogOpen(true); }}
                                     variant="secondary"
-                                    className="hover:bg-accent hover:text-accent-foreground"
                                 >
                                     <span className="mr-0.5">+</span>新增
                                 </Button>
