@@ -382,7 +382,7 @@ export default function AdminUsersPage() {
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `當日利息 : ${data.dailyInterest ? (Number(data.dailyInterest.toFixed(1)) === 0 ? '0' : data.dailyInterest.toFixed(1)) : '0'}\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
-        report += `最高歷史淨值 : ${formatMoney(highestNetWorth)}\n`;
+        report += `歷史最高 : ${formatMoney(highestNetWorth)}\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
