@@ -186,11 +186,11 @@ export function StockTradesTable({
                                                 >
                                                     <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
                                                         trade.group_id && String(trade.group_id).endsWith('-0')
-                                                            ? 'bg-yellow-100 text-yellow-900 hover:bg-yellow-200'
+                                                            ? 'bg-note-badge text-note-badge-fg'
                                                             : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                ? 'bg-green-100 text-green-900 hover:bg-green-200'
+                                                                ? 'bg-status-positive-soft text-status-positive'
                                                                 : trade.group_id && String(trade.group_id).endsWith('-4')
-                                                                    ? 'bg-purple-100 text-purple-900 hover:bg-purple-200'
+                                                                    ? 'bg-highlight-purple-bg text-highlight-purple-fg'
                                                                     : 'bg-muted text-foreground hover:bg-muted/80'
                                                     }`}>
                                                         <SelectValue placeholder="-" />
@@ -264,9 +264,9 @@ export function StockTradesTable({
                                                 className={cn(
                                                     "inline-flex items-center justify-center w-6 h-6 rounded-full border transition-all duration-200 cursor-pointer",
                                                     trade.include_in_options === 1
-                                                        ? "bg-green-100 border-green-400 text-status-positive hover:bg-green-200"
+                                                        ? "bg-status-positive-soft border-status-positive-border text-status-positive"
                                                         : trade.include_in_options === 2
-                                                            ? "bg-red-100 border-red-400 text-status-negative hover:bg-red-200"
+                                                            ? "bg-status-negative-soft border-status-negative-border text-status-negative"
                                                             : "bg-muted/30 border-border text-muted-foreground/70 hover:bg-muted hover:text-muted-foreground"
                                                 )}
                                                 disabled={!onToggleIncludeInOptions}

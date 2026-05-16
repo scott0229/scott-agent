@@ -218,9 +218,9 @@ export default function ProjectDetailPage() {
   };
 
   const statusColors = {
-    'New': 'bg-blue-100 text-blue-800', // Assuming these status keys are from DB, might need logic or just UI mapping if displayed
-    'In Progress': 'bg-yellow-100 text-yellow-800',
-    'Closed': 'bg-green-100 text-green-800',
+    'New': 'bg-highlight-blue-bg text-highlight-blue-fg',
+    'In Progress': 'bg-note-badge text-note-badge-fg',
+    'Closed': 'bg-status-positive-soft text-status-positive',
   };
 
   if (!project && !isLoading) {

@@ -100,6 +100,12 @@
   --color-table-row-hover: var(--table-row-hover);
   --color-table-header-bg: var(--table-header-bg);
   --color-table-divider: var(--table-divider);
+  --color-highlight-purple-bg: var(--highlight-purple-bg);
+  --color-highlight-purple-fg: var(--highlight-purple-fg);
+  --color-highlight-orange-bg: var(--highlight-orange-bg);
+  --color-highlight-orange-fg: var(--highlight-orange-fg);
+  --color-highlight-blue-bg: var(--highlight-blue-bg);
+  --color-highlight-blue-fg: var(--highlight-blue-fg);
 }
 
 :root {
@@ -164,6 +170,12 @@
   --table-row-hover: #eff6ff;
   --table-header-bg: oklch(0.92 0.02 70);
   --table-divider: oklch(0 0 0 / 25%);
+  --highlight-purple-bg: #f3e8ff;
+  --highlight-purple-fg: #581c87;
+  --highlight-orange-bg: #ffedd5;
+  --highlight-orange-fg: #9a3412;
+  --highlight-blue-bg: #dbeafe;
+  --highlight-blue-fg: #1e3a8a;
 }
 
 .dark {
@@ -222,6 +234,12 @@
   --table-row-hover: rgb(23 37 84 / 0.4);
   --table-header-bg: oklch(0.32 0 0);
   --table-divider: oklch(1 0 0 / 50%);
+  --highlight-purple-bg: #2e1065;
+  --highlight-purple-fg: #d8b4fe;
+  --highlight-orange-bg: #431407;
+  --highlight-orange-fg: #fdba74;
+  --highlight-blue-bg: #172554;
+  --highlight-blue-fg: #bfdbfe;
 }
 
 @layer base {

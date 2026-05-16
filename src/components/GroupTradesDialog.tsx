@@ -584,11 +584,11 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1 min-w-[110px]">
                                                 <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${
                                                     opt.group_id && String(opt.group_id).endsWith('-0')
-                                                        ? 'bg-yellow-100 text-yellow-900'
+                                                        ? 'bg-note-badge text-note-badge-fg'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
-                                                            ? 'bg-green-100 text-green-900'
+                                                            ? 'bg-status-positive-soft text-status-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'bg-purple-100 text-purple-900'
+                                                                ? 'bg-highlight-purple-bg text-highlight-purple-fg'
                                                                 : 'bg-muted'
                                                 }`}>
                                                     {opt.group_id || '-'}

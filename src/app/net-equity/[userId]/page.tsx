@@ -678,7 +678,7 @@ export default function NetEquityDetailPage() {
                                     const totalDailyInterest = records.reduce((s, r) => s + (r.daily_interest || 0), 0);
                                     return (
                                         <div className="flex justify-center">
-                                            <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-50 border border-orange-200">
+                                            <Badge variant="secondary" className="bg-highlight-orange-bg text-highlight-orange-fg hover:bg-highlight-orange-bg border border-highlight-orange-fg/30">
                                                 {totalDailyInterest.toFixed(1)}
                                             </Badge>
                                         </div>

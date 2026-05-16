@@ -1807,7 +1807,7 @@ export default function AdminUsersPage() {
                                     </div>
                                     <div className="mb-3">
                                         <textarea
-                                            className="w-full text-sm border-none focus:ring-0 p-2 text-black bg-yellow-100 rounded-md resize-none outline-none transition-colors placeholder:text-amber-700/70 font-medium"
+                                            className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium"
                                             placeholder="在此輸入筆記"
                                             rows={Math.min(Math.max((users.find(u => u.id === userId)?.report_note || '').trimEnd().split('\n').length, 1), 6)}
                                             defaultValue={users.find(u => u.id === userId)?.report_note || ''}
@@ -2310,12 +2310,12 @@ export default function AdminUsersPage() {
                                                 用戶：{[...new Set(batchFiles.map(f => f.userAlias))].join('、')}
                                             </p>
                                             {batchMessage && (
-                                                <p className="text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                                                <p className="text-xs text-highlight-orange-fg bg-highlight-orange-bg px-2 py-1.5 rounded">
                                                     ⚠ {batchMessage}
                                                 </p>
                                             )}
                                             {batchDateWarnings.length > 0 && (
-                                                <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded space-y-0.5">
+                                                <div className="text-xs text-highlight-orange-fg bg-highlight-orange-bg px-2 py-1.5 rounded space-y-0.5">
                                                     <p className="font-medium">⚠ 日期不連續：</p>
                                                     {batchDateWarnings.map((w, i) => (
                                                         <p key={i}>&nbsp;&nbsp;• {w}</p>
