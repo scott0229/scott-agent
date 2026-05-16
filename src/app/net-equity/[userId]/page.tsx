@@ -461,7 +461,7 @@ export default function NetEquityDetailPage() {
 
                         <Button
                             variant="outline"
-                            className="gap-2 bg-[#F9F4EF] hover:bg-[#F0E6DD] text-[#4A3728] border-[#EAE0D5]"
+                            className="gap-2 hover:bg-destructive-soft hover:text-destructive hover:border-destructive-border"
                             onClick={() => setDeleteAllOpen(true)}
                         >
                             <Trash2 className="h-4 w-4" />
