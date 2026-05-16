@@ -99,6 +99,7 @@
   --color-chart-green: var(--chart-green);
   --color-table-row-hover: var(--table-row-hover);
   --color-table-header-bg: var(--table-header-bg);
+  --color-table-divider: var(--table-divider);
 }
 
 :root {
@@ -162,6 +163,7 @@
   --chart-green: #22c55e;
   --table-row-hover: #eff6ff;
   --table-header-bg: oklch(0.92 0.02 70);
+  --table-divider: oklch(0 0 0 / 25%);
 }
 
 .dark {
@@ -219,6 +221,7 @@
   --chart-green: #4ade80;
   --table-row-hover: rgb(23 37 84 / 0.4);
   --table-header-bg: oklch(0.32 0 0);
+  --table-divider: oklch(1 0 0 / 50%);
 }
 
 @layer base {

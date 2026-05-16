@@ -335,7 +335,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                             })}
                         </tr>
                         {/* Open Position Count */}
-                        <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
+                        <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">開倉數</td>
 
                             {users.map(user => {
@@ -424,7 +424,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                         </tr>
 
                         {/* Annual Premium */}
-                        <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
+                        <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-card">
                             <td className="h-7 py-1 pl-3 pr-3 font-medium sticky left-0 bg-card z-10 border-r whitespace-nowrap">期權收益-年</td>
 
                             {users.map(user => {

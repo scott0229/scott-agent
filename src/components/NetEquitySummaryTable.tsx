@@ -280,7 +280,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 1. Current Net Equity */}
                         {visibleRows.currentNetEquity && (
-                            <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
+                            <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-card">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-card z-10 border-r">
                                     <RowToggleIcon rowKey="currentNetEquity" visible={visibleRows.currentNetEquity} />
                                     當前淨值
@@ -365,7 +365,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 6. Return Rate */}
                         {visibleRows.returnRate && (
-                            <tr className="border-t-2 border-border hover:bg-table-row-hover bg-muted/30">
+                            <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-muted/30">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-muted/30 z-10 border-r">
                                     <RowToggleIcon rowKey="returnRate" visible={visibleRows.returnRate} />
                                     報酬率
@@ -440,7 +440,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 12. New High Count */}
                         {visibleRows.newHighCount && (
-                            <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
+                            <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-card">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-card z-10 border-r">
                                     <RowToggleIcon rowKey="newHighCount" visible={visibleRows.newHighCount} />
                                     新高次數
@@ -470,7 +470,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
 
                         {/* 13.5. Potential Margin */}
                         {visibleRows.potentialMargin && (
-                            <tr className="border-t-2 border-border hover:bg-table-row-hover bg-card">
+                            <tr className="border-t-2 border-table-divider hover:bg-table-row-hover bg-card">
                                 <td className="h-7 py-1 px-2 font-medium sticky left-0 whitespace-nowrap bg-card z-10 border-r">
                                     <RowToggleIcon rowKey="potentialMargin" visible={visibleRows.potentialMargin} />
                                     潛在融資

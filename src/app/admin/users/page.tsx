@@ -1558,7 +1558,6 @@ export default function AdminUsersPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px] text-center">#</TableHead>
-                                <TableHead className="text-center">角色</TableHead>
                                 <TableHead className="text-center">帳號</TableHead>
                                 <TableHead className="text-center">操作模式</TableHead>
                                 <TableHead className="text-center">IB 帳戶</TableHead>
@@ -1647,7 +1646,6 @@ export default function AdminUsersPage() {
                                         return (
                                             <TableRow key={user.id}>
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
-                                                <TableCell className="text-center py-1">{getRoleBadge(user.role)}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-note-badge text-foreground' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>

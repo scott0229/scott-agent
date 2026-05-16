@@ -513,7 +513,7 @@ export default function NetEquityDetailPage() {
                                 </TableCell>
                                 <TableCell className="text-center py-1">
                                     <div className="flex justify-center">
-                                        <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
+                                        <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">
                                             {formatMoney(record.net_equity)}
                                         </Badge>
                                     </div>
@@ -624,7 +624,7 @@ export default function NetEquityDetailPage() {
                             </TableCell>
                             <TableCell className="text-center">
                                 <div className="flex justify-center">
-                                    <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
+                                    <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">
                                         {formatMoney(initialCost)}
                                     </Badge>
                                 </div>
@@ -690,7 +690,7 @@ export default function NetEquityDetailPage() {
                                     const dailySum = records.reduce((s, r) => s + (r.management_fee || 0), 0);
                                     return (
                                         <div className="flex justify-center">
-                                            <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
+                                            <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">
                                                 {formatMoney(initialManagementFee + dailySum)}
                                             </Badge>
                                         </div>
@@ -702,7 +702,7 @@ export default function NetEquityDetailPage() {
                                     const dailySum = records.reduce((s, r) => s + (r.daily_deposit || 0), 0);
                                     return (
                                         <div className="flex justify-center">
-                                            <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted border border-border">
+                                            <Badge variant="secondary" className="bg-muted text-foreground hover:bg-muted border border-border">
                                                 {formatMoney(initialDeposit + dailySum)}
                                             </Badge>
                                         </div>
