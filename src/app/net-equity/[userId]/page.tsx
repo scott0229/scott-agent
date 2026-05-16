@@ -37,12 +37,6 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { isMarketHoliday } from '@/lib/holidays';
 
@@ -409,23 +403,14 @@ export default function NetEquityDetailPage() {
 
                 {isAdmin && (
                     <div className="flex items-center gap-2">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={resetFilters}
-                                        className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
-                                    >
-                                        <FilterX className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>重置篩選</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={resetFilters}
+                            className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
+                        >
+                            <FilterX className="h-4 w-4" />
+                        </Button>
 
                         <Select value={filterType} onValueChange={setFilterType}>
                             <SelectTrigger className="w-[140px]">
@@ -577,41 +562,23 @@ export default function NetEquityDetailPage() {
                                 {isAdmin && (
                                     <TableCell className="text-right py-1">
                                         <div className="flex justify-end gap-1">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(record)}
-                                                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>編輯</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEdit(record)}
+                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
 
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => setRecordToDelete(record.id)}
-                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>刪除</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setRecordToDelete(record.id)}
+                                                className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 )}
@@ -643,23 +610,14 @@ export default function NetEquityDetailPage() {
                             {isAdmin && (
                                 <TableCell className="text-right py-1">
                                     <div className="flex justify-end gap-1">
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setIsEditInitialCostOpen(true)}
-                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>編輯</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setIsEditInitialCostOpen(true)}
+                                            className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </TableCell>
                             )}

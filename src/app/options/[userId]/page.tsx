@@ -12,12 +12,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FilterX, ArrowRightLeft, FolderOpen } from 'lucide-react';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { TransferOptionDialog } from '@/components/TransferOptionDialog';
 
 
@@ -610,23 +604,14 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                     {/* Filter Controls */}
                     <div className="flex items-center gap-2">
 
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={resetFilters}
-                                        className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
-                                    >
-                                        <FilterX className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>重置篩選</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={resetFilters}
+                            className="h-10 w-10 text-muted-foreground hover:text-primary mr-2"
+                        >
+                            <FilterX className="h-4 w-4" />
+                        </Button>
 
                         {/* Year filter removed - using global navbar year selector */}
                         <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
@@ -912,27 +897,18 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                         <TableCell className="py-1">
                                             <div className="flex justify-center">
                                                 {(opt.status === 'Open' || opt.operation === 'Transferred') && opt.type !== 'STK' && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-7 w-7 text-muted-foreground hover:text-orange-500 hover:bg-orange-50 shrink-0"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setTradeToTransfer(opt);
-                                                                        setTransferDialogOpen(true);
-                                                                    }}
-                                                                >
-                                                                    <ArrowRightLeft className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{opt.operation === 'Transferred' ? '修改轉倉日期' : '手動轉倉 (平倉)'}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-orange-500 hover:bg-orange-50 shrink-0"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTradeToTransfer(opt);
+                                                            setTransferDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <ArrowRightLeft className="h-4 w-4" />
+                                                    </Button>
                                                 )}
                                             </div>
                                         </TableCell>

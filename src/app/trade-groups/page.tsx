@@ -24,12 +24,6 @@ import { Loader2, FilterX } from "lucide-react";
 import { GroupTradesDialog } from "@/components/GroupTradesDialog";
 import { UserStockTradesDialog } from "@/components/UserStockTradesDialog";
 import { Button } from "@/components/ui/button";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const formatDate = (timestamp: number) => {
     if (!timestamp) return '';
@@ -496,7 +490,6 @@ export default function TradeGroupsPage() {
     const marginRate = totalNetEquity > 0 ? (marginUsed / totalNetEquity) * 100 : 0;
 
     return (
-        <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10 max-w-[1400px]">
                 <div className="mb-8 flex justify-between items-center">
                     <h1 className="text-3xl font-bold flex items-center gap-4">
@@ -513,25 +506,18 @@ export default function TradeGroupsPage() {
                         <div className="mr-2 px-4 h-10 flex items-center justify-center border border-input bg-background rounded-md text-sm shadow-sm text-foreground gap-1.5">
                             盈虧 <span className={totalProfit >= 0 ? "text-status-positive" : "text-status-negative"}>{totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                        setSelectedUserValue("All");
-                                        setSelectedStatusValue("All");
-                                        setSelectedSymbolValue("All");
-                                    }}
-                                    className="mr-2 text-muted-foreground hover:text-primary"
-                                >
-                                    <FilterX className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>重置篩選</p>
-                            </TooltipContent>
-                        </Tooltip>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                                setSelectedUserValue("All");
+                                setSelectedStatusValue("All");
+                                setSelectedSymbolValue("All");
+                            }}
+                            className="mr-2 text-muted-foreground hover:text-primary"
+                        >
+                            <FilterX className="h-4 w-4" />
+                        </Button>
 
                         <Select
                         value={selectedUserValue}
@@ -813,6 +799,5 @@ export default function TradeGroupsPage() {
                 />
             )}
         </div>
-        </TooltipProvider>
     );
 }

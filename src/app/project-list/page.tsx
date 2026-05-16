@@ -17,12 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Pencil, Trash2, Download, Upload, Archive } from "lucide-react";
 import {
   DropdownMenu,
@@ -226,7 +220,6 @@ export default function ProjectListPage() {
   };
 
   return (
-    <TooltipProvider delayDuration={300}>
       <div className="min-h-screen container mx-auto py-10">
         <div className="w-full">
           {/* Header */}
@@ -363,43 +356,29 @@ export default function ProjectListPage() {
                         {/* Only admin and manager can edit/delete projects */}
                         {(user?.role === 'admin' || user?.role === 'manager') && (
                           <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(project);
-                                  }}
-                                  className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>編輯</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(project);
+                              }}
+                              className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(project.id);
-                                  }}
-                                  className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>刪除</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(project.id);
+                              }}
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive-soft"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         )}
                       </TableCell>
@@ -489,6 +468,5 @@ export default function ProjectListPage() {
           </AlertDialog>
         </div>
       </div>
-    </TooltipProvider>
   );
 }

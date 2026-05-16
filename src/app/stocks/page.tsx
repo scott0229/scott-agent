@@ -21,12 +21,6 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -367,7 +361,6 @@ export default function StockTradingPage() {
     }, [sortedTrades]);
 
     return (
-        <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">{mounted ? (selectedYear === 'All' ? new Date().getFullYear() : selectedYear) : ''} 股票交易</h1>
@@ -381,25 +374,18 @@ export default function StockTradingPage() {
                             總盈虧 {totalProfit > 0 ? '+' : ''}{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                        setSelectedUserFilter("All");
-                                        setStatusFilter("All");
-                                        setSymbolFilter("");
-                                    }}
-                                    className="mr-2 text-muted-foreground hover:text-primary"
-                                >
-                                    <FilterX className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>重置篩選</p>
-                            </TooltipContent>
-                        </Tooltip>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                                setSelectedUserFilter("All");
+                                setStatusFilter("All");
+                                setSymbolFilter("");
+                            }}
+                            className="mr-2 text-muted-foreground hover:text-primary"
+                        >
+                            <FilterX className="h-4 w-4" />
+                        </Button>
 
                         {/* User Filter - Admin/Manager Only */}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
@@ -503,6 +489,5 @@ export default function StockTradingPage() {
 
                 <Toaster />
             </div>
-        </TooltipProvider>
     );
 }

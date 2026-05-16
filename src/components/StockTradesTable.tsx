@@ -15,12 +15,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Pencil, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +92,6 @@ export function StockTradesTable({
     };
 
     return (
-        <TooltipProvider delayDuration={300}>
             <div className="bg-card rounded-lg shadow-sm border overflow-x-auto">
                 <Table>
                     <TableHeader>
@@ -284,38 +277,24 @@ export function StockTradesTable({
                                                 {canEdit(trade) && (
                                                     <>
                                                         {!isClosed && onTransferClick && (
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => onTransferClick(trade)}
-                                                                        className="text-muted-foreground hover:text-orange-500 hover:bg-orange-50"
-                                                                    >
-                                                                        <ArrowRightLeft className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>手動轉倉 (平倉)</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => onTransferClick(trade)}
+                                                                className="text-muted-foreground hover:text-orange-500 hover:bg-orange-50"
+                                                            >
+                                                                <ArrowRightLeft className="h-4 w-4" />
+                                                            </Button>
                                                         )}
                                                         {onEditClick && (
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => onEditClick(trade)}
-                                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>編輯</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => onEditClick(trade)}
+                                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
                                                         )}
                                                     </>
                                                 )}
@@ -328,6 +307,5 @@ export function StockTradesTable({
                     </TableBody>
                 </Table>
             </div>
-        </TooltipProvider>
     );
 }

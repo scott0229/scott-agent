@@ -75,12 +75,6 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
     Dialog,
     DialogContent,
     DialogHeader,
@@ -1426,7 +1420,6 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <TooltipProvider delayDuration={300}>
             <div className="container mx-auto py-10">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">
@@ -1675,21 +1668,14 @@ export default function AdminUsersPage() {
                                                 <TableCell className="text-right py-1">
                                                     {currentUser?.role !== 'trader' && currentUser?.role !== 'customer' && (
                                                         <div className="flex justify-end gap-1">
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleEdit(user)}
-                                                                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>編輯</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => handleEdit(user)}
+                                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
 
 
 
@@ -2422,6 +2408,5 @@ export default function AdminUsersPage() {
                     }} 
                 />
             </div>
-        </TooltipProvider >
     );
 }
