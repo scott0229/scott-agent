@@ -504,7 +504,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                isNegative && "bg-note-badge text-foreground"
+                                                isNegative && "bg-note-badge text-note-badge-fg"
                                             )}
                                         >
                                             {formatMoney(cashBalance)}
@@ -528,7 +528,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                totalInterest < 0 && "bg-note-badge text-foreground"
+                                                totalInterest < 0 && "bg-note-badge text-note-badge-fg"
                                             )}
                                         >
                                             {formatMoney(totalInterest)}
@@ -554,7 +554,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                         const holding = user.top_holdings?.[idx];
                                         const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
                                         return (
-                                            <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-note-badge text-foreground")}>
+                                            <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-note-badge text-note-badge-fg")}>
                                                 {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                             </td>
                                         );
