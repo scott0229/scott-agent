@@ -164,7 +164,7 @@ export function ArchiveImportDialog({ open, onOpenChange, onImport, users }: Arc
                                     <SelectTrigger>
                                         <SelectValue placeholder="請選擇帳戶" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-none">
                                         {accounts.map(acc => {
                                             const user = users?.find(u => u.ib_account === acc);
                                             const displayName = user ? (user.user_id || user.email.split('@')[0]) : acc;

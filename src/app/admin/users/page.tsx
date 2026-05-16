@@ -2052,7 +2052,7 @@ export default function AdminUsersPage() {
                                 確認匯入 IB 報表：{ibImportPreview?.parsed?.userName} ({ibImportPreview?.parsed?.dateStr})
                             </AlertDialogTitle>
                             <AlertDialogDescription asChild>
-                                <div className="space-y-3" style={{ color: '#1e293b' }}>
+                                <div className="space-y-3">
                                     {ibImportPreview?.parsed && (
                                         <>
 
@@ -2098,7 +2098,7 @@ export default function AdminUsersPage() {
                                             </table>
 
                                             {ibImportPreview.parsed.isYearStart && (
-                                                <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1.5 rounded">
+                                                <p className="text-xs text-highlight-blue-fg bg-highlight-blue-bg px-2 py-1.5 rounded">
                                                     📌 此為 1/1 報表，將同步更新年初起始數據
                                                 </p>
                                             )}
@@ -2137,7 +2137,7 @@ export default function AdminUsersPage() {
                                                                 <td className="p-1.5">
                                                                     {action.type === 'open' && <span className="text-status-positive">開倉</span>}
                                                                     {action.type === 'close_full' && <span className="text-status-negative">平倉</span>}
-                                                                    {action.type === 'close_split' && <span className="text-orange-600">拆單平倉</span>}
+                                                                    {action.type === 'close_split' && <span className="text-chart-orange">拆單平倉</span>}
                                                                 </td>
                                                                 <td className="p-1.5 font-mono">{action.symbol}</td>
                                                                 <td className="text-right p-1.5 font-mono">{action.quantity.toLocaleString()}</td>
@@ -2152,7 +2152,7 @@ export default function AdminUsersPage() {
                                                         {filteredPositionActions.map((pos: any, i: number) => (
                                                             <tr key={`pos-${i}`} className="border-t">
                                                                 <td className="p-1.5">
-                                                                    <span className="text-blue-600">同步持倉</span>
+                                                                    <span className="text-chart-blue">同步持倉</span>
                                                                 </td>
                                                                 <td className="p-1.5 font-mono">{pos.symbol}</td>
                                                                 <td className="text-right p-1.5 font-mono">{pos.quantity.toLocaleString()}</td>
@@ -2184,7 +2184,7 @@ export default function AdminUsersPage() {
                                                 {ibImportPreview.parsed.openOptionActions.filter((a: any) => a.action === 'sync_add').map((pos: any, i: number) => (
                                                     <tr key={`oopt-${i}`} className="border-t">
                                                         <td className="p-1.5">
-                                                            <span className="text-blue-600">同步持倉</span>
+                                                            <span className="text-chart-blue">同步持倉</span>
                                                         </td>
                                                         <td className="p-1.5 font-mono">{pos.underlying}</td>
                                                         <td className="text-center p-1.5 font-mono">{pos.quantity}</td>
@@ -2224,9 +2224,9 @@ export default function AdminUsersPage() {
                                                             {opt.action === 'close' && <span className="text-status-negative">平倉</span>}
                                                             {opt.action === 'assign' && <span className="text-purple-600">指派</span>}
                                                             {opt.action === 'expire' && <span className="text-muted-foreground">到期</span>}
-                                                            {opt.action === 'close_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">平倉(無對應)</span>}
-                                                            {opt.action === 'assign_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">指派(無對應)</span>}
-                                                            {opt.action === 'expire_orphan' && <span className="text-orange-600" title="找不到對應的開倉記錄">到期(無對應)</span>}
+                                                            {opt.action === 'close_orphan' && <span className="text-chart-orange" title="找不到對應的開倉記錄">平倉(無對應)</span>}
+                                                            {opt.action === 'assign_orphan' && <span className="text-chart-orange" title="找不到對應的開倉記錄">指派(無對應)</span>}
+                                                            {opt.action === 'expire_orphan' && <span className="text-chart-orange" title="找不到對應的開倉記錄">到期(無對應)</span>}
                                                             {opt.action === 'skip_exists' && <span className="text-muted-foreground">已存在</span>}
                                                             {opt.action === 'skip_close' && <span className="text-muted-foreground">平倉(跳過)</span>}
                                                         </td>
@@ -2285,7 +2285,7 @@ export default function AdminUsersPage() {
                                 }
                             </AlertDialogTitle>
                             <AlertDialogDescription asChild>
-                                <div className="space-y-3" style={{ color: '#1e293b' }}>
+                                <div className="space-y-3">
                                     {/* Pre-import summary */}
                                     {batchResults.length === 0 && !batchImporting && batchFiles.length > 0 && (
                                         <>
