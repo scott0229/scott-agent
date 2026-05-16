@@ -443,14 +443,13 @@ export function GroupOverviewDialog({
                                 <TableHead className="text-center">持股成本</TableHead>
                                 <TableHead className="text-center">筆數</TableHead>
                                 <TableHead className="text-center">盈虧</TableHead>
-                                <TableHead className="w-[100px] text-center">接手群組</TableHead>
                                 <TableHead className="w-[120px] text-center">狀態</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {groupStats.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                                         目前沒有群組資料
                                     </TableCell>
                                 </TableRow>
@@ -539,26 +538,6 @@ export function GroupOverviewDialog({
                                         <TableCell className="text-center">{group.count}</TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-status-positive' : group.profit < 0 ? 'text-status-negative' : ''}`}>
                                             {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
-                                        </TableCell>
-                                        <TableCell>
-                                            {group.status === 'Terminated' && (
-                                                <Select value={group.next_group || 'none'} onValueChange={(val) => handleNextGroupChange(group.name, val)}>
-                                                    <SelectTrigger hideIcon className="h-8 w-[90px] text-[13px] mx-auto justify-center bg-transparent hover:bg-muted border-none shadow-none focus:ring-0">
-                                                        <SelectValue placeholder="-" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none" hideCheck className="text-muted-foreground">-</SelectItem>
-                                                        <SelectItem value="無" hideCheck>無</SelectItem>
-                                                        {[
-                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
-                                                            'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
-                                                            'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
-                                                        ].map(n => (
-                                                            <SelectItem key={n} value={n} hideCheck>{n}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.name, val)}>

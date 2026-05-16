@@ -157,7 +157,7 @@ export function UserAnalysisPanel({ user, year }: UserAnalysisPanelProps) {
                             </thead>
                             <tbody>
                                 {analysis.map((month) => (
-                                    <tr key={month.month} className="hover:bg-muted odd:bg-card even:bg-muted/30">
+                                    <tr key={month.month} className="hover:bg-table-row-hover odd:bg-card even:bg-muted/30 transition-colors">
                                         <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{month.month}月</td>
                                         <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatPercent(month.put_win_rate)}</td>
                                         <td className="border px-2 text-center whitespace-nowrap text-foreground h-7">{formatPercent(month.call_win_rate)}</td>

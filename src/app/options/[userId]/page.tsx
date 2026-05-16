@@ -758,7 +758,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             e.preventDefault();
                                             toggleSeparator(opt.id, opt.type, opt.has_separator);
                                         }}
-                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-muted/50'} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
+                                        className={`text-center transition-colors h-[40px] ${opt.type === 'STK' ? 'bg-blue-50 dark:bg-blue-950/40' : ''} ${opt.has_separator ? `border-t-4 ${SEPARATOR_COLORS[typeof opt.has_separator === 'number' ? opt.has_separator : 1] || 'border-orange-200'}` : ''}`}
                                     >
                                         <TableCell className="py-1">
                                             <div className="flex items-center justify-center gap-4">
