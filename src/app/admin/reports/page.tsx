@@ -393,7 +393,7 @@ export default function HistoricalReportsPage() {
                         <SelectTrigger className="w-[150px] h-9 border-border shadow-xs bg-background">
                             <SelectValue placeholder="所有帳號" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-none">
                             <SelectItem value="All">所有帳號</SelectItem>
                             {Object.entries(groupedReports)
                                 .sort(([accountIdA], [accountIdB]) => {

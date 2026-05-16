@@ -1443,7 +1443,7 @@ export default function AdminUsersPage() {
                                     <SelectTrigger className="w-[150px] h-9 border-border shadow-xs">
                                         <SelectValue placeholder="所有帳號" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-none">
                                         <SelectItem value="All">所有帳號</SelectItem>
                                         {users.filter(u => u.email !== 'admin').map((u) => (
                                             <SelectItem key={u.id} value={u.id.toString()}>
