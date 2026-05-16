@@ -223,7 +223,7 @@ export function StockTradesTable({
                                             {formatDate(trade.open_date)}
                                             {trade.source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-note-badge text-note-badge-fg")}>
+                                        <TableCell className={cn("text-center py-1", !trade.close_date && "bg-note-badge text-foreground")}>
                                             {trade.close_date ? formatDate(trade.close_date) : 'Open'}
                                             {trade.close_source === 'assigned' && <span className="text-xs text-status-positive font-medium ml-1">(被指派)</span>}
                                             {trade.close_source === 'transfer' && <span className="text-xs text-muted-foreground font-medium ml-1">(Transferred)</span>}

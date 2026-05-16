@@ -1647,21 +1647,21 @@ export default function AdminUsersPage() {
                                             <TableRow key={user.id}>
                                                 <TableCell className="text-center text-muted-foreground font-mono py-1">{index + 1}</TableCell>
                                                 <TableCell className="text-center py-1">{user.user_id || '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-note-badge text-note-badge-fg' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.operation_mode === '權利金為主' ? 'bg-note-badge text-foreground' : ''}`}>{user.role === 'customer' ? (user.operation_mode || '-') : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? (user.ib_account || '-') : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-note-badge text-note-badge-fg' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-note-badge text-note-badge-fg' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.account_capability === '保證金' ? 'bg-note-badge text-foreground' : ''}`}>{user.role === 'customer' ? (user.account_capability || '-') : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.start_date && (() => { const d = new Date(user.start_date); return d.getMonth() !== 0 || d.getDate() !== 1; })() ? 'bg-note-badge text-foreground' : ''}`}>
                                                     {user.start_date ? (() => {
                                                         const d = new Date(user.start_date);
                                                         return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                                     })() : '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-note-badge text-note-badge-fg' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-note-badge text-foreground' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
                                                     ) : '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-note-badge text-note-badge-fg' : ''}`}>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-note-badge text-foreground' : ''}`}>
                                                     {user.role === 'customer' ? (
                                                         (user.fee_exempt_months ?? 0) > 0 ? `${user.fee_exempt_months}個月` : '-'
                                                     ) : '-'}

@@ -837,7 +837,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 </span>
                                             </TableCell>
                                         )}
-                                        <TableCell className={`py-1 ${(opt.operation || 'Open') === 'Open' ? 'bg-note-badge text-note-badge-fg' : ''}`}>
+                                        <TableCell className={`py-1 ${(opt.operation || 'Open') === 'Open' ? 'bg-note-badge text-foreground' : ''}`}>
                                             <div className="flex items-center justify-center gap-1">
                                                 {opt.operation === 'Assigned' ? (
                                                     <span
@@ -898,7 +898,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                 {opt.premium != null ? opt.premium.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '-'}
                                             </TableCell>
                                         )}
-                                        <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-note-badge text-note-badge-fg' : ''}`}>
+                                        <TableCell className={`py-1 ${opt.final_profit !== null && opt.final_profit < 0 ? 'bg-note-badge text-foreground' : ''}`}>
                                             {opt.final_profit != null ? Math.round(opt.final_profit).toLocaleString('en-US') : '-'}
                                         </TableCell>
 
