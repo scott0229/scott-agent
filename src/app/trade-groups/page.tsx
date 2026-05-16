@@ -34,6 +34,25 @@ const formatDate = (timestamp: number) => {
     return `${yy}-${mm}-${dd}`;
 };
 
+const compareGroups = (a: any, b: any) => {
+    if (a.status !== b.status) {
+        return a.status === 'Active' ? -1 : 1;
+    }
+    if (a.ownerName !== b.ownerName) {
+        return a.ownerName.localeCompare(b.ownerName);
+    }
+    const getPrefixWeight = (str: string) => {
+        if (str.startsWith('QQQ')) return 1;
+        if (str.startsWith('TQQQ')) return 2;
+        if (str.startsWith('GROUP')) return 3;
+        return 4;
+    };
+    const weightA = getPrefixWeight(a.name);
+    const weightB = getPrefixWeight(b.name);
+    if (weightA !== weightB) return weightA - weightB;
+    return a.name.localeCompare(b.name);
+};
+
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatOptionTicker = (opt: any) => {
     if (!opt) return '-';
@@ -304,24 +323,7 @@ export default function TradeGroupsPage() {
                 });
 
                 // Sort by status, then by account, then by name
-                mergedStats.sort((a, b) => {
-                    if (a.status !== b.status) {
-                        return a.status === 'Active' ? -1 : 1;
-                    }
-                    if (a.ownerName !== b.ownerName) {
-                        return a.ownerName.localeCompare(b.ownerName);
-                    }
-                    const getPrefixWeight = (str: string) => {
-                        if (str.startsWith('QQQ')) return 1;
-                        if (str.startsWith('TQQQ')) return 2;
-                        if (str.startsWith('GROUP')) return 3;
-                        return 4;
-                    };
-                    const weightA = getPrefixWeight(a.name);
-                    const weightB = getPrefixWeight(b.name);
-                    if (weightA !== weightB) return weightA - weightB;
-                    return a.name.localeCompare(b.name);
-                });
+                mergedStats.sort(compareGroups);
                 
                 const allUnderlyings = new Set<string>();
                 mergedStats.forEach(g => {
@@ -394,7 +396,9 @@ export default function TradeGroupsPage() {
         const year = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
         // Optimistic update
         const previousStats = [...groupStats];
-        setGroupStats(prev => prev.map(g => g.ownerId === ownerId && g.name === groupName ? { ...g, status: newStatus as 'Active' | 'Terminated' } : g));
+        setGroupStats(prev => prev
+            .map(g => g.ownerId === ownerId && g.name === groupName ? { ...g, status: newStatus as 'Active' | 'Terminated' } : g)
+            .sort(compareGroups));
 
         try {
             const res = await fetch('/api/trade-groups', {
