@@ -44,3 +44,9 @@ next-env.d.ts
 .wrangler
 .open-next
 worker-configuration.d.ts
+
+# claude code local state
+/.claude/
+
+# blog seed scripts: runtime tmp SQL only
+scripts/.tmp-*.sql

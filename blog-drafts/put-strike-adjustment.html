@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8" />
+<title>案例解讀：行權價調整反應過度</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 24px;
+    line-height: 1.75;
+    color: #1f1b17;
+    background: #FDF8F3;
+  }
+  article {
+    background: #fff;
+    border: 1px solid #e8dfd4;
+    border-radius: 8px;
+    padding: 36px 40px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  h2 {
+    font-size: 1.8rem;
+    margin: 0 0 8px;
+    color: #2a1f17;
+  }
+  h3 {
+    font-size: 1.2rem;
+    margin: 32px 0 12px;
+    color: #4a3a2a;
+  }
+  .meta {
+    color: #8a7864;
+    font-size: 0.875rem;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0e8de;
+  }
+  .meta .tag {
+    display: inline-block;
+    background: #f5ede2;
+    color: #6b4f30;
+    padding: 2px 10px;
+    border-radius: 12px;
+    margin-left: 6px;
+    font-size: 0.8rem;
+  }
+  p { margin: 14px 0; }
+  ol, ul { padding-left: 1.4em; }
+  li { margin: 10px 0; }
+  strong { color: #2a1f17; }
+  em { color: #5a4a35; }
+  blockquote {
+    border-left: 4px solid #c9a87a;
+    background: #faf3e8;
+    margin: 24px 0;
+    padding: 14px 20px;
+    border-radius: 0 6px 6px 0;
+    color: #4a3a2a;
+  }
+  blockquote p { margin: 0; }
+  .trade-card {
+    background: #1a1a1a;
+    color: #f5f1ea;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 20px 0;
+    font-family: "SF Mono", Consolas, "Microsoft JhengHei", monospace;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .trade-header {
+    display: inline-block;
+    background: #4a2a14;
+    color: #f5b95a;
+    border-left: 4px solid #f5b95a;
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .trade-header .profit { color: #5ed886; margin-left: 4px; }
+  .trade-line { padding: 2px 0; letter-spacing: 0.3px; }
+  figure.chart {
+    margin: 28px 0;
+    padding: 0;
+  }
+  figure.chart svg { display: block; width: 100%; height: auto; border-radius: 10px; }
+  figure.chart figcaption {
+    text-align: center;
+    color: #8a7864;
+    font-size: 0.875rem;
+    margin-top: 10px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<article>
+  <h2>案例解讀：行權價調整反應過度</h2>
+  <div class="meta">
+    2026-05-16
+    <span class="tag">選擇權策略</span>
+    <span class="tag">PUT</span>
+    <span class="tag">賣方</span>
+    <span class="tag">展期</span>
+    <span class="tag">風險管理</span>
+  </div>
+
+  <figure class="chart">
+    <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QQQ 近 6 個交易日走勢">
+      <rect x="0" y="0" width="560" height="220" fill="#fbf6ef" rx="10"/>
+
+      <text x="24" y="26" font-size="13" font-weight="700" fill="#5a4a35" font-family="sans-serif">QQQ ／ 近 6 個交易日收盤</text>
+
+      <text x="42" y="60" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">720</text>
+      <line x1="48" y1="56" x2="540" y2="56" stroke="#eee0d0" stroke-width="0.8"/>
+
+      <text x="42" y="93" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">710</text>
+      <line x1="48" y1="89" x2="540" y2="89" stroke="#eee0d0" stroke-width="0.8"/>
+
+      <text x="42" y="125" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">700</text>
+      <line x1="48" y1="121" x2="540" y2="121" stroke="#eee0d0" stroke-width="0.8"/>
+
+      <line x1="48" y1="147" x2="540" y2="147" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <text x="544" y="151" font-size="11" font-weight="700" fill="#d97706" font-family="sans-serif">$692 strike</text>
+
+      <polyline points="80,85 164,78 248,98 332,73 416,57 500,92"
+                fill="none" stroke="#22a37f" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <circle cx="80" cy="85" r="3" fill="#22a37f"/>
+      <circle cx="164" cy="78" r="3" fill="#22a37f"/>
+      <circle cx="248" cy="98" r="3" fill="#22a37f"/>
+      <circle cx="332" cy="73" r="3" fill="#22a37f"/>
+      <circle cx="416" cy="57" r="3" fill="#22a37f"/>
+      <circle cx="500" cy="92" r="5" fill="#dc2626"/>
+
+      <text x="500" y="78" font-size="11" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">$708.93</text>
+      <text x="500" y="113" font-size="10" font-weight="600" fill="#dc2626" text-anchor="middle" font-family="sans-serif">-1.51%</text>
+
+      <text x="80" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/8</text>
+      <text x="164" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/11</text>
+      <text x="248" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/12</text>
+      <text x="332" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/13</text>
+      <text x="416" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/14</text>
+      <text x="500" y="195" font-size="10" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">5/15</text>
+    </svg>
+    <figcaption>5/14 衝到 $719.79、5/15 拉回 $708.93 (-1.51%) — 即便如此，仍在 $692 行權價之上約 17 點。</figcaption>
+  </figure>
+
+  <p>當你賣出的 put 接近到期、需要展期續單時，最關鍵的決策<em>不是</em>「要不要展期」 — 那基本上必做。真正會影響長期報酬的，是<strong>新的行權價要選在哪裡</strong>。同樣是展期，行權價往下拉 1 點還是 6 點，效果天差地遠。</p>
+
+  <h3>展期時，行權價怎麼選？</h3>
+
+  <p>到期日逼近、原本的 put 即將失效，展期通常是合理動作 — 維持策略、繼續收下一輪權利金。但<strong>新的 strike 選在哪裡</strong>，會直接決定這次展期能收多少權利金、以及承擔多少風險：</p>
+
+  <ul>
+    <li><strong>太貼近現價</strong>：權利金高，但離 ATM 太近，被指派的風險也跟著上升。</li>
+    <li><strong>跟原 strike 差不多</strong>：保留原本的安全感與收益平衡，最划算。</li>
+    <li><strong>拉得比原本更遠</strong>：權利金縮水嚴重，等於用未來的權利金，去買一份你不需要的安全感。</li>
+  </ul>
+
+  <p>下面這筆 QQQ 的展期，問題就出在第三種。</p>
+
+  <h3>實例：別變成驚弓之鳥</h3>
+
+  <div class="trade-card">
+    <div class="trade-header">展期 1，調價 -6，盈虧<span class="profit">+51.4</span></div>
+    <div class="trade-line">-1口 QQQ May18'26 686P</div>
+    <div class="trade-line">+1口 QQQ May15'26 692P</div>
+  </div>
+
+  <p>這是一個典型的反應過度。原本賣的是 5/15 到期、行權價 <strong>692</strong> 的 put，在 5/15 當天把它展期到 5/18、行權價 <strong>686</strong> — 行權價一口氣下拉 6 個點。</p>
+
+  <p>問題不在展期本身，而在拉的幅度。<strong>5/15 當天 QQQ 收在 $708.93、跌幅 -1.51%</strong>，跌是有跌，但離原本 692 的行權價還有 <strong>約 17 點（≈ 2.4%）的安全距離</strong>，根本沒被逼到牆角。</p>
+
+  <figure class="chart">
+    <svg viewBox="0 0 560 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QQQ 現價與行權價距離示意">
+      <defs>
+        <marker id="arrowEnd" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 0 L 5 10 z" fill="#4b5563"/>
+        </marker>
+        <marker id="arrowStart" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 10 L 10 10 L 5 0 z" fill="#4b5563"/>
+        </marker>
+      </defs>
+
+      <rect x="0" y="0" width="560" height="340" fill="#fbf6ef" rx="10"/>
+      <text x="24" y="32" font-size="14" font-weight="700" fill="#5a4a35" font-family="sans-serif">QQQ ／ 5/15 收盤 vs 行權價</text>
+
+      <line x1="40" y1="80" x2="380" y2="80" stroke="#22a37f" stroke-width="3"/>
+      <text x="390" y="78" font-size="16" font-weight="700" fill="#22a37f" font-family="sans-serif">$708.93</text>
+      <text x="390" y="96" font-size="11" fill="#557f70" font-family="sans-serif">5/15 收盤 (-1.51%)</text>
+
+      <line x1="40" y1="225" x2="380" y2="225" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6,4"/>
+      <text x="390" y="223" font-size="16" font-weight="700" fill="#d97706" font-family="sans-serif">$692</text>
+      <text x="390" y="241" font-size="11" fill="#8a6a3a" font-family="sans-serif">原 strike · May 15 PUT</text>
+
+      <line x1="40" y1="285" x2="380" y2="285" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,4"/>
+      <text x="390" y="283" font-size="16" font-weight="700" fill="#dc2626" font-family="sans-serif">$686</text>
+      <text x="390" y="301" font-size="11" fill="#a04444" font-family="sans-serif">展期後 · May 18 PUT</text>
+
+      <line x1="140" y1="84" x2="140" y2="221" stroke="#22a37f" stroke-width="1.5" marker-end="url(#arrowEnd)" marker-start="url(#arrowStart)"/>
+      <rect x="64" y="140" width="152" height="28" fill="#fff" stroke="#22a37f" stroke-width="1.2" rx="4"/>
+      <text x="140" y="158" font-size="13" font-weight="700" fill="#22a37f" font-family="sans-serif" text-anchor="middle">≈ 17 點 安全距離</text>
+
+      <line x1="270" y1="229" x2="270" y2="281" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrowEnd)" marker-start="url(#arrowStart)"/>
+      <rect x="222" y="246" width="96" height="22" fill="#fff" stroke="#dc2626" stroke-width="1.2" rx="4"/>
+      <text x="270" y="261" font-size="12" font-weight="700" fill="#dc2626" font-family="sans-serif" text-anchor="middle">多 6 點緩衝</text>
+    </svg>
+    <figcaption>原本就有 17 點安全距離了，再多 6 點緩衝其實邊際效用很低。</figcaption>
+  </figure>
+
+  <p>真的擔心，<em>少量地</em>往下調是合理的（例如 1-2 點），但一次拉 6 個點，明顯是「為了完全消除恐懼」，不是「為了風險管理」。</p>
+
+  <h3>真正的代價：權利金縮水</h3>
+
+  <p>把 strike 從 <strong>692</strong> 拉到 <strong>686</strong>，put 一口氣變得更深度價外（OTM），<strong>未來能收的權利金就明顯下降</strong>。同到期日下，6 個點的 strike 差距，權利金常常會差到 30~50%（實際幅度視 IV 跟到期天數而定）。</p>
+
+  <figure class="chart">
+    <svg viewBox="0 0 480 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="692P vs 686P 權利金示意">
+      <rect x="0" y="0" width="480" height="240" fill="#fbf6ef" rx="10"/>
+      <text x="24" y="28" font-size="13" font-weight="700" fill="#5a4a35" font-family="sans-serif">同到期日下，行權價往下拉 → 權利金縮水（示意）</text>
+
+      <line x1="60" y1="200" x2="450" y2="200" stroke="#c9b89f" stroke-width="1"/>
+
+      <rect x="120" y="80" width="80" height="120" fill="#22a37f" rx="3"/>
+      <text x="160" y="72" font-size="13" font-weight="700" fill="#22a37f" font-family="sans-serif" text-anchor="middle">692P</text>
+      <text x="160" y="222" font-size="11" fill="#5a4a35" font-family="sans-serif" text-anchor="middle">原 strike</text>
+
+      <rect x="280" y="140" width="80" height="60" fill="#d97706" rx="3"/>
+      <text x="320" y="132" font-size="13" font-weight="700" fill="#d97706" font-family="sans-serif" text-anchor="middle">686P</text>
+      <text x="320" y="222" font-size="11" fill="#5a4a35" font-family="sans-serif" text-anchor="middle">展期後</text>
+
+      <text x="160" y="125" font-size="12" font-weight="700" fill="#fff" font-family="sans-serif" text-anchor="middle">較高權利金</text>
+      <text x="320" y="172" font-size="11" font-weight="700" fill="#fff" font-family="sans-serif" text-anchor="middle">縮水</text>
+
+      <path d="M 215 115 Q 245 100 270 145" fill="none" stroke="#a04444" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="245" y="98" font-size="11" font-weight="700" fill="#a04444" font-family="sans-serif" text-anchor="middle">少收的這塊</text>
+    </svg>
+    <figcaption>賣方賺的就是這個權利金。每次不必要的下拉，等於自願把這塊長條變矮一截。</figcaption>
+  </figure>
+
+  <p>這筆展期帳面上是「收了 +51.4 的 credit」，看似賺錢，但同時也把<em>之後到期能收的權利金</em>壓低了。等於：用一塊看得到的權利金，去買一份其實不存在的風險保險。</p>
+
+  <p>賣方的長期報酬，靠的就是穩定地收這些權利金。一次反應過度看不太出來，但連續這樣展期，年化報酬會被自己一刀一刀削平。</p>
+
+  <h3>展期時的 strike 選擇原則</h3>
+
+  <ul>
+    <li><strong>先看現價跟原 strike 的距離</strong>：還有明顯距離（例如 2% 以上），表示原 strike 仍合理，新 strike 不需要大幅往下拉，維持原位甚至小幅貼近現價都比拉遠來得好。</li>
+    <li><strong>幅度小一點就好</strong>：差 1-2 點是合理微調，差到 6 點就是過度反應。</li>
+    <li><strong>盤算交換條件</strong>：每往下 1 點 strike，新部位就少收一塊權利金。要問自己：少收的這塊權利金，跟那 1 點的「安全感」，真的等價嗎？</li>
+  </ul>
+
+  <p>展期是技術動作，<strong>strike 的選擇才是策略動作</strong>。前者隨便都行，後者才決定你長期的報酬。</p>
+
+  <blockquote>
+    <p><strong>底線：</strong>賣方賺的是權利金，不是「絕對不會被指派」。為了減少根本不存在的風險而放棄真實的權利金收入，是反應過度，不是風險管理。</p>
+  </blockquote>
+</article>
+</body>
+</html>
