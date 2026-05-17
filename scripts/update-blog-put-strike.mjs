@@ -12,49 +12,51 @@ const now = Math.floor(Date.now() / 1000);
 
 // Article body — classes converted to inline styles so blog renderer needs no extra CSS
 const content = `<figure style="margin:28px 0;padding:0;">
-  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QQQ 近 6 個交易日走勢" style="display:block;width:100%;height:auto;border-radius:10px;">
-    <rect x="0" y="0" width="560" height="220" fill="#fbf6ef" rx="10"/>
-    <text x="24" y="26" font-size="13" font-weight="700" fill="#5a4a35" font-family="sans-serif">QQQ ／ 近 6 個交易日收盤</text>
-    <text x="42" y="60" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">720</text>
-    <line x1="48" y1="56" x2="540" y2="56" stroke="#eee0d0" stroke-width="0.8"/>
-    <text x="42" y="93" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">710</text>
-    <line x1="48" y1="89" x2="540" y2="89" stroke="#eee0d0" stroke-width="0.8"/>
-    <text x="42" y="125" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">700</text>
-    <line x1="48" y1="121" x2="540" y2="121" stroke="#eee0d0" stroke-width="0.8"/>
-    <line x1="48" y1="147" x2="540" y2="147" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,4"/>
-    <text x="540" y="142" font-size="11" font-weight="700" fill="#d97706" text-anchor="end" font-family="sans-serif">$692 strike</text>
-    <polyline points="80,85 164,78 248,98 332,73 416,57 500,92" fill="none" stroke="#22a37f" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="80" cy="85" r="3" fill="#22a37f"/>
-    <circle cx="164" cy="78" r="3" fill="#22a37f"/>
-    <circle cx="248" cy="98" r="3" fill="#22a37f"/>
-    <circle cx="332" cy="73" r="3" fill="#22a37f"/>
-    <circle cx="416" cy="57" r="3" fill="#22a37f"/>
-    <circle cx="500" cy="92" r="5" fill="#dc2626"/>
-    <text x="500" y="78" font-size="11" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">$708.93</text>
-    <text x="500" y="113" font-size="10" font-weight="600" fill="#dc2626" text-anchor="middle" font-family="sans-serif">-1.51%</text>
-    <text x="80" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/8</text>
-    <text x="164" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/11</text>
-    <text x="248" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/12</text>
-    <text x="332" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/13</text>
-    <text x="416" y="195" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/14</text>
-    <text x="500" y="195" font-size="10" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">5/15</text>
+  <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QQQ 近 20 個交易日走勢與 5 日均線" style="display:block;width:100%;height:auto;border-radius:10px;">
+    <rect x="0" y="0" width="720" height="280" fill="#fbf6ef" rx="10"/>
+    <text x="20" y="24" font-size="13" font-weight="700" fill="#5a4a35" font-family="sans-serif">QQQ ／ 近 20 個交易日收盤 + 5 日均線</text>
+    <line x1="498" y1="20" x2="518" y2="20" stroke="#22a37f" stroke-width="2.5"/>
+    <text x="523" y="24" font-size="11" fill="#5a4a35" font-family="sans-serif">日收盤</text>
+    <line x1="585" y1="20" x2="605" y2="20" stroke="#9bb0d4" stroke-width="2"/>
+    <text x="610" y="24" font-size="11" fill="#5a4a35" font-family="sans-serif">5 日均線</text>
+    <text x="42" y="56" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">720</text>
+    <line x1="48" y1="52" x2="700" y2="52" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="101" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">700</text>
+    <line x1="48" y1="97" x2="700" y2="97" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="145" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">680</text>
+    <line x1="48" y1="141" x2="700" y2="141" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="190" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">660</text>
+    <line x1="48" y1="186" x2="700" y2="186" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="234" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">640</text>
+    <line x1="48" y1="230" x2="700" y2="230" stroke="#eee0d0" stroke-width="0.8"/>
+    <line x1="48" y1="114" x2="700" y2="114" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="700" y="134" font-size="11" font-weight="700" fill="#d97706" text-anchor="end" font-family="sans-serif">$692 strike</text>
+    <polyline points="184.7,202.7 218.4,194.9 252.1,189 285.8,186.2 319.5,178.9 353.2,174.3 386.8,170.5 420.5,159.8 454.2,144.6 487.9,132.5 521.6,116 555.3,98 588.9,86.6 622.6,78.2 656.3,67.2 690,68.2" fill="none" stroke="#9bb0d4" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="50,214.9 83.7,220.4 117.4,196.4 151.1,204.6 184.7,176.9 218.4,176.2 252.1,191 285.8,182.1 319.5,168.4 353.2,154.1 386.8,156.9 420.5,137.5 454.2,106.1 487.9,107.9 521.6,71.7 555.3,67.1 588.9,80.6 622.6,64 656.3,52.7 690,76.8" fill="none" stroke="#22a37f" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="690" cy="76.8" r="5" fill="#dc2626"/>
+    <text x="690" y="96" font-size="11" font-weight="700" fill="#dc2626" text-anchor="end" font-family="sans-serif">$708.93</text>
+    <text x="50" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">4/20</text>
+    <text x="218.4" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">4/27</text>
+    <text x="386.8" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/4</text>
+    <text x="555.3" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/11</text>
+    <text x="690" y="255" font-size="10" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">5/15</text>
   </svg>
-  <figcaption style="text-align:center;color:#8a7864;font-size:0.875rem;margin-top:10px;font-style:italic;">5/14 衝到 $719.79、5/15 拉回 $708.93 (-1.51%) — 即便如此，仍在 $692 行權價之上約 17 點。</figcaption>
+  <figcaption style="text-align:center;color:#8a7864;font-size:0.875rem;margin-top:10px;font-style:italic;">4/20 起一路漲到 5/14 的 $719.79、5/15 拉回 $708.93 (-1.51%)。5 日均線（藍）顯示整體仍處上升趨勢，且持續站穩在 $692 行權價之上。</figcaption>
 </figure>
 
 <p>當你賣出的 put 接近到期、需要展期續單時，最關鍵的決策<em>不是</em>「要不要展期」 — 那基本上必做。真正會影響長期報酬的，是<strong>新的行權價要選在哪裡</strong>。同樣是展期，行權價往下拉 1 點還是 6 點，效果天差地遠。</p>
 
 <h3>展期時，行權價怎麼選？</h3>
 
-<p>到期日逼近、原本的 put 即將失效，展期通常是合理動作 — 維持策略、繼續收下一輪權利金。但<strong>新的 strike 選在哪裡</strong>，會直接決定這次展期能收多少權利金、以及承擔多少風險：</p>
+<p>背景：5/15 當天 QQQ 跌了 1.51%，原本 5/15 到期、行權價 <strong>692</strong> 的 sell put 即將失效，必須展期續單。在「<em>股價跌了一些、但 strike 還沒被逼到</em>」這個情境下，新 strike 通常面臨三個選擇：</p>
 
 <ul>
-  <li><strong>太貼近現價</strong>：權利金高，但離 ATM 太近，被指派的風險也跟著上升。</li>
-  <li><strong>跟原 strike 差不多</strong>：保留原本的安全感與收益平衡，最划算。</li>
-  <li><strong>拉得比原本更遠</strong>：權利金縮水嚴重，等於用未來的權利金，去買一份你不需要的安全感。</li>
+  <li><strong>維持行權價不動</strong>：新單繼續賣 692P。原 strike 在合理距離，<strong>權利金收最多</strong>，賭股價不再續跌。</li>
+  <li><strong>小幅往下調（1-2 點）</strong>：例如 691 或 690。多一點點緩衝，權利金小幅縮水但仍合理。</li>
+  <li><strong>大幅往下調（5 點以上）</strong>：例如直接拉到 686。安全感最大，但權利金明顯縮水 — 等於用真實的權利金，去買一份其實還不太需要的保險。</li>
 </ul>
 
-<p>下面這筆 QQQ 的展期，問題就出在第三種。</p>
+<p>下面這筆 QQQ 的展期，就是選了第三種。</p>
 
 <h3>實例：別變成驚弓之鳥</h3>
 
@@ -122,7 +124,7 @@ const content = `<figure style="margin:28px 0;padding:0;">
 
 <p>這筆展期帳面上是「收了 +51.4 的 credit」，看似賺錢，但同時也把<em>之後到期能收的權利金</em>壓低了。等於：用一塊看得到的權利金，去買一份其實不存在的風險保險。</p>
 
-<p>賣方的長期報酬，靠的就是穩定地收這些權利金。一次反應過度看不太出來，但連續這樣展期，年化報酬會被自己一刀一刀削平。</p>
+<p>賣方的長期報酬，靠的是穩定地收這些微薄的權利金。一次反應過度看不太出來，但連續這樣展期，年化報酬會被自己一刀一刀削平。</p>
 
 <h3>展期時的 strike 選擇原則</h3>
 
