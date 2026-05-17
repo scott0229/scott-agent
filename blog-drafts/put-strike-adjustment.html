@@ -279,7 +279,7 @@
     <p style="margin:0 0 12px;font-weight:600;font-style:italic;color:#5a4a35;">「我固定 delta 0.15，上次選 692P、這次選 686P 的 delta 都一樣 — 我固定了被指派的機率，這就是紀律的風險管理，怎麼會是反應過度？」</p>
     <p style="margin:12px 0 8px;">這個論點有紀律，但有兩個關鍵盲點：</p>
     <p style="margin:8px 0;"><strong>1. 固定 delta，其實沒固定風險。</strong>QQQ 跌一波，市場恐懼指數 (IV) 就會跟著升一波。換個角度看：高 IV 下 delta 0.15 對應的行權價比平常時更低 — <strong>等於你得到了比一般時期 delta 0.15 更多、但其實沒必要的安全感，而且是用權利金縮水換來的</strong>。等 IV 回到正常水準，這份「多餘的安全」就消失了，但你少收的權利金回不來。</p>
-    <p style="margin:8px 0;"><strong>2. 非對稱 ratchet 效應（複利毒性）。</strong>每次跌就 roll down，但反彈時人性上不會主動 roll up 加風險。結果 strike 變成<strong>單向往下 ratchet</strong>，每次往下都是真實的權利金損失。看一個溫和震盪市的數字：</p>
+    <p style="margin:8px 0;"><strong>2. 非對稱 ratchet 效應（複利毒性）。</strong>真正的問題不是「跌就 roll down」這一次，而是<strong>反彈時你照樣 roll up 追股價，卻追不回原本的 strike</strong> — 上一波 IV 還沒完全回落、股價自己也沒完全收復，同樣選 delta 0.15 對應的 strike 就是會比起點低一截，<strong>權利金跟著再縮一次水</strong>。每跌一波就被拉低、每彈一波只能追回一部分 — <strong>strike 跟權利金一起單向往下 ratchet</strong>。看一個溫和震盪市的數字：</p>
     <table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:0.875rem;background:#fff;border-radius:6px;overflow:hidden;">
       <thead>
         <tr>
@@ -295,10 +295,10 @@
         <tr><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">2（跌）</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">709</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">22%</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;color:#dc2626;font-weight:600;">685</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;color:#dc2626;font-weight:600;">$1.00</td></tr>
         <tr><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">3（反彈）</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">718</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">19%</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">691</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">$1.10</td></tr>
         <tr><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">4（再跌）</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">710</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;">21%</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;color:#dc2626;font-weight:600;">686</td><td style="padding:7px 10px;border-bottom:1px solid #f0e8de;color:#dc2626;font-weight:600;">$0.95</td></tr>
-        <tr><td style="padding:7px 10px;">5（反彈）</td><td style="padding:7px 10px;">716</td><td style="padding:7px 10px;">19%</td><td style="padding:7px 10px;">690</td><td style="padding:7px 10px;">$1.00</td></tr>
+        <tr><td style="padding:7px 10px;">5（反彈）</td><td style="padding:7px 10px;">716</td><td style="padding:7px 10px;">19%</td><td style="padding:7px 10px;">688</td><td style="padding:7px 10px;">$1.00</td></tr>
       </tbody>
     </table>
-    <p style="margin:8px 0;">5 次展期後 strike 少 2 點，<strong>權利金已經少 17%</strong>。遇到 2022 那種持續跌 + IV 結構性高的環境，半年下來權利金腰斬不誇張。</p>
+    <p style="margin:8px 0;">5 次展期後 strike 少 4 點，<strong>權利金已經少 17%</strong>。遇到 2022 那種持續跌 + IV 結構性高的環境，半年下來權利金腰斬不誇張。</p>
     <p style="margin:8px 0 0;"><strong>所以 delta-based rolling 對「短期試水溫」型賣方合理，對「想穩定收權利金做久」的策略是慢性毒藥</strong> — 它在每個焦慮時刻讓你以為在管理風險，事實上是<em>主動降低未來收益的上限</em>。一次反應過度看不出，每次都這樣 — <strong>賣方的年化會被自己一刀一刀削到接近 0</strong>。</p>
   </div>
 
