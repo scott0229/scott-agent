@@ -137,7 +137,7 @@ const content = `<figure style="margin:28px 0;padding:0;">
 
 <ul>
   <li><strong>先看現價跟原 strike 的距離</strong>：還有明顯距離（例如 2% 以上），表示原 strike 仍合理，新 strike 不需要大幅往下拉，維持原位甚至小幅貼近現價都比拉遠來得好。</li>
-  <li><strong>幅度小一點就好 (最佳)</strong>：差 1-2 點是合理微調，差到 6 點就是過度反應。</li>
+  <li><strong>幅度小一點就好</strong>：差 1-2 點是合理微調，差到 6 點就是過度反應。</li>
   <li><strong>盤算交換條件</strong>：每往下 1 點 strike，新部位就少收一塊權利金。要問自己：少收的這塊權利金，跟那 1 點的「安全感」，真的等價嗎？</li>
 </ul>
 
