@@ -51,8 +51,8 @@ export default function RegisterPage() {
       }
 
       // Registration successful - Cookie is set by the server (auto-login).
-      // Redirect to project list.
-      router.push('/project-list');
+      // Redirect to daily-trades dashboard.
+      router.push('/daily-trades');
 
     } catch (err: any) {
       setError(err.message);

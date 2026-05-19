@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, FolderKanban, TrendingUp, LineChart, Target, FileText, CandlestickChart, Calendar as CalendarIcon, BookOpen } from 'lucide-react';
+import { Users, TrendingUp, LineChart, Target, FileText, CandlestickChart, Calendar as CalendarIcon, BookOpen } from 'lucide-react';
 import {
     Select,
     SelectContent,
@@ -83,17 +83,6 @@ export function Navbar() {
                         ))}
                     </SelectContent>
                 </Select>
-
-                {/* Projects - Moved to left side */}
-                <Link href="/project-list" prefetch={true}>
-                    <Button
-                        variant={pathname.startsWith('/project') ? "default" : "ghost"}
-                        className="gap-2"
-                    >
-                        <FolderKanban className="h-4 w-4" />
-                        專案管理
-                    </Button>
-                </Link>
 
                 {/* Blog - admin/manager only */}
                 {canAccessAdmin && (

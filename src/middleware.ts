@@ -12,14 +12,14 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
-  // 1. Authenticated users at Auth pages -> Redirect to Project List (or dashboard)
+  // 1. Authenticated users at Auth pages -> Redirect to dashboard
   if (isAuthenticated && isAuthPage) {
-    return NextResponse.redirect(new URL('/project-list', request.url));
+    return NextResponse.redirect(new URL('/daily-trades', request.url));
   }
 
   // 2. Root path redirect
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(isAuthenticated ? '/project-list' : '/login', request.url));
+    return NextResponse.redirect(new URL(isAuthenticated ? '/daily-trades' : '/login', request.url));
   }
 
   // 3. Unauthenticated users accessing protected pages -> Redirect to Login

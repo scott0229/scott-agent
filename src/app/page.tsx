@@ -17,16 +17,15 @@ export default function Home() {
             歡迎來到 Scott Agent
           </h1>
           <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            這是一個專為 Scott 設計的專案管理與協作平台。
-            現在就開始管理您的專案與任務吧！
+            這是一個專為 Scott 設計的交易管理平台。
           </p>
         </div>
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
           <a
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[200px]"
-            href="/project-list"
+            href="/daily-trades"
           >
-            進入專案列表
+            進入儀表板
           </a>
         </div>
       </main>
