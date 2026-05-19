@@ -45,8 +45,9 @@ next-env.d.ts
 .open-next
 worker-configuration.d.ts
 
-# claude code local state
-/.claude/
+# claude code local state (track settings.json, ignore everything else)
+/.claude/*
+!/.claude/settings.json
 
 # blog seed scripts: runtime tmp SQL only
 scripts/.tmp-*.sql
