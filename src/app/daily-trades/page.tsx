@@ -615,10 +615,10 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
                                         
-                                        const parts = line.split(/((?:盈虧|損益) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
+                                        const parts = line.split(/((?:盈虧|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
                                         const renderedParts = parts.map((part, pIndex) => {
-                                            if (part.startsWith('盈虧 ') || part.startsWith('損益 ')) {
-                                                const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : '損益 ';
+                                            if (part.startsWith('盈虧 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
+                                                const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : part.startsWith('損益 ') ? '損益 ' : '權利金 ';
                                                 const numStr = part.replace(prefix, '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
                                                 const colorClass = num > 0 ? 'text-status-positive' : num < 0 ? 'text-status-negative' : '';
