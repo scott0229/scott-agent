@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>案例解讀：2026/5/14 sell call strike 拉到 +4 — 過度防守的代價</title>
+<style>
+  body { max-width: 860px; margin: 40px auto; padding: 0 20px; font-family: "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.75; color: #2c2418; background: #fdfaf2; }
+  h1 { font-size: 1.7rem; line-height: 1.3; margin: 0 0 18px; }
+  h3 { font-size: 1.25rem; margin: 32px 0 12px; color: #3a3025; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 1.6em; }
+  li { margin: 6px 0; }
+  blockquote { margin: 24px 0; padding: 14px 20px; background: #f3ead9; border-left: 4px solid #c9b89f; border-radius: 0 8px 8px 0; }
+  blockquote p { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.9rem; background: #fff; color: #3a3025; border-radius: 6px; overflow: hidden; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #f0e8de; }
+  th { background: #f8f1e4; font-weight: 700; color: #5a4a35; border-bottom: 2px solid #d4b896; }
+</style>
+</head>
+<body>
+
+<h1>案例解讀：2026/5/14 sell call strike 拉到 +4 — 過度防守的代價</h1>
+
+<figure style="margin:28px 0;padding:0;">
+  <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="COPX 近 20 個交易日走勢與 5 日均線" style="display:block;width:100%;height:auto;border-radius:10px;">
+    <rect x="0" y="0" width="720" height="280" fill="#fbf6ef" rx="10"/>
+    <text x="20" y="24" font-size="13" font-weight="700" fill="#5a4a35" font-family="sans-serif">COPX ／ 近 20 個交易日收盤 + 5 日均線</text>
+    <line x1="498" y1="20" x2="518" y2="20" stroke="#22a37f" stroke-width="2.5"/>
+    <text x="523" y="24" font-size="11" fill="#5a4a35" font-family="sans-serif">日收盤</text>
+    <line x1="585" y1="20" x2="605" y2="20" stroke="#9bb0d4" stroke-width="2"/>
+    <text x="610" y="24" font-size="11" fill="#5a4a35" font-family="sans-serif">5 日均線</text>
+    <text x="42" y="56" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">95</text>
+    <line x1="48" y1="52" x2="700" y2="52" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="101" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">90</text>
+    <line x1="48" y1="97.5" x2="700" y2="97.5" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="147" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">85</text>
+    <line x1="48" y1="143" x2="700" y2="143" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="192" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">80</text>
+    <line x1="48" y1="188.5" x2="700" y2="188.5" stroke="#eee0d0" stroke-width="0.8"/>
+    <text x="42" y="238" font-size="10" fill="#a89580" text-anchor="end" font-family="sans-serif">75</text>
+    <line x1="48" y1="234" x2="700" y2="234" stroke="#eee0d0" stroke-width="0.8"/>
+    <line x1="48" y1="115.7" x2="700" y2="115.7" stroke="#a89580" stroke-width="1.2" stroke-dasharray="3,3"/>
+    <text x="700" y="129" font-size="10" font-weight="600" fill="#8a7864" text-anchor="end" font-family="sans-serif">88 strike (舊)</text>
+    <line x1="48" y1="79.3" x2="700" y2="79.3" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6,4"/>
+    <text x="700" y="74" font-size="11" font-weight="700" fill="#d97706" text-anchor="end" font-family="sans-serif">92 strike (新, +4)</text>
+    <polyline points="184.7,156.7 218.4,165.0 252.1,170.1 285.8,183.1 319.5,188.3 353.2,194.3 386.8,203.5 420.5,204.4 454.2,193.8 487.9,188.3 521.6,175.8 555.3,155.8 588.9,133.0 622.6,117.8 656.3,105.5 690,110.8" fill="none" stroke="#9bb0d4" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="50,131.6 83.7,175.1 117.4,143.9 151.1,166.1 184.7,166.9 218.4,173.0 252.1,200.4 285.8,209.2 319.5,192.0 353.2,197.1 386.8,219.0 420.5,204.8 454.2,156.0 487.9,164.7 521.6,134.2 555.3,119.4 588.9,90.5 622.6,80.1 656.3,103.1 690,160.7" fill="none" stroke="#22a37f" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="656.3" cy="103.1" r="5" fill="#dc2626"/>
+    <text x="656.3" y="92" font-size="11" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">$89.38</text>
+    <circle cx="690" cy="160.7" r="3.5" fill="#5a4a35"/>
+    <text x="690" y="180" font-size="10" font-weight="600" fill="#5a4a35" text-anchor="end" font-family="sans-serif">$83.05 (隔日)</text>
+    <text x="50" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">4/20</text>
+    <text x="218.4" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">4/27</text>
+    <text x="386.8" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/4</text>
+    <text x="555.3" y="255" font-size="10" fill="#8a7864" text-anchor="middle" font-family="sans-serif">5/11</text>
+    <text x="656.3" y="255" font-size="10" font-weight="700" fill="#dc2626" text-anchor="middle" font-family="sans-serif">5/14</text>
+  </svg>
+  <figcaption style="text-align:center;color:#8a7864;font-size:0.875rem;margin-top:10px;font-style:italic;">COPX 從 5/4 谷底 $76.65 衝高到 5/13 的 $91.91（+20%）。5/14 trade 當天收 $89.38（88C ITM $1.38），隔日 5/15 又跌回 $83.05（重新 OTM）。</figcaption>
+</figure>
+
+<p>接續這個系列 — <a href="/blog/1">blog/1</a> 講 sell put 過度防守（roll down 太多）、<a href="/blog/3">blog/3</a> 講 sell put 過度積極（roll up 但 credit 太少）。這次是 sell call 的「<strong>過度防守</strong>」 — 跟 blog/1 對稱，但代價更實在：這次不是少收 credit，是<strong>真的付錢出去</strong>。</p>
+
+<p>看下面這筆 trade：</p>
+
+<div style="background:#1a1a1a;color:#f5f1ea;border-radius:8px;padding:14px 18px;margin:20px 0;font-family:Consolas,'Microsoft JhengHei',monospace;font-size:1rem;line-height:1.7;">
+  <div style="display:inline-block;background:#4a2a14;color:#f5b95a;border-left:4px solid #f5b95a;padding:6px 12px;border-radius:4px;margin-bottom:12px;font-weight:600;font-size:0.95rem;">展期 5，調價 +4，盈虧<span style="color:#ff6b6b;margin-left:4px;">-138.5</span></div>
+  <div style="padding:2px 0;letter-spacing:0.3px;">-1口 COPX May22'26 92C</div>
+  <div style="padding:2px 0;letter-spacing:0.3px;">+1口 COPX May15'26 88C</div>
+</div>
+
+<h3>解讀這筆展期</h3>
+
+<p>某交易者在 5/14（週四）做了一筆 sell call 的 roll：</p>
+
+<ul>
+  <li><strong>平倉</strong>：COPX May15 88C — 隔天到期的舊賣 call</li>
+  <li><strong>新開</strong>：COPX May22 92C — 下週五到期的新賣 call</li>
+  <li><strong>strike 變化</strong>：88 → 92，<strong>主動上拉 +4</strong>（sell call 上拉 = 遠離現價 = 防守方向）</li>
+  <li><strong>到期日延後</strong>：May15 → May22，delay <strong>5 個 trading days</strong>（也就是 ticker 上的「展期 5」）</li>
+  <li><strong>淨支出</strong>：<span style="color:#dc2626;font-weight:600;">-138.5</span>（不是收 credit，是<strong>付 debit</strong>）</li>
+</ul>
+
+<p>對賣方來說，<strong>付錢 roll</strong> 是少見的情境 — 通常代表原部位已經被打到價內：5/14 那天 COPX 收 $89.38、<strong>原 88C 已 ITM $1.38</strong>，平倉得花錢買回。新開 92C May22 雖然收到一些權利金，但不足以抵消平倉成本，所以 net debit -138.5。</p>
+
+<h3>背景：COPX 過去一個月的劇烈波動</h3>
+
+<p>看上面那張圖，過去 20 個交易日 COPX 走了一個劇烈的 V 型再倒 V：</p>
+
+<ul>
+  <li><strong>4/20–5/4</strong>：COPX 從 $86 一路跌到 $76（-12%） — 88C 遠在 OTM、超級安全</li>
+  <li><strong>5/4–5/13</strong>：突然反彈，9 個交易日從 $76 衝到 <strong>$91.91</strong>（+20%） — 88C 被打進 ITM 約 $4</li>
+  <li><strong>5/13–5/14</strong>：開始拉回到 $89.38 — 但 88C 仍 ITM $1.38</li>
+  <li><strong>（5/15 隔日後續）</strong>：COPX 又重挫到 $83.05 — 88C 重新跌回 OTM</li>
+</ul>
+
+<p>這位交易者就是在 5/14 這個 ITM $1.38 的情境下決定 roll up + roll out：strike +4、到期 +5 個 trading days，付 -138.5。</p>
+
+<h3>為什麼這是「過度防守」</h3>
+
+<p>5/14 那天 88C 確實 ITM、defense 有合理性 — <strong>問題不在「該不該 roll」，而在「strike 拉到哪」</strong>。</p>
+
+<p>要把部位從 ITM 拉回 OTM，最少只需要 strike 過 $89.38。所以：</p>
+
+<ul>
+  <li><strong>+2 到 90</strong>：OTM $0.62（剛剛好脫離 ITM，仍貼近 ATM）</li>
+  <li><strong>+3 到 91</strong>：OTM $1.62（小幅 buffer）</li>
+  <li><strong>+4 到 92</strong>（這筆 trade 的選擇）：OTM $2.62（已經 +2.9% buffer）</li>
+</ul>
+
+<p>對一個只剩 5 個 trading days 的短期 sell call 來說，<strong>+2.9% buffer 是過度的</strong>。短天期 option 的時間衰減快、IV 也會自己回落，根本不需要這麼大的 cushion。每多 1 個 strike point，平倉成本 / 新開倉 credit 損失都明顯放大 — 拉到 +4 比拉到 +2 大概多付 50–80% 的成本。</p>
+
+<div style="border-left:4px solid #dc2626;background:rgba(220,38,38,0.06);padding:14px 20px;margin:20px 0;border-radius:0 8px 8px 0;">
+  <p style="margin:0;font-size:1.05rem;color:#7a1f1f;"><strong>原 88C ITM 只有 $1.38；用 +4 strike 來 fix，明顯防得太多、付得太多。</strong></p>
+</div>
+
+<p>事後的 bonus：隔天 5/15 COPX 重挫到 $83.05，<strong>原 88C 自己回到 OTM、會 worthless expire</strong>。但這是後見之明，trade 時不能假設市場會這樣發展。<strong>真正的 critique 是 ex-ante 的：就算需要 defend，+4 也是太多。</strong></p>
+
+<h3>量化視角</h3>
+
+<p>5/14 trade 當下，原 88 strike 跟新 92 strike 相對於 COPX $89.38：</p>
+
+<table>
+  <thead>
+    <tr><th>Strike</th><th>vs 現價</th><th>狀態</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>88（原）</td><td>ITM $1.38</td><td>-1.5%（在價內）</td></tr>
+    <tr><td>92（新）</td><td>OTM $2.62</td><td>+2.9% buffer</td></tr>
+  </tbody>
+</table>
+
+<p>+4 strike 的效果：把部位從 ITM 推回 OTM，並多塞了 $2.62 的「過剩 cushion」。代價是 -138.5 已實現虧損。換算：每多 1 pp buffer 平均付了 ~$31。</p>
+
+<p>跟 blog/1 的對稱：blog/1 那筆 sell put roll down 6 點，當時 buffer 已經夠大、根本不需要 defend；這筆 sell call 是 ITM 真的需要 defend，但 defend 的幅度（+4）太大。<strong>兩個都是同類錯誤：過度防守 — 多花權利金 / 多付現金，去買一個比實際需要還多的 cushion。</strong></p>
+
+<div style="border:1px solid #d4b896;background:#fdfaf2;color:#3a3025;padding:18px 22px;margin:24px 0;border-radius:8px;">
+  <div style="font-size:1rem;font-weight:700;color:#8a6a3a;letter-spacing:1px;margin-bottom:10px;">💬 常見反駁</div>
+  <p style="margin:0 0 12px;font-weight:600;font-style:italic;color:#5a4a35;">「5 天到期，COPX 又是高波動標的，多買點 buffer 比較安心嘛。」</p>
+  <p style="margin:8px 0;">兩個問題：</p>
+  <p style="margin:8px 0;"><strong>1. 「安心」不是免費的。</strong>每往上多 1 個 strike，平倉買回原 call 跟新賣 call 的價差就放大。+2 跟 +4 的價差可能就是 -80 vs -138 的差別。多買的這 2 個 strike 的 cushion，是用真實現金換的 — 不是 abstract 的「opportunity cost」，是<strong>已實現虧損</strong>。</p>
+  <p style="margin:8px 0 0;"><strong>2. 短天期 option，cushion 邊際效用遞減快。</strong>5 個 trading days 的時間衰減夠快、IV 也會自己回落。0.5–1% 的 OTM buffer 在 5 天內被吃掉的機率不高；硬要拉到 3%+ 是過度反應。如果真的怕 COPX 再衝到 $92+，那不如平倉認賠、不開新部位 — 一直 defending 反而是<strong>用一連串小額付出累積大額虧損</strong>。</p>
+</div>
+
+<div style="border-left:4px solid #22a37f;background:rgba(34,163,127,0.09);padding:14px 20px 16px;margin:24px 0;border-radius:0 8px 8px 0;">
+  <div style="font-size:1rem;font-weight:700;color:#1a7a5a;letter-spacing:1px;margin-bottom:10px;">🎯 總結：sell call 防守 roll-up 該拉多少</div>
+  <p style="margin:6px 0 8px;">Sell call 被打到 ITM 時，roll up 是合理的防守 — 但 strike 拉多少要看「剛好脫離 ITM + 一點 buffer」就夠，不是越遠越安全：</p>
+  <ul style="margin:6px 0 10px;padding-left:1.4em;">
+    <li style="margin:6px 0;"><strong>目標</strong>：把新 strike 拉到剛好 OTM、加上 1–2% 的小 buffer（對短天期 option 已足夠）</li>
+    <li style="margin:6px 0;"><strong>不該做</strong>：硬塞 3%+ 的 cushion 換「絕對安心」 — 每多 1 strike 的邊際代價遞增，但邊際保護效用遞減</li>
+    <li style="margin:6px 0;"><strong>更該做的</strong>：如果 ITM 深度真的讓你不安，考慮直接平倉認賠 / 不開新部位，而不是一直付錢 defend</li>
+  </ul>
+  <p style="margin:8px 0 0;">下單前問自己：<strong>「我多付的這 X 元現金，買到的是『實際必要的保護』還是『心理上的安心』？」</strong> 如果是後者 — 通常多拉 2 個 strike 換來的只是錯覺。</p>
+</div>
+
+<blockquote><p><strong>底線：</strong>賣方的權利金是慢慢累積的；過度防守的代價是<strong>一筆一筆把累積的 credit 倒回去</strong>。Sell put 過度 roll down 是少收 credit（抽象）；sell call 過度 roll up 是付出現金（具體）。後者更直接、更痛 — 而且常常是因為「多買幾個 strike 安心一點」這種小決定，在每次展期累積放大。</p></blockquote>
+
+</body>
+</html>
