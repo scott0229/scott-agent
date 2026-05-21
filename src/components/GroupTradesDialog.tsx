@@ -288,146 +288,61 @@ export function GroupTradesDialog({
         : (totalStockPnL === 0 ? "0" : totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
 
     const rollProfitsMap = new Map<number, number>();
-    
-    // Group trades by Date + Underlying + Type for batch roll detection (handles 1-to-1, 1-to-N, N-to-M splits)
-    const dateGroups = new Map<string, { closedTrades: typeof sortedOptions, openedTrades: typeof sortedOptions }>();
-    
+
+    // Sequential roll pairing: each open consumes the most recent unconsumed close
+    // of the same underlying+type with matching quantity. This matches the user's
+    // mental model — "this open replaced that close" — rather than the previous
+    // same-day batch averaging, which was hard to interpret when a position was
+    // both opened and closed on the same day.
+    type CloseEvent = {
+        id: number;
+        settlement_date: number;
+        open_date: number;
+        key: string;
+        cost: number;
+        qty: number;
+        consumed: boolean;
+    };
+    const closeEvents: CloseEvent[] = [];
+
     sortedOptions.forEach(t => {
         if (t.type === 'STK') return;
-        
-        // Record as opened trade
-        const openDateStr = formatDate(t.open_date);
-        const keyOpen = `${openDateStr}_${t.underlying}_${t.type}`;
-        if (!dateGroups.has(keyOpen)) {
-            dateGroups.set(keyOpen, { closedTrades: [], openedTrades: [] });
-        }
-        dateGroups.get(keyOpen)!.openedTrades.push(t);
-        
-        // Record as closed trade
-        if (t.settlement_date) {
-            const closeDateStr = formatDate(t.settlement_date);
-            const keyClose = `${closeDateStr}_${t.underlying}_${t.type}`;
-            if (!dateGroups.has(keyClose)) {
-                dateGroups.set(keyClose, { closedTrades: [], openedTrades: [] });
-            }
-            dateGroups.get(keyClose)!.closedTrades.push(t);
+        if (t.settlement_date && t.premium != null && t.final_profit != null) {
+            closeEvents.push({
+                id: t.id,
+                settlement_date: t.settlement_date,
+                open_date: t.open_date,
+                key: `${t.underlying}_${t.type}`,
+                cost: t.premium - t.final_profit,
+                qty: t.quantity,
+                consumed: false,
+            });
         }
     });
 
-    dateGroups.forEach(group => {
-        if (group.closedTrades.length > 0 && group.openedTrades.length > 0) {
-            let matchedC = group.closedTrades;
-            let matchedO = group.openedTrades;
-            
-            const sumC = matchedC.reduce((sum, t) => sum + t.quantity, 0);
-            const sumO = matchedO.reduce((sum, t) => sum + t.quantity, 0);
-            
-            let isMatch = false;
-            
-            if (sumC === sumO && sumC !== 0) {
-                isMatch = true;
-            } else if (matchedC.length <= 10 && matchedO.length <= 10) {
-                // Try subset matching for complex splits/merges
-                const getSubsets = (arr: typeof sortedOptions) => {
-                    const subsets: (typeof sortedOptions)[] = [];
-                    const n = arr.length;
-                    for (let i = 1; i < (1 << n); i++) {
-                        const subset = [];
-                        for (let j = 0; j < n; j++) {
-                            if ((i & (1 << j))) subset.push(arr[j]);
-                        }
-                        subsets.push(subset);
-                    }
-                    return subsets;
-                };
-                
-                const subsetsC = getSubsets(matchedC);
-                const subsetsO = getSubsets(matchedO);
-                
-                let found = false;
-                // Prefer matching ALL closed trades to a subset of open trades
-                for (const subO of subsetsO) {
-                    if (subO.reduce((s, t) => s + t.quantity, 0) === sumC && sumC !== 0) {
-                        matchedO = subO;
-                        isMatch = true;
-                        found = true;
-                        break;
-                    }
-                }
-                
-                // Prefer matching ALL open trades to a subset of closed trades
-                if (!found) {
-                    for (const subC of subsetsC) {
-                        if (subC.reduce((s, t) => s + t.quantity, 0) === sumO && sumO !== 0) {
-                            matchedC = subC;
-                            isMatch = true;
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                
-                // Find largest partial match
-                if (!found) {
-                    let bestMatch: { c: typeof sortedOptions, o: typeof sortedOptions, qty: number } | null = null;
-                    for (const subC of subsetsC) {
-                        const sC = subC.reduce((s, t) => s + t.quantity, 0);
-                        if (sC === 0) continue;
-                        for (const subO of subsetsO) {
-                            const sO = subO.reduce((s, t) => s + t.quantity, 0);
-                            if (sC === sO) {
-                                if (!bestMatch || Math.abs(sC) > Math.abs(bestMatch.qty)) {
-                                    bestMatch = { c: subC, o: subO, qty: sC };
-                                }
-                            }
-                        }
-                    }
-                    if (bestMatch) {
-                        matchedC = bestMatch.c;
-                        matchedO = bestMatch.o;
-                        isMatch = true;
-                    } else {
-                        // Fallback: If no subset quantity matches EXACTLY, but they share the same direction (e.g. both Short),
-                        // treat all closed and opened trades on this day as a complex unbalanced roll (e.g., close -1, open -3).
-                        const signC = Math.sign(sumC);
-                        const signO = Math.sign(sumO);
-                        if (signC !== 0 && signC === signO) {
-                            matchedC = group.closedTrades;
-                            matchedO = group.openedTrades;
-                            isMatch = true;
-                        }
-                    }
-                }
-            }
+    // Sort closes by settlement_date asc, then by open_date asc so that on a tied
+    // close date the position with the older lifecycle is consumed first (FIFO).
+    closeEvents.sort((a, b) => a.settlement_date - b.settlement_date || a.open_date - b.open_date);
 
-            const isSelfMatch = (cArr: typeof sortedOptions, oArr: typeof sortedOptions) => {
-                if (cArr.length === 0 || oArr.length === 0) return false;
-                return cArr.every(c => oArr.some(o => o.id === c.id)) && oArr.every(o => cArr.some(c => c.id === o.id));
-            };
+    // Iterate opens in chronological order so earlier opens claim earlier closes.
+    const openEvents = sortedOptions
+        .filter(t => t.type !== 'STK' && t.premium != null)
+        .slice()
+        .sort((a, b) => a.open_date - b.open_date || (a.settlement_date ?? Infinity) - (b.settlement_date ?? Infinity));
 
-            if (isMatch && !isSelfMatch(matchedC, matchedO)) {
-                let totalCostToClose = 0;
-                let canCalculate = true;
-                
-                for (const ct of matchedC) {
-                    if (ct.premium == null || ct.final_profit == null) {
-                        canCalculate = false;
-                        break;
-                    }
-                    totalCostToClose += (ct.premium - ct.final_profit);
-                }
-                
-                if (canCalculate) {
-                    const finalSumO = matchedO.reduce((sum, t) => sum + t.quantity, 0);
-                    for (const ot of matchedO) {
-                        if (ot.premium != null) {
-                            const proportion = ot.quantity / finalSumO;
-                            const allocatedCost = totalCostToClose * proportion;
-                            rollProfitsMap.set(ot.id, ot.premium - allocatedCost);
-                        }
-                    }
-                }
-            }
+    openEvents.forEach(ot => {
+        const key = `${ot.underlying}_${ot.type}`;
+        // Walk backwards: most recent eligible close wins.
+        for (let i = closeEvents.length - 1; i >= 0; i--) {
+            const ce = closeEvents[i];
+            if (ce.consumed) continue;
+            if (ce.id === ot.id) continue; // never pair a trade with itself
+            if (ce.key !== key) continue;
+            if (ce.settlement_date > ot.open_date) continue; // close must happen on/before the open
+            if (ce.qty !== ot.quantity) continue; // 1-to-1 by quantity; complex N-to-M is intentionally not auto-paired
+            rollProfitsMap.set(ot.id, (ot.premium as number) - ce.cost);
+            ce.consumed = true;
+            break;
         }
     });
 
