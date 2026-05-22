@@ -40,6 +40,26 @@ This project is a Next.js application deployed to Cloudflare Workers using OpenN
     ```
     Access the app at `http://localhost:8787`.
 
+## Contributing workflow
+
+Solo project with rapid content iteration. Convention:
+
+| Type of change | Workflow |
+|---|---|
+| Small content edits (blog text, copy tweaks, one-off update scripts) | Commit directly to `main`, push |
+| Schema migrations, worker routes, deploy config, multi-file refactors, anything that could break production | Open a branch + PR |
+
+Because both staging and production deploy on every push to `main`, there is no "land it and look at staging first" buffer — a broken push goes straight to prod. Treat the convention as: **anything that requires more than a quick eyeball gets a branch.**
+
+If you push something bad to `main`, recover with:
+
+```bash
+git revert <bad-sha>
+git push
+```
+
+(Force-pushing `main` is not allowed and would skip the deploy trigger anyway.)
+
 ## Deployment
 
 **Primary path: GitHub Actions.** Push to `main` triggers two workflows in parallel:
