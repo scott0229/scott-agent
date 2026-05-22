@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             SELECT id, title, category, tags, published_at, author_id, created_at, updated_at
             FROM blog_posts
             ${whereClause}
-            ORDER BY published_at DESC, created_at DESC
+            ORDER BY created_at DESC
         `).bind(...params).all();
 
         const posts = (results.results || []).map((p: any) => ({
