@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(node scripts/update-blog-*)",
-      "Bash(node scripts/insert-blog-*)"
+      "Bash(node scripts/insert-blog-*)",
+      "Bash(npx wrangler d1 execute:*)",
+      "Bash(node -e:*)"
     ]
   }
 }
