@@ -362,19 +362,19 @@ export default function OptionsPage() {
                                                             return (
                                                                 <tr key={stat.month} className={`border-b border-border/50 hover:bg-secondary/20 ${index % 2 === 0 ? 'bg-muted/30' : 'bg-card'}`}>
                                                                     <td className="px-1 text-center h-7">{stat.month}月</td>
-                                                                    <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(stat.total_profit) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(stat.total_profit) < 0 ? 'cell-negative' : ''}`}>
                                                                         {Math.round(stat.total_profit).toLocaleString()}
                                                                     </td>
-                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.put_profit) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.put_profit) < 0 ? 'cell-negative' : ''}`}>
                                                                         {Math.round(stat.put_profit).toLocaleString()}
                                                                     </td>
-                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.call_profit) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.call_profit) < 0 ? 'cell-negative' : ''}`}>
                                                                         {Math.round(stat.call_profit).toLocaleString()}
                                                                     </td>
-                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.stock_pnl || 0) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.stock_pnl || 0) < 0 ? 'cell-negative' : ''}`}>
                                                                         {Math.round(stat.stock_pnl || 0).toLocaleString()}
                                                                     </td>
-                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.interest || 0) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                                    <td className={`px-1 text-center h-7 ${Math.round(stat.interest || 0) < 0 ? 'cell-negative' : ''}`}>
                                                                         {Math.round(stat.interest || 0).toLocaleString()}
                                                                     </td>
                                                                 </tr>
@@ -398,19 +398,19 @@ export default function OptionsPage() {
                                                     <tbody>
                                                         <tr>
                                                             <td className="px-1 text-center h-7"></td>
-                                                            <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(client.total_profit ?? 0) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 border-r-2 border-border/60 ${Math.round(client.total_profit ?? 0) < 0 ? 'cell-negative' : ''}`}>
                                                                 {Math.round(client.total_profit ?? 0).toLocaleString()}
                                                             </td>
-                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)) < 0 ? 'cell-negative' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.put_profit, 0)).toLocaleString()}
                                                             </td>
-                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)) < 0 ? 'cell-negative' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + s.call_profit, 0)).toLocaleString()}
                                                             </td>
-                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)) < 0 ? 'cell-negative' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.stock_pnl || 0), 0)).toLocaleString()}
                                                             </td>
-                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0)) < 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                                            <td className={`px-1 text-center h-7 ${Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0)) < 0 ? 'cell-negative' : ''}`}>
                                                                 {Math.round(client.monthly_stats.reduce((sum, s) => sum + (s.interest || 0), 0)).toLocaleString()}
                                                             </td>
                                                         </tr>

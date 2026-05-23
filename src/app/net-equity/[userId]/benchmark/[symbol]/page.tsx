@@ -240,7 +240,7 @@ export default function BenchmarkDetailPage() {
                                 <TableCell className="text-center font-mono">
                                     {record.close_price ? formatMoney(record.net_equity) : '-'}
                                 </TableCell>
-                                <TableCell className={`text-center font-mono ${record.daily_deposit !== 0 ? 'bg-status-negative-soft text-status-negative' : ''}`}>
+                                <TableCell className={`text-center font-mono ${record.daily_deposit !== 0 ? 'cell-negative' : ''}`}>
                                     {record.daily_deposit !== 0 ? formatMoney(record.daily_deposit) : '0'}
                                 </TableCell>
                                 <TableCell className="text-center font-mono">

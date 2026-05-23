@@ -237,7 +237,7 @@ export function StockTradesTable({
                                         <TableCell className="text-center py-1">
                                             {isClosed ? '-' : (trade.current_market_price ? formatMoney(trade.current_market_price) : '-')}
                                         </TableCell>
-                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'bg-status-negative-soft text-status-negative')}>
+                                        <TableCell className={cn("text-center py-1", pnl !== null && pnl < 0 && 'cell-negative')}>
                                             {pnl !== null ? formatPnL(pnl) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center py-1 whitespace-nowrap">

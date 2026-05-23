@@ -352,7 +352,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                isNegative && "bg-status-negative-soft text-status-negative"
+                                                isNegative && "cell-negative"
                                             )}
                                         >
                                             {formatMoney(profit)}
@@ -503,7 +503,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                isNegative && "bg-status-negative-soft text-status-negative"
+                                                isNegative && "cell-negative"
                                             )}
                                         >
                                             {formatMoney(cashBalance)}
@@ -527,7 +527,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                totalInterest < 0 && "bg-status-negative-soft text-status-negative"
+                                                totalInterest < 0 && "cell-negative"
                                             )}
                                         >
                                             {formatMoney(totalInterest)}
@@ -553,7 +553,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                         const holding = user.top_holdings?.[idx];
                                         const isNonStandard = holding && !['QQQ', 'QLD'].includes(holding.symbol);
                                         return (
-                                            <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "bg-status-negative-soft text-status-negative")}>
+                                            <td key={user.id} className={cn("h-7 py-1 px-2 text-center text-xs", isNonStandard && "cell-negative")}>
                                                 {holding ? `${holding.symbol} * ${Math.round(holding.quantity).toLocaleString()}` : '-'}
                                             </td>
                                         );

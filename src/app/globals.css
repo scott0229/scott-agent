@@ -272,6 +272,12 @@
   .no-spinner {
     -moz-appearance: textfield;
   }
+
+  /* Negative / warning cell highlight — soft maroon in dark mode, soft pink in light mode.
+     Use this on table <td>s and similar cells instead of repeating the two raw utilities. */
+  .cell-negative {
+    @apply bg-status-negative-soft text-status-negative;
+  }
 }
 
 /* Blog post content — raw HTML rendered via dangerouslySetInnerHTML */

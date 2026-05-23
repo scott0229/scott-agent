@@ -502,7 +502,7 @@ export default function HistoricalReportsPage() {
                                         const status = getCompletenessStatus(accountReports);
                                         if (!status) return null;
                                         return (
-                                            <span className={`px-2 py-0.5 rounded text-sm border ${status === '檔案完整' ? 'bg-status-positive-soft text-status-positive border-status-positive-border' : 'bg-status-negative-soft text-status-negative border-status-negative-border'}`}>
+                                            <span className={`px-2 py-0.5 rounded text-sm border ${status === '檔案完整' ? 'bg-status-positive-soft text-status-positive border-status-positive-border' : 'cell-negative border-status-negative-border'}`}>
                                                 {status}
                                             </span>
                                         );
