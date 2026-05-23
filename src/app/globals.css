@@ -292,6 +292,21 @@
   .pill-negative {
     @apply bg-status-negative-soft text-status-negative border border-status-negative-border;
   }
+
+  /* Note / amber tone — for "Open" trades, highlighted text spans, etc. */
+  .cell-note {
+    @apply bg-note-badge text-note-badge-fg;
+  }
+
+  /* Info / blue tone — for "Transferred" operations, informational hints. */
+  .cell-info {
+    @apply bg-highlight-blue-bg text-highlight-blue-fg;
+  }
+
+  /* Accent / purple tone — for special groupings (e.g. group_id ending '-4'). */
+  .cell-accent {
+    @apply bg-highlight-purple-bg text-highlight-purple-fg;
+  }
 }
 
 /* Blog post content — raw HTML rendered via dangerouslySetInnerHTML */

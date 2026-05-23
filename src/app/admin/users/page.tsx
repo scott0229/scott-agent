@@ -1811,7 +1811,7 @@ export default function AdminUsersPage() {
                                         {report.split('\n').map((line, i, arr) => {
                                             const isHighlighted = line.startsWith('潛在融資 :') || line.startsWith('年初至今 :') || line.startsWith('期權收益率 :') || line.startsWith('帳戶淨值 :');
                                             return (
-                                                <span key={i} className={isHighlighted ? "bg-note-badge text-note-badge-fg rounded px-1 -ml-1" : ""}>
+                                                <span key={i} className={isHighlighted ? "cell-note rounded px-1 -ml-1" : ""}>
                                                     {line}{i < arr.length - 1 ? '\n' : ''}
                                                 </span>
                                             );
@@ -2098,7 +2098,7 @@ export default function AdminUsersPage() {
                                             </table>
 
                                             {ibImportPreview.parsed.isYearStart && (
-                                                <p className="text-xs text-highlight-blue-fg bg-highlight-blue-bg px-2 py-1.5 rounded">
+                                                <p className="text-xs cell-info px-2 py-1.5 rounded">
                                                     📌 此為 1/1 報表，將同步更新年初起始數據
                                                 </p>
                                             )}

@@ -789,11 +789,11 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             >
                                                 <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
                                                     opt.group_id && String(opt.group_id).endsWith('-0')
-                                                        ? 'bg-note-badge text-note-badge-fg'
+                                                        ? 'cell-note'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
                                                             ? 'cell-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'bg-highlight-purple-bg text-highlight-purple-fg'
+                                                                ? 'cell-accent'
                                                                 : 'bg-muted text-foreground hover:bg-muted/80'
                                                 }`}>
                                                     <SelectValue placeholder="-" />

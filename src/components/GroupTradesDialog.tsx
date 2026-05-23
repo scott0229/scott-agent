@@ -498,11 +498,11 @@ export function GroupTradesDialog({
                                             <TableCell className="py-1 min-w-[110px]">
                                                 <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${
                                                     opt.group_id && String(opt.group_id).endsWith('-0')
-                                                        ? 'bg-note-badge text-note-badge-fg'
+                                                        ? 'cell-note'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
                                                             ? 'cell-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'bg-highlight-purple-bg text-highlight-purple-fg'
+                                                                ? 'cell-accent'
                                                                 : 'bg-muted'
                                                 }`}>
                                                     {opt.group_id || '-'}
@@ -511,7 +511,7 @@ export function GroupTradesDialog({
                                             {!isOpenOptionsOnly && (
                                                 <TableCell className="py-1 min-w-[100px]">
                                                     {opt.operation === 'Open' || !opt.operation ? (
-                                                        <Badge variant="secondary" className="bg-note-badge text-note-badge-fg hover:bg-note-badge border-none shadow-sm font-medium">Open</Badge>
+                                                        <Badge variant="secondary" className="cell-note hover:bg-note-badge border-none shadow-sm font-medium">Open</Badge>
                                                     ) : opt.operation === 'Assigned' ? (
                                                         <Badge variant="destructive" className="cell-negative hover:bg-status-negative-soft border-none shadow-sm font-medium">Assigned</Badge>
                                                     ) : opt.operation === 'Expired' ? (
