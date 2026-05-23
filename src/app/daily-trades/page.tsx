@@ -311,14 +311,13 @@ export default function DailyTradesPage() {
             let itmString = '';
             if (rg.opened.length > 0 && rg.closed.length > 0) {
                 const newOpt = rg.opened[0];
-                const oldOpt = rg.closed[0];
                 const currentPrice = marketDataMap[newOpt.symbol];
                 if (currentPrice != null) {
                     let diff = 0;
-                    if (oldOpt.option_type === 'CALL') {
-                        diff = currentPrice - oldOpt.strike_price;
-                    } else if (oldOpt.option_type === 'PUT') {
-                        diff = oldOpt.strike_price - currentPrice;
+                    if (newOpt.option_type === 'CALL') {
+                        diff = currentPrice - newOpt.strike_price;
+                    } else if (newOpt.option_type === 'PUT') {
+                        diff = newOpt.strike_price - currentPrice;
                     }
                     if (diff > 0) {
                         itmString = `被突破 ${diff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
