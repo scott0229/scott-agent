@@ -692,8 +692,8 @@ export default function TradeGroupsPage() {
                                                 {group.latestTrade && (() => {
                                                     const op = group.latestTrade.operation || 'Open';
                                                     let badgeClass = "ml-2 flex-shrink-0 px-2 py-0.5 rounded-sm text-xs font-medium ";
-                                                    if (op === 'Assigned') badgeClass += "text-status-negative bg-status-negative-soft";
-                                                    else if (op === 'Expired') badgeClass += "bg-status-positive-soft text-status-positive rounded-full";
+                                                    if (op === 'Assigned') badgeClass += "cell-negative";
+                                                    else if (op === 'Expired') badgeClass += "cell-positive rounded-full";
                                                     else if (op === 'Transferred') badgeClass += "bg-highlight-blue-bg text-highlight-blue-fg rounded-full";
                                                     else if (op === 'Closed') badgeClass += "bg-muted text-foreground rounded-full";
                                                     else badgeClass += "text-muted-foreground";

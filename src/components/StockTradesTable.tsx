@@ -180,7 +180,7 @@ export function StockTradesTable({
                                                         trade.group_id && String(trade.group_id).endsWith('-0')
                                                             ? 'bg-note-badge text-note-badge-fg'
                                                             : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                ? 'bg-status-positive-soft text-status-positive'
+                                                                ? 'cell-positive'
                                                                 : trade.group_id && String(trade.group_id).endsWith('-4')
                                                                     ? 'bg-highlight-purple-bg text-highlight-purple-fg'
                                                                     : 'bg-muted text-foreground hover:bg-muted/80'

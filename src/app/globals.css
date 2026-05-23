@@ -278,6 +278,20 @@
   .cell-negative {
     @apply bg-status-negative-soft text-status-negative;
   }
+
+  /* Positive / good cell highlight — soft green. */
+  .cell-positive {
+    @apply bg-status-positive-soft text-status-positive;
+  }
+
+  /* Pill-style badges (1px border, same hue) — use on <span>/<Badge> pills.
+     Includes border-width + border-color; consumers can drop a separate `border` utility. */
+  .pill-positive {
+    @apply bg-status-positive-soft text-status-positive border border-status-positive-border;
+  }
+  .pill-negative {
+    @apply bg-status-negative-soft text-status-negative border border-status-negative-border;
+  }
 }
 
 /* Blog post content — raw HTML rendered via dangerouslySetInnerHTML */

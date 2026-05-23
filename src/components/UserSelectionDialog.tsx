@@ -220,7 +220,7 @@ export function UserSelectionDialog({
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {user.statusLabel && (
-                                                    <span className="text-xs font-medium text-status-positive bg-status-positive-soft px-2 py-0.5 rounded-full border border-green-200">
+                                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full pill-positive">
                                                         {user.statusLabel}
                                                     </span>
                                                 )}

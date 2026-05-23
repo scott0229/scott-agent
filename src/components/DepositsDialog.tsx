@@ -266,7 +266,7 @@ export function DepositsDialog({ initialYear }: DepositsDialogProps) {
                                             className={cn(
                                                 "font-normal",
                                                 deposit.transaction_type === 'deposit'
-                                                    ? "bg-status-positive-soft text-status-positive hover:bg-status-positive-soft"
+                                                    ? "cell-positive hover:bg-status-positive-soft"
                                                     : "cell-negative hover:bg-status-negative-soft"
                                             )}
                                         >

@@ -791,7 +791,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                     opt.group_id && String(opt.group_id).endsWith('-0')
                                                         ? 'bg-note-badge text-note-badge-fg'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
-                                                            ? 'bg-status-positive-soft text-status-positive'
+                                                            ? 'cell-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
                                                                 ? 'bg-highlight-purple-bg text-highlight-purple-fg'
                                                                 : 'bg-muted text-foreground hover:bg-muted/80'
@@ -825,7 +825,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                             <div className="flex items-center justify-center gap-1">
                                                 {opt.operation === 'Assigned' ? (
                                                     <span
-                                                        className="text-status-negative bg-status-negative-soft px-2 py-1 rounded-sm cursor-pointer hover:bg-status-negative-soft hover:font-semibold transition-all duration-150"
+                                                        className="cell-negative px-2 py-1 rounded-sm cursor-pointer hover:bg-status-negative-soft hover:font-semibold transition-all duration-150"
                                                         onClick={() => setSelectedOperation(opt.operation || 'Open')}
                                                         title={`點擊過濾 ${opt.operation} 的交易`}
                                                     >
@@ -838,7 +838,7 @@ export default function ClientOptionsPage({ params }: { params: { userId: string
                                                         title={`點擊過濾 ${opt.operation || 'Open'} 的交易`}
                                                     >
                                                         {opt.operation === 'Expired' ? (
-                                                            <Badge className="bg-status-positive-soft text-status-positive hover:bg-status-positive-soft border-none font-normal text-sm px-2 py-0.5">
+                                                            <Badge className="cell-positive hover:bg-status-positive-soft border-none font-normal text-sm px-2 py-0.5">
                                                                 Expired
                                                             </Badge>
                                                         ) : opt.operation === 'Transferred' ? (

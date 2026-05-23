@@ -500,7 +500,7 @@ export function GroupTradesDialog({
                                                     opt.group_id && String(opt.group_id).endsWith('-0')
                                                         ? 'bg-note-badge text-note-badge-fg'
                                                         : opt.group_id && String(opt.group_id).endsWith('-2')
-                                                            ? 'bg-status-positive-soft text-status-positive'
+                                                            ? 'cell-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
                                                                 ? 'bg-highlight-purple-bg text-highlight-purple-fg'
                                                                 : 'bg-muted'
@@ -515,7 +515,7 @@ export function GroupTradesDialog({
                                                     ) : opt.operation === 'Assigned' ? (
                                                         <Badge variant="destructive" className="cell-negative hover:bg-status-negative-soft border-none shadow-sm font-medium">Assigned</Badge>
                                                     ) : opt.operation === 'Expired' ? (
-                                                        <Badge variant="secondary" className="bg-status-positive-soft text-status-positive hover:bg-status-positive-soft border-none shadow-sm font-medium">Expired</Badge>
+                                                        <Badge variant="secondary" className="cell-positive hover:bg-status-positive-soft border-none shadow-sm font-medium">Expired</Badge>
                                                     ) : opt.operation === 'Transferred' ? (
                                                         <Badge variant="secondary" className="bg-note-blue/20 text-note-blue hover:bg-note-blue/20 border-none shadow-sm font-medium">Transferred</Badge>
                                                     ) : opt.operation === 'Closed' ? (
