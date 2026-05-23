@@ -156,8 +156,8 @@ export default function NetEquityPage() {
     }
 
     const StatBadge = ({ value, variant = 'return', format }: { value: number, variant?: 'return' | 'drawdown' | 'sharpe', format?: (v: number) => string }) => {
-        // Cream background, gold border, brown text for all values (positive, negative, drawdown)
-        const colorClass = "bg-note-badge text-note-badge-fg border-note-badge-border";
+        // Soft green pill for all metric values (match NetEquitySummaryTable.tsx)
+        const colorClass = "bg-status-positive-soft text-status-positive border-status-positive-border";
 
         // Display positive value for drawdown as per user request
         const displayValue = variant === 'drawdown' ? Math.abs(value) : value;
