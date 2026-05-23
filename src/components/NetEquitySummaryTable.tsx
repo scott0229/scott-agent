@@ -503,7 +503,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                isNegative && "bg-note-badge text-foreground"
+                                                isNegative && "bg-status-negative-soft text-status-negative"
                                             )}
                                         >
                                             {formatMoney(cashBalance)}
@@ -527,7 +527,7 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                             key={user.id}
                                             className={cn(
                                                 "h-7 py-1 px-2 text-center",
-                                                totalInterest < 0 && "bg-note-badge text-foreground"
+                                                totalInterest < 0 && "bg-status-negative-soft text-status-negative"
                                             )}
                                         >
                                             {formatMoney(totalInterest)}
