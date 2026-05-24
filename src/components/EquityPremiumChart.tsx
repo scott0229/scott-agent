@@ -30,8 +30,9 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, t
         ? [...dailyPremium].sort((a, b) => a.date - b.date)
         : [];
 
-    // Flat cost base = initial cost only (excludes later deposits)
-    const costBase = initialCost > 0 ? initialCost : 1;
+    // Flat cost base = caller-supplied initial cost.
+    // If <= 0 we render 0% (rather than exploding via a /1 fallback).
+    const costBase = initialCost > 0 ? initialCost : 0;
 
     // Interest distribution: linearly spread total interest across the chart range
     // so the final point matches the summary-table number even if /api/users
@@ -60,7 +61,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, t
         const interestShare = totalDailyInterest * (elapsed / totalRange);
         const cumWithInterest = cumPremium + interestShare;
 
-        const premiumRate = (cumWithInterest / costBase) * 100;
+        const premiumRate = costBase > 0 ? (cumWithInterest / costBase) * 100 : 0;
 
         return {
             date: item.date,
