@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { hashPassword } from '@/lib/password';
 import { cacheResponse, clearCache } from '@/lib/response-cache';
 import { getCachedUserSelection } from '@/lib/user-cache';
+import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
 
 // Helper to check for admin, manager, or trader role
 async function checkAdmin(req: NextRequest) {
@@ -233,7 +234,6 @@ export async function GET(req: NextRequest) {
                     // Add interest data to userStatsMap
                     try {
                         const equityRecords = await db.prepare(`SELECT user_id, date, cash_balance FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
-                        const { fetchFredRatesForYear, calculateDailyInterest } = await import('@/lib/fred');
                         const fredRateMap = await fetchFredRatesForYear(parseInt(year as string));
                         
                         const uEqMap = new Map<number, any[]>();
