@@ -425,8 +425,6 @@ export default function OptionsPage() {
                                                 equityHistory={equityDataMap.get(client.id) || []}
                                                 dailyPremium={client.daily_premium || []}
                                                 initialCost={client.initial_cost || 0}
-                                                netDeposit={client.net_deposit || 0}
-                                                deposits={client.deposits || []}
                                                 name={displayName}
                                             />
                                         </div>

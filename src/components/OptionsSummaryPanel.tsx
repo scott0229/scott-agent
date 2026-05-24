@@ -371,7 +371,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 return isVisible ? (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {(() => {
-                                            const costBase = (user.initial_cost || 0) + (user.net_deposit || 0);
+                                            const costBase = user.initial_cost || 0;
                                             const rate = costBase > 0 ? (calculateUserMetrics(user).annualPremium / costBase) * 100 : 0;
                                             return <StatBadge>{rate.toFixed(2)}%</StatBadge>;
                                         })()}

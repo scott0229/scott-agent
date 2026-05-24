@@ -11,48 +11,28 @@ interface DailyPremium {
     cumulative_profit: number;
 }
 
-interface Deposit {
-    date: number;
-    amount: number;
-}
-
 interface EquityPremiumChartProps {
     equityHistory: { date: number; net_equity: number; rate: number; exposure_adjustment?: string }[];
     dailyPremium: DailyPremium[];
     initialCost: number;
-    netDeposit: number;
-    deposits: Deposit[];
     name?: string;
 }
 
-export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, netDeposit, deposits, name }: EquityPremiumChartProps) {
+export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, name }: EquityPremiumChartProps) {
     const [visible, setVisible] = useState({ equity: true, premium: true });
     const toggle = (key: keyof typeof visible) => setVisible(prev => ({ ...prev, [key]: !prev[key] }));
 
     const hasData = equityHistory && equityHistory.length > 0;
-    const hasDetailedDeposits = deposits && deposits.length > 0;
-
-    // Sort deposits by date for efficient lookup
-    const sortedDeposits = [...(deposits || [])].sort((a, b) => a.date - b.date);
 
     // Sort premium entries by date and extract daily increments
     const sortedPremiumDates = dailyPremium
         ? [...dailyPremium].sort((a, b) => a.date - b.date)
         : [];
 
-    // Build deposit segments: [{startDate, costBase}]
-    // Each segment starts at initial or at a deposit date
-    const segments: { startDate: number; costBase: number }[] = [];
-    if (hasDetailedDeposits) {
-        let runningCost = initialCost;
-        segments.push({ startDate: 0, costBase: runningCost > 0 ? runningCost : 1 });
-        for (const dep of sortedDeposits) {
-            runningCost += dep.amount;
-            segments.push({ startDate: dep.date, costBase: runningCost > 0 ? runningCost : 1 });
-        }
-    }
+    // Flat cost base = initial cost only (excludes later deposits)
+    const costBase = initialCost > 0 ? initialCost : 1;
 
-    // Build chart data with segmented premium rate
+    // Build chart data with flat-denominator premium rate
     const chartData = (equityHistory || []).map(item => {
         const d = new Date(item.date * 1000);
 
@@ -66,55 +46,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
             }
         }
 
-        let premiumRate: number;
-
-        if (hasDetailedDeposits && segments.length > 1) {
-            // Segmented calculation: sum of (segment_premium / segment_cost_base) for each segment
-            // For each segment boundary, find cumulative premium at that point
-            let segmentedRate = 0;
-            for (let i = 0; i < segments.length; i++) {
-                const seg = segments[i];
-                const nextSeg = segments[i + 1];
-
-                // Premium at start of this segment
-                let premiumAtSegStart = 0;
-                for (const dp of sortedPremiumDates) {
-                    if (dp.date < seg.startDate) {
-                        premiumAtSegStart = dp.cumulative_profit;
-                    } else {
-                        break;
-                    }
-                }
-
-                // Premium at end of this segment (or at current date if last applicable segment)
-                let premiumAtSegEnd: number;
-                if (nextSeg && nextSeg.startDate <= item.date) {
-                    // Find cumulative premium just before next segment starts
-                    premiumAtSegEnd = premiumAtSegStart;
-                    for (const dp of sortedPremiumDates) {
-                        if (dp.date < nextSeg.startDate) {
-                            premiumAtSegEnd = dp.cumulative_profit;
-                        } else {
-                            break;
-                        }
-                    }
-                } else if (seg.startDate <= item.date) {
-                    // This is the active segment, use current cumulative premium
-                    premiumAtSegEnd = cumPremium;
-                } else {
-                    // This segment hasn't started yet
-                    break;
-                }
-
-                const segPremium = premiumAtSegEnd - premiumAtSegStart;
-                segmentedRate += (segPremium / seg.costBase) * 100;
-            }
-            premiumRate = segmentedRate;
-        } else {
-            // Fallback: static cost base
-            const costBase = (initialCost + netDeposit) || 1;
-            premiumRate = (cumPremium / costBase) * 100;
-        }
+        const premiumRate = (cumPremium / costBase) * 100;
 
         return {
             date: item.date,
