@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, BookOpen, CalendarDays, Tag } from 'lucide-react';
+import { Search, BookOpen, CalendarDays, Tag } from 'lucide-react';
 
 interface BlogPostSummary {
     id: number;
@@ -103,12 +103,6 @@ export default function BlogListPage() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Link href="/blog/new">
-                        <Button className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            新增文章
-                        </Button>
-                    </Link>
                 </div>
             </div>
 
@@ -118,7 +112,7 @@ export default function BlogListPage() {
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="rounded-md border bg-card text-card-foreground shadow-sm p-12 text-center text-muted-foreground">
-                    {posts.length === 0 ? '尚無文章，點擊右上角「新增文章」開始撰寫。' : '沒有符合條件的文章。'}
+                    {posts.length === 0 ? '尚無文章。' : '沒有符合條件的文章。'}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
