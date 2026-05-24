@@ -6,18 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { ArrowLeft, Pencil, Trash2, Loader2, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarDays } from 'lucide-react';
 
 interface BlogPost {
     id: number;
@@ -36,7 +25,6 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
     const postId = parseInt(params.id, 10);
     const [post, setPost] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
-    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -65,24 +53,6 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
         load();
     }, [postId, router, toast]);
 
-    const handleDelete = async () => {
-        setDeleting(true);
-        try {
-            const res = await fetch(`/api/blog/${postId}`, { method: 'DELETE' });
-            if (res.ok) {
-                toast({ title: '已刪除文章' });
-                router.push('/blog');
-            } else {
-                const data = await res.json().catch(() => ({}));
-                toast({ variant: 'destructive', title: '刪除失敗', description: data.error });
-            }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: '刪除失敗', description: err.message });
-        } finally {
-            setDeleting(false);
-        }
-    };
-
     if (loading) {
         return (
             <div className="container mx-auto py-20 text-center text-muted-foreground">
@@ -96,48 +66,13 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
 
     return (
         <div className="container mx-auto py-10 max-w-4xl">
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6">
                 <Link href="/blog">
                     <Button variant="ghost" className="gap-2">
                         <ArrowLeft className="h-4 w-4" />
                         返回列表
                     </Button>
                 </Link>
-                <div className="flex items-center gap-2">
-                    <Link href={`/blog/${postId}/edit`}>
-                        <Button variant="outline" className="gap-2">
-                            <Pencil className="h-4 w-4" />
-                            編輯
-                        </Button>
-                    </Link>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                                刪除
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>確定刪除此文章？</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    「{post.title}」將被永久刪除，此操作無法復原。
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>取消</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={handleDelete}
-                                    disabled={deleting}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                >
-                                    {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    確定刪除
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
             </div>
 
             <article className="rounded-md border bg-card text-card-foreground shadow-sm p-8">
