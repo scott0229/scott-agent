@@ -212,10 +212,13 @@ export default function OptionsPage() {
 
             return marginRateB - marginRateA;
         } else if (sortOrder === 'premium-rate-desc') {
-            const costA = (a.initial_cost || 0) + (a.net_deposit || 0);
+            // Mirror the badge formula in OptionsSummaryPanel:
+            // denominator = initial_cost; fall back to net_deposit
+            // numerator   = total_profit (already includes put+call+stock+interest)
+            const costA = (a.initial_cost && a.initial_cost > 0) ? a.initial_cost : (a.net_deposit || 0);
             const rateA = costA > 0 ? (a.total_profit || 0) / costA : 0;
 
-            const costB = (b.initial_cost || 0) + (b.net_deposit || 0);
+            const costB = (b.initial_cost && b.initial_cost > 0) ? b.initial_cost : (b.net_deposit || 0);
             const rateB = costB > 0 ? (b.total_profit || 0) / costB : 0;
 
             return rateB - rateA;
