@@ -15,10 +15,11 @@ interface EquityPremiumChartProps {
     equityHistory: { date: number; net_equity: number; rate: number; exposure_adjustment?: string }[];
     dailyPremium: DailyPremium[];
     initialCost: number;
+    totalDailyInterest?: number;
     name?: string;
 }
 
-export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, name }: EquityPremiumChartProps) {
+export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, totalDailyInterest = 0, name }: EquityPremiumChartProps) {
     const [visible, setVisible] = useState({ equity: true, premium: true });
     const toggle = (key: keyof typeof visible) => setVisible(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -31,6 +32,14 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
 
     // Flat cost base = initial cost only (excludes later deposits)
     const costBase = initialCost > 0 ? initialCost : 1;
+
+    // Interest distribution: linearly spread total interest across the chart range
+    // so the final point matches the summary-table number even if /api/users
+    // daily_premium omits interest for some reason.
+    const sortedEquity = (equityHistory || []).slice().sort((a, b) => a.date - b.date);
+    const firstDate = sortedEquity.length > 0 ? sortedEquity[0].date : 0;
+    const lastDate = sortedEquity.length > 0 ? sortedEquity[sortedEquity.length - 1].date : 0;
+    const totalRange = Math.max(1, lastDate - firstDate);
 
     // Build chart data with flat-denominator premium rate
     const chartData = (equityHistory || []).map(item => {
@@ -46,7 +55,12 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
             }
         }
 
-        const premiumRate = (cumPremium / costBase) * 100;
+        // Add proportional share of interest (linearly distributed over chart period)
+        const elapsed = Math.max(0, item.date - firstDate);
+        const interestShare = totalDailyInterest * (elapsed / totalRange);
+        const cumWithInterest = cumPremium + interestShare;
+
+        const premiumRate = (cumWithInterest / costBase) * 100;
 
         return {
             date: item.date,
@@ -54,7 +68,7 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, n
             equityRate: item.rate,
             premiumRate,
             rawEquity: item.net_equity,
-            rawPremium: cumPremium,
+            rawPremium: cumWithInterest,
             exposure_adjustment: item.exposure_adjustment
         };
     });

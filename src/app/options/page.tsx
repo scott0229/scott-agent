@@ -425,6 +425,7 @@ export default function OptionsPage() {
                                                 equityHistory={equityDataMap.get(client.id) || []}
                                                 dailyPremium={client.daily_premium || []}
                                                 initialCost={client.initial_cost || 0}
+                                                totalDailyInterest={(client as any).total_daily_interest || 0}
                                                 name={displayName}
                                             />
                                         </div>
