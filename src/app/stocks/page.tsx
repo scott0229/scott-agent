@@ -80,6 +80,7 @@ export default function StockTradingPage() {
     const [selectedUserFilter, setSelectedUserFilter] = useState<string>("All"); // Filter by user_id string for display match
     const [statusFilter, setStatusFilter] = useState<string>("All");
     const [symbolFilter, setSymbolFilter] = useState("");
+    const [pnlFilter, setPnlFilter] = useState<string>("All"); // All | Options | Stock — by include_in_options
     const [sortFilter, setSortFilter] = useState<string>("CloseDate");
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -198,6 +199,13 @@ export default function StockTradingPage() {
             if (trade.status !== statusFilter) return false;
         }
 
+        // P&L Type Filter — include_in_options===1 counts as 期權盈虧, else 股票盈虧
+        if (pnlFilter === 'Options') {
+            if (trade.include_in_options !== 1) return false;
+        } else if (pnlFilter === 'Stock') {
+            if (trade.include_in_options === 1) return false;
+        }
+
         return true;
     });
 
@@ -219,7 +227,7 @@ export default function StockTradingPage() {
     }, [filteredTrades, sortFilter]);
 
     // Check if any filter is active
-    const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '';
+    const isFiltered = selectedUserFilter !== 'All' || statusFilter !== 'All' || symbolFilter !== '' || pnlFilter !== 'All';
 
     // Calculate running total of shares for each trade chronologically (grouped by day to avoid artificial intra-day partial sums)
     const runningDataMap = useMemo(() => {
@@ -381,6 +389,7 @@ export default function StockTradingPage() {
                                 setSelectedUserFilter("All");
                                 setStatusFilter("All");
                                 setSymbolFilter("");
+                                setPnlFilter("All");
                             }}
                             className="mr-2 text-muted-foreground hover:text-primary"
                         >
@@ -432,6 +441,20 @@ export default function StockTradingPage() {
                                     <SelectItem value="Open">Open</SelectItem>
                                     <SelectItem value="Closed">Closed</SelectItem>
                                     <SelectItem value="Assigned">被指派</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* P&L Type Filter */}
+                        <div className="w-[150px]">
+                            <Select value={pnlFilter} onValueChange={setPnlFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="全部盈虧" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">全部盈虧</SelectItem>
+                                    <SelectItem value="Options">期權盈虧</SelectItem>
+                                    <SelectItem value="Stock">股票盈虧</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
