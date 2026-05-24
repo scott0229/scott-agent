@@ -1709,7 +1709,7 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={8} className="text-center py-1"></TableCell>
+                                        <TableCell colSpan={7} className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
