@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, CalendarDays } from 'lucide-react';
@@ -66,18 +65,18 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
 
     return (
         <div className="container mx-auto py-10 max-w-4xl">
-            <div className="mb-6">
-                <Link href="/blog">
-                    <Button variant="ghost" className="gap-2">
-                        <ArrowLeft className="h-4 w-4" />
-                        返回列表
-                    </Button>
-                </Link>
-            </div>
-
             <article className="rounded-md border bg-card text-card-foreground shadow-sm p-8">
                 <header className="mb-6 pb-6 border-b">
-                    <h1 className="text-3xl font-bold leading-tight mb-3">{post.title}</h1>
+                    <h1 className="text-3xl font-bold leading-tight mb-3 flex items-start gap-3">
+                        <Link
+                            href="/blog"
+                            aria-label="返回列表"
+                            className="shrink-0 inline-flex items-center justify-center rounded-md p-1 -ml-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                            <ArrowLeft className="h-7 w-7" />
+                        </Link>
+                        <span>{post.title}</span>
+                    </h1>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                         <span className="inline-flex items-center gap-1">
                             <CalendarDays className="h-4 w-4" />
