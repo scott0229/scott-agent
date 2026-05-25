@@ -55,13 +55,26 @@ export async function POST(req: NextRequest) {
         const escapeHtml = (str: string) =>
             str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+        // Render dash separator lines as a proper <hr> so they don't wrap
+        // awkwardly on narrow viewports (the 40-dash string has no break
+        // points, so word-wrap: break-word splits it mid-sequence).
+        // Also consume blank lines surrounding the separator so sections
+        // sit flush against the rule instead of leaving a tall gap (the
+        // BCC body joins report + extras with `\n\n---\n`, and the report
+        // itself already ends with `\n`).
+        const renderBodyHtml = (body: string) =>
+            escapeHtml(body).replace(
+                /\n*^-{4,}$\n*/gm,
+                '<hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;" />'
+            );
+
         const buildHtml = (body: string) => `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;">${escapeHtml(subject)}</h2>
-  <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.6; font-size: 14px;">${escapeHtml(body)}</pre>
+  <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.6; font-size: 14px;">${renderBodyHtml(body)}</pre>
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin-top: 24px;" />
   <p style="font-size: 12px; color: #9ca3af;">此郵件由 Scott Agent 系統自動發送</p>
 </body>

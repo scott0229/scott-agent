@@ -51,16 +51,25 @@ function buildBccExtras(
     const parts: string[] = [];
     if (options.includeTradeAdvice) {
         const note = (user.report_note || '').trim();
-        if (note) parts.push(`【交易建議】\n${note}`);
+        if (note) parts.push(`交易建議\n${note}`);
     }
     if (options.includeDailyOps && dailyTrades) {
         const group = (dailyTrades.data || []).find((g: any) => g.user?.id === user.id);
         if (group) {
-            const txt = generateDailyTradesText(group, dailyTrades.date, dailyTrades.marketData).trim();
-            if (txt) parts.push(`【當日操作】\n${txt}`);
+            // Drop the "交易日期 : ..." header (and its trailing dash rule)
+            // because the parent email already shows the date in the subject
+            // and 帳戶報告 body. Keep the call's `date` arg populated so the
+            // DTE calculation inside generateDailyTradesText still works.
+            const txt = generateDailyTradesText(group, dailyTrades.date, dailyTrades.marketData)
+                .replace(/^交易日期 : [^\n]*\n-+\n/, '')
+                .trim();
+            if (txt) parts.push(`當日操作\n${txt}`);
         }
     }
-    return parts.join('\n\n');
+    // Join with a dash separator so the HTML renderer collapses it into
+    // an <hr> (and consumes surrounding blank lines), keeping 當日操作
+    // flush against 交易建議 instead of leaving a tall gap.
+    return parts.join('\n----------------------------------------\n');
 }
 
 
