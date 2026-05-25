@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { userId, report, userName, dateStr, ccEmails } = await req.json();
+        const { userId, report, userName, dateStr, ccEmails, bccExtraReport } = await req.json();
 
         if (!userId || !report) {
             return NextResponse.json({ error: '缺少必要參數' }, { status: 400 });
@@ -55,48 +55,93 @@ export async function POST(req: NextRequest) {
         const escapeHtml = (str: string) =>
             str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        const htmlContent = `
+        const buildHtml = (body: string) => `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
   <h2 style="color: #1a1a1a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;">${escapeHtml(subject)}</h2>
-  <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.6; font-size: 14px;">${escapeHtml(report)}</pre>
+  <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; line-height: 1.6; font-size: 14px;">${escapeHtml(body)}</pre>
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin-top: 24px;" />
   <p style="font-size: 12px; color: #9ca3af;">此郵件由 Scott Agent 系統自動發送</p>
 </body>
 </html>`.trim();
 
+        const hasBccList = Array.isArray(ccEmails) && ccEmails.length > 0;
+        const hasExtras = typeof bccExtraReport === 'string' && bccExtraReport.trim().length > 0;
+        const sendEmail = async (payload: any) => {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${resendApiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            return { ok: res.ok, data };
+        };
+
+        // When the admin opted in to BCC extras (trade advice / daily ops),
+        // split into two sends so the customer doesn't see internal notes:
+        //   - customer gets the original `report`
+        //   - BCC list gets `report + extras` via a self-addressed envelope
+        if (hasBccList && hasExtras) {
+            const customerPayload = {
+                from: 'Scott Agent <reports@scott-agent.com>',
+                reply_to: 'reports@scott-agent.com',
+                to: [recipientEmail],
+                subject,
+                text: report,
+                html: buildHtml(report),
+            };
+            const customerRes = await sendEmail(customerPayload);
+            if (!customerRes.ok) {
+                console.error('Resend API error (customer email):', customerRes.data);
+                return NextResponse.json({ error: customerRes.data.message || '客戶寄送失敗' }, { status: 500 });
+            }
+
+            const bccBody = `${report}\n\n----------------------------------------\n${bccExtraReport.trim()}`;
+            const bccPayload = {
+                from: 'Scott Agent <reports@scott-agent.com>',
+                reply_to: 'reports@scott-agent.com',
+                to: ['reports@scott-agent.com'],
+                bcc: ccEmails,
+                subject,
+                text: bccBody,
+                html: buildHtml(bccBody),
+            };
+            const bccRes = await sendEmail(bccPayload);
+            if (!bccRes.ok) {
+                console.error('Resend API error (bcc email):', bccRes.data);
+                // Customer succeeded; surface the BCC failure but don't treat as full failure
+                return NextResponse.json({
+                    success: true,
+                    emailId: customerRes.data.id,
+                    bccError: bccRes.data.message || 'BCC 寄送失敗',
+                });
+            }
+
+            return NextResponse.json({ success: true, emailId: customerRes.data.id, bccEmailId: bccRes.data.id });
+        }
+
+        // Single-email path: no extras, optionally BCC the same content.
         const payload: any = {
             from: 'Scott Agent <reports@scott-agent.com>',
             reply_to: 'reports@scott-agent.com',
             to: [recipientEmail],
             subject,
             text: report,
-            html: htmlContent,
+            html: buildHtml(report),
         };
+        if (hasBccList) payload.bcc = ccEmails;
 
-        if (ccEmails && Array.isArray(ccEmails) && ccEmails.length > 0) {
-            payload.bcc = ccEmails;
+        const { ok, data } = await sendEmail(payload);
+        if (!ok) {
+            console.error('Resend API error:', data);
+            return NextResponse.json({ error: data.message || '發送失敗' }, { status: 500 });
         }
-
-        const emailRes = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${resendApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        const emailData = await emailRes.json();
-
-        if (!emailRes.ok) {
-            console.error('Resend API error:', emailData);
-            return NextResponse.json({ error: emailData.message || '發送失敗' }, { status: 500 });
-        }
-
-        return NextResponse.json({ success: true, emailId: emailData.id });
+        return NextResponse.json({ success: true, emailId: data.id });
 
     } catch (error) {
         console.error('Send report email error:', error);

@@ -35,6 +35,33 @@ import {
 } from "@/components/ui/select";
 import { isMarketHoliday } from '@/lib/holidays';
 import { calculatePremiumRate } from '@/lib/options-metrics';
+import { generateDailyTradesText } from '@/lib/daily-trades-text';
+
+// Compose the BCC-only extras block based on admin settings. Returns
+// an empty string when nothing opt-in produced content (so the API
+// falls back to its single-email path). The shared cache lets callers
+// fetch /api/daily-trades once and reuse it across users.
+interface DailyTradesCache { date: string; data: any[]; marketData: Record<string, number> }
+function buildBccExtras(
+    user: { id: number; report_note?: string | null } | undefined,
+    options: { includeTradeAdvice: boolean; includeDailyOps: boolean },
+    dailyTrades: DailyTradesCache | null,
+): string {
+    if (!user) return '';
+    const parts: string[] = [];
+    if (options.includeTradeAdvice) {
+        const note = (user.report_note || '').trim();
+        if (note) parts.push(`【交易建議】\n${note}`);
+    }
+    if (options.includeDailyOps && dailyTrades) {
+        const group = (dailyTrades.data || []).find((g: any) => g.user?.id === user.id);
+        if (group) {
+            const txt = generateDailyTradesText(group, dailyTrades.date, dailyTrades.marketData).trim();
+            if (txt) parts.push(`【當日操作】\n${txt}`);
+        }
+    }
+    return parts.join('\n\n');
+}
 
 
 interface User {
@@ -524,6 +551,34 @@ export default function AdminUsersPage() {
         let succeeded = 0;
         let failed = 0;
 
+        const ccEmailsBase = [
+            settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
+            settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
+            settings.reportCcEnabled3 ? settings.reportCcEmail3 : null,
+        ].filter(e => e && typeof e === 'string' && e.trim() !== '') as string[];
+
+        // Fetch the latest /api/daily-trades once and reuse for every user
+        // we send to. Only needed when at least one BCC-extras flag is on
+        // AND we actually have BCC recipients.
+        const needsExtras = ccEmailsBase.length > 0 &&
+            ((settings.bccIncludeTradeAdvice !== false) || (settings.bccIncludeDailyOps !== false));
+        let dailyTradesCache: DailyTradesCache | null = null;
+        if (needsExtras && settings.bccIncludeDailyOps !== false) {
+            try {
+                const yearForFetch = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+                const latestRes = await fetch(`/api/daily-trades/latest-date?year=${yearForFetch}`);
+                const latestData = await latestRes.json().catch(() => ({}));
+                const tradesDate = latestData.latestDate as string | undefined;
+                if (tradesDate) {
+                    const dailyRes = await fetch(`/api/daily-trades?date=${tradesDate}&year=${yearForFetch}`);
+                    const dailyJson = await dailyRes.json().catch(() => ({}));
+                    dailyTradesCache = { date: tradesDate, data: dailyJson.data || [], marketData: dailyJson.marketData || {} };
+                }
+            } catch (e) {
+                console.warn('Failed to load daily-trades for BCC extras:', e);
+            }
+        }
+
         for (let i = 0; i < total; i++) {
             const userId = selectedIds[i] as number;
             const reportData = userReports.get(userId);
@@ -532,6 +587,17 @@ export default function AdminUsersPage() {
             try {
                 const dateMatch = reportData.report.match(/最後更新日 : (\S+)/);
                 const dateStr = dateMatch ? dateMatch[1] : '';
+                const bccExtraReport = needsExtras
+                    ? buildBccExtras(
+                        users.find(u => u.id === userId),
+                        {
+                            includeTradeAdvice: settings.bccIncludeTradeAdvice !== false,
+                            includeDailyOps: settings.bccIncludeDailyOps !== false,
+                        },
+                        dailyTradesCache,
+                    )
+                    : '';
+
                 const res = await fetch('/api/users/send-report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -540,11 +606,8 @@ export default function AdminUsersPage() {
                         report: reportData.report,
                         userName: reportData.userName,
                         dateStr,
-                        ccEmails: [
-                            settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
-                            settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
-                            settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
-                        ].filter(e => e && typeof e === 'string' && e.trim() !== '')
+                        ccEmails: ccEmailsBase,
+                        bccExtraReport: bccExtraReport || undefined,
                     }),
                 });
                 if (res.ok) {
@@ -1749,19 +1812,54 @@ export default function AdminUsersPage() {
                                                         // Extract date from report content
                                                         const dateMatch = report.match(/最後更新日 : (\S+)/);
                                                         const dateStr = dateMatch ? dateMatch[1] : '';
+                                                        const ccEmailsBase = [
+                                                            settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
+                                                            settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
+                                                            settings.reportCcEnabled3 ? settings.reportCcEmail3 : null,
+                                                        ].filter(e => e && typeof e === 'string' && e.trim() !== '') as string[];
+
+                                                        // Build BCC extras (含交易建議 / 含當日操作) when the admin
+                                                        // opted in and there's at least one BCC recipient.
+                                                        let bccExtraReport = '';
+                                                        const needsExtras = ccEmailsBase.length > 0 &&
+                                                            ((settings.bccIncludeTradeAdvice !== false) || (settings.bccIncludeDailyOps !== false));
+                                                        if (needsExtras) {
+                                                            let dailyTradesCache: DailyTradesCache | null = null;
+                                                            if (settings.bccIncludeDailyOps !== false) {
+                                                                try {
+                                                                    const yearForFetch = selectedYear === 'All' ? new Date().getFullYear() : selectedYear;
+                                                                    const latestRes = await fetch(`/api/daily-trades/latest-date?year=${yearForFetch}`);
+                                                                    const latestData = await latestRes.json().catch(() => ({}));
+                                                                    const tradesDate = latestData.latestDate as string | undefined;
+                                                                    if (tradesDate) {
+                                                                        const dailyRes = await fetch(`/api/daily-trades?date=${tradesDate}&year=${yearForFetch}`);
+                                                                        const dailyJson = await dailyRes.json().catch(() => ({}));
+                                                                        dailyTradesCache = { date: tradesDate, data: dailyJson.data || [], marketData: dailyJson.marketData || {} };
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.warn('Failed to load daily-trades for BCC extras:', e);
+                                                                }
+                                                            }
+                                                            bccExtraReport = buildBccExtras(
+                                                                users.find(u => u.id === userId),
+                                                                {
+                                                                    includeTradeAdvice: settings.bccIncludeTradeAdvice !== false,
+                                                                    includeDailyOps: settings.bccIncludeDailyOps !== false,
+                                                                },
+                                                                dailyTradesCache,
+                                                            );
+                                                        }
+
                                                         const res = await fetch('/api/users/send-report', {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ 
-                                                                userId, 
-                                                                report, 
-                                                                userName, 
+                                                            body: JSON.stringify({
+                                                                userId,
+                                                                report,
+                                                                userName,
                                                                 dateStr,
-                                                                ccEmails: [
-                                                                    settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
-                                                                    settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
-                                                                    settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
-                                                                ].filter(e => e && typeof e === 'string' && e.trim() !== '')
+                                                                ccEmails: ccEmailsBase,
+                                                                bccExtraReport: bccExtraReport || undefined,
                                                             }),
                                                         });
                                                         const data = await res.json();
