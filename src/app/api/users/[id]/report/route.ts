@@ -67,6 +67,14 @@ export async function GET(
         // 4. Calculate cost and profit
         const cost2026 = (user.initial_cost || 0) + totalDeposit;
         const netProfit2026 = accountNetWorth - cost2026;
+        // Cost base for 期權收益率 follows the canonical formula used by the
+        // summary card (src/lib/options-metrics.ts → getPremiumCostBase):
+        // initial_cost when it's set, otherwise fall back to deposits. This
+        // is intentionally different from cost2026 (which adds deposits to
+        // initial_cost) so the rate matches the card.
+        const premiumCostBase = (user.initial_cost && user.initial_cost > 0)
+            ? user.initial_cost
+            : totalDeposit;
 
         // 5. Get performance statistics using THE SAME calculation as performance overview
         const { results: equityRecords } = await db.prepare(`
@@ -369,6 +377,7 @@ export async function GET(
                 quarterlyPremium,
                 quarterlyTarget,
                 annualPremium,
+                premiumCostBase,
                 annualTarget,
                 openOptions: openOptions || [],
                 lastUpdateDate: latestEquity?.date || null,

@@ -426,7 +426,7 @@ export default function AdminUsersPage() {
         const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
 
         // Premium section
-        report += `期權收益率 : ${calculatePremiumRate(data.annualPremium, data.cost2026).toFixed(2)}%\n`;
+        report += `期權收益率 : ${calculatePremiumRate(data.annualPremium, data.premiumCostBase ?? data.cost2026).toFixed(2)}%\n`;
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
         report += `年-累積期權收益 : $${formatMoney(data.annualPremium)}\n`;
         report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
