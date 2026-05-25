@@ -26,6 +26,23 @@ interface BlogPostSummary {
     updated_at: number;
 }
 
+// Per-category card tint. Subtle dark-mode-friendly background + border
+// so the three content types (案例 / 影片 / 文檔) are visually distinct
+// at a glance. Falls back to the default card surface for any other
+// category.
+const getCategoryCardStyle = (category: string | null): string => {
+    switch (category) {
+        case '案例':
+            return 'bg-emerald-950/30 border-emerald-900/60 hover:border-emerald-600';
+        case '影片':
+            return 'bg-indigo-950/30 border-indigo-900/60 hover:border-indigo-600';
+        case '文檔':
+            return 'bg-amber-950/30 border-amber-900/60 hover:border-amber-600';
+        default:
+            return 'bg-card hover:border-primary/40';
+    }
+};
+
 export default function BlogListPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -116,32 +133,35 @@ export default function BlogListPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {filtered.map(post => (
-                        <Link key={post.id} href={`/blog/${post.id}`}>
-                            <div className="rounded-md border bg-card text-card-foreground shadow-sm p-5 h-full flex flex-col gap-3 hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
-                                <div className="flex items-start justify-between gap-2">
-                                    <h2 className="font-semibold text-lg leading-snug line-clamp-2">{post.title}</h2>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1">
-                                        <CalendarDays className="h-3.5 w-3.5" />
-                                        {post.published_at}
-                                    </span>
-                                    {post.category && (
-                                        <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                    {filtered.map(post => {
+                        const categoryStyle = getCategoryCardStyle(post.category);
+                        return (
+                            <Link key={post.id} href={`/blog/${post.id}`}>
+                                <div className={`rounded-md border shadow-sm p-5 h-full flex flex-col gap-3 hover:shadow-md transition-all cursor-pointer text-card-foreground ${categoryStyle}`}>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <h2 className="font-semibold text-lg leading-snug line-clamp-2">{post.title}</h2>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span className="inline-flex items-center gap-1">
+                                            <CalendarDays className="h-3.5 w-3.5" />
+                                            {post.published_at}
+                                        </span>
+                                        {post.category && (
+                                            <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                                        )}
+                                    </div>
+                                    {post.tags.length > 0 && (
+                                        <div className="flex items-center gap-1.5 flex-wrap mt-auto">
+                                            <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                                            {post.tags.map(t => (
+                                                <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
-                                {post.tags.length > 0 && (
-                                    <div className="flex items-center gap-1.5 flex-wrap mt-auto">
-                                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                                        {post.tags.map(t => (
-                                            <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </Link>
-                    ))}
+                            </Link>
+                        );
+                    })}
                 </div>
             )}
         </div>
