@@ -591,11 +591,24 @@ export default function DailyTradesPage() {
                     {filteredData.map((userGroup: any) => {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
-                        
+
+                        // Sum every 盈虧 amount the report renders → day's total realized profit.
+                        // Catches stock close PnLs, option close/expire/assigned PnLs, and roll PnLs.
+                        let dayProfit = 0;
+                        for (const m of reportText.matchAll(/盈虧\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                            dayProfit += parseFloat(m[1].replace(/,/g, ''));
+                        }
+                        const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        const profitColor = dayProfit > 0 ? 'text-status-positive' : dayProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
+
                         return (
                             <div key={userGroup.user.id} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-sm">{userName} {date ? `- ${date.substring(5).replace('-', '/')} ` : ''}交易記錄</h3>
+                                    <h3 className="font-semibold text-sm flex items-center gap-3">
+                                        <span>{userName}</span>
+                                        <span className="text-muted-foreground font-normal">收益</span>
+                                        <span className={profitColor}>{profitStr}</span>
+                                    </h3>
                                     <div className="flex gap-0.5 items-center">
                                         <Button
                                             variant="ghost"
