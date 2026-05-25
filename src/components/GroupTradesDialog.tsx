@@ -332,17 +332,67 @@ export function GroupTradesDialog({
 
     openEvents.forEach(ot => {
         const key = `${ot.underlying}_${ot.type}`;
-        // Walk backwards: most recent eligible close wins.
+
+        // Pass 1 — 1-to-1: walk backwards, take the most recent eligible close
+        // with the exact same quantity. Covers the common simple roll case.
+        let matched = false;
         for (let i = closeEvents.length - 1; i >= 0; i--) {
             const ce = closeEvents[i];
             if (ce.consumed) continue;
             if (ce.id === ot.id) continue; // never pair a trade with itself
             if (ce.key !== key) continue;
             if (ce.settlement_date > ot.open_date) continue; // close must happen on/before the open
-            if (ce.qty !== ot.quantity) continue; // 1-to-1 by quantity; complex N-to-M is intentionally not auto-paired
+            if (ce.qty !== ot.quantity) continue;
             rollProfitsMap.set(ot.id, (ot.premium as number) - ce.cost);
             ce.consumed = true;
+            matched = true;
             break;
+        }
+
+        // Pass 2 — N-to-1 merge: when no single close matches the open's qty,
+        // try to find a subset of unconsumed same-key closes (within the open's
+        // own settlement date window) whose quantities sum to the open's qty.
+        // Common case: closed -6 + closed -3 → opened -9.
+        // Bound the search space by limiting to closes within a 7-day window
+        // before/on the open date — merges almost always happen same-day.
+        if (!matched) {
+            const WINDOW_DAYS = 7;
+            const earliestAllowed = ot.open_date - WINDOW_DAYS * 86400;
+            const candidates = closeEvents.filter(ce =>
+                !ce.consumed &&
+                ce.id !== ot.id &&
+                ce.key === key &&
+                ce.settlement_date <= ot.open_date &&
+                ce.settlement_date >= earliestAllowed
+            );
+            // Bitwise subset enumeration is fine for small candidate pools.
+            // Cap at 12 to keep the worst case at 4096 iterations per open.
+            if (candidates.length > 0 && candidates.length <= 12) {
+                const target = ot.quantity;
+                let bestSubset: CloseEvent[] | null = null;
+                for (let mask = 1; mask < (1 << candidates.length); mask++) {
+                    let sum = 0;
+                    const subset: CloseEvent[] = [];
+                    for (let j = 0; j < candidates.length; j++) {
+                        if (mask & (1 << j)) {
+                            subset.push(candidates[j]);
+                            sum += candidates[j].qty;
+                        }
+                    }
+                    if (sum === target) {
+                        // Prefer the smallest subset (fewest closes merged into
+                        // this open) — that's almost always the intended pairing.
+                        if (!bestSubset || subset.length < bestSubset.length) {
+                            bestSubset = subset;
+                        }
+                    }
+                }
+                if (bestSubset) {
+                    const totalCost = bestSubset.reduce((s, ce) => s + ce.cost, 0);
+                    rollProfitsMap.set(ot.id, (ot.premium as number) - totalCost);
+                    bestSubset.forEach(ce => { ce.consumed = true; });
+                }
+            }
         }
     });
 
