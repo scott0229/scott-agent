@@ -286,7 +286,7 @@ export default function AdminUsersPage() {
         const reportsMap = new Map<number, { userName: string; report: string }>();
         await Promise.all(nonAdminUsers.map(async (user) => {
             try {
-                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&t=${Date.now()}`);
+                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}&t=${Date.now()}`);
                 const data = await res.json();
                 if (data.success) {
                     const report = formatUserReport(data.reportData);
@@ -377,9 +377,10 @@ export default function AdminUsersPage() {
         }
         const highestNetWorth = data.highestNetWorth || data.accountNetWorth;
         const isNewHigh = data.accountNetWorth > 0 && data.accountNetWorth >= highestNetWorth;
+        const yearLabel = data.year ?? new Date().getFullYear();
         report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}${isNewHigh ? ' (新高)' : ''}\n`;
-        report += `2026成本 : ${formatMoney(data.cost2026)}\n`;
-        report += `2026淨利 : ${formatMoney(data.netProfit2026)}\n`;
+        report += `${yearLabel}成本 : ${formatMoney(data.cost2026)}\n`;
+        report += `${yearLabel}淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `當日利息 : ${data.dailyInterest ? (Number(data.dailyInterest.toFixed(1)) === 0 ? '0' : data.dailyInterest.toFixed(1)) : '0'}\n`;
         report += `歷史最高 : ${formatMoney(highestNetWorth)}\n`;
@@ -462,7 +463,7 @@ export default function AdminUsersPage() {
     const handleGenerateReport = async (userId: number) => {
         setIsGeneratingReport(true);
         try {
-            const res = await fetch(`/api/users/${userId}/report?premiumTargetPercent=${settings.premiumTargetPercent}`);
+            const res = await fetch(`/api/users/${userId}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}`);
             const data = await res.json();
 
             if (data.success) {

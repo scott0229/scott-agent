@@ -41,7 +41,11 @@ export async function GET(
             return NextResponse.json({ error: '用戶不存在' }, { status: 404 });
         }
 
-        const currentYear = new Date().getFullYear();
+        // Year is driven by the client's selectedYear filter; fall back to
+        // the current calendar year when not provided.
+        const yearParam = req.nextUrl.searchParams.get('year');
+        const parsedYear = yearParam && yearParam !== 'All' ? parseInt(yearParam, 10) : NaN;
+        const currentYear = Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear();
 
         // 2. Get latest daily net equity record
         const latestEquity = await db.prepare(`
@@ -362,6 +366,7 @@ export async function GET(
             success: true,
             reportData: {
                 user_id: user.user_id || user.email.split('@')[0],
+                year: currentYear,
                 accountNetWorth,
                 cost2026,
                 netProfit2026,
