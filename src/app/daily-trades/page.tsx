@@ -604,9 +604,9 @@ export default function DailyTradesPage() {
                         return (
                             <div key={userGroup.user.id} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-sm flex items-center gap-3">
-                                        <span>{userName}</span>
-                                        <span className="text-muted-foreground font-normal">收益</span>
+                                    <h3 className="font-semibold text-sm whitespace-nowrap">
+                                        {userName}
+                                        <span className="text-muted-foreground font-normal"> - 收益 </span>
                                         <span className={profitColor}>{profitStr}</span>
                                     </h3>
                                     <div className="flex gap-0.5 items-center">
