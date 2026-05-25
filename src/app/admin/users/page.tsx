@@ -194,10 +194,10 @@ export default function AdminUsersPage() {
             const data = await res.json();
             if (data.users) {
                 setUsers(data.users);
-                // Fetch reports after users are loaded (force refresh on background updates)
-                if (userReports.size === 0 || silent) {
-                    fetchAllReports(data.users);
-                }
+                // Always refetch reports — the year may have changed and reports
+                // are year-specific. Previous guard (userReports.size === 0) kept
+                // stale data from the previous year visible after switching.
+                fetchAllReports(data.users);
             }
             if (data.meta && typeof data.meta.marketDataCount === 'number') {
                 setMarketDataCount(data.meta.marketDataCount);
