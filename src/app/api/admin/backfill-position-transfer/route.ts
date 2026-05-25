@@ -85,6 +85,11 @@ interface DiffRow {
     newDeposit: number;
 }
 
+// R2 fetches dominate runtime; do them in parallel chunks so a single
+// request can chew through hundreds of archives before the worker
+// CPU limit kicks in.
+const R2_CONCURRENCY = 25;
+
 async function buildDiff(request: NextRequest) {
     const admin = await verifyToken(request.cookies.get('token')?.value || '');
     if (!admin || !['admin', 'manager'].includes(admin.role)) {
@@ -98,26 +103,43 @@ async function buildDiff(request: NextRequest) {
     const group = await getGroupFromRequest(request);
     const db = await getDb(group);
 
+    const { searchParams } = new URL(request.url);
+    const limit = Math.max(1, Math.min(500, parseInt(searchParams.get('limit') || '300', 10)));
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
+
+    const total = await db.prepare('SELECT COUNT(*) as n FROM report_archives').first<{ n: number }>();
     const archives = await db.prepare(
-        'SELECT id, filename, bucket_key, statement_date FROM report_archives ORDER BY statement_date'
-    ).all();
+        'SELECT id, filename, bucket_key, statement_date FROM report_archives ORDER BY statement_date LIMIT ? OFFSET ?'
+    ).bind(limit, offset).all();
 
     const diffs: DiffRow[] = [];
     const skipped: { filename: string; reason: string }[] = [];
     let parsed = 0;
     let noChange = 0;
 
-    for (const row of (archives.results as any[])) {
-        const filename = row.filename as string;
-        const bucketKey = row.bucket_key as string;
+    const rows = archives.results as any[];
 
-        const obj = await env.R2.get(bucketKey);
-        if (!obj) {
+    // Fetch + parse in parallel chunks
+    type Parsed = { filename: string; result: ParsedReport | null; missingR2?: boolean };
+    const parsedAll: Parsed[] = [];
+    for (let i = 0; i < rows.length; i += R2_CONCURRENCY) {
+        const chunk = rows.slice(i, i + R2_CONCURRENCY);
+        const chunkParsed = await Promise.all(chunk.map(async (row): Promise<Parsed> => {
+            const filename = row.filename as string;
+            const obj = await env.R2.get(row.bucket_key as string);
+            if (!obj) return { filename, result: null, missingR2: true };
+            const html = await obj.text();
+            return { filename, result: parseReport(html) };
+        }));
+        parsedAll.push(...chunkParsed);
+    }
+
+    // DB lookups stay sequential (D1 single-flight is cheap; the bottleneck was R2).
+    for (const { filename, result, missingR2 } of parsedAll) {
+        if (missingR2) {
             skipped.push({ filename, reason: 'R2 object missing' });
             continue;
         }
-        const html = await obj.text();
-        const result = parseReport(html);
         if (!result) {
             skipped.push({ filename, reason: 'Title or alias not parseable' });
             continue;
@@ -166,8 +188,15 @@ async function buildDiff(request: NextRequest) {
 
     return {
         db,
+        pagination: {
+            totalArchives: total?.n ?? 0,
+            offset,
+            limit,
+            returned: rows.length,
+            nextOffset: offset + rows.length < (total?.n ?? 0) ? offset + rows.length : null,
+        },
         summary: {
-            totalArchives: (archives.results as any[]).length,
+            inBatch: rows.length,
             parsed,
             noChange,
             toUpdate: diffs.length,
@@ -188,7 +217,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     const result = await buildDiff(request);
     if ('error' in result) return result.error;
-    const { db, diffs, summary, skipped } = result;
+    const { db, diffs, summary, skipped, pagination } = result;
 
     let updated = 0;
     for (const d of diffs) {
@@ -209,6 +238,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
         applied: true,
+        pagination,
         summary: { ...summary, updated },
         diffs,
         skipped,
