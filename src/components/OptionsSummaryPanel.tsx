@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
+import {
+    calculateAnnualPremium,
+    calculatePremiumRate,
+    getPremiumCostBase,
+} from '@/lib/options-metrics';
 
 interface UserStats {
     month: string;
@@ -180,11 +185,13 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualTarget = Math.round(initialCost * (settings.premiumTargetPercent / 100) * proRataRatio);
         const quarterTarget = Math.round(annualTarget / 4);
 
-        // Annual Premium components
+        // Annual Premium components — canonical formula in src/lib/options-metrics.ts
         const annualPutPremium = user.monthly_stats?.reduce((s, stat) => s + stat.put_profit, 0) || 0;
         const annualCallPremium = user.monthly_stats?.reduce((s, stat) => s + stat.call_profit, 0) || 0;
         const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
-        const annualPremium = annualPutPremium + annualCallPremium + (settings.includeStockDiffInPremium === false ? 0 : annualStockPnl) + (user.total_daily_interest || 0);
+        const annualPremium = calculateAnnualPremium(user, {
+            includeStockDiff: settings.includeStockDiffInPremium !== false,
+        });
 
         // Daily Premium = annual total / trading days so far (from user's start_date)
         const userStartDate = user.start_date
@@ -371,12 +378,8 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
                                 return isVisible ? (
                                     <td key={user.id} className="h-7 py-1 px-2 text-center">
                                         {(() => {
-                                            // Cost base = initial_cost; fall back to net_deposit
-                                            // for users whose entire capital was added via deposits.
-                                            const costBase = (user.initial_cost && user.initial_cost > 0)
-                                                ? user.initial_cost
-                                                : (user.net_deposit || 0);
-                                            const rate = costBase > 0 ? (calculateUserMetrics(user).annualPremium / costBase) * 100 : 0;
+                                            const costBase = getPremiumCostBase(user);
+                                            const rate = calculatePremiumRate(calculateUserMetrics(user).annualPremium, costBase);
                                             return <StatBadge>{rate.toFixed(2)}%</StatBadge>;
                                         })()}
                                     </td>

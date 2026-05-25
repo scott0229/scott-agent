@@ -5,6 +5,7 @@ import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
     CartesianGrid, ReferenceLine
 } from 'recharts';
+import { calculatePremiumRate } from '@/lib/options-metrics';
 
 interface DailyPremium {
     date: number;
@@ -34,16 +35,17 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, t
     // If <= 0 we render 0% (rather than exploding via a /1 fallback).
     const costBase = initialCost > 0 ? initialCost : 0;
 
-    // Interest distribution: linearly spread total interest across the chart range
-    // so the final point matches the summary-table number even if /api/users
-    // daily_premium omits interest for some reason.
-    const sortedEquity = (equityHistory || []).slice().sort((a, b) => a.date - b.date);
-    const firstDate = sortedEquity.length > 0 ? sortedEquity[0].date : 0;
-    const lastDate = sortedEquity.length > 0 ? sortedEquity[sortedEquity.length - 1].date : 0;
+    // Build chart data with flat-denominator premium rate.
+    // Interest is approximated linearly over the chart range for intermediate
+    // points (no per-day cash balance to compute it precisely), but the LAST
+    // point pins to the full totalDailyInterest so it matches the summary card
+    // and daily report exactly — all three surfaces share the canonical value.
+    const sortedHistory = (equityHistory || []).slice().sort((a, b) => a.date - b.date);
+    const firstDate = sortedHistory.length > 0 ? sortedHistory[0].date : 0;
+    const lastDate = sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1].date : 0;
     const totalRange = Math.max(1, lastDate - firstDate);
 
-    // Build chart data with flat-denominator premium rate
-    const chartData = (equityHistory || []).map(item => {
+    const chartData = sortedHistory.map((item, idx, arr) => {
         const d = new Date(item.date * 1000);
 
         // Find the latest cumulative premium on or before this date
@@ -56,12 +58,14 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, t
             }
         }
 
-        // Add proportional share of interest (linearly distributed over chart period)
+        const isLast = idx === arr.length - 1;
         const elapsed = Math.max(0, item.date - firstDate);
-        const interestShare = totalDailyInterest * (elapsed / totalRange);
+        const interestShare = isLast
+            ? totalDailyInterest
+            : totalDailyInterest * (elapsed / totalRange);
         const cumWithInterest = cumPremium + interestShare;
 
-        const premiumRate = costBase > 0 ? (cumWithInterest / costBase) * 100 : 0;
+        const premiumRate = calculatePremiumRate(cumWithInterest, costBase);
 
         return {
             date: item.date,
