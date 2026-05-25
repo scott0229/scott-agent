@@ -7,6 +7,16 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
+// OS-generated metadata files that get picked up when users drag a whole
+// folder into the upload — these are never IB reports and would otherwise
+// land in the "未分類" bucket as junk.
+const JUNK_FILENAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', '.localized']);
+function isJunkFilename(name: string): boolean {
+    if (JUNK_FILENAMES.has(name)) return true;
+    if (name.startsWith('._')) return true; // macOS AppleDouble resource forks
+    return false;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const admin = await verifyToken(request.cookies.get('token')?.value || '');
@@ -19,6 +29,18 @@ export async function POST(request: NextRequest) {
 
         if (!file) {
             return NextResponse.json({ error: '未提供檔案' }, { status: 400 });
+        }
+
+        const rawName = file.name || '';
+        const baseName = rawName.split('/').pop() || rawName;
+        if (isJunkFilename(baseName)) {
+            // Reject quietly — batch uploads shouldn't fail just because a
+            // .DS_Store rode along.
+            return NextResponse.json({
+                success: true,
+                skipped: true,
+                message: `已略過系統檔案 ${baseName}`,
+            });
         }
 
         const html = await file.text();
@@ -47,8 +69,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'R2 storage not configured properly on backend' }, { status: 500 });
         }
 
-        const rawFilename = file.name || 'historical_report.html';
-        const baseFilename = rawFilename.split('/').pop() || rawFilename;
+        const baseFilename = baseName || 'historical_report.html';
 
         const group = await getGroupFromRequest(request);
         const db = await getDb(group);
