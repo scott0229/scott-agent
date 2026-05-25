@@ -17,10 +17,18 @@ interface EquityPremiumChartProps {
     dailyPremium: DailyPremium[];
     initialCost: number;
     totalDailyInterest?: number;
+    /**
+     * Canonical annual premium (numerator of 期權收益率). When provided,
+     * the chart's LAST data point uses this value directly so it agrees
+     * exactly with the summary card and daily report. Intermediate
+     * points still derive their value from dailyPremium + linear interest
+     * since per-day cash balance isn't available client-side.
+     */
+    annualPremium?: number;
     name?: string;
 }
 
-export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, totalDailyInterest = 0, name }: EquityPremiumChartProps) {
+export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, totalDailyInterest = 0, annualPremium, name }: EquityPremiumChartProps) {
     const [visible, setVisible] = useState({ equity: true, premium: true });
     const toggle = (key: keyof typeof visible) => setVisible(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -59,11 +67,19 @@ export function EquityPremiumChart({ equityHistory, dailyPremium, initialCost, t
         }
 
         const isLast = idx === arr.length - 1;
-        const elapsed = Math.max(0, item.date - firstDate);
-        const interestShare = isLast
-            ? totalDailyInterest
-            : totalDailyInterest * (elapsed / totalRange);
-        const cumWithInterest = cumPremium + interestShare;
+        // Last point pins to the canonical annualPremium when provided, so
+        // the tooltip / final dot exactly matches the summary card and the
+        // daily report. Earlier points keep the linear-interest approximation.
+        let cumWithInterest: number;
+        if (isLast && annualPremium !== undefined) {
+            cumWithInterest = annualPremium;
+        } else {
+            const elapsed = Math.max(0, item.date - firstDate);
+            const interestShare = isLast
+                ? totalDailyInterest
+                : totalDailyInterest * (elapsed / totalRange);
+            cumWithInterest = cumPremium + interestShare;
+        }
 
         const premiumRate = calculatePremiumRate(cumWithInterest, costBase);
 

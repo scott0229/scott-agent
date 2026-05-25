@@ -25,6 +25,8 @@ import { UserAnalysisPanel } from '@/components/UserAnalysisPanel';
 import { OptionsSummaryPanel } from '@/components/OptionsSummaryPanel';
 import { EquityPremiumChart } from '@/components/EquityPremiumChart';
 import { useWindowSize } from '@/hooks/use-window-size';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
+import { calculateAnnualPremium } from '@/lib/options-metrics';
 
 interface UserStats {
     month: string;
@@ -71,6 +73,7 @@ export default function OptionsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
     const { selectedYear } = useYearFilter();
+    const { settings } = useAdminSettings();
 
     // Changed: Track expanded user ID for inline display instead of dialog
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -429,6 +432,7 @@ export default function OptionsPage() {
                                                 dailyPremium={client.daily_premium || []}
                                                 initialCost={(client.initial_cost && client.initial_cost > 0) ? client.initial_cost : (client.net_deposit || 0)}
                                                 totalDailyInterest={(client as any).total_daily_interest || 0}
+                                                annualPremium={calculateAnnualPremium(client as any, { includeStockDiff: settings.includeStockDiffInPremium !== false })}
                                                 name={displayName}
                                             />
                                         </div>
