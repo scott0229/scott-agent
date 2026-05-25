@@ -426,10 +426,10 @@ export function UserProfileMenu() {
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <Checkbox 
-                                                id="report-cc-enabled-3" 
-                                                checked={settings.reportCcEnabled3 !== false} 
-                                                onCheckedChange={(v) => updateSetting('reportCcEnabled3', !!v)} 
+                                            <Checkbox
+                                                id="report-cc-enabled-3"
+                                                checked={settings.reportCcEnabled3 !== false}
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled3', !!v)}
                                             />
                                             <Label htmlFor="report-cc-email-3" className="cursor-pointer">同步報表 3</Label>
                                         </div>
@@ -442,6 +442,27 @@ export function UserProfileMenu() {
                                             placeholder="輸入 Email (選填)"
                                             autoComplete="new-password"
                                         />
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-start gap-4">
+                                        <Label className="pt-1">BCC 寄出報告</Label>
+                                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="bcc-include-trade-advice"
+                                                    checked={settings.bccIncludeTradeAdvice !== false}
+                                                    onCheckedChange={(v) => updateSetting('bccIncludeTradeAdvice', !!v)}
+                                                />
+                                                <Label htmlFor="bcc-include-trade-advice" className="cursor-pointer font-normal">含交易建議</Label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="bcc-include-daily-ops"
+                                                    checked={settings.bccIncludeDailyOps !== false}
+                                                    onCheckedChange={(v) => updateSetting('bccIncludeDailyOps', !!v)}
+                                                />
+                                                <Label htmlFor="bcc-include-daily-ops" className="cursor-pointer font-normal">含當日操作</Label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             )}
