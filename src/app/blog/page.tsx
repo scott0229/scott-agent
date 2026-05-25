@@ -7,14 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { Search, BookOpen, CalendarDays, Tag } from 'lucide-react';
+
+const CATEGORY_OPTIONS = ['案例', '影片', '文檔'] as const;
 
 interface BlogPostSummary {
     id: number;
@@ -75,12 +71,6 @@ export default function BlogListPage() {
         fetchPosts();
     }, []);
 
-    const categories = useMemo(() => {
-        const set = new Set<string>();
-        posts.forEach(p => { if (p.category) set.add(p.category); });
-        return Array.from(set).sort();
-    }, [posts]);
-
     const filtered = useMemo(() => {
         const s = search.trim().toLowerCase();
         return posts.filter(p => {
@@ -109,17 +99,27 @@ export default function BlogListPage() {
                             className="pl-9 w-[240px]"
                         />
                     </div>
-                    <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="w-[160px]">
-                            <SelectValue placeholder="所有分類" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="All">所有分類</SelectItem>
-                            {categories.map(c => (
-                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <div className="inline-flex h-9 rounded-md border bg-card overflow-hidden">
+                        {CATEGORY_OPTIONS.map((cat, idx) => {
+                            const isActive = category === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    type="button"
+                                    onClick={() => setCategory(isActive ? 'All' : cat)}
+                                    className={cn(
+                                        'px-4 text-sm font-medium transition-colors',
+                                        isActive
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'hover:bg-accent hover:text-accent-foreground',
+                                        idx > 0 && 'border-l',
+                                    )}
+                                >
+                                    {cat}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
