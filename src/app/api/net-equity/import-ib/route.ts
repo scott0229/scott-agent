@@ -102,11 +102,20 @@ function parseIBStatement(html: string) {
         managementFee = parseNumber(feeMatch[1]);
     }
 
-    // Extract 存款和取款 from the right-side NAV changes panel
+    // Extract 存款和取款 from the right-side NAV changes panel.
+    // Also include 持倉轉帳 (position transfer) — IB lists it as a separate
+    // line item but it's economically a capital injection (positions moved
+    // in/out of the account), so it has to be added to the deposit total
+    // or downstream cost/return calculations will be off by the transfer
+    // amount.
     let deposit = 0;
     const depositMatch = html.match(/存款和取款<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/);
     if (depositMatch) {
-        deposit = parseNumber(depositMatch[1]);
+        deposit += parseNumber(depositMatch[1]);
+    }
+    const positionTransferMatch = html.match(/持倉轉[帳賬]<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/);
+    if (positionTransferMatch) {
+        deposit += parseNumber(positionTransferMatch[1]);
     }
 
     // Format date string for display and archiving: YYYY-MM-DD
