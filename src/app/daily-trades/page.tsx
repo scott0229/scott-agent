@@ -500,11 +500,13 @@ export default function DailyTradesPage() {
                         </SelectTrigger>
                         <SelectContent className="max-h-none">
                             <SelectItem value="all">全部帳戶</SelectItem>
-                            {allAccounts.map(user => (
-                                <SelectItem key={user.user_id} value={user.user_id}>
-                                    {user.user_id}
-                                </SelectItem>
-                            ))}
+                            {[...allAccounts]
+                                .sort((a, b) => (a.user_id || '').localeCompare(b.user_id || ''))
+                                .map(user => (
+                                    <SelectItem key={user.user_id} value={user.user_id}>
+                                        {user.user_id}
+                                    </SelectItem>
+                                ))}
                         </SelectContent>
                     </Select>
 
