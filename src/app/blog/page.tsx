@@ -33,11 +33,11 @@ interface BlogPostSummary {
 const getCategoryCardStyle = (category: string | null): string => {
     switch (category) {
         case '案例':
-            return 'bg-emerald-800/60 border-emerald-600 hover:border-emerald-400';
+            return 'bg-emerald-900/40 border-emerald-700/70 hover:border-emerald-500';
         case '影片':
-            return 'bg-indigo-800/60 border-indigo-600 hover:border-indigo-400';
+            return 'bg-indigo-900/40 border-indigo-700/70 hover:border-indigo-500';
         case '文檔':
-            return 'bg-amber-800/60 border-amber-600 hover:border-amber-400';
+            return 'bg-amber-900/40 border-amber-700/70 hover:border-amber-500';
         default:
             return 'bg-card hover:border-primary/40';
     }
