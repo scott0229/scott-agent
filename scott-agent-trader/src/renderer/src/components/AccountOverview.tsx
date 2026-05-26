@@ -202,7 +202,7 @@ export default function AccountOverview({
   )
   const [optOrderInitialRight, setOptOrderInitialRight] = useState<'C' | 'P' | undefined>(undefined)
   // Toggle: false = separate STK/OPT sections, true = grouped by underlying symbol
-  const [acctViewBySymbol, setAcctViewBySymbol] = useState(true)
+  const [acctViewBySymbol, setAcctViewBySymbol] = useState(false)
 
   // Reset all filters and selections on reconnect
   useEffect(() => {
@@ -1864,18 +1864,8 @@ export default function AccountOverview({
                   <span className="account-id">
                     {formatAccountName(account.alias || account.accountId)}
                   </span>
-                  <button
-                    className="ai-advisor-btn"
-                    title="AI 交易建議"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowAiAdvisor(account.accountId)
-                    }}
-                  >
-                    💡
-                  </button>
 
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginRight: -14 }}>
                     {showOperationMode && operationModes?.[account.accountId] && (
                       <span className="account-type-label">
                         {operationModes[account.accountId]}
@@ -1907,6 +1897,16 @@ export default function AccountOverview({
                         </span>
                       )
                     })()}
+                    <button
+                      className="ai-advisor-btn"
+                      title="AI 交易建議"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowAiAdvisor(account.accountId)
+                      }}
+                    >
+                      💡
+                    </button>
                   </div>
                 </div>
 
@@ -1945,7 +1945,6 @@ export default function AccountOverview({
                         return (
                           <div
                             className="metric"
-                            style={{ backgroundColor: '#ffe4e6', borderRadius: '4px' }}
                             title={`BM ${fedRate.toFixed(2)}% + ${spread}% = ${(fedRate + spread).toFixed(2)}% p.a.`}
                           >
                             <span className="metric-label">日利息</span>
@@ -1954,6 +1953,26 @@ export default function AccountOverview({
                             </span>
                           </div>
                         )
+                      }
+                      if (
+                        account.totalCashValue > 0 &&
+                        account.netLiquidation >= 100_000 &&
+                        fedRate !== null
+                      ) {
+                        const eligibleCash = Math.max(0, account.totalCashValue - 10_000)
+                        const annualRatePct = Math.max(0, fedRate - 0.5)
+                        const dailyCredit = (eligibleCash * (annualRatePct / 100)) / 360
+                        if (dailyCredit > 0) {
+                          return (
+                            <div
+                              className="metric"
+                              title={`BM ${fedRate.toFixed(2)}% − 0.5% = ${annualRatePct.toFixed(2)}% p.a. on $${eligibleCash.toLocaleString()} (cash − $10K)`}
+                            >
+                              <span className="metric-label">日利息</span>
+                              <span className="metric-value">+{dailyCredit.toFixed(0)}</span>
+                            </div>
+                          )
+                        }
                       }
                       return (
                         <div className="metric">
@@ -1965,9 +1984,11 @@ export default function AccountOverview({
                     <div className="metric">
                       <span className="metric-label">融資率</span>
                       <span className="metric-value">
-                        {account.netLiquidation > 0
-                          ? (account.grossPositionValue / account.netLiquidation).toFixed(2)
-                          : '-'}
+                        {account.totalCashValue >= 0
+                          ? '0'
+                          : account.netLiquidation > 0
+                            ? `${((-account.totalCashValue / account.netLiquidation) * 100).toFixed(2)}%`
+                            : '-'}
                       </span>
                     </div>
                     {(() => {
@@ -1999,7 +2020,9 @@ export default function AccountOverview({
                         >
                           <span className="metric-label">潛在融資</span>
                           <span className="metric-value">
-                            {potentialMargin !== null ? potentialMargin.toFixed(2) : '-'}
+                            {potentialMargin !== null
+                              ? `${((potentialMargin - 1) * 100).toFixed(0)}%`
+                              : '-'}
                           </span>
                         </div>
                       )
