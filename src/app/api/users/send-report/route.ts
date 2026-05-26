@@ -74,8 +74,13 @@ export async function POST(req: NextRequest) {
                     '<hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;" />'
                 )
                 .replace(
+                    // Full-width but visually lighter than section dividers
+                    // — `margin: auto` centering is flaky across email
+                    // clients (Outlook/Gmail can ignore it and the rule
+                    // drifts right), so distinguish chunk vs. section by
+                    // weight and spacing instead of width + position.
                     /\n*^~{3,}$\n*/gm,
-                    '<hr style="border: none; border-top: 1px dashed #e5e7eb; width: 25%; margin: 6px auto;" />'
+                    '<hr style="border: none; border-top: 1px dashed #e5e7eb; margin: 3px 0;" />'
                 );
 
         const buildHtml = (body: string) => `
