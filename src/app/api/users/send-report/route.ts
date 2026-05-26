@@ -62,11 +62,21 @@ export async function POST(req: NextRequest) {
         // sit flush against the rule instead of leaving a tall gap (the
         // BCC body joins report + extras with `\n\n---\n`, and the report
         // itself already ends with `\n`).
+        //
+        // Dash markers (---- and longer) are section dividers — full-width
+        // dashed rule. Tilde markers (~~~~) come from the daily-trades
+        // text generator and signal chunk-level dividers within 當日操作
+        // — rendered as a short centered rule so chunks visually group.
         const renderBodyHtml = (body: string) =>
-            escapeHtml(body).replace(
-                /\n*^-{4,}$\n*/gm,
-                '<hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;" />'
-            );
+            escapeHtml(body)
+                .replace(
+                    /\n*^-{4,}$\n*/gm,
+                    '<hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;" />'
+                )
+                .replace(
+                    /\n*^~{3,}$\n*/gm,
+                    '<hr style="border: none; border-top: 1px dashed #e5e7eb; width: 25%; margin: 6px auto;" />'
+                );
 
         const buildHtml = (body: string) => `
 <!DOCTYPE html>
