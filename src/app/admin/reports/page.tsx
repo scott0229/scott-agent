@@ -491,7 +491,8 @@ export default function HistoricalReportsPage() {
                             
                             return (
                         <div key={accountId} className="rounded-md border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col">
-                            <div className="px-4 py-2 flex justify-between items-center">
+                            <div className="px-4 py-2">
+                              <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold lg:text-lg">
                                         {displayName}
@@ -535,8 +536,24 @@ export default function HistoricalReportsPage() {
                                         </AlertDialogContent>
                                     </AlertDialog>
                                 </div>
+                              </div>
+                              {accountReports.length > 0 && (() => {
+                                  // Two-digit year, no leading zeros for month/day —
+                                  // matches the request format (e.g. "25-8-1 ~ 26-5-22").
+                                  const fmt = (s: string) => {
+                                      const [y, m, d] = s.split('-');
+                                      return `${y.slice(2)}-${parseInt(m, 10)}-${parseInt(d, 10)}`;
+                                  };
+                                  const latest = accountReports[0].statement_date;
+                                  const earliest = accountReports[accountReports.length - 1].statement_date;
+                                  return (
+                                      <div className="text-xs text-muted-foreground mt-0.5">
+                                          時間範圍：{fmt(earliest)} ~ {fmt(latest)}
+                                      </div>
+                                  );
+                              })()}
                             </div>
-                            
+
                             <div className="border-t bg-background max-h-[350px] overflow-y-auto custom-scrollbar">
                                     <Table>
                                         <TableBody>
