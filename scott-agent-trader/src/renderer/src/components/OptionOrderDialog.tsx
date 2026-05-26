@@ -201,8 +201,8 @@ export default function OptionOrderDialog({
     }
   }
 
-  const sortedAccounts = [...accounts].sort(
-    (a, b) => (b.netLiquidation || 0) - (a.netLiquidation || 0)
+  const sortedAccounts = [...accounts].sort((a, b) =>
+    (a.alias || a.accountId).localeCompare(b.alias || b.accountId)
   )
   const getAlias = (acctId: string): string =>
     accounts.find((a) => a.accountId === acctId)?.alias || acctId

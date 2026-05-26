@@ -135,6 +135,9 @@ export default function AccountOverview({
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
   const [rollWarnMsg, setRollWarnMsg] = useState<string | null>(null)
+  const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
+    null
+  )
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
@@ -1346,9 +1349,7 @@ export default function AccountOverview({
                           strokeLinejoin="round"
                           style={{ cursor: 'pointer', opacity: 0.7 }}
                           onClick={() => {
-                            if (confirm('確定刪除群組「' + g.name + '」？')) {
-                              onDeleteSymbolGroup?.(g.id)
-                            }
+                            setDeleteGroupConfirm({ id: g.id, name: g.name })
                           }}
                         >
                           <polyline points="3 6 5 6 21 6" />
@@ -3016,6 +3017,58 @@ export default function AccountOverview({
                 onClick={() => setRollWarnMsg(null)}
               >
                 確定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteGroupConfirm && (
+        <div className="roll-dialog-overlay" onClick={() => setDeleteGroupConfirm(null)}>
+          <div
+            className="roll-dialog"
+            style={{ width: 420, maxWidth: '92vw' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="roll-dialog-header" style={{ borderBottom: 'none' }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>🗑️</span>
+              <h3>刪除群組</h3>
+              <button
+                className="roll-dialog-close"
+                onClick={() => setDeleteGroupConfirm(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              className="roll-dialog-body"
+              style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}
+            >
+              確定要刪除群組「<strong>{deleteGroupConfirm.name}</strong>」嗎?
+            </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8
+              }}
+            >
+              <button
+                className="select-toggle-btn"
+                style={{ minWidth: 80 }}
+                onClick={() => setDeleteGroupConfirm(null)}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                style={{ minWidth: 80 }}
+                onClick={() => {
+                  onDeleteSymbolGroup?.(deleteGroupConfirm.id)
+                  setDeleteGroupConfirm(null)
+                }}
+              >
+                刪除
               </button>
             </div>
           </div>

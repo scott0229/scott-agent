@@ -93,7 +93,9 @@ export default function BatchOrderForm({
   }, [])
 
   // Build allocations based on selected user
-  const sortedAccounts = [...accounts].sort((a, b) => b.netLiquidation - a.netLiquidation)
+  const sortedAccounts = [...accounts].sort((a, b) =>
+    (a.alias || a.accountId).localeCompare(b.alias || b.accountId)
+  )
   const targetAccounts =
     selectedUser === 'ALL'
       ? sortedAccounts
