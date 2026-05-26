@@ -134,6 +134,7 @@ export default function AccountOverview({
   const [filterRight, setFilterRight] = useState<'' | 'C' | 'P'>('')
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
+  const [rollWarnMsg, setRollWarnMsg] = useState<string | null>(null)
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
@@ -603,6 +604,30 @@ export default function AccountOverview({
     return selected.every((p) => p.secType === 'STK' && p.quantity > 0)
   }, [selectedPositions, positions])
 
+  const attemptRoll = (rollPositions?: PositionData[]): void => {
+    const targets =
+      rollPositions ?? positions.filter((p) => selectedPositions.has(posKey(p)))
+    const strikes = targets
+      .filter((p) => p.secType === 'OPT')
+      .map((p) => p.strike)
+      .filter((s): s is number => typeof s === 'number' && s > 0)
+    if (strikes.length >= 2) {
+      const min = Math.min(...strikes)
+      const max = Math.max(...strikes)
+      const spread = (max - min) / min
+      if (spread > 0.01) {
+        setRollWarnMsg(
+          `所選期權行權價差距 ${(spread * 100).toFixed(1)}%（${min} ~ ${max}）超過 1%，請分開選擇後再展期。`
+        )
+        return
+      }
+    }
+    if (rollPositions) {
+      setSelectedPositions(new Set(rollPositions.map((p) => posKey(p))))
+    }
+    setShowRollDialog(true)
+  }
+
   const uniqueSymbols = useMemo(() => {
     const set = new Set<string>()
     positions.forEach((p) => set.add(p.symbol))
@@ -880,6 +905,7 @@ export default function AccountOverview({
                     setSelectedPositions(new Set())
                   }}
                   options={[{ value: '', label: '全部用戶' }, ...uniqueAccounts]}
+                  className="dropdown-no-scroll"
                 />
                 {selectMode && (
                   <button
@@ -902,7 +928,7 @@ export default function AccountOverview({
                   </button>
                 )}
                 {selectMode && canRollOptions && (
-                  <button className="select-toggle-btn" onClick={() => setShowRollDialog(true)}>
+                  <button className="select-toggle-btn" onClick={() => attemptRoll()}>
                     展期
                   </button>
                 )}
@@ -1375,8 +1401,7 @@ export default function AccountOverview({
                                     lineHeight: '1.4'
                                   }}
                                   onClick={() => {
-                                    setGroupKeys()
-                                    setShowRollDialog(true)
+                                    attemptRoll(effectivePositions.filter((p) => p.secType === 'OPT'))
                                   }}
                                 >
                                   展期{checkedLabel}
@@ -1455,8 +1480,7 @@ export default function AccountOverview({
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
                                 onClick={() => {
-                                  setOptKeys()
-                                  setShowRollDialog(true)
+                                  attemptRoll(optPositions)
                                 }}
                               >
                                 展期{checkedLabel}
@@ -2961,6 +2985,45 @@ export default function AccountOverview({
           setPendingRollUpdate({ rolledPositions, target })
         }}
       />
+      {rollWarnMsg && (
+        <div className="roll-dialog-overlay" onClick={() => setRollWarnMsg(null)}>
+          <div
+            className="roll-dialog"
+            style={{ width: 420, maxWidth: '92vw' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="roll-dialog-header">
+              <span style={{ fontSize: 20, lineHeight: 1 }}>⚠️</span>
+              <h3>無法展期</h3>
+              <button className="roll-dialog-close" onClick={() => setRollWarnMsg(null)}>
+                ✕
+              </button>
+            </div>
+            <div
+              className="roll-dialog-body"
+              style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}
+            >
+              {rollWarnMsg}
+            </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                justifyContent: 'flex-end'
+              }}
+            >
+              <button
+                className="select-toggle-btn active"
+                style={{ minWidth: 80 }}
+                onClick={() => setRollWarnMsg(null)}
+              >
+                確定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showBatchOrder && (
         <div className="stock-order-dialog-overlay" onClick={() => setShowBatchOrder(false)}>
           <div className="stock-order-dialog" onClick={(e) => e.stopPropagation()}>
@@ -3078,7 +3141,7 @@ export default function AccountOverview({
             className="order-context-menu-item"
             onClick={() => {
               setOptContextMenu(null)
-              setShowRollDialog(true)
+              attemptRoll()
             }}
           >
             展期

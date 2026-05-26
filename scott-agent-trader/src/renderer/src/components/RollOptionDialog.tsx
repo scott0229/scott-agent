@@ -113,6 +113,7 @@ export default function RollOptionDialog({
   const userEditedPriceRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
   const [rollQty, setRollQty] = useState('')
+  const initialExpirySetRef = useRef(false)
 
   // ── Reset on open ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -125,19 +126,33 @@ export default function RollOptionDialog({
     setGreeksFetched(false)
     setLimitPrice('')
     userEditedPriceRef.current = false
+    initialExpirySetRef.current = false
     setRollQty(String(snappedPositions.current.reduce((sum, p) => sum + Math.abs(p.quantity), 0)))
 
     chain.fetchChain(symbol)
   }, [open, symbol])
 
-  // Auto-select initial target expiry if provided
+  // Auto-select initial target expiry: prefer initialTarget; otherwise
+  // pick the next expiry strictly after the current positions' max expiry
+  // (i.e. skip same-day so the default is "next trading day").
+  // Runs only once per open so user manual picks aren't overridden.
   useEffect(() => {
-    if (chain.availableExpirations.length > 0 && chain.selectedExpirations.length === 0) {
-      if (initialTarget && chain.availableExpirations.includes(initialTarget.expiry)) {
-        chain.setSelectedExpirations([initialTarget.expiry])
-      }
+    if (initialExpirySetRef.current) return
+    if (chain.availableExpirations.length === 0) return
+    if (initialTarget && chain.availableExpirations.includes(initialTarget.expiry)) {
+      chain.setSelectedExpirations([initialTarget.expiry])
+      initialExpirySetRef.current = true
+      return
     }
-  }, [chain.availableExpirations, initialTarget])
+    const next = chain.availableExpirations.find((e) => e > maxCurrentExpiry)
+    if (next) {
+      chain.setSelectedExpirations([next])
+      initialExpirySetRef.current = true
+    } else if (chain.selectedExpirations.length > 0) {
+      // No later expiry exists — leave hook's default (current expiry) and mark done
+      initialExpirySetRef.current = true
+    }
+  }, [chain.availableExpirations, chain.selectedExpirations, initialTarget, maxCurrentExpiry])
 
   // Scroll strike dropdown to first checked item on open
   useEffect(() => {
@@ -562,7 +577,9 @@ export default function RollOptionDialog({
               <div className="roll-dialog-table-wrapper">
                 <table className="roll-dialog-table roll-positions-table">
                   <tbody>
-                    {positions.map((pos, idx) => {
+                    {[...positions]
+                      .sort((a, b) => getAlias(a.account).localeCompare(getAlias(b.account)))
+                      .map((pos, idx) => {
                       const curGreek = findCurrentGreek(pos)
                       const curMid = midPrice(curGreek)
                       const liveSpread =
@@ -575,7 +592,7 @@ export default function RollOptionDialog({
                       const currentDesc = `${symbol} ${pos.expiry ? formatExpiry(pos.expiry) : ''} ${strikeStr}${rightLabel}`
                       const targetDesc =
                         targetExpiry && targetStrike !== null && targetRight
-                          ? `${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
+                          ? `${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight === 'C' ? 'C' : 'P'}`
                           : '-'
 
                       return (

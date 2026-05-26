@@ -310,9 +310,10 @@ export default function CloseOptionDialog({
                   let globalRowIdx = 0
                   return uniqueContracts.map(([key], cIdx) => {
                     const quote = optQuotes[key]
-                    const contractPreviews = displayPreviews.filter((p) =>
-                      p.orders.some((o) => o.optKey === key)
-                    )
+                    const contractPreviews = displayPreviews
+                      .filter((p) => p.orders.some((o) => o.optKey === key))
+                      .slice()
+                      .sort((a, b) => (a.alias || '').localeCompare(b.alias || ''))
                     const allRows: React.ReactNode[] = []
                     contractPreviews.forEach((p) => {
                       const acct = accounts.find((a) => a.accountId === p.accountId)
@@ -362,7 +363,7 @@ export default function CloseOptionDialog({
                                   fontWeight: 'bold'
                                 }}
                               >
-                                {order.action === 'BUY' ? '+' : '-'}
+                                {order.action === 'BUY' ? '買回' : '賣出'}
                               </span>{' '}
                               <span style={{ fontWeight: 'normal', fontSize: 12 }}>
                                 {order.label}
@@ -467,7 +468,7 @@ export default function CloseOptionDialog({
                         key={key}
                         style={
                           cIdx < uniqueContracts.length - 1
-                            ? { borderBottom: '2px solid #e5e7eb' }
+                            ? { borderBottom: '2px solid #b0b0b0' }
                             : undefined
                         }
                       >
