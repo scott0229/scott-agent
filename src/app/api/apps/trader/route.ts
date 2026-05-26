@@ -56,15 +56,29 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        const obj = await env.R2.get(R2_KEY);
+        // Full-file path: instead of streaming the whole 97MB through the
+        // worker (which trips Error 1102 — exceeded resource limits — on
+        // the OpenNext adapter), respond with a 206 first-chunk so the
+        // browser switches into Range mode and downloads the rest in
+        // bounded pieces. Each subsequent request hits the Range branch
+        // above with a manageable size.
+        const obj = await env.R2.head(R2_KEY);
         if (!obj) {
             return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
-
-        return new Response(obj.body as ReadableStream, {
+        const totalSize = obj.size;
+        const CHUNK = 8 * 1024 * 1024; // 8MB first chunk
+        const end = Math.min(CHUNK - 1, totalSize - 1);
+        const firstChunk = await env.R2.get(R2_KEY, { range: { offset: 0, length: end + 1 } });
+        if (!firstChunk) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        }
+        return new Response(firstChunk.body as ReadableStream, {
+            status: 206,
             headers: {
-                'Content-Type': 'application/octet-stream',
-                'Content-Length': String(obj.size),
+                'Content-Type': CONTENT_TYPE,
+                'Content-Range': `bytes 0-${end}/${totalSize}`,
+                'Content-Length': String(end + 1),
                 'Accept-Ranges': 'bytes',
                 'Content-Disposition': `attachment; filename="${FILENAME}"`,
                 'Cache-Control': 'private, max-age=0, must-revalidate',
