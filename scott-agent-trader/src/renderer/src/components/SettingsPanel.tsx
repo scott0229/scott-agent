@@ -29,6 +29,7 @@ interface SettingsPanelProps {
 
 function SectionHeader({
   title,
+  expanded,
   onToggle
 }: {
   title: string
@@ -38,8 +39,27 @@ function SectionHeader({
   return (
     <div
       onClick={onToggle}
-      style={{ cursor: 'pointer', userSelect: 'none', marginTop: 16, marginBottom: 8 }}
+      style={{
+        cursor: 'pointer',
+        userSelect: 'none',
+        marginTop: 16,
+        marginBottom: 8,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6
+      }}
     >
+      <span
+        style={{
+          display: 'inline-block',
+          fontSize: '0.75em',
+          color: '#888',
+          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          transition: 'transform 0.15s ease'
+        }}
+      >
+        ▶
+      </span>
       <h3 className="settings-section-title" style={{ margin: 0 }}>
         {title}
       </h3>
@@ -92,16 +112,56 @@ export default function SettingsPanel({
           </button>
         </div>
         <div className="settings-body">
-          <div style={{ padding: '0 8px', marginBottom: 12 }}>
-            <button
-              className="upload-prices-btn"
-              style={{ width: '100%' }}
-              disabled={!connected || fetchingSymbols}
-              onClick={onSyncPrices}
+          <SectionHeader
+            title="雲端資料庫同步"
+            expanded={showD1}
+            onToggle={() => setShowD1((v) => !v)}
+          />
+          {showD1 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                padding: '0 8px',
+                marginBottom: 12
+              }}
             >
-              {fetchingSymbols ? '⏳ 查詢中...' : '📈 股價同步'}
-            </button>
-          </div>
+              {[
+                { value: 'staging' as const, label: '測試站' },
+                { value: 'production' as const, label: '正式站' }
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: '0.95em',
+                    color: '#555',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="d1-target"
+                    checked={d1Target === opt.value}
+                    onChange={() => onSetD1Target(opt.value)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+              <button
+                className="upload-prices-btn"
+                style={{ marginLeft: 'auto' }}
+                disabled={!connected || fetchingSymbols}
+                onClick={onSyncPrices}
+              >
+                {fetchingSymbols ? '⏳ 查詢中...' : '📈 股價同步'}
+              </button>
+            </div>
+          )}
           <SectionHeader
             title="風險參數"
             expanded={showRisk}
@@ -215,10 +275,10 @@ export default function SettingsPanel({
           />
           {showAccounts && (
             <div className="settings-account-list">
-              <div style={{ borderBottom: '1px solid #eee', paddingBottom: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, borderBottom: '1px solid #eee', paddingBottom: 12, marginBottom: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer' }}>
                   <input type="checkbox" checked={showOperationMode} onChange={e => onSetShowOperationMode(e.target.checked)} />
-                  顯示操作偏好
+                  顯示交易重點
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer' }}>
                   <input type="checkbox" checked={showAccountType} onChange={e => onSetShowAccountType(e.target.checked)} />
@@ -241,48 +301,6 @@ export default function SettingsPanel({
             </div>
           )}
 
-          <SectionHeader
-            title="D1 資料庫"
-            expanded={showD1}
-            onToggle={() => setShowD1((v) => !v)}
-          />
-          {showD1 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: '0 8px',
-                marginBottom: 12
-              }}
-            >
-              {[
-                { value: 'staging' as const, label: 'Staging' },
-                { value: 'production' as const, label: 'Production' }
-              ].map((opt) => (
-                <label
-                  key={opt.value}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: '0.95em',
-                    color: '#555',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="d1-target"
-                    checked={d1Target === opt.value}
-                    onChange={() => onSetD1Target(opt.value)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-          )}
         </div>
         <div
           style={{

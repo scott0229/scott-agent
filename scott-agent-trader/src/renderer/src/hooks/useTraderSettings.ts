@@ -32,7 +32,7 @@ export function useTraderSettings() {
   const [accountAliases, setAccountAliasesState] = useState<Record<string, string>>({})
   const [accountTypes, setAccountTypesState] = useState<Record<string, string>>({})
   const [symbolPrefetch, setSymbolPrefetchState] = useState<Record<string, boolean>>({})
-  const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('staging')
+  const [d1Target, setD1TargetState] = useState<'staging' | 'production'>('production')
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const [showOperationMode, setShowOperationModeState] = useState<boolean>(true)
   const [showAccountType, setShowAccountTypeState] = useState<boolean>(true)

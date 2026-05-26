@@ -396,7 +396,7 @@ function setupIpcHandlers(): void {
   ipcMain.handle('settings:get', async (_event, d1Target?: string) => {
     try {
       await groupReady
-      const targetLabel = d1Target || 'staging'
+      const targetLabel = d1Target || 'production'
       const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
       const url = `${t.url}?group=${encodeURIComponent(detectedGroup)}`
       console.log('[settings:get] url=', url, 'group=', detectedGroup, 'target=', t.label)
@@ -417,7 +417,7 @@ function setupIpcHandlers(): void {
   ipcMain.handle('settings:put', async (_event, key: string, value: unknown, d1Target?: string) => {
     try {
       await groupReady
-      const targetLabel = d1Target || 'staging'
+      const targetLabel = d1Target || 'production'
       const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
       console.log('[settings:put] key=', key, 'group=', detectedGroup, 'target=', t.label)
       const url = `${t.url}?group=${encodeURIComponent(detectedGroup)}`
@@ -463,7 +463,7 @@ function setupIpcHandlers(): void {
     'settings:getAccountTypes',
     async (_event, accountIds: string[], d1Target?: string) => {
       try {
-        const targetLabel = d1Target || 'staging'
+        const targetLabel = d1Target || 'production'
         const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
         const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-account-types')
         const params = new URLSearchParams({ accounts: accountIds.join(',') })
@@ -484,7 +484,7 @@ function setupIpcHandlers(): void {
     'performance:getReturnRates',
     async (_event, accountIds: string[], d1Target?: string) => {
       try {
-        const targetLabel = d1Target || 'staging'
+        const targetLabel = d1Target || 'production'
         const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
         const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-return-rates')
         const params = new URLSearchParams({ accounts: accountIds.join(',') })
@@ -505,7 +505,7 @@ function setupIpcHandlers(): void {
     'trader:getInitialCosts',
     async (_event, accountIds: string[], d1Target?: string) => {
       try {
-        const targetLabel = d1Target || 'staging'
+        const targetLabel = d1Target || 'production'
         const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
         const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-initial-costs')
         const params = new URLSearchParams({ accounts: accountIds.join(',') })
