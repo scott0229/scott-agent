@@ -4,10 +4,14 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
-// Stream the desktop trader installer (.exe) out of R2.
+// Stream the desktop trader installer (zipped .exe) out of R2.
 // Gated to authenticated admin/manager users; matches /api/blog-video pattern.
-const R2_KEY = 'apps/scott-agent-trader-setup.exe';
-const FILENAME = 'scott-agent-trader-setup.exe';
+// Served as .zip because Chrome Safe Browsing flags unsigned .exe downloads
+// as "uncommon and possibly dangerous" — the same bytes inside a zip avoid
+// that warning until/unless we get a code-signing cert.
+const R2_KEY = 'apps/scott-agent-trader-setup.zip';
+const FILENAME = 'scott-agent-trader-setup.zip';
+const CONTENT_TYPE = 'application/zip';
 
 export async function GET(request: NextRequest) {
     try {
@@ -41,7 +45,7 @@ export async function GET(request: NextRequest) {
                 return new Response(obj.body as ReadableStream, {
                     status: 206,
                     headers: {
-                        'Content-Type': 'application/octet-stream',
+                        'Content-Type': CONTENT_TYPE,
                         'Content-Range': `bytes ${start}-${end}/${totalSize}`,
                         'Content-Length': String(end - start + 1),
                         'Accept-Ranges': 'bytes',

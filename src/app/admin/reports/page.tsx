@@ -470,7 +470,7 @@ export default function HistoricalReportsPage() {
                         asChild
                         className="gap-2 hover:bg-accent hover:text-accent-foreground"
                     >
-                        <a href="/api/apps/trader" download="scott-agent-trader-setup.exe">
+                        <a href="/api/apps/trader" download="scott-agent-trader-setup.zip">
                             <MonitorDown className="h-4 w-4" />
                             下載交易APP
                         </a>
