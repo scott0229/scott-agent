@@ -547,7 +547,7 @@ export default function HistoricalReportsPage() {
                                   const latest = accountReports[0].statement_date;
                                   const earliest = accountReports[accountReports.length - 1].statement_date;
                                   return (
-                                      <div className="text-xs text-muted-foreground mt-0.5">
+                                      <div className="text-sm text-muted-foreground mt-1">
                                           時間範圍：{fmt(earliest)} ~ {fmt(latest)}
                                       </div>
                                   );
