@@ -907,7 +907,10 @@ export default function AccountOverview({
                     setFilterAccount(v)
                     setSelectedPositions(new Set())
                   }}
-                  options={[{ value: '', label: '全部用戶' }, ...uniqueAccounts]}
+                  options={[
+                    { value: '', label: `全部 ${uniqueAccounts.length} 個帳戶` },
+                    ...uniqueAccounts
+                  ]}
                   className="dropdown-no-scroll"
                 />
                 {selectMode && (

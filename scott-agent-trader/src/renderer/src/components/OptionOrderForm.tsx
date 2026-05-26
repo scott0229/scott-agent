@@ -420,7 +420,7 @@ export default function OptionOrderForm({
                   value={selectedUser}
                   onChange={setSelectedUser}
                   options={[
-                    { value: 'ALL', label: '全部用戶' },
+                    { value: 'ALL', label: `全部 ${sortedAccounts.length} 個帳戶` },
                     ...sortedAccounts.map((acct) => ({
                       value: acct.accountId,
                       label: acct.alias || acct.accountId
