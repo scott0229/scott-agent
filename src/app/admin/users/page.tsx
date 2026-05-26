@@ -34,7 +34,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { isMarketHoliday } from '@/lib/holidays';
-import { calculatePremiumRate } from '@/lib/options-metrics';
+import { calculatePremiumRate, calculateAnnualPremium, getPremiumCostBase } from '@/lib/options-metrics';
 import { generateDailyTradesText } from '@/lib/daily-trades-text';
 
 // Compose the BCC-only extras block based on admin settings. Returns
@@ -325,7 +325,7 @@ export default function AdminUsersPage() {
                 const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}&t=${Date.now()}`);
                 const data = await res.json();
                 if (data.success) {
-                    const report = formatUserReport(data.reportData);
+                    const report = formatUserReport(data.reportData, user);
                     reportsMap.set(user.id, { userName: data.reportData.user_id || user.user_id || user.email, report });
                 }
             } catch (e) {
@@ -400,9 +400,35 @@ export default function AdminUsersPage() {
         }
     };
 
-    const formatUserReport = (data: any) => {
+    const formatUserReport = (data: any, user?: User) => {
         const formatMoney = (val: number) => new Intl.NumberFormat('en-US').format(Math.round(val));
         const formatPercent = (val: number) => `${(val * 100).toFixed(1)}%`;
+
+        // Compute 期權收益率 from the same data the summary card uses so the
+        // two surfaces never drift. The report API has its own interest calc
+        // that can return 0 if its FRED fetch lands in a cold isolate (the
+        // catch block doesn't backfill totalDailyInterest), which is what
+        // caused scott.238 to see 4.63% in the report while the card showed
+        // 4.33%. Sourcing put/call/stock from user.monthly_stats and
+        // summing monthly interest matches OptionsSummaryPanel exactly.
+        const monthly = (user as any)?.monthly_stats as Array<{
+            put_profit?: number; call_profit?: number; stock_pnl?: number; interest?: number;
+        }> | undefined;
+        const monthlyInterest = monthly?.reduce((s, m) => s + (m.interest || 0), 0) || 0;
+        const premiumInput = {
+            monthly_stats: monthly,
+            total_daily_interest: monthlyInterest,
+            initial_cost: user?.initial_cost ?? null,
+            net_deposit: user?.net_deposit ?? null,
+        };
+        const annualPremium = monthly
+            ? calculateAnnualPremium(premiumInput, {
+                includeStockDiff: settings.includeStockDiffInPremium !== false,
+            })
+            : data.annualPremium;
+        const costBase = monthly
+            ? getPremiumCostBase(premiumInput) || data.premiumCostBase || data.cost2026
+            : (data.premiumCostBase ?? data.cost2026);
 
         let report = '';
         if (data.lastUpdateDate) {
@@ -460,12 +486,12 @@ export default function AdminUsersPage() {
             ? new Date(data.startDate)
             : new Date(new Date().getFullYear(), 0, 1);
         const tradingDays = countWeekdays(userStartDate);
-        const dailyPremium = tradingDays > 0 ? data.annualPremium / tradingDays : 0;
+        const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
 
         // Premium section
-        report += `期權收益率 : ${calculatePremiumRate(data.annualPremium, data.premiumCostBase ?? data.cost2026).toFixed(2)}%\n`;
+        report += `期權收益率 : ${calculatePremiumRate(annualPremium, costBase).toFixed(2)}%\n`;
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
-        report += `年-累積期權收益 : $${formatMoney(data.annualPremium)}\n`;
+        report += `年-累積期權收益 : $${formatMoney(annualPremium)}\n`;
         report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
@@ -503,7 +529,8 @@ export default function AdminUsersPage() {
             const data = await res.json();
 
             if (data.success) {
-                const report = formatUserReport(data.reportData);
+                const reportUser = users.find(u => u.id === userId);
+                const report = formatUserReport(data.reportData, reportUser);
                 setReportDialog({ open: true, userId, userName: data.reportData.user_id, report });
             } else {
                 toast({

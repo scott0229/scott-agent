@@ -293,46 +293,40 @@ export async function GET(
         const marginUsed = (marginResult?.open_put_covered_capital || 0) + debt;
         const marginRate = accountNetWorth > 0 ? marginUsed / accountNetWorth : 0;
 
-        // Calculate daily interest using FRED rate
+        // Calculate daily interest using FRED rate. If the FRED fetch fails
+        // (e.g. transient network error or rate limit on a cold isolate),
+        // fall through with an empty rate map — calculateDailyInterest has
+        // its own 3.64% fallback per record, so the accumulation loop still
+        // produces a non-zero total. Previously the catch block only
+        // backfilled dailyInterest and left totalDailyInterest at 0, which
+        // silently zeroed out interest in the report's annualPremium.
+        let fredRateMap: Record<string, number> = {};
+        try {
+            fredRateMap = await fetchFredRatesForYear(currentYear);
+        } catch (err) {
+            console.warn('Failed to fetch FRED rates for report, using per-record fallback:', err);
+        }
+
         let dailyInterest = 0;
         let totalDailyInterest = 0;
-        try {
-            const fredRateMap = await fetchFredRatesForYear(currentYear);
-            
-            // Calculate today's interest
-            const cashNum = Number(cashBalance) || 0;
-            if (latestEquity?.date) {
-                dailyInterest = calculateDailyInterest(cashNum, Number(latestEquity.date), fredRateMap);
-            }
+        const cashNum = Number(cashBalance) || 0;
+        if (latestEquity?.date) {
+            dailyInterest = calculateDailyInterest(cashNum, Number(latestEquity.date), fredRateMap);
+        }
 
-            // Calculate total accumulated interest
-            for (let i = 0; i < uEq.length; i++) {
-                const row = uEq[i] as any;
-                const todayInterest = calculateDailyInterest(row.cash_balance ?? 0, row.date, fredRateMap);
-                let recordInterest = todayInterest;
-                if (i > 0) {
-                    const prevDate = (uEq[i - 1] as any).date as number;
-                    const gapDays = Math.round((row.date - prevDate) / 86400);
-                    if (gapDays > 1) {
-                        const prevDayInterest = calculateDailyInterest((uEq[i - 1] as any).cash_balance ?? 0, prevDate, fredRateMap);
-                        recordInterest = prevDayInterest * (gapDays - 1) + todayInterest;
-                    }
+        for (let i = 0; i < uEq.length; i++) {
+            const row = uEq[i] as any;
+            const todayInterest = calculateDailyInterest(row.cash_balance ?? 0, row.date, fredRateMap);
+            let recordInterest = todayInterest;
+            if (i > 0) {
+                const prevDate = (uEq[i - 1] as any).date as number;
+                const gapDays = Math.round((row.date - prevDate) / 86400);
+                if (gapDays > 1) {
+                    const prevDayInterest = calculateDailyInterest((uEq[i - 1] as any).cash_balance ?? 0, prevDate, fredRateMap);
+                    recordInterest = prevDayInterest * (gapDays - 1) + todayInterest;
                 }
-                totalDailyInterest += recordInterest;
             }
-        } catch (err) {
-            console.warn('Failed to fetch FRED rates for report, using fallback:', err);
-            // Fallback for today's interest
-            const cashNum = Number(cashBalance) || 0;
-            if (cashNum < 0) {
-                const loanAmount = Math.abs(cashNum);
-                const spread = loanAmount <= 100000 ? 1.5 : loanAmount <= 1000000 ? 1.0 : 0.5;
-                dailyInterest = -(loanAmount * (3.64 + spread) / 100 / 360);
-            } else if (cashNum > 10000) {
-                const interestAmount = cashNum - 10000;
-                const annualRate = Math.max(0, 3.64 - 0.5) / 100;
-                dailyInterest = (interestAmount * annualRate) / 360;
-            }
+            totalDailyInterest += recordInterest;
         }
 
         // Add accumulated interest to annual premium
