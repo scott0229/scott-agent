@@ -28,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download, ExternalLink, X } from 'lucide-react';
+import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download, ExternalLink, X, MonitorDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { isMarketHoliday } from '@/lib/holidays';
 
@@ -457,13 +457,23 @@ export default function HistoricalReportsPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         onClick={handleDownloadAllClick}
                         className="gap-2 hover:bg-accent hover:text-accent-foreground"
                     >
                         <Download className="h-4 w-4" />
                         下載全部
+                    </Button>
+                    <Button
+                        variant="outline"
+                        asChild
+                        className="gap-2 hover:bg-accent hover:text-accent-foreground"
+                    >
+                        <a href="/api/apps/trader" download="scott-agent-trader-setup.exe">
+                            <MonitorDown className="h-4 w-4" />
+                            下載交易APP
+                        </a>
                     </Button>
                 </div>
             </div>
