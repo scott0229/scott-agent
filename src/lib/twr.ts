@@ -204,6 +204,21 @@ export const calculateUserTwr = (
         const midnight = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate())).getTime() / 1000;
         const dailyDeposit = depositMap.get(midnight) || 0;
 
+        // Brand-new mid-year accounts: when the very first equity record
+        // also carries a deposit roughly equal to initial_cost, the deposit
+        // IS the seed capital. prevEquity defaulted to initial_cost (carry-
+        // over assumption), so without this guard the formula double-counts
+        // it: dailyReturn = (equity - deposit - initial_cost) / (initial_cost
+        // + deposit) ≈ -1 → a phantom -100% on day 1 that anchors the whole
+        // TWR series at half-value. Detect via "deposit within 1% of initial
+        // cost" — that's the signature of a fresh account joining mid-year.
+        if (i === 0 && dailyDeposit > 0 && (initialCost || 0) > 0) {
+            const drift = Math.abs(dailyDeposit - (initialCost || 0)) / (initialCost || 1);
+            if (drift < 0.01) {
+                prevEquity = 0;
+            }
+        }
+
         let dailyReturn = 0;
         // Calculate daily return
         if (prevEquity + dailyDeposit !== 0) {
