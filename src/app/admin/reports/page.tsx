@@ -11,7 +11,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -28,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download, ExternalLink } from 'lucide-react';
+import { FileUp, Eye, FileText, Loader2, FolderOpen, Users, Trash2, AlertTriangle, Download, ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { isMarketHoliday } from '@/lib/holidays';
 
@@ -629,9 +629,13 @@ export default function HistoricalReportsPage() {
             )}
 
             <Dialog open={!!previewId} onOpenChange={(v) => !v && setPreviewId(null)}>
-                <DialogContent className="max-w-[1300px] sm:max-w-[1300px] w-[95vw] h-[75vh] flex flex-col p-0 overflow-hidden">
-                    <DialogHeader className="px-4 py-2 border-b bg-muted/30">
+                <DialogContent showCloseButton={false} className="max-w-[1300px] sm:max-w-[1300px] w-[95vw] h-[75vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="px-4 py-2 border-b bg-muted/30 flex-row items-center justify-between space-y-0">
                         <DialogTitle>{reports.find(r => r.id === previewId)?.filename?.split('/').pop() || '報表預覽'}</DialogTitle>
+                        <DialogClose className="rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close</span>
+                        </DialogClose>
                     </DialogHeader>
                     {previewId && (
                         <div className="flex-1 w-full bg-card relative">
