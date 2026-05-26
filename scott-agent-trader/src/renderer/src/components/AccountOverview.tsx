@@ -1987,7 +1987,7 @@ export default function AccountOverview({
                         {account.totalCashValue >= 0
                           ? '0'
                           : account.netLiquidation > 0
-                            ? `${((-account.totalCashValue / account.netLiquidation) * 100).toFixed(2)}%`
+                            ? `${((-account.totalCashValue / account.netLiquidation) * 100).toFixed(1)}%`
                             : '-'}
                       </span>
                     </div>
@@ -2039,12 +2039,12 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left' }}></th>
-                            <th>持倉</th>
-                            <th>成本</th>
-                            <th>調整後</th>
-                            <th>現價</th>
-                            <th>盈虧</th>
+                            <th style={{ width: '25%', textAlign: 'left' }}></th>
+                            <th style={{ width: '11%' }}>持倉</th>
+                            <th style={{ width: '13%' }}>成本</th>
+                            <th style={{ width: '13%' }}>調整後</th>
+                            <th style={{ width: '13%' }}>現價</th>
+                            <th style={{ width: '14%' }}>盈虧</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2146,11 +2146,11 @@ export default function AccountOverview({
                         <thead>
                           <tr>
                             <th style={{ width: '25%', textAlign: 'left' }}></th>
-                            <th style={{ width: '8%' }}>持倉</th>
-                            <th style={{ width: '8%' }}>到期</th>
-                            <th style={{ width: '11%' }}>均價</th>
-                            <th style={{ width: '11%' }}>現價</th>
-                            <th style={{ width: '11%' }}>盈虧</th>
+                            <th style={{ width: '11%' }}>持倉</th>
+                            <th style={{ width: '13%' }}>到期</th>
+                            <th style={{ width: '13%' }}>均價</th>
+                            <th style={{ width: '13%' }}>現價</th>
+                            <th style={{ width: '14%' }}>盈虧</th>
                           </tr>
                         </thead>
                         <tbody>
