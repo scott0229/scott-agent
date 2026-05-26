@@ -632,7 +632,7 @@ export default function HistoricalReportsPage() {
                 <DialogContent showCloseButton={false} className="max-w-[1300px] sm:max-w-[1300px] w-[95vw] h-[75vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="px-4 py-2 border-b bg-muted/30 flex-row items-center justify-between space-y-0">
                         <DialogTitle>{reports.find(r => r.id === previewId)?.filename?.split('/').pop() || '報表預覽'}</DialogTitle>
-                        <DialogClose className="rounded-sm opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                        <DialogClose className="rounded-sm text-muted-foreground opacity-60 hover:opacity-100 hover:text-foreground transition-opacity focus:outline-none">
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>
                         </DialogClose>
