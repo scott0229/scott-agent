@@ -57,29 +57,24 @@ export async function POST(req: NextRequest) {
 
         // Render dash separator lines as a proper <hr> so they don't wrap
         // awkwardly on narrow viewports (the 40-dash string has no break
-        // points, so word-wrap: break-word splits it mid-sequence).
-        // Also consume blank lines surrounding the separator so sections
-        // sit flush against the rule instead of leaving a tall gap (the
-        // BCC body joins report + extras with `\n\n---\n`, and the report
-        // itself already ends with `\n`).
+        // points, so word-wrap: break-word splits it mid-sequence). Also
+        // consume blank lines surrounding the separator so sections sit
+        // flush against the rule (the BCC body joins report + extras
+        // with `\n\n---\n`, and the report itself ends with `\n`).
         //
-        // Dash markers (---- and longer) are section dividers — full-width
-        // dashed rule. Tilde markers (~~~~) come from the daily-trades
-        // text generator and signal chunk-level dividers within 當日操作
-        // — rendered as a short centered rule so chunks visually group.
+        // Dash count distinguishes section vs. chunk dividers:
+        //   20+ dashes  →  full-width dashed rule (heavier)
+        //    4–19 dashes →  tighter lighter rule (chunk-level grouping)
+        // 20+ MUST be matched first so a long dash run doesn't get
+        // greedy-matched by the shorter pattern.
         const renderBodyHtml = (body: string) =>
             escapeHtml(body)
                 .replace(
-                    /\n*^-{4,}$\n*/gm,
+                    /\n*^-{20,}$\n*/gm,
                     '<hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;" />'
                 )
                 .replace(
-                    // Full-width but visually lighter than section dividers
-                    // — `margin: auto` centering is flaky across email
-                    // clients (Outlook/Gmail can ignore it and the rule
-                    // drifts right), so distinguish chunk vs. section by
-                    // weight and spacing instead of width + position.
-                    /\n*^~{3,}$\n*/gm,
+                    /\n*^-{4,19}$\n*/gm,
                     '<hr style="border: none; border-top: 1px dashed #e5e7eb; margin: 3px 0;" />'
                 );
 

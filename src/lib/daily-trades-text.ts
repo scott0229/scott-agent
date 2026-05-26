@@ -329,11 +329,11 @@ export function generateDailyTradesText(
 
     const sections: string[] = [];
     if (stockLines.length > 0) sections.push(stockLines.join('\n'));
-    // Tilde marker (~~~~) signals a chunk-level divider — rendered as a
-    // short centered <hr> by the email HTML renderer so chunks within
-    // 當日操作 are visually separated without a blank line. Dash markers
-    // are reserved for full-width section dividers.
-    if (optionChunks.length > 0) sections.push(optionChunks.join('\n~~~~\n'));
+    // Short dash marker (8 dashes) for chunk-level dividers. The email
+    // renderer distinguishes this from 20+-dash section dividers and
+    // gives it a lighter hr style. In the daily-trades page (and any
+    // other plain-text consumer) it renders as `--------`.
+    if (optionChunks.length > 0) sections.push(optionChunks.join('\n--------\n'));
 
     if (sections.length > 0) {
         text += sections.join('\n----------------------------------------\n');
