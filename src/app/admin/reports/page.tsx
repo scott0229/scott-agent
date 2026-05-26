@@ -631,7 +631,16 @@ export default function HistoricalReportsPage() {
             <Dialog open={!!previewId} onOpenChange={(v) => !v && setPreviewId(null)}>
                 <DialogContent showCloseButton={false} className="max-w-[1300px] sm:max-w-[1300px] w-[95vw] h-[75vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="px-4 py-2 border-b bg-muted/30 flex-row items-center justify-between space-y-0">
-                        <DialogTitle>{reports.find(r => r.id === previewId)?.filename?.split('/').pop() || '報表預覽'}</DialogTitle>
+                        <DialogTitle>{(() => {
+                            const report = reports.find(r => r.id === previewId);
+                            const filename = report?.filename?.split('/').pop();
+                            if (!filename) return '報表預覽';
+                            // Match the account extraction the card grouping uses (line ~101)
+                            // so the preview title shows the same alias the user sees in the card header.
+                            const accountId = filename.match(/^([A-Z]+\d+)_/i)?.[1];
+                            const alias = accountId ? users.find(u => u.ib_account === accountId)?.user_id : null;
+                            return alias ? `${alias} - ${filename}` : filename;
+                        })()}</DialogTitle>
                         <DialogClose className="rounded-sm text-muted-foreground opacity-60 hover:opacity-100 hover:text-foreground transition-opacity focus:outline-none">
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>
