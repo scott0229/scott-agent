@@ -1448,9 +1448,6 @@ export default function AccountOverview({
                         }
                         const optPositions = effectivePositions.filter((p) => p.secType === 'OPT')
                         const stkPositions = effectivePositions.filter((p) => p.secType === 'STK')
-                        const setOptKeys = (): void => {
-                          setSelectedPositions(new Set(optPositions.map((p) => posKey(p))))
-                        }
                         const setStkKeys = (): void => {
                           setSelectedPositions(new Set(stkPositions.map((p) => posKey(p))))
                         }
