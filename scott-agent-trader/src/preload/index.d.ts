@@ -270,6 +270,12 @@ interface IBApi {
     d1Target?: string
   ) => Promise<{ accountTypes: Record<string, string>; operationModes: Record<string, string> }>
 
+  // Option group_id tags (e.g. "QQQ-4"), keyed `${ib_account}|${YYYYMMDD}|${strike}|${C|P}`
+  getOptionGroups: (
+    accountIds: string[],
+    d1Target?: string
+  ) => Promise<{ optionGroups: Record<string, string> }>
+
   // Initial Costs (from STOCK_TRADES open_price)
   getInitialCosts: (
     accountIds: string[],

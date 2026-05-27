@@ -38,6 +38,7 @@ function App(): React.JSX.Element {
   const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
   const [operationModes, setOperationModes] = useState<Record<string, string>>({})
   const [initialCosts, setInitialCosts] = useState<Record<string, number>>({})
+  const [optionGroups, setOptionGroups] = useState<Record<string, string>>({})
   const {
     marginLimit,
     setMarginLimit,
@@ -144,6 +145,15 @@ function App(): React.JSX.Element {
           .then((res) => {
             if (res.initialCosts && Object.keys(res.initialCosts).length > 0) {
               setInitialCosts(res.initialCosts)
+            }
+          })
+          .catch(() => {})
+        // Auto-fetch option group_id tags (e.g. "QQQ-4") from D1
+        window.ibApi
+          .getOptionGroups(accountIds, d1Target)
+          .then((res) => {
+            if (res.optionGroups) {
+              setOptionGroups(res.optionGroups)
             }
           })
           .catch(() => {})
@@ -271,6 +281,7 @@ function App(): React.JSX.Element {
               returnRates={returnRates}
               operationModes={operationModes}
               initialCosts={initialCosts}
+              optionGroups={optionGroups}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

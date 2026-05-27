@@ -88,6 +88,9 @@ interface AccountOverviewProps {
   operationModes?: Record<string, string>
   onSetAccountType?: (accountId: string, type: string) => void
   initialCosts?: Record<string, number>
+  // Map of `${ib_account}|${YYYYMMDD}|${strike}|${C|P}` → group_id (e.g. "QQQ-4").
+  // Sourced from D1 OPTIONS.group_id; only populated for currently OPEN trades.
+  optionGroups?: Record<string, string>
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
   onAddSymbolGroup?: (group: SymbolGroup) => void
@@ -124,6 +127,7 @@ export default function AccountOverview({
   onReorderSymbolGroups,
   groupViewMode = false,
   initialCosts = {},
+  optionGroups = {},
   showOperationMode = true,
   showAccountType = true,
   d1Target = 'production'
@@ -1987,7 +1991,22 @@ export default function AccountOverview({
           <div className="empty-state">{loading ? '正在載入帳戶資料...' : '未找到帳戶資料'}</div>
         ) : (
           <>
-          <div className="accounts-grid">
+          <div
+            style={
+              filterAccount
+                ? {
+                    display: 'grid',
+                    gridTemplateColumns: '40fr 60fr',
+                    gap: 16,
+                    alignItems: 'stretch'
+                  }
+                : undefined
+            }
+          >
+          <div
+            className="accounts-grid"
+            style={filterAccount ? { gridTemplateColumns: '1fr' } : undefined}
+          >
             {displayAccounts.map((account) => (
               <div
                 key={account.accountId}
@@ -2305,12 +2324,13 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '32%', textAlign: 'left' }}></th>
+                            <th style={{ width: filterAccount ? '22%' : '32%', textAlign: 'left' }}></th>
                             <th style={{ width: '11%' }}>持倉</th>
                             <th style={{ width: '11%' }}>到期</th>
                             <th style={{ width: '10%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '14%' }}>盈虧</th>
+                            {filterAccount && <th style={{ width: '10%' }}>群組</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -2420,6 +2440,23 @@ export default function AccountOverview({
                                       <td>-</td>
                                       <td>-</td>
                                     </>
+                                  )
+                                })()}
+                                {filterAccount && (() => {
+                                  const r =
+                                    pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
+                                  const gid =
+                                    optionGroups[
+                                      `${pos.account}|${pos.expiry}|${pos.strike}|${r}`
+                                    ]
+                                  return (
+                                    <td style={{ textAlign: 'center' }}>
+                                      {gid ? (
+                                        <span className="option-group-pill">{gid}</span>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </td>
                                   )
                                 })()}
                               </tr>
@@ -3108,26 +3145,25 @@ export default function AccountOverview({
             ))}
           </div>
           {filterAccount && (accountGroupsLoading || accountGroups !== null) && (
-            <div className="trade-groups-panel">
+            <div style={{ position: 'relative', minHeight: 0 }}>
+            <div
+              className="trade-groups-panel"
+              style={{
+                marginTop: 0,
+                position: 'absolute',
+                inset: 0,
+                overflowY: 'auto'
+              }}
+            >
               <div className="trade-groups-header">
                 <div className="trade-groups-title">
-                  {new Date().getFullYear()} 交易群組
+                  期權交易群組
                   {accountGroupsLoading && (
                     <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>讀取中...</span>
                   )}
                 </div>
                 {accountGroupsSummary && (
                   <div className="trade-groups-summary">
-                    <div className="trade-groups-summary-chip">
-                      現金{' '}
-                      <span className={accountGroupsSummary.totalCash >= 0 ? 'tg-pos' : 'tg-neg'}>
-                        {accountGroupsSummary.totalCash > 0 ? '+' : ''}
-                        {Math.round(accountGroupsSummary.totalCash).toLocaleString('en-US')}
-                      </span>
-                    </div>
-                    <div className="trade-groups-summary-chip">
-                      融資 <span>{accountGroupsSummary.marginRate.toFixed(1)}%</span>
-                    </div>
                     <div className="trade-groups-summary-chip">
                       盈虧{' '}
                       <span className={accountGroupsSummary.totalProfit >= 0 ? 'tg-pos' : 'tg-neg'}>
@@ -3156,9 +3192,6 @@ export default function AccountOverview({
                       <th style={{ width: '80px', textAlign: 'center' }}>起始日</th>
                       <th style={{ minWidth: '200px' }}>最後交易</th>
                       <th style={{ width: '130px' }}>持股成本</th>
-                      <th style={{ width: '90px', textAlign: 'center' }}>現金流入</th>
-                      <th style={{ width: '90px', textAlign: 'center' }}>平倉費用</th>
-                      <th style={{ width: '90px', textAlign: 'center' }}>持股獲利</th>
                       <th style={{ width: '90px', textAlign: 'center' }}>盈虧</th>
                       <th style={{ width: '70px', textAlign: 'center' }}>狀態</th>
                     </tr>
@@ -3221,6 +3254,7 @@ export default function AccountOverview({
                         if (op === 'Expired') return <span style={{ ...baseStyle, background: '#dcfce7', color: '#166534', borderRadius: 12 }}>{op}</span>
                         if (op === 'Transferred') return <span style={{ ...baseStyle, background: '#e0f2fe', color: '#075985', borderRadius: 12 }}>{op}</span>
                         if (op === 'Closed') return <span style={{ ...baseStyle, background: '#e5e7eb', color: '#374151', borderRadius: 12 }}>{op}</span>
+                        if (op === 'Open') return null
                         return <span style={{ ...baseStyle, color: '#9ca3af' }}>{op}</span>
                       })()
                       const numClass = (v: number, inverted = false) =>
@@ -3231,7 +3265,7 @@ export default function AccountOverview({
                         <React.Fragment key={g.name}>
                           {isStatusBoundary && (
                             <tr className="trade-groups-divider">
-                              <td colSpan={11} />
+                              <td colSpan={8} />
                             </tr>
                           )}
                         <tr
@@ -3259,11 +3293,6 @@ export default function AccountOverview({
                               ? <>股{Math.abs(g.holdingShares).toLocaleString('en-US')}，<span style={{ textDecoration: 'underline' }}>均{g.holdingAvgPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span></>
                               : '-'}
                           </td>
-                          <td className={`tg-center ${numClass(g.netCashInflow)}`}>{fmt(g.netCashInflow)}</td>
-                          <td className={`tg-center ${numClass(g.openCostToClose, true)}`}>
-                            {g.openCostToClose === 0 ? '-' : (g.openCostToClose > 0 ? '-' : '+') + Math.abs(Math.round(g.openCostToClose)).toLocaleString('en-US')}
-                          </td>
-                          <td className={`tg-center ${numClass(g.stockProfit)}`}>{fmt(g.stockProfit)}</td>
                           <td className={`tg-center ${numClass(g.profit)}`}>{fmt(g.profit)}</td>
                           <td style={{ textAlign: 'center' }}>
                             <span className={g.status === 'Active' ? 'tg-status-active' : 'tg-status-terminated'}>
@@ -3278,7 +3307,9 @@ export default function AccountOverview({
                 </table>
               )}
             </div>
+            </div>
           )}
+          </div>
           </>
         )}
       </div>

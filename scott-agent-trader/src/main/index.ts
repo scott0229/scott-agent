@@ -479,6 +479,30 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Fetch option group_id tags from D1, keyed by ${ib_account}|${expiry}|${strike}|${right}
+  ipcMain.handle(
+    'settings:getOptionGroups',
+    async (_event, accountIds: string[], d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'production'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-option-groups')
+        const params = new URLSearchParams({ accounts: accountIds.join(',') })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        const result = await res.json()
+        console.log(
+          '[settings:getOptionGroups] tags=',
+          Object.keys(result?.optionGroups || {}).length
+        )
+        return result
+      } catch {
+        return { optionGroups: {} }
+      }
+    }
+  )
+
   // Fetch return rates (報酬率) from D1 using TWR calculation
   ipcMain.handle(
     'performance:getReturnRates',
