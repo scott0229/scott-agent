@@ -3156,7 +3156,9 @@ export default function AccountOverview({
                 marginTop: 0,
                 position: 'absolute',
                 inset: 0,
-                overflowY: 'auto'
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
               }}
             >
               <div className="trade-groups-header">
@@ -3187,6 +3189,7 @@ export default function AccountOverview({
                   {accountGroupsLoading ? '' : '目前沒有群組資料'}
                 </div>
               ) : (
+                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <table className="trade-groups-table">
                   <thead>
                     <tr>
@@ -3304,6 +3307,7 @@ export default function AccountOverview({
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
             </div>

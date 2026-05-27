@@ -133,10 +133,13 @@ export default function TradeGroupDialog({
         style={{ width: 1050, maxWidth: '96vw', maxHeight: '70vh', overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="roll-dialog-header" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <div className="roll-dialog-header" style={{ flexWrap: 'wrap', gap: 12, borderBottom: 'none' }}>
           <h3 style={{ margin: 0 }}>
             {alias} 群組{' '}
-            <span className="option-group-pill" style={{ marginLeft: 4 }}>
+            <span
+              className="option-group-pill"
+              style={{ marginLeft: 6, fontSize: 14, padding: '2px 10px' }}
+            >
               {groupName}
             </span>
           </h3>
@@ -190,7 +193,7 @@ export default function TradeGroupDialog({
           </button>
         </div>
 
-        <div className="roll-dialog-body" style={{ padding: 0 }}>
+        <div className="roll-dialog-body" style={{ padding: '0 16px 16px' }}>
           {loading && (
             <div className="empty-state" style={{ padding: 20 }}>
               讀取中...
@@ -233,7 +236,7 @@ export default function TradeGroupDialog({
                       stockTotal !== 0
                         ? `股${stockTotal.toLocaleString('en-US')}${
                             stockAvg != null
-                              ? `,均${stockAvg.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+                              ? `, 均${stockAvg.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
                               : ''
                           }`
                         : '-'
