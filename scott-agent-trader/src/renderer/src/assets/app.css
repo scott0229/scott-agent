@@ -596,7 +596,7 @@ body {
   gap: 8px;
 }
 .trade-groups-summary-chip {
-  padding: 6px 14px;
+  padding: 3px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background: #ffffff;
@@ -682,8 +682,8 @@ body {
   font-size: 12px;
   font-weight: 600;
 }
-.trade-groups-table .tg-pos { color: #16a34a; font-weight: 500; }
-.trade-groups-table .tg-neg { color: #dc2626; font-weight: 500; }
+.trade-groups-table .tg-pos { color: #15803d; font-weight: 500; }
+.trade-groups-table .tg-neg { color: #b91c1c; font-weight: 500; }
 .trade-groups-summary .tg-pos { color: #15803d; font-weight: 600; }
 .trade-groups-summary .tg-neg { color: #b91c1c; font-weight: 600; }
 .trade-groups-table .tg-center { text-align: center; }

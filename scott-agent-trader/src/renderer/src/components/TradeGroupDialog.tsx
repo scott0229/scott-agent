@@ -130,7 +130,7 @@ export default function TradeGroupDialog({
     <div className="roll-dialog-overlay" onClick={onClose}>
       <div
         className="roll-dialog"
-        style={{ width: 1200, maxWidth: '96vw', maxHeight: '92vh' }}
+        style={{ width: 1050, maxWidth: '96vw', maxHeight: '70vh', overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="roll-dialog-header" style={{ flexWrap: 'wrap', gap: 12 }}>
@@ -143,7 +143,13 @@ export default function TradeGroupDialog({
           {data && data.summary && (
             <div
               className="trade-groups-summary"
-              style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}
+              style={{
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+                fontSize: 13,
+                marginLeft: 'auto'
+              }}
             >
               <span className="trade-groups-summary-chip">
                 總現金流入{' '}
@@ -179,7 +185,7 @@ export default function TradeGroupDialog({
               </span>
             </div>
           )}
-          <button className="roll-dialog-close" onClick={onClose} style={{ marginLeft: 'auto' }}>
+          <button className="roll-dialog-close" onClick={onClose} style={{ marginLeft: 0 }}>
             ✕
           </button>
         </div>
