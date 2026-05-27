@@ -596,7 +596,7 @@ body {
   gap: 8px;
 }
 .trade-groups-summary-chip {
-  padding: 3px 12px;
+  padding: 2px 10px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background: #ffffff;
@@ -626,6 +626,8 @@ body {
   font-weight: 600;
   font-size: 13px;
   padding: 4px 6px;
+  height: 28px;
+  line-height: 1.4;
   border-bottom: 1px solid var(--border-color);
   text-align: left;
   position: sticky;
@@ -718,6 +720,8 @@ body {
   font-size: 13px;
   font-weight: 600;
   padding: 4px 6px;
+  height: 28px;
+  line-height: 1.4;
   border-bottom: 1px solid var(--border-color);
   background: #f5f5f5;
 }
