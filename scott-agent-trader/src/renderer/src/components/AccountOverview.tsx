@@ -183,6 +183,9 @@ export default function AccountOverview({
   const [editValue, setEditValue] = useState('')
   const editInputRef = useRef<HTMLInputElement | null>(null)
   const groupGridRef = useRef<HTMLDivElement | null>(null)
+  // Defer the single-click action so a follow-up dblclick can cancel it.
+  // Without this the card border flashes "selected" on every dblclick.
+  const cardClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Context menu state for order cancellation
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -1879,11 +1882,27 @@ export default function AccountOverview({
               <div
                 key={account.accountId}
                 className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`}
-                onClick={() =>
-                  setSelectedAccount((prev) =>
-                    prev === account.accountId ? null : account.accountId
+                onClick={() => {
+                  if (cardClickTimerRef.current) {
+                    clearTimeout(cardClickTimerRef.current)
+                  }
+                  cardClickTimerRef.current = setTimeout(() => {
+                    setSelectedAccount((prev) =>
+                      prev === account.accountId ? null : account.accountId
+                    )
+                    cardClickTimerRef.current = null
+                  }, 220)
+                }}
+                onDoubleClick={() => {
+                  if (cardClickTimerRef.current) {
+                    clearTimeout(cardClickTimerRef.current)
+                    cardClickTimerRef.current = null
+                  }
+                  if (selectMode) return
+                  setFilterAccount((prev) =>
+                    prev === account.accountId ? '' : account.accountId
                   )
-                }
+                }}
               >
                 <div className="account-header">
                   <span className="account-id">
@@ -1905,7 +1924,7 @@ export default function AccountOverview({
                         )?.label}
                       </span>
                     )}
-                    {(() => {
+                    {!selectMode && (() => {
                       const rate = returnRates?.[account.accountId]
                       if (rate === undefined) return null
                       if (rate === null)
@@ -1922,16 +1941,18 @@ export default function AccountOverview({
                         </span>
                       )
                     })()}
-                    <button
-                      className="ai-advisor-btn"
-                      title="AI 交易建議"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowAiAdvisor(account.accountId)
-                      }}
-                    >
-                      💡
-                    </button>
+                    {!selectMode && (
+                      <button
+                        className="ai-advisor-btn"
+                        title="AI 交易建議"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowAiAdvisor(account.accountId)
+                        }}
+                      >
+                        💡
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -2064,11 +2085,10 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '25%', textAlign: 'left' }}></th>
+                            <th style={{ width: '32%', textAlign: 'left' }}></th>
                             <th style={{ width: '11%' }}>持倉</th>
-                            <th style={{ width: '13%' }}>成本</th>
-                            <th style={{ width: '13%' }}>調整後</th>
-                            <th style={{ width: '13%' }}>現價</th>
+                            <th style={{ width: '16%' }}>成本</th>
+                            <th style={{ width: '16%' }}>現價</th>
                             <th style={{ width: '14%' }}>盈虧</th>
                           </tr>
                         </thead>
@@ -2125,7 +2145,6 @@ export default function AccountOverview({
                                   const ic = initialCosts[icKey]
                                   return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
                                 })()}
-                                <td>{pos.avgCost.toFixed(2)}</td>
                                 <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
                                 {(() => {
                                   const icKey = `${pos.account}|${pos.symbol}`
@@ -2170,11 +2189,11 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '25%', textAlign: 'left' }}></th>
+                            <th style={{ width: '32%', textAlign: 'left' }}></th>
                             <th style={{ width: '11%' }}>持倉</th>
-                            <th style={{ width: '13%' }}>到期</th>
-                            <th style={{ width: '13%' }}>均價</th>
-                            <th style={{ width: '13%' }}>現價</th>
+                            <th style={{ width: '11%' }}>到期</th>
+                            <th style={{ width: '10%' }}>均價</th>
+                            <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '14%' }}>盈虧</th>
                           </tr>
                         </thead>

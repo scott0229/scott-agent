@@ -559,6 +559,14 @@ body {
   border-left: 3px solid #b8b8b8;
 }
 
+/* Force account-card tables to honour the percentage column widths so
+   the stocks and options tables align column-for-column. Without this
+   the auto layout shrinks the symbol column on stocks (short text like
+   "QQQ") and pushes the rest of the columns leftward. */
+.account-card .positions-table {
+  table-layout: fixed;
+}
+
 .positions-table th {
   text-align: center;
   white-space: nowrap;
