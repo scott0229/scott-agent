@@ -2386,7 +2386,15 @@ export default function AccountOverview({
                                     return (
                                       <span
                                         className="option-group-pill"
-                                        style={{ marginLeft: 6 }}
+                                        style={{ marginLeft: 6, cursor: 'pointer' }}
+                                        title="點擊開啟群組明細"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setGroupDetailDialog({
+                                            account: pos.account,
+                                            group: gid
+                                          })
+                                        }}
                                       >
                                         {gid}
                                       </span>
