@@ -1,6 +1,39 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+// Shape returned by /api/trader-account-groups — server-side aggregation
+// of the website's 交易群組 view for one account.
+export interface AccountGroupRow {
+  id: number | null
+  name: string
+  count: number
+  startDate: number
+  endDate: number
+  latestTrade: {
+    type: 'CALL' | 'PUT' | 'STK'
+    underlying: string
+    quantity: number
+    strike_price: number | null
+    to_date: number | null
+    underlying_price: number | null
+    operation: string
+    is_assigned: boolean
+  }
+  holdingShares: number
+  holdingAvgPrice: number
+  netCashInflow: number
+  openCostToClose: number
+  stockProfit: number
+  profit: number
+  status: 'Active' | 'Terminated'
+}
+export interface AccountGroupsResponse {
+  user?: { id: number; alias: string; name: string | null }
+  year?: number
+  groups: AccountGroupRow[]
+  error?: string
+}
+
 // IB API exposed to renderer via IPC
 const ibApi = {
   // Connection
@@ -130,6 +163,15 @@ const ibApi = {
     d1Target?: string
   ): Promise<{ initialCosts: Record<string, number> }> =>
     ipcRenderer.invoke('trader:getInitialCosts', accountIds, d1Target),
+
+  // Aggregated trade-groups for one account (mirrors /trade-groups on the web).
+  // Returns the 11-column data the AccountOverview panel needs.
+  getAccountGroups: (
+    alias: string,
+    year: number,
+    d1Target?: string
+  ): Promise<AccountGroupsResponse> =>
+    ipcRenderer.invoke('trader:getAccountGroups', alias, year, d1Target),
 
   // Price Upload (per-symbol)
   uploadSymbol: (

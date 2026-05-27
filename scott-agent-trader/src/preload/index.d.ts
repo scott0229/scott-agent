@@ -1,5 +1,42 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
+interface AccountGroupRow {
+  id: number | null
+  name: string
+  count: number
+  startDate: number
+  endDate: number
+  latestTrade: {
+    type: 'CALL' | 'PUT' | 'STK'
+    underlying: string
+    quantity: number
+    strike_price: number | null
+    to_date: number | null
+    underlying_price: number | null
+    operation: string
+    is_assigned: boolean
+  }
+  holdingShares: number
+  holdingAvgPrice: number
+  netCashInflow: number
+  openCostToClose: number
+  stockProfit: number
+  profit: number
+  status: 'Active' | 'Terminated'
+}
+
+interface AccountGroupsResponse {
+  user?: { id: number; alias: string; name: string | null }
+  year?: number
+  summary?: {
+    totalCash: number
+    marginRate: number
+    totalProfit: number
+  }
+  groups: AccountGroupRow[]
+  error?: string
+}
+
 interface OptionChainParams {
   exchange: string
   underlyingConId: number
@@ -238,6 +275,15 @@ interface IBApi {
     accountIds: string[],
     d1Target?: string
   ) => Promise<{ initialCosts: Record<string, number> }>
+
+  // Aggregated 交易群組 view for one account (server-side join of OPTIONS +
+  // STOCK_TRADES + TRADE_GROUPS — mirrors what /trade-groups computes
+  // client-side on the website).
+  getAccountGroups: (
+    alias: string,
+    year: number,
+    d1Target?: string
+  ) => Promise<AccountGroupsResponse>
 
   // Get distinct underlying symbols with missing underlying_price
   getMissingPriceSymbols: (target?: 'staging' | 'production') => Promise<string[]>

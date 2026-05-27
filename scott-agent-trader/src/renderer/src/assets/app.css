@@ -567,6 +567,131 @@ body {
   table-layout: fixed;
 }
 
+/* Trade-groups panel — shown under the filtered account card to mirror the
+   /trade-groups page on scott-agent.com. Rows are clickable, opening the
+   website in the default browser via the registered window-open handler. */
+.trade-groups-panel {
+  margin-top: 16px;
+  background: #ffffff;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+.trade-groups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.trade-groups-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.trade-groups-summary {
+  display: flex;
+  gap: 8px;
+}
+.trade-groups-summary-chip {
+  padding: 6px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #1f2937;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.trade-groups-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Vertical category line on the left of each row, mirroring the
+   `border-left: 3px solid #b8b8b8` on .positions-table. Put on first-td
+   instead of the table itself so the line BREAKS at the Active→Terminated
+   divider (which renders a single colSpan cell with no left border). */
+.trade-groups-row td:first-child {
+  border-left: 3px solid #b8b8b8;
+}
+.trade-groups-table th {
+  background: #f5f5f5;
+  color: #333;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.trade-groups-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #e8e8e8;
+  vertical-align: middle;
+  /* line-height inherits body's 1.6 to match .positions-table row height */
+}
+.trade-groups-row {
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.trade-groups-row:hover {
+  background-color: #fff7d1;
+}
+/* Empty spacer row between Active and Terminated groups, mirroring the
+   divider on the /trade-groups web page. Uses the same border color as
+   the regular row separators so it blends visually. */
+.trade-groups-divider td {
+  height: 16px;
+  padding: 0;
+  border-bottom: 1px solid #e8e8e8;
+  background: transparent;
+}
+.trade-groups-qty {
+  background: #e5e7eb;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  margin-right: 4px;
+  line-height: 1.2;
+}
+.trade-groups-acct {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1f2937;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.trade-groups-table .tg-pos { color: #16a34a; font-weight: 500; }
+.trade-groups-table .tg-neg { color: #dc2626; font-weight: 500; }
+.trade-groups-table .tg-center { text-align: center; }
+.trade-groups-table .tg-status-active {
+  background: #e5e7eb;
+  color: #374151;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.trade-groups-table .tg-status-terminated {
+  background: #d1d5db;
+  color: #4b5563;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
 .positions-table th {
   text-align: center;
   white-space: nowrap;

@@ -521,6 +521,37 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Fetch aggregated trade-groups for one account (alias = the .600-style id).
+  // Used by 帳戶總覽 to show the website's 交易群組 table inline when the user
+  // double-clicks a card to filter to one account.
+  ipcMain.handle(
+    'trader:getAccountGroups',
+    async (_event, alias: string, year: number, d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'production'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-account-groups')
+        const params = new URLSearchParams({
+          alias,
+          year: String(year),
+          group: detectedGroup
+        })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        if (!res.ok) {
+          const text = await res.text()
+          console.warn('[trader:getAccountGroups] http', res.status, text.slice(0, 200))
+          return { groups: [], error: `HTTP ${res.status}` }
+        }
+        return await res.json()
+      } catch (err) {
+        console.error('[trader:getAccountGroups] failed:', err)
+        return { groups: [], error: err instanceof Error ? err.message : 'Fetch failed' }
+      }
+    }
+  )
+
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
     {

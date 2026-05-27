@@ -97,6 +97,7 @@ interface AccountOverviewProps {
   groupViewMode?: boolean
   showOperationMode?: boolean
   showAccountType?: boolean
+  d1Target?: 'staging' | 'production'
 }
 
 const posKey = (pos: PositionData): string =>
@@ -124,11 +125,48 @@ export default function AccountOverview({
   groupViewMode = false,
   initialCosts = {},
   showOperationMode = true,
-  showAccountType = true
+  showAccountType = true,
+  d1Target = 'production'
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
   const [filterSymbol, setFilterSymbol] = useState('')
   const [filterAccount, setFilterAccount] = useState('')
+
+  // Trade-groups panel data — fetched from the website when the user filters
+  // down to one account. Mirrors the /trade-groups page on scott-agent.com.
+  type AcctGroupRow = {
+    id: number | null
+    name: string
+    count: number
+    startDate: number
+    endDate: number
+    latestTrade: {
+      type: 'CALL' | 'PUT' | 'STK'
+      underlying: string
+      quantity: number
+      strike_price: number | null
+      to_date: number | null
+      underlying_price: number | null
+      operation: string
+      is_assigned: boolean
+    }
+    holdingShares: number
+    holdingAvgPrice: number
+    netCashInflow: number
+    openCostToClose: number
+    stockProfit: number
+    profit: number
+    status: 'Active' | 'Terminated'
+  }
+  type AcctGroupSummary = {
+    totalCash: number
+    marginRate: number
+    totalProfit: number
+  }
+  const [accountGroups, setAccountGroups] = useState<AcctGroupRow[] | null>(null)
+  const [accountGroupsSummary, setAccountGroupsSummary] = useState<AcctGroupSummary | null>(null)
+  const [accountGroupsLoading, setAccountGroupsLoading] = useState(false)
+  const [accountGroupsError, setAccountGroupsError] = useState<string | null>(null)
 
   const [selectMode, setSelectMode] = useState<'STK' | 'OPT' | false>(false)
   const [filterRight, setFilterRight] = useState<'' | 'C' | 'P'>('')
@@ -239,6 +277,57 @@ export default function AccountOverview({
     setGroupChecked({})
     setCheckModeGroups(new Set())
   }, [groupViewMode])
+
+  // Resolve the filter target into a string alias. Memoising the *string*
+  // means the effect below skips re-fires when accounts gets a new array
+  // reference but the alias text is unchanged (IB pushes a tick → new
+  // accounts ref → same alias).
+  const filteredAlias = useMemo(() => {
+    if (!filterAccount) return ''
+    const acct = accounts.find((a) => a.accountId === filterAccount)
+    return acct ? formatAccountName(acct.alias || acct.accountId) : ''
+  }, [filterAccount, accounts])
+
+  // Fetch the website's 交易群組 aggregation when the user filters down to one
+  // account. Cleared whenever the filter is empty or the view changes.
+  useEffect(() => {
+    if (groupViewMode || !filteredAlias) {
+      setAccountGroups(null)
+      setAccountGroupsSummary(null)
+      setAccountGroupsError(null)
+      setAccountGroupsLoading(false)
+      return
+    }
+    let cancelled = false
+    setAccountGroupsLoading(true)
+    setAccountGroupsError(null)
+    const year = new Date().getFullYear()
+    window.ibApi
+      .getAccountGroups(filteredAlias, year, d1Target)
+      .then((res) => {
+        if (cancelled) return
+        if (res.error) {
+          setAccountGroupsError(res.error)
+          setAccountGroups([])
+          setAccountGroupsSummary(null)
+        } else {
+          setAccountGroups((res.groups as AcctGroupRow[]) || [])
+          setAccountGroupsSummary((res.summary as AcctGroupSummary) || null)
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setAccountGroupsError(err instanceof Error ? err.message : '讀取失敗')
+        setAccountGroups([])
+        setAccountGroupsSummary(null)
+      })
+      .finally(() => {
+        if (!cancelled) setAccountGroupsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [filteredAlias, d1Target, groupViewMode])
 
   // Compute positions not belonging to any group
   const uncategorizedPositions = useMemo(() => {
@@ -1897,6 +1986,7 @@ export default function AccountOverview({
         ) : accounts.length === 0 ? (
           <div className="empty-state">{loading ? '正在載入帳戶資料...' : '未找到帳戶資料'}</div>
         ) : (
+          <>
           <div className="accounts-grid">
             {displayAccounts.map((account) => (
               <div
@@ -3017,6 +3107,179 @@ export default function AccountOverview({
               </div>
             ))}
           </div>
+          {filterAccount && (accountGroupsLoading || accountGroups !== null) && (
+            <div className="trade-groups-panel">
+              <div className="trade-groups-header">
+                <div className="trade-groups-title">
+                  {new Date().getFullYear()} 交易群組
+                  {accountGroupsLoading && (
+                    <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>讀取中...</span>
+                  )}
+                </div>
+                {accountGroupsSummary && (
+                  <div className="trade-groups-summary">
+                    <div className="trade-groups-summary-chip">
+                      現金{' '}
+                      <span className={accountGroupsSummary.totalCash >= 0 ? 'tg-pos' : 'tg-neg'}>
+                        {accountGroupsSummary.totalCash > 0 ? '+' : ''}
+                        {Math.round(accountGroupsSummary.totalCash).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                    <div className="trade-groups-summary-chip">
+                      融資 <span>{accountGroupsSummary.marginRate.toFixed(1)}%</span>
+                    </div>
+                    <div className="trade-groups-summary-chip">
+                      盈虧{' '}
+                      <span className={accountGroupsSummary.totalProfit >= 0 ? 'tg-pos' : 'tg-neg'}>
+                        {accountGroupsSummary.totalProfit > 0 ? '+' : ''}
+                        {Math.round(accountGroupsSummary.totalProfit).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {accountGroupsError ? (
+                <div className="empty-state" style={{ padding: '16px', color: '#c0392b' }}>
+                  讀取失敗：{accountGroupsError}
+                </div>
+              ) : accountGroups && accountGroups.length === 0 ? (
+                <div className="empty-state" style={{ padding: '16px' }}>
+                  {accountGroupsLoading ? '' : '目前沒有群組資料'}
+                </div>
+              ) : (
+                <table className="trade-groups-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}></th>
+                      <th>群組</th>
+                      <th style={{ width: '60px', textAlign: 'center' }}>筆數</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>起始日</th>
+                      <th style={{ minWidth: '200px' }}>最後交易</th>
+                      <th style={{ width: '130px' }}>持股成本</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>現金流入</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>平倉費用</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>持股獲利</th>
+                      <th style={{ width: '90px', textAlign: 'center' }}>盈虧</th>
+                      <th style={{ width: '70px', textAlign: 'center' }}>狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(accountGroups || []).map((g, idx) => {
+                      // Insert an empty spacer row at the Active → Terminated
+                      // transition, mirroring the divider on the website.
+                      const prev = idx > 0 ? (accountGroups || [])[idx - 1] : null
+                      const isStatusBoundary =
+                        prev && prev.status === 'Active' && g.status === 'Terminated'
+                      const startDate = (() => {
+                        if (!g.startDate) return ''
+                        const d = new Date(g.startDate * 1000)
+                        return `${String(d.getFullYear()).slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                      })()
+                      const renderLatest = () => {
+                        const lt = g.latestTrade
+                        if (!lt) return '-'
+                        const qty = lt.quantity != null
+                          ? `${lt.quantity}${lt.type === 'STK' ? '股' : '口'}`
+                          : ''
+                        if (lt.type === 'STK') {
+                          const assignedTxt = lt.is_assigned ? '，被行權' : ''
+                          const priceTxt = lt.underlying_price != null
+                            ? ` (均價 ${lt.underlying_price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${assignedTxt})`
+                            : assignedTxt
+                          return (
+                            <>
+                              {qty && <span className="trade-groups-qty">{qty}</span>}
+                              {lt.underlying}{priceTxt}
+                            </>
+                          )
+                        }
+                        const right = lt.type === 'PUT' ? 'P' : 'C'
+                        const exp = lt.to_date
+                          ? (() => {
+                              const d = new Date(lt.to_date * 1000)
+                              return `${MONTHS[d.getMonth()]}${d.getDate()}'${String(d.getFullYear()).slice(-2)}`
+                            })()
+                          : ''
+                        return (
+                          <>
+                            {qty && <span className="trade-groups-qty">{qty}</span>}
+                            {lt.underlying} {exp} <span style={{ textDecoration: 'underline' }}>{lt.strike_price}{right}</span>
+                          </>
+                        )
+                      }
+                      const opBadge = (() => {
+                        const op = g.latestTrade?.operation || 'Open'
+                        const baseStyle: React.CSSProperties = {
+                          marginLeft: 8,
+                          padding: '0 6px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 500,
+                          lineHeight: '1.2'
+                        }
+                        if (op === 'Assigned') return <span style={{ ...baseStyle, background: '#fde2e2', color: '#c0392b' }}>{op}</span>
+                        if (op === 'Expired') return <span style={{ ...baseStyle, background: '#dcfce7', color: '#166534', borderRadius: 12 }}>{op}</span>
+                        if (op === 'Transferred') return <span style={{ ...baseStyle, background: '#e0f2fe', color: '#075985', borderRadius: 12 }}>{op}</span>
+                        if (op === 'Closed') return <span style={{ ...baseStyle, background: '#e5e7eb', color: '#374151', borderRadius: 12 }}>{op}</span>
+                        return <span style={{ ...baseStyle, color: '#9ca3af' }}>{op}</span>
+                      })()
+                      const numClass = (v: number, inverted = false) =>
+                        v === 0 ? '' : (inverted ? (v > 0 ? 'tg-neg' : 'tg-pos') : (v > 0 ? 'tg-pos' : 'tg-neg'))
+                      const fmt = (v: number, withSign = true) =>
+                        v === 0 ? '-' : (withSign && v > 0 ? '+' : '') + Math.round(v).toLocaleString('en-US')
+                      return (
+                        <React.Fragment key={g.name}>
+                          {isStatusBoundary && (
+                            <tr className="trade-groups-divider">
+                              <td colSpan={11} />
+                            </tr>
+                          )}
+                        <tr
+                          className="trade-groups-row"
+                          onClick={() => {
+                            // Open the website's /trade-groups page in the external
+                            // browser — registered window-open handler routes through
+                            // shell.openExternal.
+                            const base = d1Target === 'staging'
+                              ? 'https://staging.scott-agent.com'
+                              : 'https://scott-agent.com'
+                            window.open(`${base}/trade-groups`, '_blank')
+                          }}
+                          title="點擊在瀏覽器開啟交易明細"
+                        >
+                          <td style={{ textAlign: 'center', color: '#888' }}>{(accountGroups || []).length - idx}</td>
+                          <td style={{ fontWeight: 600, fontSize: 12 }}>{g.name}</td>
+                          <td style={{ textAlign: 'center' }}>{g.count}</td>
+                          <td style={{ textAlign: 'center' }}>{startDate}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {renderLatest()}{opBadge}
+                          </td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {g.holdingShares !== 0
+                              ? <>股{Math.abs(g.holdingShares).toLocaleString('en-US')}，<span style={{ textDecoration: 'underline' }}>均{g.holdingAvgPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span></>
+                              : '-'}
+                          </td>
+                          <td className={`tg-center ${numClass(g.netCashInflow)}`}>{fmt(g.netCashInflow)}</td>
+                          <td className={`tg-center ${numClass(g.openCostToClose, true)}`}>
+                            {g.openCostToClose === 0 ? '-' : (g.openCostToClose > 0 ? '-' : '+') + Math.abs(Math.round(g.openCostToClose)).toLocaleString('en-US')}
+                          </td>
+                          <td className={`tg-center ${numClass(g.stockProfit)}`}>{fmt(g.stockProfit)}</td>
+                          <td className={`tg-center ${numClass(g.profit)}`}>{fmt(g.profit)}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={g.status === 'Active' ? 'tg-status-active' : 'tg-status-terminated'}>
+                              {g.status === 'Active' ? '進行中' : '已終止'}
+                            </span>
+                          </td>
+                        </tr>
+                        </React.Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+          </>
         )}
       </div>
       <RollOptionDialog

@@ -281,6 +281,7 @@ function App(): React.JSX.Element {
               groupViewMode={activeTab === 'groups'}
               showOperationMode={showOperationMode}
               showAccountType={showAccountType}
+              d1Target={d1Target === 'production' ? 'production' : 'staging'}
             />
           )}
           {activeTab === 'option' && (
