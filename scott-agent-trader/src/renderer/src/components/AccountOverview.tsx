@@ -8,6 +8,7 @@ import type {
 } from '../hooks/useAccountStore'
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
+import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
 import ClosePositionDialog from './ClosePositionDialog'
@@ -180,6 +181,10 @@ export default function AccountOverview({
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
+  const [groupDetailDialog, setGroupDetailDialog] = useState<{
+    account: string
+    group: string
+  } | null>(null)
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
@@ -2010,7 +2015,7 @@ export default function AccountOverview({
             {displayAccounts.map((account) => (
               <div
                 key={account.accountId}
-                className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`}
+                className={`account-card${!filterAccount && selectedAccount === account.accountId ? ' account-card-selected' : ''}`}
                 // Suppress browser's default "select the word under cursor" on
                 // dblclick — otherwise text like "報酬率" gets highlighted every
                 // time the user double-clicks to toggle the filter.
@@ -2324,13 +2329,12 @@ export default function AccountOverview({
                       <table className="positions-table">
                         <thead>
                           <tr>
-                            <th style={{ width: filterAccount ? '22%' : '32%', textAlign: 'left' }}></th>
+                            <th style={{ width: '32%', textAlign: 'left' }}></th>
                             <th style={{ width: '11%' }}>持倉</th>
                             <th style={{ width: '11%' }}>到期</th>
                             <th style={{ width: '10%' }}>均價</th>
                             <th style={{ width: '11%' }}>現價</th>
                             <th style={{ width: '14%' }}>盈虧</th>
-                            {filterAccount && <th style={{ width: '10%' }}>群組</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -2371,6 +2375,23 @@ export default function AccountOverview({
                                     />
                                   )}
                                   {formatPositionSymbol(pos)}
+                                  {filterAccount && (() => {
+                                    const r =
+                                      pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
+                                    const gid =
+                                      optionGroups[
+                                        `${pos.account}|${pos.expiry}|${pos.strike}|${r}`
+                                      ]
+                                    if (!gid) return null
+                                    return (
+                                      <span
+                                        className="option-group-pill"
+                                        style={{ marginLeft: 6 }}
+                                      >
+                                        {gid}
+                                      </span>
+                                    )
+                                  })()}
                                 </td>
                                 <td
                                   style={{
@@ -2440,23 +2461,6 @@ export default function AccountOverview({
                                       <td>-</td>
                                       <td>-</td>
                                     </>
-                                  )
-                                })()}
-                                {filterAccount && (() => {
-                                  const r =
-                                    pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
-                                  const gid =
-                                    optionGroups[
-                                      `${pos.account}|${pos.expiry}|${pos.strike}|${r}`
-                                    ]
-                                  return (
-                                    <td style={{ textAlign: 'center' }}>
-                                      {gid ? (
-                                        <span className="option-group-pill">{gid}</span>
-                                      ) : (
-                                        '-'
-                                      )}
-                                    </td>
                                   )
                                 })()}
                               </tr>
@@ -3271,15 +3275,10 @@ export default function AccountOverview({
                         <tr
                           className="trade-groups-row"
                           onClick={() => {
-                            // Open the website's /trade-groups page in the external
-                            // browser — registered window-open handler routes through
-                            // shell.openExternal.
-                            const base = d1Target === 'staging'
-                              ? 'https://staging.scott-agent.com'
-                              : 'https://scott-agent.com'
-                            window.open(`${base}/trade-groups`, '_blank')
+                            if (!filterAccount) return
+                            setGroupDetailDialog({ account: filterAccount, group: g.name })
                           }}
-                          title="點擊在瀏覽器開啟交易明細"
+                          title="點擊開啟群組明細"
                         >
                           <td style={{ textAlign: 'center', color: '#888' }}>{(accountGroups || []).length - idx}</td>
                           <td style={{ fontWeight: 600, fontSize: 12 }}>{g.name}</td>
@@ -3415,6 +3414,16 @@ export default function AccountOverview({
             </div>
           </div>
         </div>
+      )}
+      {groupDetailDialog && (
+        <TradeGroupDialog
+          open={true}
+          onClose={() => setGroupDetailDialog(null)}
+          account={groupDetailDialog.account}
+          alias={accounts.find((a) => a.accountId === groupDetailDialog.account)?.alias || groupDetailDialog.account}
+          groupName={groupDetailDialog.group}
+          d1Target={d1Target}
+        />
       )}
       {showBatchOrder && (
         <div className="stock-order-dialog-overlay" onClick={() => setShowBatchOrder(false)}>

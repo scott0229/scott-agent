@@ -34,6 +34,37 @@ export interface AccountGroupsResponse {
   error?: string
 }
 
+export interface GroupDetailRow {
+  id: number
+  type: 'CALL' | 'PUT' | 'STK'
+  operation: 'Open' | 'Closed' | 'Assigned' | 'Expired' | 'Transferred'
+  open_date: number
+  settlement_date: number | null
+  quantity: number
+  underlying: string
+  strike_price?: number
+  to_date?: number | null
+  premium?: number | null
+  final_profit?: number | null
+  underlying_price?: number | null
+  is_assigned?: boolean
+  code?: string | null
+  cumulative_holdings?: number
+  cumulative_avg_price?: number | null
+  roll_profit?: number | null
+}
+export interface GroupDetailResponse {
+  groupName?: string
+  groupStatus?: string
+  rows: GroupDetailRow[]
+  summary: {
+    totalNetCashInflow: number
+    totalOpenCostToClose: number
+    totalPnL: number
+  }
+  error?: string
+}
+
 // IB API exposed to renderer via IPC
 const ibApi = {
   // Connection
@@ -158,6 +189,12 @@ const ibApi = {
     d1Target?: string
   ): Promise<{ optionGroups: Record<string, string> }> =>
     ipcRenderer.invoke('settings:getOptionGroups', accountIds, d1Target),
+  getGroupDetail: (
+    account: string,
+    group: string,
+    d1Target?: string
+  ): Promise<GroupDetailResponse> =>
+    ipcRenderer.invoke('settings:getGroupDetail', account, group, d1Target),
   getReturnRates: (
     accountIds: string[],
     d1Target?: string

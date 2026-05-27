@@ -503,6 +503,31 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Fetch a single trade-group's detail rows + summary from D1
+  ipcMain.handle(
+    'settings:getGroupDetail',
+    async (_event, account: string, group: string, d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'production'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-group-detail')
+        const params = new URLSearchParams({ account, group })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        const result = await res.json()
+        console.log(
+          '[settings:getGroupDetail] account=', account, 'group=', group,
+          'rows=', (result?.rows || []).length
+        )
+        return result
+      } catch (err) {
+        console.warn('[settings:getGroupDetail] error:', err)
+        return { rows: [], summary: { totalNetCashInflow: 0, totalOpenCostToClose: 0, totalPnL: 0 } }
+      }
+    }
+  )
+
   // Fetch return rates (報酬率) from D1 using TWR calculation
   ipcMain.handle(
     'performance:getReturnRates',

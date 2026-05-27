@@ -276,6 +276,13 @@ interface IBApi {
     d1Target?: string
   ) => Promise<{ optionGroups: Record<string, string> }>
 
+  // Single trade-group detail (rows + summary) for the dialog.
+  getGroupDetail: (
+    account: string,
+    group: string,
+    d1Target?: string
+  ) => Promise<import('./index').GroupDetailResponse>
+
   // Initial Costs (from STOCK_TRADES open_price)
   getInitialCosts: (
     accountIds: string[],
