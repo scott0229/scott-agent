@@ -227,7 +227,7 @@ export default function AccountOverview({
     setShowCloseOptionDialog(false)
   }, [connected])
 
-  // Reset filters when switching between 帳戶總覽 / 交易群組 tabs
+  // Reset filters when switching between 帳戶總覽 / 批次交易 tabs
   useEffect(() => {
     setFilterSymbol('')
     setFilterAccount('')
@@ -999,203 +999,9 @@ export default function AccountOverview({
         {groupViewMode ? (
           /* Group Cards View */
           symbolGroups.length === 0 && uncategorizedPositions.length === 0 ? (
-            <div className="empty-state">尚無群組，請選取期權後建立</div>
+            <div className="empty-state">尚無批次交易，請選取期權後建立</div>
           ) : (
             <div className="group-cards-grid" ref={groupGridRef}>
-              {/* 未歸類標的 virtual group */}
-              {filterGroupIndex === '' &&
-                filterGroupSymbol === '' &&
-                uncategorizedPositions.length > 0 &&
-                (() => {
-                  const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
-                  const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
-                  const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
-                    const isOpt = pos.secType === 'OPT'
-                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                    const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
-                    const ic = initialCosts[`${pos.account}|${pos.symbol}`]
-                    const costBasis = !isOpt && ic != null ? ic : pos.avgCost
-                    const pnl = isOpt
-                      ? (lp - costBasis / 100) * pos.quantity * 100
-                      : (lp - costBasis) * pos.quantity
-                    return sum + pnl
-                  }, 0)
-                  const renderUcRow = (
-                    pos: PositionData,
-                    idx: number,
-                    showDays: boolean
-                  ): React.ReactNode => {
-                    const isOption = pos.secType === 'OPT'
-                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                    const lastPrice = isOption
-                      ? (optionQuotes[key] ?? 0)
-                      : (quotes[pos.symbol] ?? 0)
-                    const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
-                    const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
-                    const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
-                    const pnl = isOption
-                      ? (lastPrice - costBasis / 100) * pos.quantity * 100
-                      : (lastPrice - costBasis) * pos.quantity
-                    const days = pos.expiry
-                      ? Math.max(
-                          0,
-                          Math.ceil(
-                            (new Date(
-                              pos.expiry.substring(0, 4) +
-                                '-' +
-                                pos.expiry.substring(4, 6) +
-                                '-' +
-                                pos.expiry.substring(6, 8) +
-                                'T00:00:00'
-                            ).getTime() -
-                              new Date().setHours(0, 0, 0, 0)) /
-                              (1000 * 60 * 60 * 24)
-                          )
-                        )
-                      : null
-                    return (
-                      <tr key={idx}>
-                        <td style={{ fontSize: '13px', textAlign: 'left' }}>
-                          {formatAccountName(
-                            accounts.find((a) => a.accountId === pos.account)?.alias || pos.account
-                          )}
-                        </td>
-                        <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
-                        {showDays && (
-                          <td
-                            style={
-                              days === 0
-                                ? { backgroundColor: '#fff0f0' }
-                                : days === 1
-                                  ? { backgroundColor: '#e8f4fd' }
-                                  : undefined
-                            }
-                          >
-                            {days !== null ? days : '-'}
-                          </td>
-                        )}
-                        <td
-                          style={{
-                            color: '#fff',
-                            fontWeight: 500,
-                            backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626'
-                          }}
-                        >
-                          {pos.quantity.toLocaleString()}
-                        </td>
-                        {!showDays &&
-                          (() => {
-                            const icKey = `${pos.account}|${pos.symbol}`
-                            const ic = initialCosts[icKey]
-                            return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
-                          })()}
-                        <td>{displayAvg.toFixed(2)}</td>
-                        <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
-                        <td
-                          style={{
-                            color: '#fff',
-                            fontWeight: 500,
-                            backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
-                          }}
-                        >
-                          {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                        </td>
-                      </tr>
-                    )
-                  }
-                  return (
-                    <div className="account-card">
-                      <div
-                        className="account-header"
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="account-id" style={{ color: '#2563eb' }}>
-                            未歸類標的
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            marginLeft: 'auto',
-                            marginRight: '12px',
-                            color: ucTotalPnl >= 0 ? '#1a6b3a' : '#c0392b'
-                          }}
-                        >
-                          {ucTotalPnl >= 0 ? '+' : ''}
-                          {Math.round(ucTotalPnl).toLocaleString()}
-                        </span>
-                      </div>
-                      {ucStkPos.length > 0 && (
-                        <div className="positions-section">
-                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
-                            <thead>
-                              <tr>
-                                <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
-                                <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
-                                <th style={{ width: '10%' }}>持倉</th>
-                                <th style={{ width: '11%' }}>成本</th>
-                                <th style={{ width: '11%' }}>調整後</th>
-                                <th style={{ width: '13%' }}>現價</th>
-                                <th style={{ width: '13%' }}>盈虧</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                      {ucOptPos.length > 0 && (
-                        <div className="positions-section">
-                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
-                            <thead>
-                              <tr>
-                                <th style={{ width: '12%', textAlign: 'left' }}>帳戶</th>
-                                <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                                <th style={{ width: '8%' }}>天數</th>
-                                <th style={{ width: '8%' }}>持倉</th>
-                                <th style={{ width: '11%' }}>均價</th>
-                                <th style={{ width: '11%' }}>現價</th>
-                                <th style={{ width: '11%' }}>盈虧</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {ucOptPos.map((pos, idx) => {
-                                const prevPos = idx > 0 ? ucOptPos[idx - 1] : null
-                                const needsSep =
-                                  prevPos &&
-                                  (prevPos.expiry !== pos.expiry || prevPos.strike !== pos.strike)
-                                return (
-                                  <React.Fragment key={idx}>
-                                    {needsSep && (
-                                      <tr>
-                                        <td
-                                          colSpan={7}
-                                          style={{
-                                            padding: 0,
-                                            height: '3px',
-                                            backgroundColor: '#fff3c4'
-                                          }}
-                                        />
-                                      </tr>
-                                    )}
-                                    {renderUcRow(pos, idx, true)}
-                                  </React.Fragment>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
               {symbolGroups.map((g, gIdx) => {
                 if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
@@ -1239,7 +1045,26 @@ export default function AccountOverview({
                   <div
                     key={g.id}
                     className={`account-card${selectedGroupId === g.id ? ' account-card-selected' : ''}`}
-                    onClick={() => setSelectedGroupId((prev) => (prev === g.id ? null : g.id))}
+                    onMouseDown={(e) => {
+                      if (e.detail > 1) e.preventDefault()
+                    }}
+                    onClick={() => {
+                      if (cardClickTimerRef.current) {
+                        clearTimeout(cardClickTimerRef.current)
+                      }
+                      cardClickTimerRef.current = setTimeout(() => {
+                        setSelectedGroupId((prev) => (prev === g.id ? null : g.id))
+                        cardClickTimerRef.current = null
+                      }, 220)
+                    }}
+                    onDoubleClick={() => {
+                      if (cardClickTimerRef.current) {
+                        clearTimeout(cardClickTimerRef.current)
+                        cardClickTimerRef.current = null
+                      }
+                      const target = String(gIdx)
+                      setFilterGroupIndex((prev) => (prev === target ? '' : target))
+                    }}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = 'move'
@@ -1872,6 +1697,201 @@ export default function AccountOverview({
                   </div>
                 )
               })}
+              {/* 未歸類標的 virtual group — rendered last so it sinks to the
+                  bottom of the masonry layout (after the numbered groups). */}
+              {filterGroupIndex === '' &&
+                filterGroupSymbol === '' &&
+                uncategorizedPositions.length > 0 &&
+                (() => {
+                  const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
+                  const ucOptPos = uncategorizedPositions.filter((p) => p.secType === 'OPT')
+                  const ucTotalPnl = uncategorizedPositions.reduce((sum, pos) => {
+                    const isOpt = pos.secType === 'OPT'
+                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                    const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
+                    const ic = initialCosts[`${pos.account}|${pos.symbol}`]
+                    const costBasis = !isOpt && ic != null ? ic : pos.avgCost
+                    const pnl = isOpt
+                      ? (lp - costBasis / 100) * pos.quantity * 100
+                      : (lp - costBasis) * pos.quantity
+                    return sum + pnl
+                  }, 0)
+                  const renderUcRow = (
+                    pos: PositionData,
+                    idx: number,
+                    showDays: boolean
+                  ): React.ReactNode => {
+                    const isOption = pos.secType === 'OPT'
+                    const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+                    const lastPrice = isOption
+                      ? (optionQuotes[key] ?? 0)
+                      : (quotes[pos.symbol] ?? 0)
+                    const displayAvg = isOption ? pos.avgCost / 100 : pos.avgCost
+                    const icCost = initialCosts[`${pos.account}|${pos.symbol}`]
+                    const costBasis = !isOption && icCost != null ? icCost : pos.avgCost
+                    const pnl = isOption
+                      ? (lastPrice - costBasis / 100) * pos.quantity * 100
+                      : (lastPrice - costBasis) * pos.quantity
+                    const days = pos.expiry
+                      ? Math.max(
+                          0,
+                          Math.ceil(
+                            (new Date(
+                              pos.expiry.substring(0, 4) +
+                                '-' +
+                                pos.expiry.substring(4, 6) +
+                                '-' +
+                                pos.expiry.substring(6, 8) +
+                                'T00:00:00'
+                            ).getTime() -
+                              new Date().setHours(0, 0, 0, 0)) /
+                              (1000 * 60 * 60 * 24)
+                          )
+                        )
+                      : null
+                    return (
+                      <tr key={idx}>
+                        <td style={{ fontSize: '13px', textAlign: 'left' }}>
+                          {formatAccountName(
+                            accounts.find((a) => a.accountId === pos.account)?.alias || pos.account
+                          )}
+                        </td>
+                        <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                        {showDays && (
+                          <td
+                            style={
+                              days === 0
+                                ? { backgroundColor: '#fff0f0' }
+                                : days === 1
+                                  ? { backgroundColor: '#e8f4fd' }
+                                  : undefined
+                            }
+                          >
+                            {days !== null ? days : '-'}
+                          </td>
+                        )}
+                        <td
+                          style={{
+                            color: '#fff',
+                            fontWeight: 500,
+                            backgroundColor: pos.quantity >= 0 ? '#1a6b3a' : '#dc2626'
+                          }}
+                        >
+                          {pos.quantity.toLocaleString()}
+                        </td>
+                        {!showDays &&
+                          (() => {
+                            const icKey = `${pos.account}|${pos.symbol}`
+                            const ic = initialCosts[icKey]
+                            return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                          })()}
+                        <td>{displayAvg.toFixed(2)}</td>
+                        <td>{lastPrice ? lastPrice.toFixed(2) : '-'}</td>
+                        <td
+                          style={{
+                            color: '#fff',
+                            fontWeight: 500,
+                            backgroundColor: pnl >= 0 ? '#1a6b3a' : '#dc2626'
+                          }}
+                        >
+                          {pnl.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                        </td>
+                      </tr>
+                    )
+                  }
+                  return (
+                    <div className="account-card">
+                      <div
+                        className="account-header"
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="account-id" style={{ color: '#2563eb' }}>
+                            未歸類標的
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            marginLeft: 'auto',
+                            marginRight: '12px',
+                            color: ucTotalPnl >= 0 ? '#1a6b3a' : '#c0392b'
+                          }}
+                        >
+                          {ucTotalPnl >= 0 ? '+' : ''}
+                          {Math.round(ucTotalPnl).toLocaleString()}
+                        </span>
+                      </div>
+                      {ucStkPos.length > 0 && (
+                        <div className="positions-section">
+                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
+                            <thead>
+                              <tr>
+                                <th style={{ width: '14%', textAlign: 'left' }}></th>
+                                <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
+                                <th style={{ width: '10%' }}>持倉</th>
+                                <th style={{ width: '11%' }}>成本</th>
+                                <th style={{ width: '11%' }}>調整後</th>
+                                <th style={{ width: '13%' }}>現價</th>
+                                <th style={{ width: '13%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {ucOptPos.length > 0 && (
+                        <div className="positions-section">
+                          <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
+                            <thead>
+                              <tr>
+                                <th style={{ width: '12%', textAlign: 'left' }}></th>
+                                <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
+                                <th style={{ width: '8%' }}>天數</th>
+                                <th style={{ width: '8%' }}>持倉</th>
+                                <th style={{ width: '11%' }}>均價</th>
+                                <th style={{ width: '11%' }}>現價</th>
+                                <th style={{ width: '11%' }}>盈虧</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ucOptPos.map((pos, idx) => {
+                                const prevPos = idx > 0 ? ucOptPos[idx - 1] : null
+                                const needsSep =
+                                  prevPos &&
+                                  (prevPos.expiry !== pos.expiry || prevPos.strike !== pos.strike)
+                                return (
+                                  <React.Fragment key={idx}>
+                                    {needsSep && (
+                                      <tr>
+                                        <td
+                                          colSpan={7}
+                                          style={{
+                                            padding: 0,
+                                            height: '3px',
+                                            backgroundColor: '#fff3c4'
+                                          }}
+                                        />
+                                      </tr>
+                                    )}
+                                    {renderUcRow(pos, idx, true)}
+                                  </React.Fragment>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
             </div>
           )
         ) : accounts.length === 0 ? (

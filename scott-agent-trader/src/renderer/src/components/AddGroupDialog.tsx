@@ -351,7 +351,7 @@ export default function AddGroupDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="stock-order-dialog-header">
-          <h2>{isEditMode ? '編輯交易群組' : '新增交易群組'}</h2>
+          <h2>{isEditMode ? '編輯批次交易' : '新增批次交易'}</h2>
           <button className="settings-close-btn" onClick={handleClose}>
             ✕
           </button>

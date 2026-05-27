@@ -19,7 +19,9 @@
       "Bash(git -C \"C:/Users/scott/my project/scott-agent\" diff*)",
       "Bash(git -C \"C:/Users/scott/my project/scott-agent\" log*)",
       "Bash(git -C \"C:/Users/scott/my project/scott-agent\" show*)",
-      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" ls-files*)"
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" ls-files*)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" status --short && echo *)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" status --short && git -C \"C:/Users/scott/my project/scott-agent\" diff*)"
     ]
   }
 }
