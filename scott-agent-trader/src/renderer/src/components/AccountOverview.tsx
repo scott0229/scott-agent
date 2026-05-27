@@ -1882,6 +1882,12 @@ export default function AccountOverview({
               <div
                 key={account.accountId}
                 className={`account-card${selectedAccount === account.accountId ? ' account-card-selected' : ''}`}
+                // Suppress browser's default "select the word under cursor" on
+                // dblclick — otherwise text like "報酬率" gets highlighted every
+                // time the user double-clicks to toggle the filter.
+                onMouseDown={(e) => {
+                  if (e.detail > 1) e.preventDefault()
+                }}
                 onClick={() => {
                   if (cardClickTimerRef.current) {
                     clearTimeout(cardClickTimerRef.current)

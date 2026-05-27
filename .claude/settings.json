@@ -4,7 +4,22 @@
       "Bash(node scripts/update-blog-*)",
       "Bash(node scripts/insert-blog-*)",
       "Bash(npx wrangler d1 execute:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && grep *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git status *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git diff *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git log *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git show *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git ls-files *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git rev-parse *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git remote *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && git fetch *)",
+      "Bash(cd \"C:/Users/scott/my project/scott-agent\" && npx tsc *)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" status*)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" diff*)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" log*)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" show*)",
+      "Bash(git -C \"C:/Users/scott/my project/scott-agent\" ls-files*)"
     ]
   }
 }
