@@ -283,8 +283,11 @@ function mapOptOperation(o: OptRow): 'Open' | 'Closed' | 'Assigned' | 'Expired' 
     if (raw === 'Assigned' || raw === '被行權') return 'Assigned';
     if (raw === 'Expired' || raw === '到期') return 'Expired';
     if (raw === 'Transferred' || raw === '轉倉') return 'Transferred';
-    if (o.status === 'Open' || !o.settlement_date) return 'Open';
-    return 'Closed';
+    // settlement_date is the ground truth: anything settled is Closed, even
+    // when OPTIONS.status still carries its DEFAULT 'Open' (many rows in D1
+    // never update the status column even after they settle).
+    if (o.settlement_date) return 'Closed';
+    return 'Open';
 }
 
 // Sequential roll-pair matching ported from GroupTradesDialog. Each open
