@@ -119,7 +119,18 @@ export default function HistoricalReportsPage() {
     const handleDeleteAccount = async (accountId: string) => {
         setDeletingId(accountId);
         try {
-            const res = await fetch(`/api/reports?accountId=${accountId}`, { method: 'DELETE' });
+            // 未分類 is a virtual UI bucket — its filenames carry no shared
+            // account-ID substring, so the server's LIKE filter would miss
+            // every row. Send explicit IDs from the grouped client state.
+            let url: string;
+            if (accountId === '未分類') {
+                const ids = (groupedReports[accountId] || []).map(r => r.id);
+                if (ids.length === 0) { setDeletingId(null); return; }
+                url = `/api/reports?ids=${ids.join(',')}`;
+            } else {
+                url = `/api/reports?accountId=${accountId}`;
+            }
+            const res = await fetch(url, { method: 'DELETE' });
             if (res.ok) {
                 toast({ title: '刪除成功', description: `已清空帳戶 ${accountId} 的報表資料` });
                 fetchData(false);

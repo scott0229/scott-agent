@@ -201,7 +201,7 @@ export function generateDailyTradesText(
         if (canCalc) {
             const rollProfit = totalPremiumOpened - totalCostToClose;
             const sign = rollProfit > 0 ? '+' : '';
-            rollSegments.push(`盈虧 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+            rollSegments.push(`收益 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
         }
 
         if (itmString) {
@@ -247,7 +247,7 @@ export function generateDailyTradesText(
                 const profit = (trade.price - trade.open_price) * Math.abs(transactionQty);
                 const profitNum = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(profit));
                 const sign = profit > 0 ? '+' : profit < 0 ? '-' : '';
-                profitStr = `，盈虧 ${sign}${profitNum}`;
+                profitStr = `，收益 ${sign}${profitNum}`;
             }
 
             stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均 ${priceNum}${profitStr})`);
@@ -318,7 +318,7 @@ export function generateDailyTradesText(
                 operationStr = firstTrade.operation;
             }
 
-            const profitStr = hasProfit && !hideProfit ? `, 盈虧 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+            const profitStr = hasProfit && !hideProfit ? `, 收益 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
             prefixLine = `${operationStr}${profitStr}\n`;
         }
 

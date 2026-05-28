@@ -293,10 +293,10 @@ export default function DailyTradesPage() {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
 
-                        // Sum every 盈虧 amount the report renders → day's total realized profit.
+                        // Sum every 收益 amount the report renders → day's total realized profit.
                         // Catches stock close PnLs, option close/expire/assigned PnLs, and roll PnLs.
                         let dayProfit = 0;
-                        for (const m of reportText.matchAll(/盈虧\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                        for (const m of reportText.matchAll(/收益\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
                             dayProfit += parseFloat(m[1].replace(/,/g, ''));
                         }
                         const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
@@ -330,10 +330,10 @@ export default function DailyTradesPage() {
                                     {reportText.split('\n').map((line, i, arr) => {
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
                                         
-                                        const parts = line.split(/((?:盈虧|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
+                                        const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
                                         const renderedParts = parts.map((part, pIndex) => {
-                                            if (part.startsWith('盈虧 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
-                                                const prefix = part.startsWith('盈虧 ') ? '盈虧 ' : part.startsWith('損益 ') ? '損益 ' : '權利金 ';
+                                            if (part.startsWith('收益 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
+                                                const prefix = part.startsWith('收益 ') ? '收益 ' : part.startsWith('損益 ') ? '損益 ' : '權利金 ';
                                                 const numStr = part.replace(prefix, '');
                                                 const num = parseFloat(numStr.replace(/,/g, ''));
                                                 const colorClass = num > 0 ? 'text-status-positive' : num < 0 ? 'text-status-negative' : '';

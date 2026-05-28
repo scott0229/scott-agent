@@ -43,6 +43,25 @@ export async function DELETE(request: NextRequest) {
         const db = await getDb(group);
 
         const accountId = request.nextUrl.searchParams.get('accountId');
+        const idsParam = request.nextUrl.searchParams.get('ids');
+
+        if (idsParam) {
+            // Used by the 未分類 bucket: those files share no filename pattern
+            // (e.g. `MULTI_20260527.htm` carries no account ID), so the LIKE
+            // branch below can't target them. Client passes explicit row IDs.
+            const ids = idsParam
+                .split(',')
+                .map(s => parseInt(s, 10))
+                .filter(n => Number.isInteger(n) && n > 0);
+            if (ids.length === 0) {
+                return NextResponse.json({ success: true, deleted: 0 });
+            }
+            const placeholders = ids.map(() => '?').join(',');
+            await db.prepare(`DELETE FROM report_archives WHERE id IN (${placeholders})`)
+                .bind(...ids)
+                .run();
+            return NextResponse.json({ success: true, deleted: ids.length });
+        }
 
         if (accountId) {
             await db.prepare('DELETE FROM report_archives WHERE filename LIKE ?')
