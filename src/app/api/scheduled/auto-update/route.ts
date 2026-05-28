@@ -158,11 +158,33 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Warm up the worker. Cold-start CPU + render CPU occasionally
+        // overflows the per-request budget and surfaces as Cloudflare
+        // Error 1102 ("Worker exceeded resource limits"). Firing N parallel
+        // GETs to /login from inside the cron handler keeps the OpenNext
+        // SSR path hot — and because each fetch goes through the public
+        // edge, Cloudflare may land them on different isolates, warming
+        // more than one region per tick. Cache-bust with the timestamp so
+        // we hit the SSR path every time, not a cached HTML response.
+        const warmupOrigin = new URL(req.url).origin;
+        const warmupTs = Date.now();
+        const warmupResults = await Promise.allSettled(
+            Array.from({ length: 6 }, (_, i) =>
+                fetch(`${warmupOrigin}/login?warmup=${warmupTs}-${i}`, {
+                    signal: AbortSignal.timeout(8000),
+                    headers: { 'Cache-Control': 'no-cache' },
+                })
+            )
+        );
+        const warmupOk = warmupResults.filter(r => r.status === 'fulfilled' && r.value.ok).length;
+        console.log(`[Auto Update] Worker warm-up: ${warmupOk}/${warmupResults.length} OK`);
+
         const response = {
             success: true,
             currentTime,
             message: `Checked ${users.length} users, updated ${updatedUsers.length} users`,
             updatedUsers,
+            warmup: { sent: warmupResults.length, ok: warmupOk },
             timestamp: now.toISOString()
         };
 
