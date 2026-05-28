@@ -64,11 +64,11 @@ function buildBccExtras(
                 .replace(/^交易日期 : [^\n]*\n-+\n/, '')
                 .trim();
             if (txt) {
-                // Sum every 收益 amount the report renders → day's total
-                // realized profit. Same pattern as the daily-trades card
+                // Sum every 收益 AND 權利金 amount the report renders → day's
+                // total realized profit. Same pattern as the daily-trades card
                 // header so the BCC extras header agrees with the UI.
                 let dayProfit = 0;
-                for (const m of txt.matchAll(/收益\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                for (const m of txt.matchAll(/(?:收益|權利金)\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
                     dayProfit += parseFloat(m[1].replace(/,/g, ''));
                 }
                 const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;

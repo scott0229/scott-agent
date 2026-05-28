@@ -293,10 +293,12 @@ export default function DailyTradesPage() {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
 
-                        // Sum every 收益 amount the report renders → day's total realized profit.
-                        // Catches stock close PnLs, option close/expire/assigned PnLs, and roll PnLs.
+                        // Sum every 收益 AND 權利金 amount the report renders → day's total
+                        // realized profit. 收益 catches stock close PnLs, option close /
+                        // expire / assigned PnLs, and roll PnLs. 權利金 catches premium
+                        // received from 開新倉 lines (cash in on a new short option).
                         let dayProfit = 0;
-                        for (const m of reportText.matchAll(/收益\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                        for (const m of reportText.matchAll(/(?:收益|權利金)\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
                             dayProfit += parseFloat(m[1].replace(/,/g, ''));
                         }
                         const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
