@@ -63,7 +63,17 @@ function buildBccExtras(
             const txt = generateDailyTradesText(group, dailyTrades.date, dailyTrades.marketData)
                 .replace(/^交易日期 : [^\n]*\n-+\n/, '')
                 .trim();
-            if (txt) parts.push(`當日操作\n${txt}`);
+            if (txt) {
+                // Sum every 收益 amount the report renders → day's total
+                // realized profit. Same pattern as the daily-trades card
+                // header so the BCC extras header agrees with the UI.
+                let dayProfit = 0;
+                for (const m of txt.matchAll(/收益\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                    dayProfit += parseFloat(m[1].replace(/,/g, ''));
+                }
+                const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                parts.push(`當日操作 - 總收益 ${profitStr}\n${txt}`);
+            }
         }
     }
     // Join with a dash separator so the HTML renderer collapses it into
