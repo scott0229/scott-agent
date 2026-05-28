@@ -291,10 +291,18 @@ export default function AccountOverview({
   // means the effect below skips re-fires when accounts gets a new array
   // reference but the alias text is unchanged (IB pushes a tick → new
   // accounts ref → same alias).
+  //
+  // Guard: only emit an alias matching `name.digits` (the USERS.user_id
+  // shape, e.g. "adair.600"). When IB hasn't streamed the alias yet,
+  // acct.alias is empty and we'd fall through to acct.accountId (raw
+  // "U1234567") which the server can't resolve → flashes 404. Returning
+  // '' here suppresses the fetch until a real alias lands.
   const filteredAlias = useMemo(() => {
     if (!filterAccount) return ''
     const acct = accounts.find((a) => a.accountId === filterAccount)
-    return acct ? formatAccountName(acct.alias || acct.accountId) : ''
+    if (!acct) return ''
+    const candidate = formatAccountName(acct.alias || acct.accountId)
+    return /^[a-zA-Z]+\.\d+$/.test(candidate) ? candidate : ''
   }, [filterAccount, accounts])
 
   // Fetch the website's 交易群組 aggregation when the user filters down to one

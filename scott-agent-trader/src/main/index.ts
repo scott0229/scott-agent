@@ -577,6 +577,10 @@ function setupIpcHandlers(): void {
     'trader:getAccountGroups',
     async (_event, alias: string, year: number, d1Target?: string) => {
       try {
+        // Wait for settings:detectGroup to finish — otherwise users on the
+        // `scott` DB get a 404 here because we'd query `advisor` (the default)
+        // before detection lands. groupReady has a 5s timeout fallback.
+        await groupReady
         const targetLabel = d1Target || 'production'
         const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
         const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-account-groups')
@@ -590,7 +594,13 @@ function setupIpcHandlers(): void {
         })
         if (!res.ok) {
           const text = await res.text()
-          console.warn('[trader:getAccountGroups] http', res.status, text.slice(0, 200))
+          console.warn(
+            '[trader:getAccountGroups] http',
+            res.status,
+            'alias=', JSON.stringify(alias),
+            'group=', detectedGroup,
+            'body=', text.slice(0, 200)
+          )
           return { groups: [], error: `HTTP ${res.status}` }
         }
         return await res.json()

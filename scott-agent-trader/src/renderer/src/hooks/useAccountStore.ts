@@ -148,9 +148,14 @@ export function useAccountStore(
       setLoading(false)
 
       if (accountIds.length > 0) {
-        window.ibApi
-          .getAccountAliases(accountIds, port)
-          .then((aliasMap) => {
+        // Try once, then retry the still-missing accounts up to 2 more times.
+        // requestSingleAccountAlias in main has a 5s timeout per account and
+        // IB sometimes drops AccountOrGroup when 10+ accounts request in
+        // parallel, leaving cards showing the raw UXXXXX accountId.
+        const fetchAndApply = async (ids: string[]): Promise<string[]> => {
+          let stillMissing: string[] = []
+          try {
+            const aliasMap = await window.ibApi.getAccountAliases(ids, port)
             aliasRef.current = { ...aliasRef.current, ...aliasMap }
             onAliasUpdate?.(aliasMap)
             setAccounts((prev) =>
@@ -159,8 +164,21 @@ export function useAccountStore(
                 alias: aliasMap[a.accountId] || a.alias
               }))
             )
-          })
-          .catch(() => {})
+            stillMissing = ids.filter((id) => !aliasMap[id])
+          } catch {
+            stillMissing = ids
+          }
+          return stillMissing
+        }
+        ;(async () => {
+          let pending = accountIds
+          for (let attempt = 0; attempt < 3 && pending.length > 0; attempt++) {
+            if (attempt > 0) {
+              await new Promise((r) => setTimeout(r, 3000))
+            }
+            pending = await fetchAndApply(pending)
+          }
+        })()
       }
 
       const stockSymbols = [
