@@ -396,6 +396,57 @@ export function GroupTradesDialog({
         }
     });
 
+    // Pass 3 — 1-to-N split: an unconsumed close that fed multiple smaller
+    // opens. Common case: closed -14 → opened -2 + opened -12 the same day.
+    // Find a subset of still-unmatched same-key opens (within the close's own
+    // settlement-date window) whose quantities sum to the close's qty, and
+    // split the close's cost proportionally across them. Pro-rated by qty
+    // because cost-per-contract is the natural unit — splitting on premium
+    // would skew the gain on whichever leg happened to roll at a higher
+    // strike.
+    closeEvents.forEach(ce => {
+        if (ce.consumed) return;
+
+        const WINDOW_DAYS = 7;
+        const latestAllowed = ce.settlement_date + WINDOW_DAYS * 86400;
+        const candidates = openEvents.filter(ot =>
+            !rollProfitsMap.has(ot.id) &&
+            ot.id !== ce.id &&
+            `${ot.underlying}_${ot.type}` === ce.key &&
+            ot.open_date >= ce.settlement_date &&
+            ot.open_date <= latestAllowed
+        );
+
+        if (candidates.length === 0 || candidates.length > 12) return;
+
+        const target = ce.qty;
+        let bestSubset: typeof candidates | null = null;
+        for (let mask = 1; mask < (1 << candidates.length); mask++) {
+            let sum = 0;
+            const subset: typeof candidates = [];
+            for (let j = 0; j < candidates.length; j++) {
+                if (mask & (1 << j)) {
+                    subset.push(candidates[j]);
+                    sum += candidates[j].quantity;
+                }
+            }
+            if (sum === target) {
+                if (!bestSubset || subset.length < bestSubset.length) {
+                    bestSubset = subset;
+                }
+            }
+        }
+
+        if (bestSubset) {
+            const totalQty = bestSubset.reduce((s, ot) => s + ot.quantity, 0);
+            bestSubset.forEach(ot => {
+                const proRatedCost = ce.cost * (ot.quantity / totalQty);
+                rollProfitsMap.set(ot.id, (ot.premium as number) - proRatedCost);
+            });
+            ce.consumed = true;
+        }
+    });
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1150px]' : 'sm:max-w-[1400px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
