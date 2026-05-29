@@ -504,26 +504,29 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
             <div className="flex-1 min-h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
                             dataKey="label"
-                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
                             interval="preserveStartEnd"
                             minTickGap={20}
                         />
                         <YAxis
-                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
                             tickFormatter={(v) => v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                             width={56}
                         />
-                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="2 2" />
+                        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         <Tooltip
                             contentStyle={{
-                                background: 'hsl(var(--popover))',
-                                border: '1px solid hsl(var(--border))',
+                                background: 'var(--popover)',
+                                border: '1px solid var(--border)',
                                 borderRadius: '6px',
                                 fontSize: '12px',
+                                color: 'var(--foreground)',
                             }}
+                            labelStyle={{ color: 'var(--foreground)' }}
+                            itemStyle={{ color: 'var(--foreground)' }}
                             labelFormatter={(_label, payload) => payload?.[0]?.payload?.date || ''}
                             formatter={(value: number) => {
                                 const sign = value > 0 ? '+' : '';
@@ -533,20 +536,20 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                         <Line
                             type="monotone"
                             dataKey="profit"
-                            stroke="hsl(var(--primary))"
+                            stroke="var(--chart-blue, #60a5fa)"
                             strokeWidth={2}
                             dot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
                                 const { cx, cy, payload } = props;
                                 if (cx == null || cy == null || !payload) return <g />;
                                 const isToday = payload.date === currentDate;
                                 const fill = payload.profit > 0
-                                    ? 'hsl(var(--status-positive))'
+                                    ? 'var(--status-positive)'
                                     : payload.profit < 0
-                                        ? 'hsl(var(--status-negative))'
-                                        : 'hsl(var(--muted-foreground))';
-                                return <circle cx={cx} cy={cy} r={isToday ? 5 : 3} fill={fill} stroke={isToday ? 'hsl(var(--primary))' : 'none'} strokeWidth={isToday ? 2 : 0} />;
+                                        ? 'var(--status-negative)'
+                                        : 'var(--muted-foreground)';
+                                return <circle cx={cx} cy={cy} r={isToday ? 6 : 4} fill={fill} stroke={isToday ? 'var(--foreground)' : 'none'} strokeWidth={isToday ? 2 : 0} />;
                             }}
-                            activeDot={{ r: 6 }}
+                            activeDot={{ r: 7 }}
                             isAnimationActive={false}
                         />
                     </LineChart>
