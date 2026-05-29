@@ -309,8 +309,24 @@ export default function DailyTradesPage() {
                         const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                         const profitColor = dayProfit > 0 ? 'text-status-positive' : dayProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
+                        const cardUid = userGroup.user?.user_id as string | undefined;
+                        const isFilteredToThis = !!cardUid && selectedAccount === cardUid;
                         return (
-                            <div key={userGroup.user.id} className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
+                            <div
+                                key={userGroup.user.id}
+                                className={cn(
+                                    "bg-card rounded-lg border shadow-sm p-4 flex flex-col transition-colors",
+                                    isFilteredToThis && "ring-2 ring-primary/40"
+                                )}
+                                onDoubleClick={(e) => {
+                                    // Double-click anywhere on the card toggles single-account
+                                    // filter for this user. Double-clicking again (while
+                                    // already filtered to this card) clears the filter.
+                                    if (!cardUid) return;
+                                    e.preventDefault();
+                                    setSelectedAccount(isFilteredToThis ? 'all' : cardUid);
+                                }}
+                            >
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-semibold text-sm whitespace-nowrap">
                                         {userName}
@@ -328,6 +344,7 @@ export default function DailyTradesPage() {
                                                 navigator.clipboard.writeText(fullText);
                                                 toast({ title: "已複製", description: `${userName} 的交易記錄已複製` });
                                             }}
+                                            onDoubleClick={(e) => e.stopPropagation()}
                                         >
                                             <Copy className="h-3.5 w-3.5" />
                                         </Button>
