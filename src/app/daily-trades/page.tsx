@@ -17,6 +17,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+    LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    CartesianGrid, ReferenceLine,
+} from 'recharts';
 
 export default function DailyTradesPage() {
     const { selectedYear } = useYearFilter();
@@ -28,6 +32,8 @@ export default function DailyTradesPage() {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<string>('all');
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<{ date: string; profit: number }[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -84,7 +90,7 @@ export default function DailyTradesPage() {
 
     useEffect(() => {
         if (!date) return;
-        
+
         const fetchData = async () => {
             setLoading(true);
             try {
@@ -106,6 +112,37 @@ export default function DailyTradesPage() {
         };
         fetchData();
     }, [date, selectedYear]);
+
+    // Single-account mode chart: 30-day option-收益 history for the
+    // selected user. Skip the fetch in 'all' mode — chart is hidden.
+    useEffect(() => {
+        if (selectedAccount === 'all' || !date) {
+            setHistoryData([]);
+            return;
+        }
+        let cancelled = false;
+        const fetchHistory = async () => {
+            setHistoryLoading(true);
+            try {
+                const url = `/api/daily-trades/history?user_id=${encodeURIComponent(selectedAccount)}&endDate=${date}&days=30&year=${selectedYear}`;
+                const res = await fetch(url);
+                if (cancelled) return;
+                if (res.ok) {
+                    const json = await res.json();
+                    setHistoryData(json.history || []);
+                } else {
+                    setHistoryData([]);
+                }
+            } catch (err) {
+                console.error('Failed to fetch history', err);
+                if (!cancelled) setHistoryData([]);
+            } finally {
+                if (!cancelled) setHistoryLoading(false);
+            }
+        };
+        fetchHistory();
+        return () => { cancelled = true; };
+    }, [selectedAccount, date, selectedYear]);
 
     const changeDate = (offset: number) => {
         if (!date) return;
@@ -283,12 +320,38 @@ export default function DailyTradesPage() {
                     ))}
                 </div>
             ) : filteredData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
-                    <CalendarIcon className="h-12 w-12 mb-4 opacity-20" />
-                    <p className="text-lg">這個日期沒有任何交易記錄</p>
-                </div>
+                selectedAccount !== 'all' ? (
+                    // Single-account mode with no trades on this date: still surface the
+                    // 30-day chart on the right so the user keeps context while scrubbing
+                    // through quiet days.
+                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,360px)_1fr] gap-4">
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
+                            <CalendarIcon className="h-10 w-10 mb-3 opacity-20" />
+                            <p className="text-sm">這個日期沒有任何交易記錄</p>
+                        </div>
+                        <DailyProfitHistoryChart
+                            data={historyData}
+                            loading={historyLoading}
+                            currentDate={date}
+                        />
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
+                        <CalendarIcon className="h-12 w-12 mb-4 opacity-20" />
+                        <p className="text-lg">這個日期沒有任何交易記錄</p>
+                    </div>
+                )
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                // Single-account mode → 2-col layout: card on the left, 30-day option-收益
+                // line chart on the right. Use a fixed ~360px left column so the chart
+                // gets the wide canvas; fall back to a single column on narrow viewports.
+                // 'All' mode keeps the original 1→4 col responsive grid.
+                <div className={cn(
+                    "gap-4",
+                    selectedAccount !== 'all' && filteredData.length === 1
+                        ? "grid grid-cols-1 lg:grid-cols-[minmax(280px,360px)_1fr]"
+                        : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                )}>
                     {filteredData.map((userGroup: any) => {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
@@ -381,8 +444,114 @@ export default function DailyTradesPage() {
                             </div>
                         );
                     })}
+                    {selectedAccount !== 'all' && filteredData.length === 1 && (
+                        <DailyProfitHistoryChart
+                            data={historyData}
+                            loading={historyLoading}
+                            currentDate={date}
+                        />
+                    )}
                 </div>
             )}
+        </div>
+    );
+}
+
+interface DailyProfitHistoryChartProps {
+    data: { date: string; profit: number }[];
+    loading: boolean;
+    currentDate: string;
+}
+
+function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHistoryChartProps) {
+    if (loading) {
+        return (
+            <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
+                <div className="text-sm font-semibold mb-2">過去 30 個交易日收益</div>
+                <Skeleton className="flex-1 h-[280px]" />
+            </div>
+        );
+    }
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
+                <div className="text-sm font-semibold mb-2">過去 30 個交易日收益</div>
+                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-12">
+                    沒有歷史資料
+                </div>
+            </div>
+        );
+    }
+
+    // X-axis is the MM-DD slice of YYYY-MM-DD; full date stays on the tooltip.
+    const chartData = data.map(d => ({
+        ...d,
+        label: d.date.substring(5),
+    }));
+    const totalProfit = data.reduce((s, d) => s + d.profit, 0);
+    const totalStr = `${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+    const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
+
+    return (
+        <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
+            <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold">過去 30 個交易日收益</div>
+                <div className="text-xs">
+                    <span className="text-muted-foreground">期間合計 </span>
+                    <span className={cn("font-semibold", totalColor)}>{totalStr}</span>
+                </div>
+            </div>
+            <div className="flex-1 min-h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis
+                            dataKey="label"
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            interval="preserveStartEnd"
+                            minTickGap={20}
+                        />
+                        <YAxis
+                            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            tickFormatter={(v) => v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                            width={56}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="2 2" />
+                        <Tooltip
+                            contentStyle={{
+                                background: 'hsl(var(--popover))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                            }}
+                            labelFormatter={(_label, payload) => payload?.[0]?.payload?.date || ''}
+                            formatter={(value: number) => {
+                                const sign = value > 0 ? '+' : '';
+                                return [`${sign}${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`, '收益'];
+                            }}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="profit"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={2}
+                            dot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
+                                const { cx, cy, payload } = props;
+                                if (cx == null || cy == null || !payload) return <g />;
+                                const isToday = payload.date === currentDate;
+                                const fill = payload.profit > 0
+                                    ? 'hsl(var(--status-positive))'
+                                    : payload.profit < 0
+                                        ? 'hsl(var(--status-negative))'
+                                        : 'hsl(var(--muted-foreground))';
+                                return <circle cx={cx} cy={cy} r={isToday ? 5 : 3} fill={fill} stroke={isToday ? 'hsl(var(--primary))' : 'none'} strokeWidth={isToday ? 2 : 0} />;
+                            }}
+                            activeDot={{ r: 6 }}
+                            isAnimationActive={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 }
