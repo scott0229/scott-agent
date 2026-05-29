@@ -484,13 +484,31 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
     }
 
     // X-axis is the MM-DD slice of YYYY-MM-DD; full date stays on the tooltip.
+    // Y-axis uses a signed-sqrt transform so days at ±10 don't get crushed flat
+    // by days at ±2,000. Linear scale loses every quiet day to a single peak;
+    // log can't span zero or negatives. sgn(x)·√|x| is symmetric, monotone, and
+    // continuous through zero, so the line stays visually sensible at both
+    // extremes. Ticks below are chosen in raw $ space and then projected.
+    const sgnSqrt = (x: number) => Math.sign(x) * Math.sqrt(Math.abs(x));
     const chartData = data.map(d => ({
         ...d,
         label: d.date.substring(5),
+        profitSqrt: sgnSqrt(d.profit),
     }));
     const totalProfit = data.reduce((s, d) => s + d.profit, 0);
     const totalStr = `${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
     const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
+
+    // Pick raw $ tick magnitudes that bracket the data, then project into
+    // signed-sqrt space so the axis labels still read in dollars.
+    const CANDIDATE_MAGS = [10, 30, 100, 300, 1000, 3000, 10000, 30000];
+    const dataMaxAbs = Math.max(1, ...data.map(d => Math.abs(d.profit)));
+    const usefulMags = CANDIDATE_MAGS.filter(m => m <= dataMaxAbs * 1.5);
+    const tickPoolRaw = usefulMags.length > 0
+        ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
+        : [-100, 0, 100];
+    const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
+    const yDomain: [number, number] = [tickPoolSqrt[0], tickPoolSqrt[tickPoolSqrt.length - 1]];
 
     return (
         <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
@@ -513,12 +531,21 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                         />
                         <YAxis
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
-                            tickFormatter={(v) => v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                            ticks={tickPoolSqrt}
+                            domain={yDomain}
+                            tickFormatter={(v) => {
+                                // Invert the signed-sqrt and round to the nearest 10
+                                // so projected ticks always read as clean $ values.
+                                const raw = Math.sign(v) * v * v;
+                                return Math.round(raw / 10) * 10 === 0
+                                    ? '0'
+                                    : (Math.round(raw / 10) * 10).toLocaleString('en-US');
+                            }}
                             width={56}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         <Tooltip
-                            position={{ x: 180, y: 8 }}
+                            position={{ x: 80, y: 80 }}
                             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                             contentStyle={{
                                 background: 'var(--popover)',
@@ -530,14 +557,17 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                             labelStyle={{ color: 'var(--foreground)' }}
                             itemStyle={{ color: 'var(--foreground)' }}
                             labelFormatter={(_label, payload) => payload?.[0]?.payload?.date || ''}
-                            formatter={(value: number) => {
-                                const sign = value > 0 ? '+' : '';
-                                return [`${sign}${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`, '收益'];
+                            formatter={(_value: number, _name, props: { payload?: { profit?: number } }) => {
+                                // Tooltip pulls the raw $ value off the payload rather than
+                                // the line's sqrt-space value so users still see real money.
+                                const raw = props?.payload?.profit ?? 0;
+                                const sign = raw > 0 ? '+' : '';
+                                return [`${sign}${raw.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`, '收益'];
                             }}
                         />
                         <Line
                             type="monotone"
-                            dataKey="profit"
+                            dataKey="profitSqrt"
                             stroke="var(--chart-blue, #60a5fa)"
                             strokeWidth={2}
                             dot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
