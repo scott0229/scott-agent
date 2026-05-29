@@ -40,6 +40,9 @@ export default function DailyTradesPage() {
     // so the user can keep scrubbing without losing their place.
     const [historyEndDate, setHistoryEndDate] = useState<string>('');
     const chartClickRef = useRef(false);
+    // Suppress the skeleton loader on chart-driven date changes — swapping
+    // cards mid-scrub should feel instant, not a fresh page load.
+    const silentDateRef = useRef(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -97,8 +100,11 @@ export default function DailyTradesPage() {
     useEffect(() => {
         if (!date) return;
 
+        const silent = silentDateRef.current;
+        silentDateRef.current = false;
+
         const fetchData = async () => {
-            setLoading(true);
+            if (!silent) setLoading(true);
             try {
                 const res = await fetch(`/api/daily-trades?date=${date}&year=${selectedYear}`);
                 if (res.ok) {
@@ -113,7 +119,7 @@ export default function DailyTradesPage() {
                 console.error(err);
                 setData([]);
             } finally {
-                setLoading(false);
+                if (!silent) setLoading(false);
             }
         };
         fetchData();
@@ -353,8 +359,10 @@ export default function DailyTradesPage() {
                             currentDate={date}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
-                                // sync effect skips updating historyEndDate.
+                                // sync effect skips updating historyEndDate, and the
+                                // fetch effect skips the skeleton loader.
                                 chartClickRef.current = true;
+                                silentDateRef.current = true;
                                 setDate(d);
                             }}
                         />
@@ -472,8 +480,10 @@ export default function DailyTradesPage() {
                             currentDate={date}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
-                                // sync effect skips updating historyEndDate.
+                                // sync effect skips updating historyEndDate, and the
+                                // fetch effect skips the skeleton loader.
                                 chartClickRef.current = true;
+                                silentDateRef.current = true;
                                 setDate(d);
                             }}
                         />
