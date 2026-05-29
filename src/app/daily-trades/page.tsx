@@ -544,6 +544,9 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                 // so projected ticks always read as clean $ values.
                                 const raw = Math.sign(v) * v * v;
                                 const rounded = Math.round(raw / 10) * 10;
+                                // Drop the bottom-most tick label — its baseline
+                                // collides with the x-axis date row underneath.
+                                if (rounded === Math.round(tickPoolRaw[0] / 10) * 10) return '';
                                 if (rounded === 0) return '0';
                                 return rounded.toLocaleString('en-US');
                             }}
