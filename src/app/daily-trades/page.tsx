@@ -530,7 +530,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                     <span className={cn("font-semibold", totalColor)}>{totalStr}</span>
                 </div>
             </div>
-            <div className="flex-1 min-h-[300px]">
+            <div className="flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
                 <ResponsiveContainer width="100%" height="100%" onResize={(w) => setChartWidth(w)}>
                     <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
