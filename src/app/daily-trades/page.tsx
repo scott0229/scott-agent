@@ -350,6 +350,7 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
+                            currentDate={date}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate.
@@ -468,6 +469,7 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
+                            currentDate={date}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate.
@@ -486,6 +488,10 @@ interface DailyProfitHistoryChartProps {
     data: { date: string; profit: number }[];
     loading: boolean;
     onSelectDate?: (date: string) => void;
+    /** YYYY-MM-DD currently shown in the left card; chart draws a persistent
+     *  vertical reference line at that date so the user sees which point the
+     *  card matches without hovering. */
+    currentDate?: string;
 }
 
 // Recharts' Tooltip emits the active payload through its content prop. We
@@ -511,7 +517,7 @@ function TooltipBridge({
     return null;
 }
 
-function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHistoryChartProps) {
+function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
     // hover is active — so the user always sees a date + 收益 number even
@@ -654,6 +660,18 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHis
                             width={48}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {/* Persistent crosshair at the currently-shown date so
+                            users see at a glance which point the left card matches.
+                            Only render when that date is actually in the chart's
+                            window — otherwise Recharts draws it at the edge. */}
+                        {currentDate && data.some(d => d.date === currentDate) && (
+                            <ReferenceLine
+                                x={currentDate.substring(5)}
+                                stroke="var(--foreground)"
+                                strokeDasharray="3 3"
+                                strokeOpacity={0.55}
+                            />
+                        )}
                         {/* Tooltip renders the dashed crosshair and, via TooltipBridge,
                             relays the active point up to hoveredPoint state. The visible
                             readout is the always-on panel above; TooltipBridge itself
