@@ -507,12 +507,12 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
     // signed-sqrt space so the axis labels still read in dollars.
-    const CANDIDATE_MAGS = [500, 1000, 3000, 10000, 30000];
+    const CANDIDATE_MAGS = [1000, 3000, 10000, 30000];
     const dataMaxAbs = Math.max(1, ...data.map(d => Math.abs(d.profit)));
     const usefulMags = CANDIDATE_MAGS.filter(m => m <= dataMaxAbs * 1.5);
     const tickPoolRaw = usefulMags.length > 0
         ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
-        : [-500, 0, 500];
+        : [-1000, 0, 1000];
     const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
     const yDomain: [number, number] = [tickPoolSqrt[0], tickPoolSqrt[tickPoolSqrt.length - 1]];
 
