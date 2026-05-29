@@ -580,10 +580,18 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHis
                     <LineChart
                         data={chartData}
                         margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-                        onClick={(state: { activePayload?: { payload?: { date: string } }[] }) => {
-                            // Snap the page's selected date to the clicked point so
-                            // the card on the left jumps to that day's trades.
-                            const d = state?.activePayload?.[0]?.payload?.date;
+                        onClick={(state: { activeTooltipIndex?: number; activePayload?: { payload?: { date: string } }[] }) => {
+                            // Snap the page's selected date to the clicked point so the
+                            // card on the left jumps to that day's trades. Prefer the
+                            // payload route (full row), fall back to the index into
+                            // chartData — Recharts populates one or the other depending
+                            // on whether the click landed exactly on a dot vs the line.
+                            const fromPayload = state?.activePayload?.[0]?.payload?.date;
+                            const idx = state?.activeTooltipIndex;
+                            const fromIndex = typeof idx === 'number' && idx >= 0 && idx < chartData.length
+                                ? chartData[idx].date
+                                : undefined;
+                            const d = fromPayload ?? fromIndex;
                             if (d) onSelectDate?.(d);
                         }}
                         style={{ cursor: onSelectDate ? 'pointer' : 'default' }}
@@ -642,7 +650,18 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHis
                                         : 'var(--muted-foreground)';
                                 return <circle cx={cx} cy={cy} r={4} fill={fill} />;
                             }}
-                            activeDot={false}
+                            activeDot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
+                                // Subtle hover state: same color fill, grown from r=4
+                                // to r=6, with a thin foreground ring as a click hint.
+                                const { cx, cy, payload } = props;
+                                if (cx == null || cy == null || !payload) return <g />;
+                                const fill = payload.profit > 0
+                                    ? 'var(--status-positive)'
+                                    : payload.profit < 0
+                                        ? 'var(--status-negative)'
+                                        : 'var(--muted-foreground)';
+                                return <circle cx={cx} cy={cy} r={6} fill={fill} stroke="var(--foreground)" strokeWidth={1.5} />;
+                            }}
                             isAnimationActive={false}
                         />
                     </LineChart>
