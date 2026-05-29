@@ -464,11 +464,12 @@ interface DailyProfitHistoryChartProps {
 }
 
 function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHistoryChartProps) {
-    // ResponsiveContainer reports its rendered pixel width via onResize.
-    // We feed that into Tooltip's `position` prop so the tooltip can sit
-    // horizontally centered without chasing the cursor.
-    const [chartWidth, setChartWidth] = useState(0);
-    const TOOLTIP_HALF = 80;
+    // Track which data point is currently hovered. The info panel at the
+    // top-left renders the hovered point — or the most recent day when no
+    // hover is active — so the user always sees a date + 收益 number even
+    // before they interact. Recharts' built-in Tooltip only renders on
+    // hover, so we drive this ourselves via LineChart mouse events.
+    const [hoveredPoint, setHoveredPoint] = useState<{ date: string; profit: number } | null>(null);
 
     if (loading) {
         return (
@@ -516,6 +517,17 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
     const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
     const yDomain: [number, number] = [tickPoolSqrt[0], tickPoolSqrt[tickPoolSqrt.length - 1]];
 
+    // Default the info panel to the most recent day so the user sees a
+    // populated date + 收益 even before they hover.
+    const lastPoint = data[data.length - 1];
+    const panelPoint = hoveredPoint ?? lastPoint;
+    const panelProfitStr = panelPoint
+        ? `${panelPoint.profit > 0 ? '+' : ''}${panelPoint.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`
+        : '';
+    const panelProfitColor = panelPoint
+        ? (panelPoint.profit > 0 ? 'text-status-positive' : panelPoint.profit < 0 ? 'text-status-negative' : 'text-muted-foreground')
+        : 'text-muted-foreground';
+
     return (
         <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
             <div className="relative flex items-center justify-end mb-2 min-h-[20px]">
@@ -530,9 +542,31 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                     <span className={cn("font-semibold", totalColor)}>{totalStr}</span>
                 </div>
             </div>
-            <div className="flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
-                <ResponsiveContainer width="100%" height="100%" onResize={(w) => setChartWidth(w)}>
-                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
+            <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
+                {/* Always-visible info panel pinned to the top-left of the
+                    plot area. Shows the hovered point if any, otherwise the
+                    most recent day so there's no empty state. */}
+                {panelPoint && (
+                    <div className="absolute top-2 left-12 z-10 pointer-events-none rounded-md border bg-popover/95 px-3 py-1.5 text-xs shadow-sm">
+                        <div className="font-medium">{panelPoint.date}</div>
+                        <div>
+                            <span className="text-muted-foreground">收益 </span>
+                            <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
+                        </div>
+                    </div>
+                )}
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                        data={chartData}
+                        margin={{ top: 8, right: 16, left: -16, bottom: 4 }}
+                        onMouseMove={(state: { activePayload?: { payload?: { date: string; profit: number } }[] }) => {
+                            const p = state?.activePayload?.[0]?.payload;
+                            if (p && (p.date !== hoveredPoint?.date)) {
+                                setHoveredPoint({ date: p.date, profit: p.profit });
+                            }
+                        }}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                    >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
                             dataKey="label"
@@ -544,6 +578,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
                             ticks={tickPoolSqrt}
                             domain={yDomain}
+                            tickMargin={4}
                             tickFormatter={(v) => {
                                 // Invert the signed-sqrt and round to the nearest 10
                                 // so projected ticks always read as clean $ values.
@@ -555,34 +590,16 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                 if (rounded === 0) return '0';
                                 return rounded.toLocaleString('en-US');
                             }}
-                            width={56}
+                            width={44}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {/* Tooltip is reduced to just the dashed-cursor crosshair;
+                            the visible readout is driven by the always-on panel
+                            above. content={() => null} suppresses the floating
+                            popup while keeping mouse-tracking events alive. */}
                         <Tooltip
-                            // Sit horizontally centered at the top of the chart by
-                            // feeding the measured container width into Recharts'
-                            // absolute-position prop. TOOLTIP_HALF is a flat
-                            // estimate of half the tooltip's content width — there's
-                            // no API to read the actual rendered size mid-chart.
-                            position={{ x: Math.max(0, chartWidth / 2 - TOOLTIP_HALF), y: 8 }}
                             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            contentStyle={{
-                                background: 'var(--popover)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                color: 'var(--foreground)',
-                            }}
-                            labelStyle={{ color: 'var(--foreground)' }}
-                            itemStyle={{ color: 'var(--foreground)' }}
-                            labelFormatter={(_label, payload) => payload?.[0]?.payload?.date || ''}
-                            formatter={(_value: number, _name, props: { payload?: { profit?: number } }) => {
-                                // Tooltip pulls the raw $ value off the payload rather than
-                                // the line's sqrt-space value so users still see real money.
-                                const raw = props?.payload?.profit ?? 0;
-                                const sign = raw > 0 ? '+' : '';
-                                return [`${sign}${raw.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`, '收益'];
-                            }}
+                            content={() => null}
                         />
                         <Line
                             type="monotone"
