@@ -523,6 +523,9 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
         label: d.date.substring(5),
         profitSqrt: sgnSqrt(d.profit),
     }));
+    const totalProfit = data.reduce((s, d) => s + d.profit, 0);
+    const totalStr = `${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+    const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
     // signed-sqrt space so the axis labels still read in dollars.
@@ -548,26 +551,24 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
 
     return (
         <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
-            <div className="relative mb-2 min-h-[20px]">
+            <div className="relative mb-2 min-h-[20px] flex items-center">
+                {/* Hover readout sits flush-left of the header row as a single line.
+                    Shows the hovered point when active, otherwise defaults to the
+                    most recent day so the row never goes empty. */}
+                {panelPoint && (
+                    <div className="text-xs whitespace-nowrap">
+                        <span className="font-medium">{panelPoint.date}</span>
+                        <span className="text-muted-foreground"> · 收益 </span>
+                        <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
+                    </div>
+                )}
                 {/* Title floats centered above the chart so it sits over the plot
                     area rather than crowding the y-axis side of the card. */}
                 <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
-                    過去 30 個交易日收益
+                    過去 30 個交易日, 收益合計 <span className={totalColor}>{totalStr}</span>
                 </div>
             </div>
             <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
-                {/* Always-visible info panel pinned to the top-left of the
-                    plot area. Shows the hovered point if any, otherwise the
-                    most recent day so there's no empty state. */}
-                {panelPoint && (
-                    <div className="absolute top-4 left-16 z-10 pointer-events-none text-xs leading-tight">
-                        <div className="font-medium">{panelPoint.date}</div>
-                        <div>
-                            <span className="text-muted-foreground">收益 </span>
-                            <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
-                        </div>
-                    </div>
-                )}
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={chartData}
