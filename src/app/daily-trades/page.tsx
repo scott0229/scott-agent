@@ -536,10 +536,10 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
         ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
         : [-1000, 0, 1000];
     const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
-    // Pad the domain ~8% past the outermost tick so the highest/lowest points
-    // don't kiss the plot border. Domain is in sqrt-space; padding scales to
-    // the same axis so both ends get equal visual breathing room.
-    const yPad = Math.max(Math.abs(tickPoolSqrt[0]), Math.abs(tickPoolSqrt[tickPoolSqrt.length - 1])) * 0.08;
+    // Pad the domain ~20% past the outermost tick so the highest/lowest
+    // points don't kiss the plot border. Domain is in sqrt-space; padding
+    // scales to the same axis so both ends get equal visual breathing room.
+    const yPad = Math.max(Math.abs(tickPoolSqrt[0]), Math.abs(tickPoolSqrt[tickPoolSqrt.length - 1])) * 0.2;
     const yDomain: [number, number] = [
         tickPoolSqrt[0] - yPad,
         tickPoolSqrt[tickPoolSqrt.length - 1] + yPad,
@@ -581,7 +581,11 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
                         data={chartData}
                         margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
                     >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        {/* Only vertical (per-date) grid lines remain — horizontal
+                            y-grid lines doubled up with the zero reference and
+                            cluttered the canvas. The ReferenceLine at 0 below
+                            still draws the single horizontal anchor we need. */}
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                         <XAxis
                             dataKey="label"
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
