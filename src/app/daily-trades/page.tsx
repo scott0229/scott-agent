@@ -332,7 +332,6 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
-                            currentDate={date}
                         />
                     </div>
                 ) : (
@@ -448,7 +447,6 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
-                            currentDate={date}
                         />
                     )}
                 </div>
@@ -460,15 +458,38 @@ export default function DailyTradesPage() {
 interface DailyProfitHistoryChartProps {
     data: { date: string; profit: number }[];
     loading: boolean;
-    currentDate: string;
 }
 
-function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHistoryChartProps) {
+// Recharts' Tooltip emits the active payload through its content prop. We
+// mount a zero-render bridge that just useEffect's the active point upward
+// so the parent's always-on panel can re-render with the hovered date.
+function TooltipBridge({
+    active,
+    payload,
+    onChange,
+}: {
+    active?: boolean;
+    payload?: { payload?: { date: string; profit: number } }[];
+    onChange: (p: { date: string; profit: number } | null) => void;
+}) {
+    const point = active && payload?.[0]?.payload ? payload[0].payload : null;
+    const key = point ? `${point.date}|${point.profit}` : '';
+    useEffect(() => {
+        onChange(point);
+        // Depend on key so identical-point re-renders don't trigger setState.
+        // onChange is React's useState setter — stable across renders.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+    return null;
+}
+
+function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
     // hover is active — so the user always sees a date + 收益 number even
-    // before they interact. Recharts' built-in Tooltip only renders on
-    // hover, so we drive this ourselves via LineChart mouse events.
+    // before they interact. Hover state is fed in by TooltipBridge below,
+    // which mounts as Recharts' Tooltip content so we get callbacks every
+    // time the active point changes.
     const [hoveredPoint, setHoveredPoint] = useState<{ date: string; profit: number } | null>(null);
 
     if (loading) {
@@ -547,7 +568,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                     plot area. Shows the hovered point if any, otherwise the
                     most recent day so there's no empty state. */}
                 {panelPoint && (
-                    <div className="absolute top-2 left-12 z-10 pointer-events-none rounded-md border bg-popover/95 px-3 py-1.5 text-xs shadow-sm">
+                    <div className="absolute top-5 left-12 z-10 pointer-events-none rounded-md border bg-popover/95 px-3 py-1.5 text-xs shadow-sm">
                         <div className="font-medium">{panelPoint.date}</div>
                         <div>
                             <span className="text-muted-foreground">收益 </span>
@@ -558,14 +579,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={chartData}
-                        margin={{ top: 8, right: 16, left: -16, bottom: 4 }}
-                        onMouseMove={(state: { activePayload?: { payload?: { date: string; profit: number } }[] }) => {
-                            const p = state?.activePayload?.[0]?.payload;
-                            if (p && (p.date !== hoveredPoint?.date)) {
-                                setHoveredPoint({ date: p.date, profit: p.profit });
-                            }
-                        }}
-                        onMouseLeave={() => setHoveredPoint(null)}
+                        margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
@@ -590,16 +604,17 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                 if (rounded === 0) return '0';
                                 return rounded.toLocaleString('en-US');
                             }}
-                            width={44}
+                            width={48}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
-                        {/* Tooltip is reduced to just the dashed-cursor crosshair;
-                            the visible readout is driven by the always-on panel
-                            above. content={() => null} suppresses the floating
-                            popup while keeping mouse-tracking events alive. */}
+                        {/* Tooltip renders the dashed crosshair and, via TooltipBridge,
+                            relays the active point up to hoveredPoint state. The visible
+                            readout is the always-on panel above; TooltipBridge itself
+                            returns null so nothing floats with the cursor. */}
                         <Tooltip
                             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            content={() => null}
+                            content={<TooltipBridge onChange={setHoveredPoint} />}
+                            isAnimationActive={false}
                         />
                         <Line
                             type="monotone"
@@ -609,13 +624,12 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                             dot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
                                 const { cx, cy, payload } = props;
                                 if (cx == null || cy == null || !payload) return <g />;
-                                const isToday = payload.date === currentDate;
                                 const fill = payload.profit > 0
                                     ? 'var(--status-positive)'
                                     : payload.profit < 0
                                         ? 'var(--status-negative)'
                                         : 'var(--muted-foreground)';
-                                return <circle cx={cx} cy={cy} r={isToday ? 6 : 4} fill={fill} stroke={isToday ? 'var(--foreground)' : 'none'} strokeWidth={isToday ? 2 : 0} />;
+                                return <circle cx={cx} cy={cy} r={4} fill={fill} />;
                             }}
                             activeDot={false}
                             isAnimationActive={false}
