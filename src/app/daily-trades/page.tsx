@@ -579,10 +579,13 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate }: D
         tickPoolSqrt[tickPoolSqrt.length - 1] + yPad,
     ];
 
-    // Default the info panel to the most recent day so the user sees a
-    // populated date + 收益 even before they hover.
+    // Info panel falls back to whichever day the left card is showing
+    // (currentDate), so the readout always agrees with the card. If that
+    // date isn't in the chart's window for some reason, fall back to the
+    // most recent point.
     const lastPoint = data[data.length - 1];
-    const panelPoint = hoveredPoint ?? lastPoint;
+    const selectedPoint = currentDate ? data.find(d => d.date === currentDate) : undefined;
+    const panelPoint = hoveredPoint ?? selectedPoint ?? lastPoint;
     const panelProfitStr = panelPoint
         ? `${panelPoint.profit > 0 ? '+' : ''}${Math.round(panelPoint.profit).toLocaleString('en-US')}`
         : '';
@@ -667,9 +670,9 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate }: D
                         {currentDate && data.some(d => d.date === currentDate) && (
                             <ReferenceLine
                                 x={currentDate.substring(5)}
-                                stroke="var(--foreground)"
+                                stroke="var(--chart-orange)"
+                                strokeWidth={2}
                                 strokeDasharray="3 3"
-                                strokeOpacity={0.55}
                             />
                         )}
                         {/* Tooltip renders the dashed crosshair and, via TooltipBridge,
