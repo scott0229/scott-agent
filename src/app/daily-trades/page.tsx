@@ -294,14 +294,17 @@ export default function DailyTradesPage() {
                         const userName = userGroup.user.name || userGroup.user.user_id;
 
                         // Sum option-only 收益 and 權利金 amounts → day's option cash
-                        // inflow. Stock close lines prefix with the fullwidth comma
-                        // 「，收益」; option close / roll lines use halfwidth 「, 收益」
-                        // and option 開新倉 lines use 「, 權利金」 (both preceded by a
-                        // space, not 「，」). The negative lookbehind excludes the
-                        // stock case so we only count option PnL.
+                        // inflow. Iterate per-line and skip stock close lines (they
+                        // start with 買/賣 and include the 股 keyword), so the option
+                        // 收益 / 權利金 numbers are the only contributors. This avoids
+                        // relying on punctuation (the stock format now matches option
+                        // formatting with a halfwidth 「, 」).
                         let dayProfit = 0;
-                        for (const m of reportText.matchAll(/(?<!，)(?:收益|權利金)\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
-                            dayProfit += parseFloat(m[1].replace(/,/g, ''));
+                        for (const line of reportText.split('\n')) {
+                            if (/^(買|賣)/.test(line) && line.includes(' 股 ')) continue;
+                            for (const m of line.matchAll(/(?:收益|權利金)\s*([+-]?[\d,]+(?:\.\d+)?)/g)) {
+                                dayProfit += parseFloat(m[1].replace(/,/g, ''));
+                            }
                         }
                         const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
                         const profitColor = dayProfit > 0 ? 'text-status-positive' : dayProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';

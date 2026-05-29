@@ -247,7 +247,7 @@ export function generateDailyTradesText(
                 const profit = (trade.price - trade.open_price) * Math.abs(transactionQty);
                 const profitNum = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(profit));
                 const sign = profit > 0 ? '+' : profit < 0 ? '-' : '';
-                profitStr = `，收益 ${sign}${profitNum}`;
+                profitStr = `, 收益 ${sign}${profitNum}`;
             }
 
             stockLines.push(`${action} ${trade.symbol} ${qtyStr} 股 (均 ${priceNum}${profitStr})`);
