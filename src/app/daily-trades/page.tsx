@@ -332,6 +332,7 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
+                            onSelectDate={setDate}
                         />
                     </div>
                 ) : (
@@ -376,10 +377,7 @@ export default function DailyTradesPage() {
                         return (
                             <div
                                 key={userGroup.user.id}
-                                className={cn(
-                                    "bg-card rounded-lg border shadow-sm p-4 flex flex-col transition-colors",
-                                    isFilteredToThis && "ring-2 ring-primary/40"
-                                )}
+                                className="bg-card rounded-lg border shadow-sm p-4 flex flex-col"
                                 onDoubleClick={(e) => {
                                     // Double-click anywhere on the card toggles single-account
                                     // filter for this user. Double-clicking again (while
@@ -447,6 +445,7 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
+                            onSelectDate={setDate}
                         />
                     )}
                 </div>
@@ -458,6 +457,7 @@ export default function DailyTradesPage() {
 interface DailyProfitHistoryChartProps {
     data: { date: string; profit: number }[];
     loading: boolean;
+    onSelectDate?: (date: string) => void;
 }
 
 // Recharts' Tooltip emits the active payload through its content prop. We
@@ -483,7 +483,7 @@ function TooltipBridge({
     return null;
 }
 
-function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps) {
+function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
     // hover is active — so the user always sees a date + 收益 number even
@@ -557,7 +557,7 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
         : 'text-muted-foreground';
 
     return (
-        <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
+        <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
             <div className="relative mb-2 min-h-[20px] flex items-center">
                 {/* Hover readout sits flush-left of the header row as a single line.
                     Shows the hovered point when active, otherwise defaults to the
@@ -580,6 +580,13 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
                     <LineChart
                         data={chartData}
                         margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                        onClick={(state: { activePayload?: { payload?: { date: string } }[] }) => {
+                            // Snap the page's selected date to the clicked point so
+                            // the card on the left jumps to that day's trades.
+                            const d = state?.activePayload?.[0]?.payload?.date;
+                            if (d) onSelectDate?.(d);
+                        }}
+                        style={{ cursor: onSelectDate ? 'pointer' : 'default' }}
                     >
                         {/* Only vertical (per-date) grid lines remain — horizontal
                             y-grid lines doubled up with the zero reference and
