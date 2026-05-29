@@ -518,8 +518,13 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
 
     return (
         <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col min-h-[360px]">
-            <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold">過去 30 個交易日收益</div>
+            <div className="relative flex items-center justify-end mb-2 min-h-[20px]">
+                {/* Title floats centered above the chart so it sits over the plot
+                    area rather than crowding the y-axis side of the card. The
+                    期間合計 readout stays right-anchored. */}
+                <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
+                    過去 30 個交易日收益
+                </div>
                 <div className="text-xs">
                     <span className="text-muted-foreground">期間合計 </span>
                     <span className={cn("font-semibold", totalColor)}>{totalStr}</span>
