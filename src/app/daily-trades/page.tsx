@@ -536,7 +536,14 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
         ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
         : [-1000, 0, 1000];
     const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
-    const yDomain: [number, number] = [tickPoolSqrt[0], tickPoolSqrt[tickPoolSqrt.length - 1]];
+    // Pad the domain ~8% past the outermost tick so the highest/lowest points
+    // don't kiss the plot border. Domain is in sqrt-space; padding scales to
+    // the same axis so both ends get equal visual breathing room.
+    const yPad = Math.max(Math.abs(tickPoolSqrt[0]), Math.abs(tickPoolSqrt[tickPoolSqrt.length - 1])) * 0.08;
+    const yDomain: [number, number] = [
+        tickPoolSqrt[0] - yPad,
+        tickPoolSqrt[tickPoolSqrt.length - 1] + yPad,
+    ];
 
     // Default the info panel to the most recent day so the user sees a
     // populated date + 收益 even before they hover.
