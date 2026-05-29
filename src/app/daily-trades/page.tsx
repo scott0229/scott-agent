@@ -568,7 +568,7 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
                     plot area. Shows the hovered point if any, otherwise the
                     most recent day so there's no empty state. */}
                 {panelPoint && (
-                    <div className="absolute top-5 left-12 z-10 pointer-events-none rounded-md border bg-popover/95 px-3 py-1.5 text-xs shadow-sm">
+                    <div className="absolute top-3 left-12 z-10 pointer-events-none text-xs leading-tight">
                         <div className="font-medium">{panelPoint.date}</div>
                         <div>
                             <span className="text-muted-foreground">收益 </span>
