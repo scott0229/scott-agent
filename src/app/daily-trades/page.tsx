@@ -518,7 +518,8 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         <Tooltip
-                            position={{ x: 8, y: 8 }}
+                            position={{ x: 180, y: 8 }}
+                            cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                             contentStyle={{
                                 background: 'var(--popover)',
                                 border: '1px solid var(--border)',
@@ -550,7 +551,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                         : 'var(--muted-foreground)';
                                 return <circle cx={cx} cy={cy} r={isToday ? 6 : 4} fill={fill} stroke={isToday ? 'var(--foreground)' : 'none'} strokeWidth={isToday ? 2 : 0} />;
                             }}
-                            activeDot={{ r: 7 }}
+                            activeDot={false}
                             isAnimationActive={false}
                         />
                     </LineChart>
