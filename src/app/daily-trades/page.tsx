@@ -648,11 +648,25 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHis
                                     : payload.profit < 0
                                         ? 'var(--status-negative)'
                                         : 'var(--muted-foreground)';
-                                return <circle cx={cx} cy={cy} r={4} fill={fill} />;
+                                return (
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r={4}
+                                        fill={fill}
+                                        style={{ cursor: onSelectDate ? 'pointer' : 'default' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onSelectDate) onSelectDate(payload.date);
+                                        }}
+                                    />
+                                );
                             }}
                             activeDot={(props: { cx?: number; cy?: number; payload?: { profit: number; date: string } }) => {
                                 // Subtle hover state: same color fill, grown from r=4
                                 // to r=6, with a thin foreground ring as a click hint.
+                                // Click handler lives on the SVG circle itself —
+                                // LineChart's own onClick proved flaky in this layout.
                                 const { cx, cy, payload } = props;
                                 if (cx == null || cy == null || !payload) return <g />;
                                 const fill = payload.profit > 0
@@ -660,7 +674,21 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate }: DailyProfitHis
                                     : payload.profit < 0
                                         ? 'var(--status-negative)'
                                         : 'var(--muted-foreground)';
-                                return <circle cx={cx} cy={cy} r={6} fill={fill} stroke="var(--foreground)" strokeWidth={1.5} />;
+                                return (
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r={6}
+                                        fill={fill}
+                                        stroke="var(--foreground)"
+                                        strokeWidth={1.5}
+                                        style={{ cursor: onSelectDate ? 'pointer' : 'default' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onSelectDate) onSelectDate(payload.date);
+                                        }}
+                                    />
+                                );
                             }}
                             isAnimationActive={false}
                         />
