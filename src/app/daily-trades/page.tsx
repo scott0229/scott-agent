@@ -500,13 +500,16 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
     const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
-    // signed-sqrt space so the axis labels still read in dollars.
-    const CANDIDATE_MAGS = [10, 30, 100, 300, 1000, 3000, 10000, 30000];
+    // signed-sqrt space so the axis labels still read in dollars. 50 sits
+    // in the pool to anchor a subdividing tick mark between 0 and 500 but
+    // its label is suppressed below to keep the column readable.
+    const CANDIDATE_MAGS = [50, 500, 1000, 3000, 10000, 30000];
+    const SUPPRESS_LABEL_MAGS = new Set([50]);
     const dataMaxAbs = Math.max(1, ...data.map(d => Math.abs(d.profit)));
     const usefulMags = CANDIDATE_MAGS.filter(m => m <= dataMaxAbs * 1.5);
     const tickPoolRaw = usefulMags.length > 0
         ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
-        : [-100, 0, 100];
+        : [-500, 0, 500];
     const tickPoolSqrt = tickPoolRaw.map(sgnSqrt);
     const yDomain: [number, number] = [tickPoolSqrt[0], tickPoolSqrt[tickPoolSqrt.length - 1]];
 
@@ -537,9 +540,10 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                 // Invert the signed-sqrt and round to the nearest 10
                                 // so projected ticks always read as clean $ values.
                                 const raw = Math.sign(v) * v * v;
-                                return Math.round(raw / 10) * 10 === 0
-                                    ? '0'
-                                    : (Math.round(raw / 10) * 10).toLocaleString('en-US');
+                                const rounded = Math.round(raw / 10) * 10;
+                                if (SUPPRESS_LABEL_MAGS.has(Math.abs(rounded))) return '';
+                                if (rounded === 0) return '0';
+                                return rounded.toLocaleString('en-US');
                             }}
                             width={56}
                         />
