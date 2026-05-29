@@ -518,6 +518,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         <Tooltip
+                            position={{ x: 8, y: 8 }}
                             contentStyle={{
                                 background: 'var(--popover)',
                                 border: '1px solid var(--border)',
