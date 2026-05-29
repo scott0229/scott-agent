@@ -524,7 +524,7 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
         profitSqrt: sgnSqrt(d.profit),
     }));
     const totalProfit = data.reduce((s, d) => s + d.profit, 0);
-    const totalStr = `${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+    const totalStr = `${totalProfit > 0 ? '+' : ''}${Math.round(totalProfit).toLocaleString('en-US')}`;
     const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
@@ -543,7 +543,7 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
     const lastPoint = data[data.length - 1];
     const panelPoint = hoveredPoint ?? lastPoint;
     const panelProfitStr = panelPoint
-        ? `${panelPoint.profit > 0 ? '+' : ''}${panelPoint.profit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`
+        ? `${panelPoint.profit > 0 ? '+' : ''}${Math.round(panelPoint.profit).toLocaleString('en-US')}`
         : '';
     const panelProfitColor = panelPoint
         ? (panelPoint.profit > 0 ? 'text-status-positive' : panelPoint.profit < 0 ? 'text-status-negative' : 'text-muted-foreground')
