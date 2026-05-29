@@ -556,7 +556,7 @@ function DailyProfitHistoryChart({ data, loading }: DailyProfitHistoryChartProps
                     Shows the hovered point when active, otherwise defaults to the
                     most recent day so the row never goes empty. */}
                 {panelPoint && (
-                    <div className="text-xs whitespace-nowrap ml-[50px]">
+                    <div className="text-sm whitespace-nowrap ml-[50px]">
                         <span className="font-medium">{panelPoint.date}</span>
                         <span className="text-muted-foreground"> · 收益 </span>
                         <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
