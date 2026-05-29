@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,12 @@ export default function DailyTradesPage() {
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
     const [historyData, setHistoryData] = useState<{ date: string; profit: number }[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    // historyEndDate drives the 30-day chart's right edge. It tracks `date`
+    // EXCEPT when the user clicked a point on the chart itself — in that case
+    // we only want the left card to swap; the chart's range should stay put
+    // so the user can keep scrubbing without losing their place.
+    const [historyEndDate, setHistoryEndDate] = useState<string>('');
+    const chartClickRef = useRef(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -113,10 +119,22 @@ export default function DailyTradesPage() {
         fetchData();
     }, [date, selectedYear]);
 
+    // Sync historyEndDate from `date` whenever `date` changes, EXCEPT when
+    // the change came from a chart-dot click. That keeps the chart pinned
+    // while the left card swaps to the picked day.
+    useEffect(() => {
+        if (!date) return;
+        if (chartClickRef.current) {
+            chartClickRef.current = false;
+            return;
+        }
+        setHistoryEndDate(date);
+    }, [date]);
+
     // Single-account mode chart: 30-day option-收益 history for the
     // selected user. Skip the fetch in 'all' mode — chart is hidden.
     useEffect(() => {
-        if (selectedAccount === 'all' || !date) {
+        if (selectedAccount === 'all' || !historyEndDate) {
             setHistoryData([]);
             return;
         }
@@ -124,7 +142,7 @@ export default function DailyTradesPage() {
         const fetchHistory = async () => {
             setHistoryLoading(true);
             try {
-                const url = `/api/daily-trades/history?user_id=${encodeURIComponent(selectedAccount)}&endDate=${date}&days=30&year=${selectedYear}`;
+                const url = `/api/daily-trades/history?user_id=${encodeURIComponent(selectedAccount)}&endDate=${historyEndDate}&days=30&year=${selectedYear}`;
                 const res = await fetch(url);
                 if (cancelled) return;
                 if (res.ok) {
@@ -142,7 +160,7 @@ export default function DailyTradesPage() {
         };
         fetchHistory();
         return () => { cancelled = true; };
-    }, [selectedAccount, date, selectedYear]);
+    }, [selectedAccount, historyEndDate, selectedYear]);
 
     const changeDate = (offset: number) => {
         if (!date) return;
@@ -332,7 +350,12 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
-                            onSelectDate={setDate}
+                            onSelectDate={(d) => {
+                                // Flag the upcoming setDate as chart-origin so the
+                                // sync effect skips updating historyEndDate.
+                                chartClickRef.current = true;
+                                setDate(d);
+                            }}
                         />
                     </div>
                 ) : (
@@ -445,7 +468,12 @@ export default function DailyTradesPage() {
                         <DailyProfitHistoryChart
                             data={historyData}
                             loading={historyLoading}
-                            onSelectDate={setDate}
+                            onSelectDate={(d) => {
+                                // Flag the upcoming setDate as chart-origin so the
+                                // sync effect skips updating historyEndDate.
+                                chartClickRef.current = true;
+                                setDate(d);
+                            }}
                         />
                     )}
                 </div>
