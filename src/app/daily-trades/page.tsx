@@ -464,6 +464,12 @@ interface DailyProfitHistoryChartProps {
 }
 
 function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHistoryChartProps) {
+    // ResponsiveContainer reports its rendered pixel width via onResize.
+    // We feed that into Tooltip's `position` prop so the tooltip can sit
+    // horizontally centered without chasing the cursor.
+    const [chartWidth, setChartWidth] = useState(0);
+    const TOOLTIP_HALF = 80;
+
     if (loading) {
         return (
             <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
@@ -500,11 +506,8 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
     const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
-    // signed-sqrt space so the axis labels still read in dollars. 50 sits
-    // in the pool to anchor a subdividing tick mark between 0 and 500 but
-    // its label is suppressed below to keep the column readable.
-    const CANDIDATE_MAGS = [50, 500, 1000, 3000, 10000, 30000];
-    const SUPPRESS_LABEL_MAGS = new Set([50]);
+    // signed-sqrt space so the axis labels still read in dollars.
+    const CANDIDATE_MAGS = [500, 1000, 3000, 10000, 30000];
     const dataMaxAbs = Math.max(1, ...data.map(d => Math.abs(d.profit)));
     const usefulMags = CANDIDATE_MAGS.filter(m => m <= dataMaxAbs * 1.5);
     const tickPoolRaw = usefulMags.length > 0
@@ -523,7 +526,7 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                 </div>
             </div>
             <div className="flex-1 min-h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" onResize={(w) => setChartWidth(w)}>
                     <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
@@ -541,7 +544,6 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                                 // so projected ticks always read as clean $ values.
                                 const raw = Math.sign(v) * v * v;
                                 const rounded = Math.round(raw / 10) * 10;
-                                if (SUPPRESS_LABEL_MAGS.has(Math.abs(rounded))) return '';
                                 if (rounded === 0) return '0';
                                 return rounded.toLocaleString('en-US');
                             }}
@@ -549,7 +551,12 @@ function DailyProfitHistoryChart({ data, loading, currentDate }: DailyProfitHist
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         <Tooltip
-                            position={{ x: 80, y: 80 }}
+                            // Sit horizontally centered at the top of the chart by
+                            // feeding the measured container width into Recharts'
+                            // absolute-position prop. TOOLTIP_HALF is a flat
+                            // estimate of half the tooltip's content width — there's
+                            // no API to read the actual rendered size mid-chart.
+                            position={{ x: Math.max(0, chartWidth / 2 - TOOLTIP_HALF), y: 8 }}
                             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
                             contentStyle={{
                                 background: 'var(--popover)',
