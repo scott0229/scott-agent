@@ -660,7 +660,16 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                 {/* Title floats centered above the chart so it sits over the plot
                     area rather than crowding the y-axis side of the card. */}
                 <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
-                    過去 30 個交易日, 收益合計 <span className={totalColor}>{totalStr}</span>
+                    過去 30 個交易日<span className="text-muted-foreground"> · 收益合計 </span>
+                    <span className={totalColor}>{totalStr}</span>
+                    {dailyTarget != null && dailyTarget > 0 && (
+                        <>
+                            <span className="text-muted-foreground"> · 目標 </span>
+                            <span className="text-muted-foreground">
+                                +{Math.round(dailyTarget * data.length).toLocaleString('en-US')}
+                            </span>
+                        </>
+                    )}
                 </div>
             </div>
             <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
