@@ -649,6 +649,13 @@ body {
 .trade-groups-row:hover {
   background-color: #fff7d1;
 }
+/* Zebra striping on even rows for readability — applied at the tr level so
+   :hover (higher specificity via .trade-groups-row class) still wins on top.
+   Scoped to .roll-dialog so only the TradeGroupDialog's detail table gets
+   it; the AccountOverview panel keeps the cleaner uniform look. */
+.roll-dialog .trade-groups-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
 /* Empty spacer row between Active and Terminated groups, mirroring the
    divider on the /trade-groups web page. Uses the same border color as
    the regular row separators so it blends visually. */

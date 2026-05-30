@@ -208,7 +208,7 @@ export default function TradeGroupDialog({
             <table className="trade-groups-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                  <th style={{ width: 40, textAlign: 'center' }}></th>
                   <th style={{ width: 90, textAlign: 'center' }}>操作</th>
                   <th style={{ width: 90, textAlign: 'center' }}>開倉日</th>
                   <th style={{ width: 90, textAlign: 'center' }}>平倉日</th>
