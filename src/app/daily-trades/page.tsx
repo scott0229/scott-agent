@@ -725,7 +725,7 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                     // the dash pattern.
                                     position: 'insideTopLeft',
                                     fill: 'var(--muted-foreground)',
-                                    fontSize: 11,
+                                    fontSize: 14,
                                     offset: -16,
                                 }}
                             />
