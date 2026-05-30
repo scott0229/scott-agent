@@ -706,20 +706,27 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         {/* 權利金目標 reference line — daily-target ÷ 252 trading days,
                             projected into the same signed-sqrt y-axis as the data
-                            line. Labeled with the raw $ target so the value reads
-                            in dollars even though the axis is sqrt-warped. */}
+                            line. Muted-foreground stroke so it reads as a passive
+                            reference, not another data series. Label sits ABOVE
+                            the line at the left edge. */}
                         {dailyTarget != null && dailyTarget > 0 && (
                             <ReferenceLine
                                 y={sgnSqrt(dailyTarget)}
-                                stroke="var(--chart-blue)"
+                                stroke="var(--muted-foreground)"
                                 strokeDasharray="6 4"
                                 strokeWidth={1.5}
                                 strokeOpacity={0.7}
                                 label={{
                                     value: `每日目標 ${Math.round(dailyTarget).toLocaleString('en-US')}`,
-                                    position: 'insideTopRight',
-                                    fill: 'var(--chart-blue)',
+                                    // `insideTopLeft` puts the label inside the
+                                    // chart area, just ABOVE the line at the left
+                                    // edge. Negative offset nudges it clear of
+                                    // the line so the text doesn't sit on top of
+                                    // the dash pattern.
+                                    position: 'insideTopLeft',
+                                    fill: 'var(--muted-foreground)',
                                     fontSize: 11,
+                                    offset: -16,
                                 }}
                             />
                         )}
