@@ -240,7 +240,15 @@ export default function DailyTradesPage() {
     const generateTradesText = (userGroup: any) => generateDailyTradesText(userGroup, date, marketDataMap);
 
 
-    const filteredData = selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount);
+    // Sort cards alphabetically by user_id so the grid scans predictably
+    // regardless of the order the API returns groups in.
+    const filteredData = (selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount))
+        .slice()
+        .sort((a: any, b: any) => {
+            const ka = (a.user?.user_id || a.user?.name || '').toLowerCase();
+            const kb = (b.user?.user_id || b.user?.name || '').toLowerCase();
+            return ka.localeCompare(kb);
+        });
 
     // Daily 權利金目標 reference line. Cost basis mirrors the badge formula on
     // the options summary page: prefer the user's initial_cost; fall back to
