@@ -337,17 +337,22 @@ export function GroupTradesDialog({
     // into open -1 + open -2 — without this pass the open -1 leg could get
     // greedily matched to some unrelated earlier -1 close, leaving the open
     // -2 leg unmatched in Pass 3 (because 2 alone can't fulfill the -3 close).
+    //
+    // We bucket by start-of-day epoch so closes whose settlement_date is
+    // stored at end-of-day still bucket with opens at start-of-day on the
+    // same calendar date.
+    const dayOf = (epochSec: number) => Math.floor(epochSec / 86400) * 86400;
     type OpenEvent = (typeof openEvents)[number];
     type SameDayBucket = { closes: CloseEvent[]; opens: OpenEvent[] };
     const sameDayBuckets = new Map<string, SameDayBucket>();
 
     for (const ce of closeEvents) {
-        const dayKey = `${ce.settlement_date}_${ce.key}`;
+        const dayKey = `${dayOf(ce.settlement_date)}_${ce.key}`;
         if (!sameDayBuckets.has(dayKey)) sameDayBuckets.set(dayKey, { closes: [], opens: [] });
         sameDayBuckets.get(dayKey)!.closes.push(ce);
     }
     for (const ot of openEvents) {
-        const dayKey = `${ot.open_date}_${ot.underlying}_${ot.type}`;
+        const dayKey = `${dayOf(ot.open_date)}_${ot.underlying}_${ot.type}`;
         const bucket = sameDayBuckets.get(dayKey);
         if (bucket) bucket.opens.push(ot);
     }
