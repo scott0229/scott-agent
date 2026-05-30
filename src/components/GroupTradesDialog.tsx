@@ -330,7 +330,56 @@ export function GroupTradesDialog({
         .slice()
         .sort((a, b) => a.open_date - b.open_date || (a.settlement_date ?? Infinity) - (b.settlement_date ?? Infinity));
 
+    // Pass 0 — same-day balanced group rolls. When the closes and opens of a
+    // given key all happen on the same day and the quantities balance, pair
+    // the whole group together BEFORE Pass 1's greedy 1-to-1 has a chance to
+    // claim pieces of it from elsewhere. Common case: close -3 splits same-day
+    // into open -1 + open -2 — without this pass the open -1 leg could get
+    // greedily matched to some unrelated earlier -1 close, leaving the open
+    // -2 leg unmatched in Pass 3 (because 2 alone can't fulfill the -3 close).
+    type OpenEvent = (typeof openEvents)[number];
+    type SameDayBucket = { closes: CloseEvent[]; opens: OpenEvent[] };
+    const sameDayBuckets = new Map<string, SameDayBucket>();
+
+    for (const ce of closeEvents) {
+        const dayKey = `${ce.settlement_date}_${ce.key}`;
+        if (!sameDayBuckets.has(dayKey)) sameDayBuckets.set(dayKey, { closes: [], opens: [] });
+        sameDayBuckets.get(dayKey)!.closes.push(ce);
+    }
+    for (const ot of openEvents) {
+        const dayKey = `${ot.open_date}_${ot.underlying}_${ot.type}`;
+        const bucket = sameDayBuckets.get(dayKey);
+        if (bucket) bucket.opens.push(ot);
+    }
+
+    for (const bucket of sameDayBuckets.values()) {
+        const { closes, opens } = bucket;
+        if (closes.length === 0 || opens.length === 0) continue;
+        if (closes.length === 1 && opens.length === 1) continue; // let Pass 1 handle
+        // Filter out the rare self-pair case (a trade appearing as both close
+        // and open via shared id).
+        const closeIds = new Set(closes.map(c => c.id));
+        const validOpens = opens.filter(o => !closeIds.has(o.id));
+        if (validOpens.length === 0) continue;
+
+        const closeQty = closes.reduce((s, ce) => s + ce.qty, 0);
+        const openQty = validOpens.reduce((s, ot) => s + ot.quantity, 0);
+        if (closeQty !== openQty) continue;
+
+        // Distribute total close cost across the opens proportionally by qty
+        // so each open's 展期收益 reflects its share of the rolled position.
+        const totalCost = closes.reduce((s, ce) => s + ce.cost, 0);
+        for (const ot of validOpens) {
+            const proRatedCost = totalCost * (ot.quantity / openQty);
+            rollProfitsMap.set(ot.id, (ot.premium as number) - proRatedCost);
+        }
+        closes.forEach(ce => { ce.consumed = true; });
+    }
+
     openEvents.forEach(ot => {
+        // Already matched by Pass 0 (same-day balanced group) — skip.
+        if (rollProfitsMap.has(ot.id)) return;
+
         const key = `${ot.underlying}_${ot.type}`;
 
         // Pass 1 — 1-to-1: walk backwards, take the most recent eligible close
