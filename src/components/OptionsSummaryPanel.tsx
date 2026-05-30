@@ -7,6 +7,7 @@ import {
     calculatePremiumRate,
     getPremiumCostBase,
 } from '@/lib/options-metrics';
+import { calculateMarginRate } from '@/lib/margin-rate';
 
 interface UserStats {
     month: string;
@@ -151,10 +152,12 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
     const calculateUserMetrics = (user: User) => {
         const equity = user.current_net_equity !== undefined ? user.current_net_equity : ((user.initial_cost || 0) + (user.net_deposit || 0) + (user.total_profit || 0));
 
-        // Margin Rate: (Put Capital + Debt) / Equity
-        const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
-        const marginUsed = (user.open_put_covered_capital || 0) + debt;
-        const marginRate = equity > 0 ? marginUsed / equity : 0;
+        // Margin Rate: max(0, Put Capital - Cash) / Equity — see src/lib/margin-rate.ts.
+        const marginRate = calculateMarginRate(
+            user.open_put_covered_capital,
+            user.current_cash_balance,
+            equity,
+        );
 
         // Turnover Rate - use initialCost (without profit) as denominator
         const initialCost = (user.initial_cost || 0) + (user.net_deposit || 0);

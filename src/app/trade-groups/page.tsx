@@ -468,30 +468,30 @@ export default function TradeGroupsPage() {
 
     const totalProfit = filteredGroupStats.reduce((sum, g) => sum + (g.profit || 0), 0);
 
+    // 潛在融資 canonical formula in src/lib/margin-rate.ts: max(0, put - cash) / equity.
+    // For the All-accounts view we sum the per-user marginUsed rather than the
+    // raw inputs, so a cash-rich account can't paper over a separate account's
+    // PUT obligation in the aggregate.
     let totalCash = 0;
     let totalNetEquity = 0;
-    let totalPutCapital = 0;
-    let totalDebt = 0;
+    let aggregateMarginUsed = 0;
 
     if (selectedUserValue !== 'All') {
         const u = users.find(u => u.user_id === selectedUserValue || u.email === selectedUserValue);
         if (u) {
             totalCash = u.current_cash_balance || 0;
             totalNetEquity = u.current_net_equity !== undefined ? u.current_net_equity : ((u.initial_cost || 0) + (u.net_deposit || 0) + (u.total_profit || 0));
-            totalPutCapital = u.open_put_covered_capital || 0;
-            totalDebt = Math.abs(Math.min(0, u.current_cash_balance || 0));
+            aggregateMarginUsed = Math.max(0, (u.open_put_covered_capital || 0) - (u.current_cash_balance || 0));
         }
     } else {
         for (const u of users) {
             totalCash += (u.current_cash_balance || 0);
             totalNetEquity += u.current_net_equity !== undefined ? u.current_net_equity : ((u.initial_cost || 0) + (u.net_deposit || 0) + (u.total_profit || 0));
-            totalPutCapital += (u.open_put_covered_capital || 0);
-            totalDebt += Math.abs(Math.min(0, u.current_cash_balance || 0));
+            aggregateMarginUsed += Math.max(0, (u.open_put_covered_capital || 0) - (u.current_cash_balance || 0));
         }
     }
 
-    const marginUsed = totalPutCapital + totalDebt;
-    const marginRate = totalNetEquity > 0 ? (marginUsed / totalNetEquity) * 100 : 0;
+    const marginRate = totalNetEquity > 0 ? (aggregateMarginUsed / totalNetEquity) * 100 : 0;
 
     return (
             <div className="container mx-auto py-10 max-w-[1400px]">

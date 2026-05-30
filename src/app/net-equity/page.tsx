@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateMarginRate } from "@/lib/margin-rate";
 import { useYearFilter } from '@/contexts/YearFilterContext';
 import { useToast } from '@/hooks/use-toast';
 import { SetInitialCostDialog } from '@/components/SetInitialCostDialog';
@@ -346,10 +347,11 @@ export default function NetEquityPage() {
                                                 <td className="h-7 py-1 px-2">潛在融資</td>
                                                 <td className="h-7 py-1 px-2 text-center">
                                                     {(() => {
-                                                        const equity = user.current_net_equity || 0;
-                                                        const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
-                                                        const marginUsed = (user.open_put_covered_capital || 0) + debt;
-                                                        const marginRate = equity > 0 ? marginUsed / equity : 0;
+                                                        const marginRate = calculateMarginRate(
+                                                            user.open_put_covered_capital,
+                                                            user.current_cash_balance,
+                                                            user.current_net_equity,
+                                                        );
                                                         return <StatBadge value={marginRate} format={(v) => `${Math.round(v * 100)}%`} />;
                                                     })()}
                                                 </td>

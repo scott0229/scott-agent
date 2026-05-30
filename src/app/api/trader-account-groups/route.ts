@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
+import { calculateMarginRate } from '@/lib/margin-rate';
 
 export const dynamic = 'force-dynamic';
 
@@ -314,14 +315,15 @@ export async function GET(req: NextRequest) {
         });
 
         // Summary card values shown at the top of the /trade-groups page.
-        // Same algorithm as src/app/trade-groups/page.tsx lines 469-494.
+        // 潛在融資 canonical formula in src/lib/margin-rate.ts.
         const totalProfit = groups.reduce((sum, g) => sum + (g.profit || 0), 0);
         const totalCash = user.current_cash_balance ?? 0;
         const totalNetEquity = user.current_net_equity ?? 0;
-        const totalPutCapital = user.open_put_covered_capital ?? 0;
-        const totalDebt = Math.abs(Math.min(0, totalCash));
-        const marginUsed = totalPutCapital + totalDebt;
-        const marginRate = totalNetEquity > 0 ? (marginUsed / totalNetEquity) * 100 : 0;
+        const marginRate = calculateMarginRate(
+            user.open_put_covered_capital,
+            totalCash,
+            totalNetEquity,
+        ) * 100;
 
         return NextResponse.json({
             user: { id: user.id, alias: user.user_id, name: user.name },

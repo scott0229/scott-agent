@@ -27,6 +27,7 @@ import { EquityPremiumChart } from '@/components/EquityPremiumChart';
 import { useWindowSize } from '@/hooks/use-window-size';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { calculateAnnualPremium } from '@/lib/options-metrics';
+import { calculateMarginRate } from '@/lib/margin-rate';
 
 interface UserStats {
     month: string;
@@ -204,14 +205,10 @@ export default function OptionsPage() {
             return equityB - equityA;
         } else if (sortOrder === 'margin-desc') {
             const equityA = a.current_net_equity !== undefined ? a.current_net_equity : ((a.initial_cost || 0) + (a.net_deposit || 0) + (a.total_profit || 0));
-            const debtA = Math.abs(Math.min(0, a.current_cash_balance || 0));
-            const marginUsedA = (a.open_put_covered_capital || 0) + debtA;
-            const marginRateA = equityA > 0 ? marginUsedA / equityA : 0;
+            const marginRateA = calculateMarginRate(a.open_put_covered_capital, a.current_cash_balance, equityA);
 
             const equityB = b.current_net_equity !== undefined ? b.current_net_equity : ((b.initial_cost || 0) + (b.net_deposit || 0) + (b.total_profit || 0));
-            const debtB = Math.abs(Math.min(0, b.current_cash_balance || 0));
-            const marginUsedB = (b.open_put_covered_capital || 0) + debtB;
-            const marginRateB = equityB > 0 ? marginUsedB / equityB : 0;
+            const marginRateB = calculateMarginRate(b.open_put_covered_capital, b.current_cash_balance, equityB);
 
             return marginRateB - marginRateA;
         } else if (sortOrder === 'premium-rate-desc') {

@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { calculateMarginRate } from "@/lib/margin-rate";
 import { Eye, EyeOff, RotateCcw, Save } from "lucide-react";
 
 interface UserSummary {
@@ -472,10 +473,11 @@ export function NetEquitySummaryTable({ users, onUserClick }: NetEquitySummaryTa
                                     潛在融資
                                 </td>
                                 {users.filter(isColumnVisible).map(user => {
-                                    const equity = user.current_net_equity || 0;
-                                    const debt = Math.abs(Math.min(0, user.current_cash_balance || 0));
-                                    const marginUsed = (user.open_put_covered_capital || 0) + debt;
-                                    const marginRate = equity > 0 ? marginUsed / equity : 0;
+                                    const marginRate = calculateMarginRate(
+                                        user.open_put_covered_capital,
+                                        user.current_cash_balance,
+                                        user.current_net_equity,
+                                    );
                                     return (
                                         <td key={user.id} className="h-7 py-1 px-2 text-center">
                                             <StatBadge value={marginRate} format={(v) => `${Math.round(v * 100)}%`} />

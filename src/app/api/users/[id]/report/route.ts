@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { calculateUserTwr } from '@/lib/twr';
 import { getMarketData } from '@/lib/market-data';
 import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
+import { calculateMarginRate } from '@/lib/margin-rate';
 
 export const dynamic = 'force-dynamic';
 
@@ -288,10 +289,13 @@ export async function GET(
             WHERE owner_id = ? AND year = ? AND operation = 'Open' AND type = 'PUT'
         `).bind(userId, currentYear).first();
 
-        // Include debt (negative cash balance) in margin rate calculation to match dashboard logic
-        const debt = Math.abs(Math.min(0, cashBalance));
-        const marginUsed = (marginResult?.open_put_covered_capital || 0) + debt;
-        const marginRate = accountNetWorth > 0 ? marginUsed / accountNetWorth : 0;
+        // 潛在融資 = max(0, put_capital - cash) / equity. Canonical formula in
+        // src/lib/margin-rate.ts so the daily report agrees with every UI table.
+        const marginRate = calculateMarginRate(
+            marginResult?.open_put_covered_capital as number | null,
+            cashBalance,
+            accountNetWorth,
+        );
 
         // Calculate daily interest using FRED rate. If the FRED fetch fails
         // (e.g. transient network error or rate limit on a cold isolate),
