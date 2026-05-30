@@ -642,9 +642,19 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     most recent day so the row never goes empty. */}
                 {panelPoint && (
                     <div className="text-sm whitespace-nowrap ml-[50px]">
-                        <span className="font-medium">{panelPoint.date}</span>
+                        {/* Trim the YYYY- prefix so the date is just MM-DD,
+                            matching the chart's x-axis labels. */}
+                        <span className="font-medium">{panelPoint.date.substring(5)}</span>
                         <span className="text-muted-foreground"> · 收益 </span>
                         <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
+                        {dailyTarget != null && dailyTarget > 0 && (
+                            <>
+                                <span className="text-muted-foreground"> · 目標 </span>
+                                <span className="font-semibold text-muted-foreground">
+                                    +{Math.round(dailyTarget).toLocaleString('en-US')}
+                                </span>
+                            </>
+                        )}
                     </div>
                 )}
                 {/* Title floats centered above the chart so it sits over the plot
@@ -704,11 +714,11 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                             width={48}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
-                        {/* 權利金目標 reference line — daily-target ÷ 252 trading days,
-                            projected into the same signed-sqrt y-axis as the data
-                            line. Muted-foreground stroke so it reads as a passive
-                            reference, not another data series. Label sits ABOVE
-                            the line at the left edge. */}
+                        {/* 權利金目標 reference line — daily-target ÷ 252 trading
+                            days, projected into the same signed-sqrt y-axis as
+                            the data line. Muted-foreground stroke so it reads
+                            as a passive reference. The target value is shown
+                            in the header readout, so no on-chart label. */}
                         {dailyTarget != null && dailyTarget > 0 && (
                             <ReferenceLine
                                 y={sgnSqrt(dailyTarget)}
@@ -716,18 +726,6 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                 strokeDasharray="6 4"
                                 strokeWidth={1.5}
                                 strokeOpacity={0.7}
-                                label={{
-                                    value: `每日目標 ${Math.round(dailyTarget).toLocaleString('en-US')}`,
-                                    // `insideTopLeft` puts the label inside the
-                                    // chart area, just ABOVE the line at the left
-                                    // edge. Negative offset nudges it clear of
-                                    // the line so the text doesn't sit on top of
-                                    // the dash pattern.
-                                    position: 'insideTopLeft',
-                                    fill: 'var(--muted-foreground)',
-                                    fontSize: 14,
-                                    offset: -16,
-                                }}
                             />
                         )}
                         {/* Persistent crosshair at the currently-shown date so
