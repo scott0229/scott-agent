@@ -21,9 +21,15 @@ import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
     CartesianGrid, ReferenceLine,
 } from 'recharts';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
+
+// Standard finance convention for trading days per year, used to convert
+// the annual 權利金目標 percent into a daily-profit target for the chart.
+const TRADING_DAYS_PER_YEAR = 252;
 
 export default function DailyTradesPage() {
     const { selectedYear } = useYearFilter();
+    const { settings } = useAdminSettings();
     const [date, setDate] = useState<string>('');
     const [data, setData] = useState<any[]>([]);
     const [marketDataMap, setMarketDataMap] = useState<Record<string, number>>({});
@@ -236,6 +242,23 @@ export default function DailyTradesPage() {
 
     const filteredData = selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount);
 
+    // Daily 權利金目標 reference line. Cost basis mirrors the badge formula on
+    // the options summary page: prefer the user's initial_cost; fall back to
+    // net_deposit when they started with no initial capital. Annual target is
+    // cost × premiumTargetPercent / 100; divide by 252 trading days to land
+    // the per-day expected profit that the dashed line sits at.
+    const selectedAccountInfo = selectedAccount !== 'all'
+        ? allAccounts.find((a: any) => (a.user_id || a.email) === selectedAccount)
+        : null;
+    const costBasisForTarget = selectedAccountInfo
+        ? ((selectedAccountInfo.initial_cost && selectedAccountInfo.initial_cost > 0)
+            ? selectedAccountInfo.initial_cost
+            : (selectedAccountInfo.net_deposit || 0))
+        : 0;
+    const dailyTarget = costBasisForTarget > 0
+        ? (costBasisForTarget * (settings.premiumTargetPercent / 100)) / TRADING_DAYS_PER_YEAR
+        : 0;
+
     return (
         <div className="container mx-auto py-10 max-w-[1400px]">
             <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -357,6 +380,7 @@ export default function DailyTradesPage() {
                             data={historyData}
                             loading={historyLoading}
                             currentDate={date}
+                            dailyTarget={dailyTarget}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate, and the
@@ -478,6 +502,7 @@ export default function DailyTradesPage() {
                             data={historyData}
                             loading={historyLoading}
                             currentDate={date}
+                            dailyTarget={dailyTarget}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate, and the
@@ -502,6 +527,12 @@ interface DailyProfitHistoryChartProps {
      *  vertical reference line at that date so the user sees which point the
      *  card matches without hovering. */
     currentDate?: string;
+    /** Expected daily profit (in raw $) derived from the 權利金目標 setting.
+     *  When > 0 the chart overlays a dashed horizontal reference line at
+     *  this value so the user sees at a glance which days hit / missed
+     *  target. Drawn in the same y-axis (signed-sqrt) projection as the
+     *  data line, so it sits on the right visual band. */
+    dailyTarget?: number;
 }
 
 // Recharts' Tooltip emits the active payload through its content prop. We
@@ -527,7 +558,7 @@ function TooltipBridge({
     return null;
 }
 
-function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate }: DailyProfitHistoryChartProps) {
+function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dailyTarget }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
     // hover is active — so the user always sees a date + 收益 number even
@@ -673,6 +704,25 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate }: D
                             width={48}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {/* 權利金目標 reference line — daily-target ÷ 252 trading days,
+                            projected into the same signed-sqrt y-axis as the data
+                            line. Labeled with the raw $ target so the value reads
+                            in dollars even though the axis is sqrt-warped. */}
+                        {dailyTarget != null && dailyTarget > 0 && (
+                            <ReferenceLine
+                                y={sgnSqrt(dailyTarget)}
+                                stroke="var(--chart-blue)"
+                                strokeDasharray="6 4"
+                                strokeWidth={1.5}
+                                strokeOpacity={0.7}
+                                label={{
+                                    value: `每日目標 ${Math.round(dailyTarget).toLocaleString('en-US')}`,
+                                    position: 'insideTopRight',
+                                    fill: 'var(--chart-blue)',
+                                    fontSize: 11,
+                                }}
+                            />
+                        )}
                         {/* Persistent crosshair at the currently-shown date so
                             users see at a glance which point the left card matches.
                             Only render when that date is actually in the chart's
