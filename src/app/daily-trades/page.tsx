@@ -675,6 +675,19 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
         tickPoolSqrt[tickPoolSqrt.length - 1] + yPad,
     ];
 
+    // Pin the 權利金目標 onto the y-axis as an extra tick so the dashed
+    // target line carries its own labeled value instead of leaving the
+    // user to eyeball it. Avoid stacking on top of a magnitude tick by
+    // dropping the closest magnitude when they'd collide visually.
+    const targetRaw = dailyTarget != null && dailyTarget > 0 ? Math.round(dailyTarget) : null;
+    const TICK_COLLISION_SQRT = 4; // ≈ 16 raw $; below this they overlap visually
+    const finalTickPoolSqrt = targetRaw != null
+        ? [
+            ...tickPoolSqrt.filter(t => Math.abs(t - sgnSqrt(targetRaw)) > TICK_COLLISION_SQRT),
+            sgnSqrt(targetRaw),
+          ].sort((a, b) => a - b)
+        : tickPoolSqrt;
+
     // Info panel falls back to whichever day the left card is showing
     // (currentDate), so the readout always agrees with the card. If that
     // date isn't in the chart's window for some reason, fall back to the
@@ -761,13 +774,19 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                         />
                         <YAxis
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
-                            ticks={tickPoolSqrt}
+                            ticks={finalTickPoolSqrt}
                             domain={yDomain}
                             tickMargin={4}
                             tickFormatter={(v) => {
                                 // Invert the signed-sqrt and round to the nearest 10
                                 // so projected ticks always read as clean $ values.
                                 const raw = Math.sign(v) * v * v;
+                                // The 權利金目標 tick gets its exact value so users
+                                // see the precise number (e.g. 201) instead of a
+                                // rounded-to-10 approximation (200).
+                                if (targetRaw != null && Math.abs(raw - targetRaw) < 1) {
+                                    return targetRaw.toLocaleString('en-US');
+                                }
                                 const rounded = Math.round(raw / 10) * 10;
                                 // Drop the bottom-most tick label — its baseline
                                 // collides with the x-axis date row underneath.
