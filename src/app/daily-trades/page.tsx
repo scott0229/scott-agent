@@ -287,21 +287,68 @@ export default function DailyTradesPage() {
                     >
                         <FilterX className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                        <SelectTrigger className="w-[140px] h-10 bg-card/50 dark:bg-black/50">
-                            <SelectValue placeholder="全部帳戶" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-none">
-                            <SelectItem value="all">全部帳戶</SelectItem>
-                            {[...allAccounts]
-                                .sort((a, b) => (a.user_id || '').localeCompare(b.user_id || ''))
-                                .map(user => (
-                                    <SelectItem key={user.user_id} value={user.user_id}>
-                                        {user.user_id}
-                                    </SelectItem>
-                                ))}
-                        </SelectContent>
-                    </Select>
+                    {(() => {
+                        // Alphabetically-sorted list of available accounts, used both
+                        // by the dropdown and the prev/next cycler. We compute it once
+                        // here so the IDs the arrows iterate match what the dropdown
+                        // shows.
+                        const sortedAccountIds = [...allAccounts]
+                            .sort((a: any, b: any) => (a.user_id || '').localeCompare(b.user_id || ''))
+                            .map((a: any) => a.user_id)
+                            .filter(Boolean) as string[];
+                        const cycleAccount = (offset: number) => {
+                            if (sortedAccountIds.length === 0) return;
+                            const idx = sortedAccountIds.indexOf(selectedAccount);
+                            if (idx === -1) {
+                                setSelectedAccount(sortedAccountIds[0]);
+                                return;
+                            }
+                            // Wrap around so left at start jumps to end and vice versa.
+                            const next = (idx + offset + sortedAccountIds.length) % sortedAccountIds.length;
+                            setSelectedAccount(sortedAccountIds[next]);
+                        };
+                        const inSingleMode = selectedAccount !== 'all';
+                        return (
+                            <div className="flex items-center h-10 bg-card/50 dark:bg-black/50 rounded-md border shadow-sm">
+                                {inSingleMode && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-full rounded-r-none"
+                                        onClick={() => cycleAccount(-1)}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                                    <SelectTrigger className={cn(
+                                        "w-[140px] h-full border-0 shadow-none bg-transparent focus:ring-0",
+                                        inSingleMode && "rounded-none border-x border-border/50"
+                                    )}>
+                                        <SelectValue placeholder="全部帳戶" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-none">
+                                        <SelectItem value="all">全部帳戶</SelectItem>
+                                        {sortedAccountIds.map(uid => (
+                                            <SelectItem key={uid} value={uid}>
+                                                {uid}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {inSingleMode && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-full rounded-l-none"
+                                        onClick={() => cycleAccount(1)}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     <div className="flex items-center h-10 bg-card/50 dark:bg-black/50 rounded-md border shadow-sm">
                         <Button variant="ghost" size="icon" className="h-full rounded-r-none" onClick={() => changeDate(-1)}>
