@@ -322,8 +322,10 @@ export default function DailyTradesPage() {
                                 )}
                                 <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                                     <SelectTrigger className={cn(
-                                        "w-[140px] h-full border-0 shadow-none bg-transparent focus:ring-0 justify-center",
-                                        inSingleMode && "rounded-none border-x border-border/50 [&>svg]:hidden"
+                                        "w-[140px] h-full border-0 shadow-none bg-transparent focus:ring-0",
+                                        inSingleMode
+                                            ? "justify-center rounded-none border-x border-border/50 [&>svg]:hidden"
+                                            : "justify-between"
                                     )}>
                                         <SelectValue placeholder="全部帳戶" />
                                     </SelectTrigger>
