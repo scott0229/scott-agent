@@ -349,7 +349,7 @@ export async function GET(
             FROM OPTIONS
             WHERE owner_id = ? AND year = ? AND operation = 'Open'
             GROUP BY to_date, underlying, type, strike_price, group_id
-            ORDER BY 
+            ORDER BY
                 CASE WHEN SUM(quantity) < 0 THEN 1 ELSE 2 END,
                 CASE underlying
                     WHEN 'QQQ' THEN 1
@@ -357,7 +357,9 @@ export async function GET(
                     WHEN 'TQQQ' THEN 3
                     ELSE 4
                 END,
-                underlying, to_date, type, group_id
+                underlying,
+                CASE type WHEN 'CALL' THEN 1 WHEN 'PUT' THEN 2 ELSE 3 END,
+                to_date, group_id
         `).bind(userId, currentYear).all();
 
         return NextResponse.json({
