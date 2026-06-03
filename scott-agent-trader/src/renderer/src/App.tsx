@@ -31,7 +31,7 @@ function EtClock(): React.JSX.Element {
   return (
     <span className="et-clock" title="美東時間 (US Eastern)">
       <span className="et-clock-label">美東</span>
-      {get('day')}-{get('month')} {get('hour')}:{get('minute')}
+      {get('month')}-{get('day')} {get('hour')}:{get('minute')}
     </span>
   )
 }
