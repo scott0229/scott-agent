@@ -990,7 +990,8 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .custom-select-option:hover {
-  background: var(--bg-hover);
+  background: #cde2fe;
+  color: #1e3a8a;
 }
 
 .custom-select-option.selected {
@@ -999,14 +1000,16 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 /* Stepper variant — when onPrev/onNext are provided the container becomes a
-   horizontal flex with ‹ and › buttons sharing the trigger's border. */
+   horizontal flex with ‹ and › buttons sharing the trigger's border. NOTE:
+   do NOT use overflow: hidden here — the dropdown is positioned absolutely
+   under this container and would get clipped, killing the menu entirely.
+   The stepper buttons get their own corner radii instead. */
 .custom-select.with-steppers {
   display: inline-flex;
   align-items: stretch;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background: var(--bg-card);
-  overflow: hidden;
 }
 .custom-select.with-steppers:hover {
   border-color: var(--accent-blue);
@@ -1043,9 +1046,15 @@ input[type='number']::-webkit-outer-spin-button {
 }
 .custom-select-step-prev {
   border-right: 1px solid var(--border-color);
+  /* Match the container's outer corners so :hover bg respects the rounded
+     edge. Subtracting 1px accounts for the container's own border. */
+  border-top-left-radius: calc(var(--radius) - 1px);
+  border-bottom-left-radius: calc(var(--radius) - 1px);
 }
 .custom-select-step-next {
   border-left: 1px solid var(--border-color);
+  border-top-right-radius: calc(var(--radius) - 1px);
+  border-bottom-right-radius: calc(var(--radius) - 1px);
 }
 
 /* Active-filter highlight — applied to the account filter when it's been
