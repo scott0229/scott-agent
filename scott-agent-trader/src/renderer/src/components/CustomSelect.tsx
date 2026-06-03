@@ -10,18 +10,26 @@ interface CustomSelectProps {
   options: Option[]
   onChange: (value: string) => void
   className?: string
+  // When provided, renders ‹ › step buttons flanking the trigger that share
+  // its border. Used by the account filter to let the user cycle through
+  // accounts without opening the dropdown.
+  onPrev?: () => void
+  onNext?: () => void
 }
 
 export default function CustomSelect({
   value,
   options,
   onChange,
-  className = ''
+  className = '',
+  onPrev,
+  onNext
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   const selectedLabel = options.find((o) => o.value === value)?.label || ''
+  const showSteppers = !!(onPrev || onNext)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -34,11 +42,40 @@ export default function CustomSelect({
   }, [])
 
   return (
-    <div className={`custom-select ${className}`} ref={ref}>
+    <div
+      className={`custom-select ${className} ${showSteppers ? 'with-steppers' : ''}`}
+      ref={ref}
+    >
+      {onPrev && (
+        <button
+          type="button"
+          className="custom-select-step custom-select-step-prev"
+          title="上一個"
+          onClick={(e) => {
+            e.stopPropagation()
+            onPrev()
+          }}
+        >
+          ‹
+        </button>
+      )}
       <button type="button" className="custom-select-trigger" onClick={() => setOpen(!open)}>
         <span>{selectedLabel}</span>
         <span className="custom-select-arrow">▾</span>
       </button>
+      {onNext && (
+        <button
+          type="button"
+          className="custom-select-step custom-select-step-next"
+          title="下一個"
+          onClick={(e) => {
+            e.stopPropagation()
+            onNext()
+          }}
+        >
+          ›
+        </button>
+      )}
       {open && (
         <div className="custom-select-dropdown">
           {options.map((opt) => (

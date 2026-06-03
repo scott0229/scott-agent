@@ -11,6 +11,31 @@ import './assets/app.css'
 
 const HIDDEN_ACCOUNTS_PREFIX = 'scott-trader-hidden-accounts'
 
+// Lightweight US-Eastern wall clock for the header. Ticks every 15 s so the
+// minute display stays accurate without rerendering more than needed.
+function EtClock(): React.JSX.Element {
+  const [now, setNow] = useState<Date>(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 15_000)
+    return () => clearInterval(id)
+  }, [])
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(now)
+  const get = (t: string): string => parts.find((p) => p.type === t)?.value || ''
+  return (
+    <span className="et-clock" title="美東時間 (US Eastern)">
+      <span className="et-clock-label">美東</span>
+      {get('day')}-{get('month')} {get('hour')}:{get('minute')}
+    </span>
+  )
+}
+
 function getHiddenAccountsKey(port: number): string {
   return `${HIDDEN_ACCOUNTS_PREFIX}-${port}`
 }
@@ -216,6 +241,7 @@ function App(): React.JSX.Element {
             </svg>
           </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
+          <EtClock />
         </div>
         <nav className="tab-nav-inline">
           <button

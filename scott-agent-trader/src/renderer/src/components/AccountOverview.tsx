@@ -832,6 +832,11 @@ export default function AccountOverview({
 
   const sortedAccounts = [...accounts].sort((a, b) => {
     if (sortBy === 'netLiquidation') return b.netLiquidation - a.netLiquidation
+    if (sortBy === 'alpha') {
+      const aName = formatAccountName(a.alias || a.accountId)
+      const bName = formatAccountName(b.alias || b.accountId)
+      return aName.localeCompare(bName)
+    }
     if (sortBy === 'margin') {
       const aPutCost = positions
         .filter(
@@ -1020,7 +1025,32 @@ export default function AccountOverview({
                     { value: '', label: `全部 ${uniqueAccounts.length} 個帳戶` },
                     ...uniqueAccounts
                   ]}
-                  className="dropdown-no-scroll"
+                  className={`dropdown-no-scroll${filterAccount ? ' account-filter-active' : ''}`}
+                  onPrev={
+                    filterAccount && uniqueAccounts.length > 1
+                      ? () => {
+                          const idx = uniqueAccounts.findIndex((a) => a.value === filterAccount)
+                          if (idx < 0) return
+                          const next =
+                            uniqueAccounts[
+                              (idx - 1 + uniqueAccounts.length) % uniqueAccounts.length
+                            ]
+                          setFilterAccount(next.value)
+                          setSelectedPositions(new Set())
+                        }
+                      : undefined
+                  }
+                  onNext={
+                    filterAccount && uniqueAccounts.length > 1
+                      ? () => {
+                          const idx = uniqueAccounts.findIndex((a) => a.value === filterAccount)
+                          if (idx < 0) return
+                          const next = uniqueAccounts[(idx + 1) % uniqueAccounts.length]
+                          setFilterAccount(next.value)
+                          setSelectedPositions(new Set())
+                        }
+                      : undefined
+                  }
                 />
                 {selectMode && (
                   <button
@@ -1093,6 +1123,7 @@ export default function AccountOverview({
                 onChange={setSortBy}
                 options={[
                   { value: 'netLiquidation', label: '淨值-從高到低' },
+                  { value: 'alpha', label: '按字母排列' },
                   { value: 'margin', label: '潛在融資-從高到低' },
                   { value: 'cash', label: '現金-從多到少' },
                   { value: 'returnRate', label: '報酬率-從高到低' }
@@ -1541,7 +1572,8 @@ export default function AccountOverview({
                         const renderRow = (
                           pos: PositionData,
                           idx: number,
-                          showDays: boolean
+                          showDays: boolean,
+                          total: number
                         ): React.ReactNode => {
                           const isOption = pos.secType === 'OPT'
                           const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
@@ -1573,14 +1605,20 @@ export default function AccountOverview({
                             : null
                           const pk = posKey(pos)
                           const isChecked = currentCheckedSet.has(pk)
+                          const inCheckMode = checkModeGroups.has(g.id)
                           return (
-                            <tr key={idx}>
+                            <tr
+                              key={idx}
+                              onClick={inCheckMode ? () => toggleCheck(pk) : undefined}
+                              style={inCheckMode ? { cursor: 'pointer' } : undefined}
+                            >
                               <td
                                 style={{
-                                  fontSize: '13px',
                                   textAlign: 'left',
-                                  paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined,
-                                  whiteSpace: 'nowrap'
+                                  color: '#888',
+                                  fontSize: '12px',
+                                  whiteSpace: 'nowrap',
+                                  paddingLeft: '8px'
                                 }}
                               >
                                 {checkModeGroups.has(g.id) && (
@@ -1597,6 +1635,15 @@ export default function AccountOverview({
                                     }}
                                   />
                                 )}
+                                {total - idx}
+                              </td>
+                              <td
+                                style={{
+                                  fontSize: '13px',
+                                  textAlign: 'left',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
                                 {formatAccountName(
                                   accounts.find((a) => a.accountId === pos.account)?.alias ||
                                   pos.account
@@ -1667,13 +1714,7 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      <th
-                                        style={{
-                                          width: '12%',
-                                          textAlign: 'left',
-                                          paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined
-                                        }}
-                                      >
+                                      <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>
                                         {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
@@ -1698,12 +1739,12 @@ export default function AccountOverview({
                                             style={{
                                               cursor: 'pointer',
                                               accentColor: '#2563eb',
-                                              marginRight: '4px',
                                               verticalAlign: 'middle'
                                             }}
                                           />
                                         )}
                                       </th>
+                                      <th style={{ width: '12%', textAlign: 'left' }}></th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '11%' }}>持倉</th>
                                       <th style={{ width: '12%' }}>成本</th>
@@ -1712,7 +1753,7 @@ export default function AccountOverview({
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {stkPos.map((pos, idx) => renderRow(pos, idx, false))}
+                                    {stkPos.map((pos, idx) => renderRow(pos, idx, false, stkPos.length))}
                                   </tbody>
                                 </table>
                               </div>
@@ -1722,13 +1763,7 @@ export default function AccountOverview({
                                 <table className="positions-table">
                                   <thead>
                                     <tr>
-                                      <th
-                                        style={{
-                                          width: '12%',
-                                          textAlign: 'left',
-                                          paddingLeft: checkModeGroups.has(g.id) ? '8px' : undefined
-                                        }}
-                                      >
+                                      <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>
                                         {checkModeGroups.has(g.id) && (
                                           <input
                                             type="checkbox"
@@ -1753,18 +1788,18 @@ export default function AccountOverview({
                                             style={{
                                               cursor: 'pointer',
                                               accentColor: '#2563eb',
-                                              marginRight: '4px',
                                               verticalAlign: 'middle'
                                             }}
                                           />
                                         )}
                                       </th>
+                                      <th style={{ width: '12%', textAlign: 'left' }}></th>
                                       <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                                      <th style={{ width: '8%' }}>持倉</th>
+                                      <th style={{ width: '11%' }}>持倉</th>
                                       <th style={{ width: '8%' }}>到期</th>
-                                      <th style={{ width: '11%' }}>均價</th>
-                                      <th style={{ width: '11%' }}>現價</th>
-                                      <th style={{ width: '11%' }}>盈虧</th>
+                                      <th style={{ width: '8%' }}>均價</th>
+                                      <th style={{ width: '9%' }}>現價</th>
+                                      <th style={{ width: '13%' }}>盈虧</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1779,7 +1814,7 @@ export default function AccountOverview({
                                           {needsSep && (
                                             <tr>
                                               <td
-                                                colSpan={7}
+                                                colSpan={8}
                                                 style={{
                                                   padding: 0,
                                                   height: '3px',
@@ -1788,7 +1823,7 @@ export default function AccountOverview({
                                               />
                                             </tr>
                                           )}
-                                          {renderRow(pos, idx, true)}
+                                          {renderRow(pos, idx, true, optPos.length)}
                                         </React.Fragment>
                                       )
                                     })}
@@ -1825,7 +1860,8 @@ export default function AccountOverview({
                   const renderUcRow = (
                     pos: PositionData,
                     idx: number,
-                    showDays: boolean
+                    showDays: boolean,
+                    total: number
                   ): React.ReactNode => {
                     const isOption = pos.secType === 'OPT'
                     const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
@@ -1857,6 +1893,17 @@ export default function AccountOverview({
                       : null
                     return (
                       <tr key={idx}>
+                        <td
+                          style={{
+                            textAlign: 'left',
+                            color: '#888',
+                            fontSize: '12px',
+                            whiteSpace: 'nowrap',
+                            paddingLeft: '8px'
+                          }}
+                        >
+                          {total - idx}
+                        </td>
                         <td style={{ fontSize: '13px', textAlign: 'left' }}>
                           {formatAccountName(
                             accounts.find((a) => a.accountId === pos.account)?.alias || pos.account
@@ -1938,6 +1985,7 @@ export default function AccountOverview({
                           <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                             <thead>
                               <tr>
+                                <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}></th>
                                 <th style={{ width: '14%', textAlign: 'left' }}></th>
                                 <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                 <th style={{ width: '10%' }}>持倉</th>
@@ -1948,7 +1996,7 @@ export default function AccountOverview({
                               </tr>
                             </thead>
                             <tbody>
-                              {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false))}
+                              {ucStkPos.map((pos, idx) => renderUcRow(pos, idx, false, ucStkPos.length))}
                             </tbody>
                           </table>
                         </div>
@@ -1958,6 +2006,7 @@ export default function AccountOverview({
                           <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                             <thead>
                               <tr>
+                                <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}></th>
                                 <th style={{ width: '12%', textAlign: 'left' }}></th>
                                 <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
                                 <th style={{ width: '8%' }}>天數</th>
@@ -1978,7 +2027,7 @@ export default function AccountOverview({
                                     {needsSep && (
                                       <tr>
                                         <td
-                                          colSpan={7}
+                                          colSpan={8}
                                           style={{
                                             padding: 0,
                                             height: '3px',
@@ -1987,7 +2036,7 @@ export default function AccountOverview({
                                         />
                                       </tr>
                                     )}
-                                    {renderUcRow(pos, idx, true)}
+                                    {renderUcRow(pos, idx, true, ucOptPos.length)}
                                   </React.Fragment>
                                 )
                               })}
