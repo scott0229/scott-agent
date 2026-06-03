@@ -3085,3 +3085,30 @@ input[type='number']::-webkit-outer-spin-button {
   font-size: inherit;
   color: var(--text-muted, #9ca3af);
 }
+
+/* "Install new version" pill — shown next to the clock when the main
+   process's hourly poll finds a newer release on the server. */
+.update-available-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 12px;
+  cursor: pointer;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s;
+}
+.update-available-pill:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.65);
+}
+.update-available-pill:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

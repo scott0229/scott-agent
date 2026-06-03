@@ -237,6 +237,25 @@ const ibApi = {
   ): Promise<{ success: boolean; found: number; updated: number; error?: string }> =>
     ipcRenderer.invoke('prices:backfillUnderlyingPrice', symbol, target),
 
+  // Auto-update — checked on startup + hourly. The renderer subscribes via
+  // onUpdateAvailable; installUpdate downloads + extracts + launches NSIS.
+  checkUpdate: (): Promise<{ version: string; downloadUrl: string; currentVersion: string } | null> =>
+    ipcRenderer.invoke('trader:checkUpdate'),
+  getCachedUpdate: (): Promise<{ version: string; downloadUrl: string; currentVersion: string } | null> =>
+    ipcRenderer.invoke('trader:getCachedUpdate'),
+  installUpdate: (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('trader:installUpdate'),
+  onUpdateAvailable: (
+    callback: (info: { version: string; downloadUrl: string; currentVersion: string } | null) => void
+  ): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, info: { version: string; downloadUrl: string; currentVersion: string } | null): void =>
+      callback(info)
+    ipcRenderer.on('trader:updateAvailable', handler)
+    return () => {
+      ipcRenderer.removeListener('trader:updateAvailable', handler)
+    }
+  },
+
   // Cleanup
   log: (...args: any[]) => ipcRenderer.send('renderer-log', ...args),
 
@@ -246,6 +265,7 @@ const ibApi = {
     ipcRenderer.removeAllListeners('ib:openOrderUpdate')
     ipcRenderer.removeAllListeners('ib:executionUpdate')
     ipcRenderer.removeAllListeners('ib:quoteUpdate')
+    ipcRenderer.removeAllListeners('trader:updateAvailable')
   }
 }
 

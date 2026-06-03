@@ -611,6 +611,131 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // === Auto-update ===
+  // The trader app polls /api/trader/latest-version every hour. On a new
+  // version we notify the renderer (toolbar shows an "安裝新版" pill); when
+  // the user clicks it we download the zip, extract the .exe to %TEMP%, run
+  // it via shell.openPath, and quit so the NSIS installer can replace files.
+  const compareVersions = (a: string, b: string): number => {
+    const pa = a.split('.').map((n) => parseInt(n, 10) || 0)
+    const pb = b.split('.').map((n) => parseInt(n, 10) || 0)
+    const len = Math.max(pa.length, pb.length)
+    for (let i = 0; i < len; i++) {
+      const av = pa[i] ?? 0
+      const bv = pb[i] ?? 0
+      if (av !== bv) return av - bv
+    }
+    return 0
+  }
+
+  type UpdateInfo = {
+    version: string
+    downloadUrl: string
+    currentVersion: string
+  } | null
+  let cachedUpdate: UpdateInfo = null
+
+  const fetchLatestVersion = async (): Promise<UpdateInfo> => {
+    try {
+      const t = SETTINGS_TARGETS.find((t) => t.label === 'production') || SETTINGS_TARGETS[0]
+      const baseUrl = t.url.replace('/api/trader-settings', '/api/trader/latest-version')
+      const res = await fetch(baseUrl, {
+        headers: { Authorization: `Bearer ${t.apiKey}` }
+      })
+      if (!res.ok) {
+        console.warn('[updater] latest-version http', res.status)
+        return null
+      }
+      const data = (await res.json()) as { version: string; downloadUrl: string }
+      const currentVersion = app.getVersion()
+      if (compareVersions(data.version, currentVersion) > 0) {
+        return { version: data.version, downloadUrl: data.downloadUrl, currentVersion }
+      }
+      return null
+    } catch (err) {
+      console.warn('[updater] fetch failed:', err)
+      return null
+    }
+  }
+
+  const broadcastUpdate = (info: UpdateInfo): void => {
+    cachedUpdate = info
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('trader:updateAvailable', info)
+    }
+  }
+
+  ipcMain.handle('trader:checkUpdate', async () => {
+    const info = await fetchLatestVersion()
+    broadcastUpdate(info)
+    return info
+  })
+
+  ipcMain.handle('trader:getCachedUpdate', async () => cachedUpdate)
+
+  // Download the zip into %TEMP%, extract the installer, launch it, and quit
+  // so the NSIS installer can overwrite the running .exe. Uses PowerShell's
+  // built-in Expand-Archive (no extra deps; Windows-only is fine — the
+  // trader app is Windows-only anyway).
+  ipcMain.handle('trader:installUpdate', async () => {
+    try {
+      const info = cachedUpdate || (await fetchLatestVersion())
+      if (!info) return { ok: false, error: '沒有可用的更新' }
+      const { promises: fs } = await import('node:fs')
+      const path = await import('node:path')
+      const { spawn } = await import('node:child_process')
+      const tmpDir = path.join(app.getPath('temp'), `scott-agent-trader-update-${Date.now()}`)
+      await fs.mkdir(tmpDir, { recursive: true })
+      const zipPath = path.join(tmpDir, 'installer.zip')
+      // Download the zip (~93MB) — fetch + ArrayBuffer is fine at this size.
+      const res = await fetch(info.downloadUrl)
+      if (!res.ok) throw new Error(`下載失敗 HTTP ${res.status}`)
+      const buf = Buffer.from(await res.arrayBuffer())
+      await fs.writeFile(zipPath, buf)
+      // Extract via PowerShell — zero npm deps.
+      await new Promise<void>((resolve, reject) => {
+        const ps = spawn(
+          'powershell',
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            `Expand-Archive -Path "${zipPath}" -DestinationPath "${tmpDir}" -Force`
+          ],
+          { stdio: 'ignore' }
+        )
+        ps.on('error', reject)
+        ps.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`Expand-Archive exit ${code}`))))
+      })
+      // Find the extracted .exe (filename embeds the version).
+      const entries = await fs.readdir(tmpDir)
+      const exeName = entries.find((n) => n.toLowerCase().endsWith('-setup.exe'))
+      if (!exeName) throw new Error('解壓縮後找不到 installer .exe')
+      const exePath = path.join(tmpDir, exeName)
+      // Launch and quit — NSIS one-click installer takes over from here.
+      const err = await shell.openPath(exePath)
+      if (err) throw new Error(`啟動 installer 失敗：${err}`)
+      // Small delay so the installer has time to spin up before the app exits.
+      setTimeout(() => app.quit(), 500)
+      return { ok: true }
+    } catch (err) {
+      console.error('[trader:installUpdate] failed:', err)
+      return { ok: false, error: err instanceof Error ? err.message : '更新失敗' }
+    }
+  })
+
+  // Initial check fires immediately on startup; result is cached so the
+  // renderer picks it up via getCachedUpdate when it mounts (even if the
+  // broadcast races ahead of the BrowserWindow being ready). Then poll
+  // hourly thereafter.
+  fetchLatestVersion().then(broadcastUpdate)
+  setInterval(
+    () => {
+      fetchLatestVersion().then(broadcastUpdate)
+    },
+    60 * 60 * 1000
+  )
+
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
     {

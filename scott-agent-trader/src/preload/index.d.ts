@@ -307,6 +307,14 @@ interface IBApi {
     target?: 'staging' | 'production'
   ) => Promise<{ success: boolean; found: number; updated: number; error?: string }>
 
+  // Auto-update
+  checkUpdate: () => Promise<{ version: string; downloadUrl: string; currentVersion: string } | null>
+  getCachedUpdate: () => Promise<{ version: string; downloadUrl: string; currentVersion: string } | null>
+  installUpdate: () => Promise<{ ok: boolean; error?: string }>
+  onUpdateAvailable: (
+    callback: (info: { version: string; downloadUrl: string; currentVersion: string } | null) => void
+  ) => () => void
+
   log: (...args: any[]) => void
 
   // Streaming quotes

@@ -221,6 +221,45 @@ function App(): React.JSX.Element {
     [executions, hiddenAccounts]
   )
 
+  // Auto-update: subscribe to the main process's hourly poll and surface a
+  // pill in the header when a newer version is available.
+  const [updateInfo, setUpdateInfo] = useState<{
+    version: string
+    downloadUrl: string
+    currentVersion: string
+  } | null>(null)
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [installing, setInstalling] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+  useEffect(() => {
+    // Pull whatever main has already cached (in case we mounted after the
+    // initial startup poll fired).
+    window.ibApi.getCachedUpdate().then(setUpdateInfo).catch(() => {})
+    const off = window.ibApi.onUpdateAvailable((info) => setUpdateInfo(info))
+    return off
+  }, [])
+  const openUpdateDialog = useCallback(() => {
+    if (!updateInfo) return
+    setUpdateError(null)
+    setUpdateDialogOpen(true)
+  }, [updateInfo])
+  const confirmInstallUpdate = useCallback(async () => {
+    if (!updateInfo || installing) return
+    setInstalling(true)
+    setUpdateError(null)
+    try {
+      const res = await window.ibApi.installUpdate()
+      if (!res.ok) {
+        setUpdateError(res.error || '未知錯誤')
+        setInstalling(false)
+      }
+      // On success the main process quits the app — no need to clear state.
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : String(err))
+      setInstalling(false)
+    }
+  }, [updateInfo, installing])
+
   return (
     <div className="app">
       <header className="app-header">
@@ -242,6 +281,16 @@ function App(): React.JSX.Element {
           </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <EtClock />
+          {updateInfo && (
+            <button
+              type="button"
+              className="update-available-pill"
+              onClick={openUpdateDialog}
+              title={`下載並安裝 ${updateInfo.version}`}
+            >
+              安裝新版 {updateInfo.version}
+            </button>
+          )}
         </div>
         <nav className="tab-nav-inline">
           <button
@@ -371,6 +420,115 @@ function App(): React.JSX.Element {
           d1Target={d1Target}
           onClose={() => setShowSync(false)}
         />
+      )}
+      {updateDialogOpen && updateInfo && (
+        <div
+          className="roll-dialog-overlay"
+          onClick={() => !installing && setUpdateDialogOpen(false)}
+        >
+          <div
+            className="roll-dialog"
+            style={{ width: 560 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="roll-dialog-header" style={{ gap: 10 }}>
+              <span style={{ fontSize: 22, lineHeight: 1 }}>⬆️</span>
+              <h3>有新版可下載</h3>
+              <button
+                className="roll-dialog-close"
+                onClick={() => !installing && setUpdateDialogOpen(false)}
+                disabled={installing}
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              className="roll-dialog-body"
+              style={{
+                padding: '20px 24px',
+                fontSize: 14,
+                color: '#374151',
+                lineHeight: 1.7
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <span
+                  style={{
+                    padding: '4px 12px',
+                    background: '#f3f4f6',
+                    borderRadius: 6,
+                    fontFamily: 'monospace'
+                  }}
+                >
+                  {updateInfo.currentVersion}
+                </span>
+                <span style={{ color: '#9ca3af' }}>→</span>
+                <span
+                  style={{
+                    padding: '4px 12px',
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    color: '#b45309',
+                    border: '1px solid rgba(245, 158, 11, 0.45)',
+                    borderRadius: 6,
+                    fontFamily: 'monospace',
+                    fontWeight: 600
+                  }}
+                >
+                  {updateInfo.version}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+                按下「安裝」後 App 會自動下載並啟動安裝程序，目前視窗會關閉。
+              </div>
+              {updateError && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: '8px 12px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    borderRadius: 6,
+                    fontSize: 13
+                  }}
+                >
+                  更新失敗：{updateError}
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8,
+                borderTop: '1px solid var(--border-color)'
+              }}
+            >
+              <button
+                className="select-toggle-btn"
+                onClick={() => setUpdateDialogOpen(false)}
+                disabled={installing}
+                style={{ minWidth: 80 }}
+              >
+                取消
+              </button>
+              <button
+                className="select-toggle-btn"
+                onClick={confirmInstallUpdate}
+                disabled={installing}
+                style={{
+                  minWidth: 80,
+                  background: '#2563eb',
+                  color: '#fff',
+                  borderColor: '#2563eb'
+                }}
+              >
+                {installing ? '下載中...' : '安裝'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
