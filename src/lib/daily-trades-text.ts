@@ -46,12 +46,21 @@ export function generateDailyTradesText(
     userGroup: UserDailyTradesGroup,
     date: string,
     marketDataMap: Record<string, number>,
+    /** QQQ open/close for `date`. When both are populated, prepend a
+     *  "QQQ open → close (±delta)" line right after 交易日期 so readers
+     *  see the underlying's daily move next to their P&L. */
+    qqqDay?: { open: number | null; close: number | null },
 ): string {
     let text = '';
     if (date) {
         const d = new Date(date);
         const dateStr = `${d.getFullYear().toString().slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         text += `交易日期 : ${dateStr}\n`;
+        if (qqqDay && qqqDay.open != null && qqqDay.close != null) {
+            const delta = qqqDay.close - qqqDay.open;
+            const sign = delta >= 0 ? '+' : '';
+            text += `QQQ ${qqqDay.open.toFixed(2)} → ${qqqDay.close.toFixed(2)} (${sign}${delta.toFixed(2)})\n`;
+        }
         text += `----------------------------------------\n`;
     }
 

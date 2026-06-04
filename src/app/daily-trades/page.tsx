@@ -247,7 +247,7 @@ export default function DailyTradesPage() {
         return new Intl.NumberFormat('en-US').format(val);
     };
 
-    const generateTradesText = (userGroup: any) => generateDailyTradesText(userGroup, date, marketDataMap);
+    const generateTradesText = (userGroup: any) => generateDailyTradesText(userGroup, date, marketDataMap, dayMarketStats['QQQ']);
 
 
     // Sort cards alphabetically by user_id so the grid scans predictably
