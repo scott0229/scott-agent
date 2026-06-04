@@ -696,9 +696,11 @@ export function GroupTradesDialog({
                                                     {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : (
                                                         <span className="inline-flex items-center gap-1.5">
                                                             {formatDate(opt.settlement_date)}
-                                                            {/* Stock close via CALL assignment — mirror the open-side flag. */}
+                                                            {/* Stock close via CALL assignment — mirror the open-side flag.
+                                                                Same green styling as the open-side pill so the user reads
+                                                                "this was an assignment" without parsing two color schemes. */}
                                                             {opt.type === 'STK' && opt.close_source?.toLowerCase?.() === 'assigned' && (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-negative-soft text-status-negative font-medium leading-none whitespace-nowrap">被派</span>
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-positive-soft text-status-positive font-medium leading-none whitespace-nowrap">被派</span>
                                                             )}
                                                         </span>
                                                     )}
