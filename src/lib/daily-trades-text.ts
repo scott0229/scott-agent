@@ -235,8 +235,24 @@ export function generateDailyTradesText(
 
         lines.push(`展期${daysDiffStr}${rollSegments.length > 0 ? ', ' + rollSegments.join(', ') : ''}`);
 
-        rg.opened.forEach(o => lines.push(formatOptionTrade(o)));
-        rg.closed.forEach(c => lines.push(formatOptionTrade(c)));
+        // Merge legs that share (symbol, type, strike, to_date) into a single
+        // row so two same-strike opens like "+1口 QQQ Jun03'26 726P" and
+        // "+2口 QQQ Jun03'26 726P" read as one "+3口 QQQ Jun03'26 726P".
+        // Clone the trade before mutating to keep the upstream array intact
+        // (other consumers reuse userGroup.trades).
+        const mergeLegs = (rows: DailyTradeRow[]): DailyTradeRow[] => {
+            const map = new Map<string, DailyTradeRow>();
+            for (const t of rows) {
+                const k = `${t.symbol}|${t.option_type}|${t.strike_price}|${t.to_date}`;
+                const prior = map.get(k);
+                if (prior) prior.quantity += t.quantity;
+                else map.set(k, { ...t });
+            }
+            return Array.from(map.values());
+        };
+
+        mergeLegs(rg.opened).forEach(o => lines.push(formatOptionTrade(o)));
+        mergeLegs(rg.closed).forEach(c => lines.push(formatOptionTrade(c)));
 
         optionChunks.push(lines.join('\n'));
     });
