@@ -146,6 +146,31 @@ export function generateDailyTradesText(
         }
     });
 
+    // Apply explicit ordering to the roll chunks so the card mirrors the
+    // 持有期權 list in the daily report:
+    //   1. underlying priority QQQ → QLD → TQQQ → others (alpha)
+    //   2. CALL before PUT
+    //   3. strike ascending
+    // Same group's closed + opened share underlying/type, so any leg is a
+    // valid sort key — use opened[0] (newer leg) for the strike comparison.
+    const ROLL_SYMBOL_PRIORITY: Record<string, number> = { QQQ: 0, QLD: 1, TQQQ: 2 };
+    const rollSymbolRank = (s: string | undefined) => (s && s in ROLL_SYMBOL_PRIORITY) ? ROLL_SYMBOL_PRIORITY[s] : 3;
+    const rollTypeRank = (t: string | undefined) => t === 'CALL' ? 0 : t === 'PUT' ? 1 : 2;
+    rollGroups.sort((a, b) => {
+        const aRef = a.opened[0] ?? a.closed[0];
+        const bRef = b.opened[0] ?? b.closed[0];
+        const symRankA = rollSymbolRank(aRef.symbol);
+        const symRankB = rollSymbolRank(bRef.symbol);
+        if (symRankA !== symRankB) return symRankA - symRankB;
+        // Same priority tier (e.g. both fall into the "others" bucket) →
+        // alpha order so the chunk list stays stable.
+        if (aRef.symbol !== bRef.symbol) return aRef.symbol.localeCompare(bRef.symbol);
+        const typeRankA = rollTypeRank(aRef.option_type);
+        const typeRankB = rollTypeRank(bRef.option_type);
+        if (typeRankA !== typeRankB) return typeRankA - typeRankB;
+        return (aRef.strike_price ?? 0) - (bRef.strike_price ?? 0);
+    });
+
     // Format rolls
     rollGroups.forEach(rg => {
         const lines: string[] = [];
@@ -268,7 +293,22 @@ export function generateDailyTradesText(
         optionGroups[key].push(trade);
     });
 
-    Object.values(optionGroups).forEach(group => {
+    // Apply the same ordering to unmatched option chunks (新開倉 / 平倉)
+    // so the whole option section reads in one consistent sequence.
+    const sortedOptionGroups = Object.values(optionGroups).sort((a, b) => {
+        const aRef = a[0];
+        const bRef = b[0];
+        const symRankA = rollSymbolRank(aRef.symbol);
+        const symRankB = rollSymbolRank(bRef.symbol);
+        if (symRankA !== symRankB) return symRankA - symRankB;
+        if (aRef.symbol !== bRef.symbol) return aRef.symbol.localeCompare(bRef.symbol);
+        const typeRankA = rollTypeRank(aRef.option_type);
+        const typeRankB = rollTypeRank(bRef.option_type);
+        if (typeRankA !== typeRankB) return typeRankA - typeRankB;
+        return (aRef.strike_price ?? 0) - (bRef.strike_price ?? 0);
+    });
+
+    sortedOptionGroups.forEach(group => {
         const firstTrade = group[0];
         let prefixLine = '';
 
