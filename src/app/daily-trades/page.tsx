@@ -839,12 +839,12 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                         <XAxis
                             dataKey="label"
-                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            tick={{ fontSize: 14, fill: 'var(--foreground)' }}
                             interval="preserveStartEnd"
                             minTickGap={20}
                         />
                         <YAxis
-                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            tick={{ fontSize: 14, fill: 'var(--foreground)' }}
                             ticks={finalTickPoolSqrt}
                             domain={yDomain}
                             tickMargin={4}
