@@ -92,21 +92,34 @@ export async function GET(req: NextRequest) {
         }).filter((u: any) => u.trades.length > 0);
 
         const { results: marketPrices } = await db.prepare(`
-            SELECT symbol, close_price FROM market_prices 
+            SELECT symbol, close_price FROM market_prices
             WHERE date(datetime(date, 'unixepoch')) <= ?
             AND date = (
-                SELECT MAX(date) FROM market_prices AS mp2 
-                WHERE mp2.symbol = market_prices.symbol 
+                SELECT MAX(date) FROM market_prices AS mp2
+                WHERE mp2.symbol = market_prices.symbol
                 AND date(datetime(mp2.date, 'unixepoch')) <= ?
             )
         `).bind(dateStr, dateStr).all();
-        
+
         const marketDataMap: Record<string, number> = {};
         marketPrices?.forEach((mp: any) => {
             marketDataMap[mp.symbol] = mp.close_price;
         });
 
-        return NextResponse.json({ data: groupedData, marketData: marketDataMap });
+        // QQQ open/close for the selected date — surfaced in the chart card
+        // header so users see the underlying's daily range alongside their
+        // P&L without leaving the page. Returns null if the date isn't a
+        // trading day or market_prices hasn't backfilled it yet.
+        const dayMarket = await db.prepare(`
+            SELECT symbol, open, close FROM market_prices
+            WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) = ?
+        `).bind(dateStr).first<{ symbol: string; open: number | null; close: number | null }>();
+        const dayMarketStats: Record<string, { open: number | null; close: number | null }> = {};
+        if (dayMarket) {
+            dayMarketStats[dayMarket.symbol] = { open: dayMarket.open, close: dayMarket.close };
+        }
+
+        return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats });
     } catch (error: any) {
         console.error('Failed to fetch daily trades:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

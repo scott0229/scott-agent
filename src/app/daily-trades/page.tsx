@@ -33,6 +33,10 @@ export default function DailyTradesPage() {
     const [date, setDate] = useState<string>('');
     const [data, setData] = useState<any[]>([]);
     const [marketDataMap, setMarketDataMap] = useState<Record<string, number>>({});
+    // QQQ open/close for the selected date — rendered in the top-right of
+    // the 30-day chart card. Stored per-date so jumping back/forward via
+    // the chart click still shows the right day's range.
+    const [dayMarketStats, setDayMarketStats] = useState<Record<string, { open: number | null; close: number | null }>>({});
     const [loading, setLoading] = useState(true);
     const [availableDates, setAvailableDates] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -117,9 +121,11 @@ export default function DailyTradesPage() {
                     const json = await res.json();
                     setData(json.data || []);
                     setMarketDataMap(json.marketData || {});
+                    setDayMarketStats(json.dayMarketStats || {});
                 } else {
                     setData([]);
                     setMarketDataMap({});
+                    setDayMarketStats({});
                 }
             } catch (err) {
                 console.error(err);
@@ -438,6 +444,7 @@ export default function DailyTradesPage() {
                             loading={historyLoading}
                             currentDate={date}
                             dailyTarget={dailyTarget}
+                            qqqDay={dayMarketStats['QQQ']}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate, and the
@@ -560,6 +567,7 @@ export default function DailyTradesPage() {
                             loading={historyLoading}
                             currentDate={date}
                             dailyTarget={dailyTarget}
+                            qqqDay={dayMarketStats['QQQ']}
                             onSelectDate={(d) => {
                                 // Flag the upcoming setDate as chart-origin so the
                                 // sync effect skips updating historyEndDate, and the
@@ -590,6 +598,9 @@ interface DailyProfitHistoryChartProps {
      *  target. Drawn in the same y-axis (signed-sqrt) projection as the
      *  data line, so it sits on the right visual band. */
     dailyTarget?: number;
+    /** QQQ open/close for currentDate — surfaced in the chart card's top-right
+     *  so users see the underlying's daily range alongside their P&L. */
+    qqqDay?: { open: number | null; close: number | null };
 }
 
 // Recharts' Tooltip emits the active payload through its content prop. We
@@ -615,7 +626,7 @@ function TooltipBridge({
     return null;
 }
 
-function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dailyTarget }: DailyProfitHistoryChartProps) {
+function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dailyTarget, qqqDay }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
     // hover is active — so the user always sees a date + 收益 number even
@@ -741,6 +752,25 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                         </>
                     )}
                 </div>
+                {/* QQQ open/close for the currently-shown day. Sits ml-auto'd
+                    against the right edge so it doesn't collide with the
+                    absolutely-positioned title. Coloring tracks the
+                    direction (close vs open) like a daily candle. */}
+                {qqqDay && qqqDay.open != null && qqqDay.close != null && (() => {
+                    const delta = qqqDay.close - qqqDay.open;
+                    const up = delta >= 0;
+                    const dirColor = up ? 'text-status-positive' : 'text-status-negative';
+                    const deltaStr = `${up ? '+' : ''}${delta.toFixed(2)}`;
+                    return (
+                        <div className="ml-auto text-sm whitespace-nowrap">
+                            <span className="text-muted-foreground">QQQ </span>
+                            <span className="font-medium">{qqqDay.open.toFixed(2)}</span>
+                            <span className="text-muted-foreground mx-1">→</span>
+                            <span className={cn('font-semibold', dirColor)}>{qqqDay.close.toFixed(2)}</span>
+                            <span className={cn('ml-1', dirColor)}>({deltaStr})</span>
+                        </div>
+                    );
+                })()}
             </div>
             <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
                 <ResponsiveContainer width="100%" height="100%">
