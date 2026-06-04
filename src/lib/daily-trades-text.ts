@@ -100,40 +100,49 @@ export function generateDailyTradesText(
     const rollGroups: { closed: DailyTradeRow[]; opened: DailyTradeRow[] }[] = [];
 
     Object.keys(closeGroups).forEach(key => {
-        if (!openGroups[key]) return;
-        const matchedC = closeGroups[key].filter(t => !matchedCloseIds.has(t.id));
-        const matchedO = openGroups[key].filter(t => !matchedOpenIds.has(t.id));
-        if (matchedC.length === 0 || matchedO.length === 0) return;
+        if (openGroups[key]) {
+            const matchedC = closeGroups[key].filter(t => !matchedCloseIds.has(t.id));
+            const matchedO = openGroups[key].filter(t => !matchedOpenIds.has(t.id));
+            if (matchedC.length === 0 || matchedO.length === 0) return;
 
-        // Pass 1: 1-to-1 quantity-match pairing first (FIFO). Two same-day
-        // rolls with matching total quantity used to fall into the sum-
-        // matches branch below and get bundled into one giant 4-leg chunk
-        // that read as a single roll. Now each close consumes the first
-        // available open of the same quantity → two clean separate chunks.
-        matchedC.forEach(c => {
-            if (matchedCloseIds.has(c.id)) return;
-            const oIndex = matchedO.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
-            if (oIndex !== -1) {
-                const o = matchedO[oIndex];
-                matchedCloseIds.add(c.id);
-                matchedOpenIds.add(o.id);
-                rollGroups.push({ closed: [c], opened: [o] });
+            const sumC = matchedC.reduce((s, t) => s + t.quantity, 0);
+            const sumO = matchedO.reduce((s, t) => s + t.quantity, 0);
+
+            if (sumC === sumO && sumC !== 0) {
+                matchedC.forEach(t => matchedCloseIds.add(t.id));
+                matchedO.forEach(t => matchedOpenIds.add(t.id));
+                rollGroups.push({ closed: matchedC, opened: matchedO });
+            } else {
+                let stillHasUnmatched = false;
+                matchedC.forEach(c => {
+                    if (matchedCloseIds.has(c.id)) return;
+                    const oIndex = matchedO.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
+                    if (oIndex !== -1) {
+                        const o = matchedO[oIndex];
+                        matchedCloseIds.add(c.id);
+                        matchedOpenIds.add(o.id);
+                        rollGroups.push({ closed: [c], opened: [o] });
+                    } else {
+                        stillHasUnmatched = true;
+                    }
+                });
+
+                if (stillHasUnmatched || matchedO.some(o => !matchedOpenIds.has(o.id))) {
+                    const remainingC = matchedC.filter(c => !matchedCloseIds.has(c.id));
+                    const remainingO = matchedO.filter(o => !matchedOpenIds.has(o.id));
+
+                    if (remainingC.length > 0 && remainingO.length > 0) {
+                        const remSumC = remainingC.reduce((s, t) => s + t.quantity, 0);
+                        const remSumO = remainingO.reduce((s, t) => s + t.quantity, 0);
+
+                        if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
+                            remainingC.forEach(c => matchedCloseIds.add(c.id));
+                            remainingO.forEach(o => matchedOpenIds.add(o.id));
+                            rollGroups.push({ closed: remainingC, opened: remainingO });
+                        }
+                    }
+                }
             }
-        });
-
-        // Pass 2: bundle leftovers (unmatched quantities) into one group if
-        // the surviving sums share sign. Covers the N-to-M case where 1-to-1
-        // can't pair everything cleanly.
-        const remainingC = matchedC.filter(c => !matchedCloseIds.has(c.id));
-        const remainingO = matchedO.filter(o => !matchedOpenIds.has(o.id));
-        if (remainingC.length === 0 || remainingO.length === 0) return;
-
-        const remSumC = remainingC.reduce((s, t) => s + t.quantity, 0);
-        const remSumO = remainingO.reduce((s, t) => s + t.quantity, 0);
-        if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
-            remainingC.forEach(c => matchedCloseIds.add(c.id));
-            remainingO.forEach(o => matchedOpenIds.add(o.id));
-            rollGroups.push({ closed: remainingC, opened: remainingO });
         }
     });
 
@@ -242,8 +251,20 @@ export function generateDailyTradesText(
             return Array.from(map.values());
         };
 
-        mergeLegs(rg.opened).forEach(o => lines.push(formatOptionTrade(o)));
-        mergeLegs(rg.closed).forEach(c => lines.push(formatOptionTrade(c)));
+        // For a same-day double roll (2 closes + 2 opens bundled into one
+        // chunk), interleave each open with its paired close so the user can
+        // see the two repositionings sequentially instead of "all opens then
+        // all closes". Sort both sides by strike DESC and zip by index — the
+        // highest-strike open lines up with the highest-strike close it
+        // replaced. Single-leg rolls degrade naturally to one open + one
+        // close (same display as before).
+        const mergedOpened = mergeLegs(rg.opened).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
+        const mergedClosed = mergeLegs(rg.closed).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
+        const legPairs = Math.max(mergedOpened.length, mergedClosed.length);
+        for (let i = 0; i < legPairs; i++) {
+            if (i < mergedOpened.length) lines.push(formatOptionTrade(mergedOpened[i]));
+            if (i < mergedClosed.length) lines.push(formatOptionTrade(mergedClosed[i]));
+        }
 
         optionChunks.push(lines.join('\n'));
     });
