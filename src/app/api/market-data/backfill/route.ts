@@ -232,22 +232,36 @@ export async function POST(request: Request) {
                             continue;
                         }
 
-                        // Prepare batch insert
-                        // Always insert/update all data from API to ensure latest prices
+                        // Prepare batch upsert with full OHLC. close_price is
+                        // the legacy NOT-NULL column; open/high/low/close/volume
+                        // are the new columns the chart card and any future
+                        // candle chart consume. Populate them on every insert
+                        // so existing rows backfilled with only close_price
+                        // get filled in next time backfill runs.
                         const insertStmt = DB.prepare(
-                            `INSERT INTO market_prices (symbol, date, close_price) 
-                             VALUES (?, ?, ?) 
-                             ON CONFLICT(symbol, date) DO UPDATE SET close_price=excluded.close_price`
+                            `INSERT INTO market_prices (symbol, date, close_price, open, high, low, close, volume)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                             ON CONFLICT(symbol, date) DO UPDATE SET
+                                close_price=excluded.close_price,
+                                open=excluded.open,
+                                high=excluded.high,
+                                low=excluded.low,
+                                close=excluded.close,
+                                volume=excluded.volume`
                         );
 
                         const batch: any[] = [];
 
                         // Process all dates from the API response
                         for (const [dateStr, values] of Object.entries(timeSeries)) {
+                            const openPrice = parseFloat(values['1. open']);
+                            const highPrice = parseFloat(values['2. high']);
+                            const lowPrice = parseFloat(values['3. low']);
                             const closePrice = parseFloat(values['4. close']);
+                            const volume = parseInt(values['5. volume'], 10);
                             const [year, month, day] = dateStr.split('-').map(Number);
                             const timestamp = Date.UTC(year, month - 1, day) / 1000;
-                            batch.push(insertStmt.bind(sym, timestamp, closePrice));
+                            batch.push(insertStmt.bind(sym, timestamp, closePrice, openPrice, highPrice, lowPrice, closePrice, volume));
                         }
 
                         console.log(`${sym}: Prepared ${batch.length} records for insertion`);
