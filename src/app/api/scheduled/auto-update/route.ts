@@ -158,6 +158,73 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Unconditional QQQ OHLC refresh via Yahoo Finance. The per-user
+        // Alpha Vantage block above only runs for users whose
+        // auto_update_time falls in the current 15-min window — and even
+        // then the free-tier 25/day cap silently 503s after the quota's
+        // gone. Yahoo's chart endpoint has no key, no day cap, and returns
+        // full OHLC, so we hit it once per tick to keep market_prices
+        // current. range=5d covers any same-week gap; small payload, one
+        // HTTP call.
+        try {
+            const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=5d&interval=1d`;
+            const yRes = await fetch(yUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+                    'Accept': 'application/json',
+                },
+                signal: AbortSignal.timeout(10000),
+            });
+            if (yRes.ok) {
+                const yData = await yRes.json() as {
+                    chart?: { result?: {
+                        timestamp?: number[];
+                        indicators?: { quote?: {
+                            open?: (number | null)[]; high?: (number | null)[];
+                            low?: (number | null)[]; close?: (number | null)[];
+                            volume?: (number | null)[];
+                        }[]; };
+                    }[]; };
+                };
+                const result = yData.chart?.result?.[0];
+                const timestamps = result?.timestamp;
+                const quote = result?.indicators?.quote?.[0];
+                if (timestamps && quote) {
+                    const stmt = db.prepare(`
+                        INSERT INTO market_prices (symbol, date, close_price, open, high, low, close, volume)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(symbol, date) DO UPDATE SET
+                            close_price=excluded.close_price,
+                            open=excluded.open, high=excluded.high,
+                            low=excluded.low, close=excluded.close,
+                            volume=excluded.volume
+                    `);
+                    const batch: ReturnType<typeof stmt.bind>[] = [];
+                    for (let i = 0; i < timestamps.length; i++) {
+                        const ts = timestamps[i];
+                        const close = quote.close?.[i];
+                        const open = quote.open?.[i];
+                        if (close == null || open == null) continue;
+                        const d = new Date(ts * 1000);
+                        const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
+                        batch.push(stmt.bind(
+                            'QQQ', midnight, close, open,
+                            quote.high?.[i] ?? null, quote.low?.[i] ?? null,
+                            close, quote.volume?.[i] ?? null,
+                        ));
+                    }
+                    if (batch.length > 0) {
+                        await db.batch(batch);
+                        console.log(`[Auto Update] Yahoo QQQ OHLC upserted ${batch.length} rows`);
+                    }
+                }
+            } else {
+                console.warn(`[Auto Update] Yahoo QQQ fetch returned ${yRes.status}`);
+            }
+        } catch (err) {
+            console.warn('[Auto Update] Yahoo QQQ refresh failed (non-fatal):', err);
+        }
+
         // Warm up the worker. Cold-start CPU + render CPU occasionally
         // overflows the per-request budget and surfaces as Cloudflare
         // Error 1102 ("Worker exceeded resource limits"). Firing N parallel

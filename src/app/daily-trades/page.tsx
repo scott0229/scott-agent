@@ -764,9 +764,9 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     return (
                         <div className="ml-auto text-sm whitespace-nowrap">
                             <span className="text-muted-foreground">QQQ </span>
-                            <span className="font-medium">{qqqDay.open.toFixed(2)}</span>
+                            <span>{qqqDay.open.toFixed(2)}</span>
                             <span className="text-muted-foreground mx-1">→</span>
-                            <span className={cn('font-semibold', dirColor)}>{qqqDay.close.toFixed(2)}</span>
+                            <span className={dirColor}>{qqqDay.close.toFixed(2)}</span>
                             <span className={cn('ml-1', dirColor)}>({deltaStr})</span>
                         </div>
                     );
