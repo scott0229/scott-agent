@@ -756,16 +756,19 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     Shows the hovered point when active, otherwise defaults to the
                     most recent day so the row never goes empty. */}
                 {panelPoint && (
-                    <div className="text-sm whitespace-nowrap ml-[50px]">
+                    <div className="text-sm whitespace-nowrap ml-[50px] text-muted-foreground">
                         {/* Trim the YYYY- prefix so the date is just MM-DD,
-                            matching the chart's x-axis labels. */}
+                            matching the chart's x-axis labels. Everything in
+                            this header sits at muted-foreground; only the
+                            realized 收益 number escapes to its sign color
+                            for emphasis. */}
                         <span className="font-medium">{panelPoint.date.substring(5)}</span>
-                        <span className="text-muted-foreground"> · 收益 </span>
+                        <span> · 收益 </span>
                         <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
                         {dailyTarget != null && dailyTarget > 0 && (
                             <>
-                                <span className="text-muted-foreground"> · 目標 </span>
-                                <span className="font-semibold text-muted-foreground">
+                                <span> · 目標 </span>
+                                <span className="font-semibold">
                                     +{Math.round(dailyTarget).toLocaleString('en-US')}
                                 </span>
                             </>
