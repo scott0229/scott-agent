@@ -104,6 +104,18 @@ export async function GET(req: NextRequest) {
         const marketDataMap: Record<string, number> = {};
         (marketPrices || []).forEach(mp => { marketDataMap[mp.symbol] = mp.close_price; });
 
+        // QQQ open/close per date across the window — the chart card's QQQ
+        // readout hovers on the chart and needs each day's range available
+        // without an extra round-trip. Map by YYYY-MM-DD so the merge below
+        // can attach OHLC onto each history point.
+        const { results: qqqRows } = await db.prepare(`
+            SELECT date(datetime(date, 'unixepoch')) as d, open, close
+            FROM market_prices
+            WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) >= ? AND date(datetime(date, 'unixepoch')) <= ?
+        `).bind(startDateStr, endDateStr).all<{ d: string; open: number | null; close: number | null }>();
+        const qqqByDate: Record<string, { open: number | null; close: number | null }> = {};
+        (qqqRows || []).forEach(r => { qqqByDate[r.d] = { open: r.open, close: r.close }; });
+
         // Bucket every trade row by its own trade_date string.
         const tradesByDate: Record<string, DailyTradeRow[]> = {};
         const allRows = [
@@ -144,7 +156,13 @@ export async function GET(req: NextRequest) {
                         profit += parseFloat(m[1].replace(/,/g, ''));
                     }
                 }
-                return { date: d, profit };
+                const qqq = qqqByDate[d];
+                return {
+                    date: d,
+                    profit,
+                    qqqOpen: qqq?.open ?? null,
+                    qqqClose: qqq?.close ?? null,
+                };
             });
 
         // Most-recent `days` entries only; older history is noise on a 30-day chart.

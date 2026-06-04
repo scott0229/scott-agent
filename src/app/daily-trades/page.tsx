@@ -42,7 +42,7 @@ export default function DailyTradesPage() {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<string>('all');
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
-    const [historyData, setHistoryData] = useState<{ date: string; profit: number }[]>([]);
+    const [historyData, setHistoryData] = useState<{ date: string; profit: number; qqqOpen: number | null; qqqClose: number | null }[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     // historyEndDate drives the 30-day chart's right edge. It tracks `date`
     // EXCEPT when the user clicked a point on the chart itself — in that case
@@ -591,7 +591,7 @@ export default function DailyTradesPage() {
 }
 
 interface DailyProfitHistoryChartProps {
-    data: { date: string; profit: number }[];
+    data: { date: string; profit: number; qqqOpen: number | null; qqqClose: number | null }[];
     loading: boolean;
     onSelectDate?: (date: string) => void;
     /** YYYY-MM-DD currently shown in the left card; chart draws a persistent
@@ -618,8 +618,8 @@ function TooltipBridge({
     onChange,
 }: {
     active?: boolean;
-    payload?: { payload?: { date: string; profit: number } }[];
-    onChange: (p: { date: string; profit: number } | null) => void;
+    payload?: { payload?: { date: string; profit: number; qqqOpen: number | null; qqqClose: number | null } }[];
+    onChange: (p: { date: string; profit: number; qqqOpen: number | null; qqqClose: number | null } | null) => void;
 }) {
     const point = active && payload?.[0]?.payload ? payload[0].payload : null;
     const key = point ? `${point.date}|${point.profit}` : '';
@@ -639,7 +639,7 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
     // before they interact. Hover state is fed in by TooltipBridge below,
     // which mounts as Recharts' Tooltip content so we get callbacks every
     // time the active point changes.
-    const [hoveredPoint, setHoveredPoint] = useState<{ date: string; profit: number } | null>(null);
+    const [hoveredPoint, setHoveredPoint] = useState<{ date: string; profit: number; qqqOpen: number | null; qqqClose: number | null } | null>(null);
 
     if (loading) {
         return (
@@ -758,21 +758,26 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                         </>
                     )}
                 </div>
-                {/* QQQ open/close for the currently-shown day. Sits ml-auto'd
-                    against the right edge so it doesn't collide with the
-                    absolutely-positioned title. Coloring tracks the
-                    direction (close vs open) like a daily candle. */}
-                {qqqDay && qqqDay.open != null && qqqDay.close != null && (() => {
-                    const delta = qqqDay.close - qqqDay.open;
+                {/* QQQ open/close for the active day. Follows the hover point
+                    when the user is over the chart, otherwise falls back to
+                    the selected point (matches the left card), and finally to
+                    the parent-supplied qqqDay (currentDate). Coloring tracks
+                    the direction (close vs open) like a daily candle. */}
+                {(() => {
+                    const point = hoveredPoint ?? selectedPoint ?? lastPoint;
+                    const open = point?.qqqOpen ?? (point?.date === currentDate ? qqqDay?.open ?? null : null);
+                    const close = point?.qqqClose ?? (point?.date === currentDate ? qqqDay?.close ?? null : null);
+                    if (open == null || close == null) return null;
+                    const delta = close - open;
                     const up = delta >= 0;
                     const dirColor = up ? 'text-status-positive' : 'text-status-negative';
                     const deltaStr = `${up ? '+' : ''}${delta.toFixed(2)}`;
                     return (
                         <div className="ml-auto text-sm whitespace-nowrap">
                             <span className="text-muted-foreground">QQQ </span>
-                            <span>{qqqDay.open.toFixed(2)}</span>
+                            <span>{open.toFixed(2)}</span>
                             <span className="text-muted-foreground mx-1">→</span>
-                            <span className={dirColor}>{qqqDay.close.toFixed(2)}</span>
+                            <span className={dirColor}>{close.toFixed(2)}</span>
                             <span className={cn('ml-1', dirColor)}>({deltaStr})</span>
                         </div>
                     );
