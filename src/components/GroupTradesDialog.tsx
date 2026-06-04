@@ -680,10 +680,28 @@ export function GroupTradesDialog({
                                                     )}
                                                 </TableCell>
                                             )}
-                                            <TableCell className="py-1">{formatDate(opt.open_date)}</TableCell>
+                                            <TableCell className="py-1">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    {formatDate(opt.open_date)}
+                                                    {/* "被派" pill flags stock rows that came in via PUT assignment
+                                                        (source = 'assigned'). Makes the "why is there a stock trade
+                                                        in this group" obvious without opening the linked option. */}
+                                                    {opt.type === 'STK' && opt.source?.toLowerCase?.() === 'assigned' && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-positive-soft text-status-positive font-medium leading-none whitespace-nowrap">被派</span>
+                                                    )}
+                                                </span>
+                                            </TableCell>
                                             {!isOpenOptionsOnly && (
                                                 <TableCell className="py-1">
-                                                    {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : formatDate(opt.settlement_date)}
+                                                    {(opt.operation === 'Open' || !opt.settlement_date) ? "-" : (
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            {formatDate(opt.settlement_date)}
+                                                            {/* Stock close via CALL assignment — mirror the open-side flag. */}
+                                                            {opt.type === 'STK' && opt.close_source?.toLowerCase?.() === 'assigned' && (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-status-negative-soft text-status-negative font-medium leading-none whitespace-nowrap">被派</span>
+                                                            )}
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                             )}
                                             <TableCell className="py-1 font-mono text-foreground">
