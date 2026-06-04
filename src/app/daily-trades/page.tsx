@@ -807,9 +807,12 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     const deltaStr = `${up ? '+' : ''}${delta.toFixed(2)}`;
                     return (
                         <div className="ml-auto text-sm whitespace-nowrap">
-                            <span className="text-muted-foreground">QQQ </span>
+                            {/* All non-numeric text shares the bright --foreground
+                                so the row reads as one tone; only the close /
+                                delta carry the sign color. */}
+                            <span>QQQ </span>
                             <span>{open.toFixed(2)}</span>
-                            <span className="text-muted-foreground mx-1">→</span>
+                            <span className="mx-1">→</span>
                             <span className={dirColor}>{close.toFixed(2)}</span>
                             <span className={cn('ml-1', dirColor)}>({deltaStr})</span>
                         </div>
