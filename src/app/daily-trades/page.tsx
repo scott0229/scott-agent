@@ -538,8 +538,27 @@ export default function DailyTradesPage() {
                                 </div>
                                 <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                     {reportText.split('\n').map((line, i, arr) => {
+                                        // Underlying-day line, e.g. "QQQ 737.04 → 742.74 (+5.70)".
+                                        // Color the "close (±delta)" portion green/red by delta sign so
+                                        // the underlying's daily move pops at a glance. Prefix stays
+                                        // muted-foreground default. Renders inline before the existing
+                                        // 收益/損益/權利金/被突破 colorizer below.
+                                        const underlyingMatch = line.match(/^([A-Z]+ [\d,.]+ → )([\d,.]+) \(([+-][\d.]+)\)$/);
+                                        if (underlyingMatch) {
+                                            const [, prefix, closeStr, deltaStr] = underlyingMatch;
+                                            const delta = parseFloat(deltaStr);
+                                            const colorClass = delta > 0 ? 'text-status-positive' : delta < 0 ? 'text-status-negative' : '';
+                                            return (
+                                                <span key={i}>
+                                                    <span>{prefix}</span>
+                                                    <span className={colorClass}>{closeStr} ({deltaStr})</span>
+                                                    {i < arr.length - 1 ? '\n' : ''}
+                                                </span>
+                                            );
+                                        }
+
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
-                                        
+
                                         const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
                                         const renderedParts = parts.map((part, pIndex) => {
                                             if (part.startsWith('收益 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
