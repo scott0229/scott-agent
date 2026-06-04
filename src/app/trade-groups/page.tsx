@@ -197,7 +197,11 @@ export default function TradeGroupsPage() {
                         note: st.note,
                         note_color: st.note_color,
                         code: st.code,
-                        has_separator: st.has_separator
+                        has_separator: st.has_separator,
+                        // Drives the 被派 pill in GroupTradesDialog — w/o these
+                        // the badge logic sees undefined and never lights up.
+                        source: st.source,
+                        close_source: st.close_source,
                     }));
                     currentOptions.push(...mappedStks);
                 }
