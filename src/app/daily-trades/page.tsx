@@ -756,12 +756,12 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     Shows the hovered point when active, otherwise defaults to the
                     most recent day so the row never goes empty. */}
                 {panelPoint && (
-                    <div className="text-sm whitespace-nowrap ml-[50px] text-muted-foreground">
+                    <div className="text-sm whitespace-nowrap ml-[50px]">
                         {/* Trim the YYYY- prefix so the date is just MM-DD,
                             matching the chart's x-axis labels. Everything in
-                            this header sits at muted-foreground; only the
-                            realized 收益 number escapes to its sign color
-                            for emphasis. */}
+                            this header sits at the bright --foreground so the
+                            two-tone-white effect goes away; only the realized
+                            收益 number breaks out to its sign color. */}
                         <span className="font-medium">{panelPoint.date.substring(5)}</span>
                         <span> · 收益 </span>
                         <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
@@ -776,14 +776,16 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                     </div>
                 )}
                 {/* Title floats centered above the chart so it sits over the plot
-                    area rather than crowding the y-axis side of the card. */}
+                    area rather than crowding the y-axis side of the card. All
+                    text sits at the bright --foreground so the row reads as a
+                    single tone; only 收益合計 itself takes the sign color. */}
                 <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
-                    過去 30 個交易日<span className="text-muted-foreground"> · 收益合計 </span>
+                    過去 30 個交易日<span> · 收益合計 </span>
                     <span className={totalColor}>{totalStr}</span>
                     {dailyTarget != null && dailyTarget > 0 && (
                         <>
-                            <span className="text-muted-foreground"> · 目標 </span>
-                            <span className="text-muted-foreground">
+                            <span> · 目標 </span>
+                            <span>
                                 +{Math.round(dailyTarget * data.length).toLocaleString('en-US')}
                             </span>
                         </>
