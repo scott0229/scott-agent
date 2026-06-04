@@ -247,7 +247,16 @@ export default function DailyTradesPage() {
         return new Intl.NumberFormat('en-US').format(val);
     };
 
-    const generateTradesText = (userGroup: any) => generateDailyTradesText(userGroup, date, marketDataMap, dayMarketStats['QQQ']);
+    // In 全部帳戶 mode every card carries the same QQQ line, which is just
+    // visual noise. Only inject the QQQ underlying-day prefix when the user
+    // has narrowed down to a single account.
+    const generateTradesText = (userGroup: any) =>
+        generateDailyTradesText(
+            userGroup,
+            date,
+            marketDataMap,
+            selectedAccount === 'all' ? undefined : dayMarketStats['QQQ'],
+        );
 
 
     // Sort cards alphabetically by user_id so the grid scans predictably
