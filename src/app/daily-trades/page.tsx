@@ -545,7 +545,7 @@ export default function DailyTradesPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
+                                <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed text-foreground">
                                     {reportText.split('\n').map((line, i, arr) => {
                                         // Underlying-day line, e.g. "QQQ 737.04 → 742.74 (+5.70)".
                                         // Color the "close (±delta)" portion green/red by delta sign so
