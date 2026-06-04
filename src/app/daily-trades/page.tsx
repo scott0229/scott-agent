@@ -182,6 +182,9 @@ export default function DailyTradesPage() {
 
     const changeDate = (offset: number) => {
         if (!date) return;
+        // Arrow-driven date swaps should feel like the chart-click swaps —
+        // no skeleton flash, the card just rerenders into the new day's data.
+        silentDateRef.current = true;
         
         if (availableDates.length > 0) {
             const currentIndex = availableDates.indexOf(date);
@@ -225,6 +228,7 @@ export default function DailyTradesPage() {
     };
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        silentDateRef.current = true;
         setDate(e.target.value);
     };
 
@@ -287,6 +291,7 @@ export default function DailyTradesPage() {
                             setSelectedAccount('all');
                             if (availableDates && availableDates.length > 0) {
                                 const maxDate = availableDates.reduce((a, b) => a > b ? a : b);
+                                silentDateRef.current = true;
                                 setDate(maxDate);
                             }
                         }}
@@ -387,6 +392,7 @@ export default function DailyTradesPage() {
                                         const y = selectedDate.getFullYear();
                                         const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
                                         const d = String(selectedDate.getDate()).padStart(2, '0');
+                                        silentDateRef.current = true;
                                         setDate(`${y}-${m}-${d}`);
                                         setIsCalendarOpen(false);
                                     }
