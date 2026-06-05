@@ -194,6 +194,12 @@ const ibApi = {
     d1Target?: string
   ): Promise<{ reportNotes: Record<string, string> }> =>
     ipcRenderer.invoke('settings:getReportNotes', accountIds, d1Target),
+  setReportNote: (
+    account: string,
+    reportNote: string | null,
+    d1Target?: string
+  ): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('settings:setReportNote', account, reportNote, d1Target),
   getGroupDetail: (
     account: string,
     group: string,

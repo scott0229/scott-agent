@@ -94,6 +94,8 @@ interface AccountOverviewProps {
   optionGroups?: Record<string, string>
   // Per-account daily-report note from the website (USERS.report_note).
   reportNotes?: Record<string, string>
+  // Save handler for in-app edits to USERS.report_note.
+  onSetReportNote?: (accountId: string, note: string) => void
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
   onAddSymbolGroup?: (group: SymbolGroup) => void
@@ -154,6 +156,7 @@ export default function AccountOverview({
   initialCosts = {},
   optionGroups = {},
   reportNotes = {},
+  onSetReportNote,
   showOperationMode = true,
   showAccountType = true,
   d1Target = 'production'
@@ -2266,9 +2269,24 @@ export default function AccountOverview({
                   </div>
                 )}
 
-                {/* Daily-report note (from website USERS.report_note) */}
+                {/* Daily-report note (from website USERS.report_note).
+                    contentEditable + onBlur save; only renders when the note
+                    has content — new notes are added via the website for now. */}
                 {reportNotes[account.accountId] && (
-                  <div className="report-note">{reportNotes[account.accountId]}</div>
+                  <div
+                    className="report-note"
+                    contentEditable={!!onSetReportNote}
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      if (!onSetReportNote) return
+                      const next = e.currentTarget.innerText
+                      if (next !== reportNotes[account.accountId]) {
+                        onSetReportNote(account.accountId, next)
+                      }
+                    }}
+                  >
+                    {reportNotes[account.accountId]}
+                  </div>
                 )}
 
                 {/* Stock Positions (category view) */}

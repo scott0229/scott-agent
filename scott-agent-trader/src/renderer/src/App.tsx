@@ -368,6 +368,15 @@ function App(): React.JSX.Element {
               initialCosts={initialCosts}
               optionGroups={optionGroups}
               reportNotes={reportNotes}
+              onSetReportNote={(accountId, note) => {
+                setReportNotes((prev) => ({
+                  ...prev,
+                  [accountId]: note
+                }))
+                window.ibApi
+                  .setReportNote(accountId, note || null, d1Target)
+                  .catch((err) => console.warn('setReportNote failed:', err))
+              }}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

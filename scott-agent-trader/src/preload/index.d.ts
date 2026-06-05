@@ -281,6 +281,11 @@ interface IBApi {
     accountIds: string[],
     d1Target?: string
   ) => Promise<{ reportNotes: Record<string, string> }>
+  setReportNote: (
+    account: string,
+    reportNote: string | null,
+    d1Target?: string
+  ) => Promise<{ ok: boolean; error?: string }>
 
   // Single trade-group detail (rows + summary) for the dialog.
   getGroupDetail: (

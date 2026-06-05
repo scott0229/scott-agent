@@ -503,6 +503,32 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Update USERS.report_note for a single account
+  ipcMain.handle(
+    'settings:setReportNote',
+    async (_event, account: string, reportNote: string | null, d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'production'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-report-notes')
+        const res = await fetch(baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${t.apiKey}`
+          },
+          body: JSON.stringify({ account, reportNote })
+        })
+        const result = await res.json()
+        console.log('[settings:setReportNote]', account, '→', res.status, JSON.stringify(result))
+        return { ok: res.ok, ...result }
+      } catch (err) {
+        console.warn('[settings:setReportNote] error:', err)
+        return { ok: false }
+      }
+    }
+  )
+
   // Fetch option group_id tags from D1, keyed by ${ib_account}|${expiry}|${strike}|${right}
   ipcMain.handle(
     'settings:getOptionGroups',

@@ -68,3 +68,49 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
     }
 }
+
+// POST /api/trader-report-notes
+// Body: { account: "U123", reportNote: "..." }
+// Updates USERS.report_note for the matching ib_account in whichever D1 has it.
+// Auth: same Bearer api_key as GET.
+export async function POST(req: NextRequest) {
+    try {
+        const authorized = await checkApiKey(req);
+        if (!authorized) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = (await req.json()) as { account?: string; reportNote?: string | null };
+        const account = (body.account || '').trim();
+        const reportNote = body.reportNote != null ? String(body.reportNote) : null;
+
+        if (!account) {
+            return NextResponse.json({ error: 'Missing account' }, { status: 400 });
+        }
+
+        const currentYear = new Date().getFullYear();
+        let updated = false;
+
+        for (const dbName of ['advisor', 'scott']) {
+            const db = await getDb(dbName);
+            const res = await db
+                .prepare(
+                    'UPDATE USERS SET report_note = ? WHERE ib_account = ? AND year = ?'
+                )
+                .bind(reportNote && reportNote.trim() ? reportNote : null, account, currentYear)
+                .run() as { meta?: { changes?: number } };
+            if (res.meta && (res.meta.changes ?? 0) > 0) {
+                updated = true;
+                break;
+            }
+        }
+
+        if (!updated) {
+            return NextResponse.json({ error: 'No matching user' }, { status: 404 });
+        }
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('POST trader-report-notes error:', error);
+        return NextResponse.json({ error: '伺服器內部錯誤' }, { status: 500 });
+    }
+}
