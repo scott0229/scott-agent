@@ -479,6 +479,30 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // Fetch per-account USERS.report_note from D1
+  ipcMain.handle(
+    'settings:getReportNotes',
+    async (_event, accountIds: string[], d1Target?: string) => {
+      try {
+        const targetLabel = d1Target || 'production'
+        const t = SETTINGS_TARGETS.find((t) => t.label === targetLabel) || SETTINGS_TARGETS[0]
+        const baseUrl = t.url.replace('/api/trader-settings', '/api/trader-report-notes')
+        const params = new URLSearchParams({ accounts: accountIds.join(',') })
+        const res = await fetch(`${baseUrl}?${params}`, {
+          headers: { Authorization: `Bearer ${t.apiKey}` }
+        })
+        const result = await res.json()
+        console.log(
+          '[settings:getReportNotes] notes=',
+          Object.keys(result?.reportNotes || {}).length
+        )
+        return result
+      } catch {
+        return { reportNotes: {} }
+      }
+    }
+  )
+
   // Fetch option group_id tags from D1, keyed by ${ib_account}|${expiry}|${strike}|${right}
   ipcMain.handle(
     'settings:getOptionGroups',

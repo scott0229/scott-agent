@@ -64,6 +64,7 @@ function App(): React.JSX.Element {
   const [operationModes, setOperationModes] = useState<Record<string, string>>({})
   const [initialCosts, setInitialCosts] = useState<Record<string, number>>({})
   const [optionGroups, setOptionGroups] = useState<Record<string, string>>({})
+  const [reportNotes, setReportNotes] = useState<Record<string, string>>({})
   const {
     marginLimit,
     setMarginLimit,
@@ -179,6 +180,15 @@ function App(): React.JSX.Element {
           .then((res) => {
             if (res.optionGroups) {
               setOptionGroups(res.optionGroups)
+            }
+          })
+          .catch(() => {})
+        // Auto-fetch per-account USERS.report_note (daily-report notes)
+        window.ibApi
+          .getReportNotes(accountIds, d1Target)
+          .then((res) => {
+            if (res.reportNotes) {
+              setReportNotes(res.reportNotes)
             }
           })
           .catch(() => {})
@@ -357,6 +367,7 @@ function App(): React.JSX.Element {
               operationModes={operationModes}
               initialCosts={initialCosts}
               optionGroups={optionGroups}
+              reportNotes={reportNotes}
               onSetAccountType={setAccountType}
               marginLimit={marginLimit}
               symbolGroups={symbolGroups}

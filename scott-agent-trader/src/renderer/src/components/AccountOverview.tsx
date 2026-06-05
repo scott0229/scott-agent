@@ -92,6 +92,8 @@ interface AccountOverviewProps {
   // Map of `${ib_account}|${YYYYMMDD}|${strike}|${C|P}` → group_id (e.g. "QQQ-4").
   // Sourced from D1 OPTIONS.group_id; only populated for currently OPEN trades.
   optionGroups?: Record<string, string>
+  // Per-account daily-report note from the website (USERS.report_note).
+  reportNotes?: Record<string, string>
   marginLimit?: number
   symbolGroups?: SymbolGroup[]
   onAddSymbolGroup?: (group: SymbolGroup) => void
@@ -106,6 +108,28 @@ interface AccountOverviewProps {
 
 const posKey = (pos: PositionData): string =>
   `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+
+// Trading days until expiry — calendar days minus weekends.
+// IB expiry comes as YYYYMMDD; today is local "today" (midnight).
+// US market holidays aren't filtered yet; if needed we can wire a holiday
+// list, but weekends alone fix the common Fri → Mon = "3 days" off-by-2.
+function tradingDaysUntil(expiry: string | undefined): number | null {
+  if (!expiry || expiry.length < 8) return null
+  const target = new Date(
+    `${expiry.substring(0, 4)}-${expiry.substring(4, 6)}-${expiry.substring(6, 8)}T00:00:00`
+  )
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (target.getTime() <= today.getTime()) return 0
+  let count = 0
+  const cur = new Date(today)
+  while (cur.getTime() < target.getTime()) {
+    cur.setDate(cur.getDate() + 1)
+    const dow = cur.getDay() // 0 = Sun, 6 = Sat
+    if (dow !== 0 && dow !== 6) count++
+  }
+  return count
+}
 
 export default function AccountOverview({
   connected,
@@ -129,6 +153,7 @@ export default function AccountOverview({
   groupViewMode = false,
   initialCosts = {},
   optionGroups = {},
+  reportNotes = {},
   showOperationMode = true,
   showAccountType = true,
   d1Target = 'production'
@@ -1586,23 +1611,7 @@ export default function AccountOverview({
                           const pnl = isOption
                             ? (lastPrice - costBasis / 100) * pos.quantity * 100
                             : (lastPrice - costBasis) * pos.quantity
-                          const days = pos.expiry
-                            ? Math.max(
-                                0,
-                                Math.ceil(
-                                  (new Date(
-                                    pos.expiry.substring(0, 4) +
-                                      '-' +
-                                      pos.expiry.substring(4, 6) +
-                                      '-' +
-                                      pos.expiry.substring(6, 8) +
-                                      'T00:00:00'
-                                  ).getTime() -
-                                    new Date().setHours(0, 0, 0, 0)) /
-                                    (1000 * 60 * 60 * 24)
-                                )
-                              )
-                            : null
+                          const days = tradingDaysUntil(pos.expiry)
                           const pk = posKey(pos)
                           const isChecked = currentCheckedSet.has(pk)
                           const inCheckMode = checkModeGroups.has(g.id)
@@ -1874,23 +1883,7 @@ export default function AccountOverview({
                     const pnl = isOption
                       ? (lastPrice - costBasis / 100) * pos.quantity * 100
                       : (lastPrice - costBasis) * pos.quantity
-                    const days = pos.expiry
-                      ? Math.max(
-                          0,
-                          Math.ceil(
-                            (new Date(
-                              pos.expiry.substring(0, 4) +
-                                '-' +
-                                pos.expiry.substring(4, 6) +
-                                '-' +
-                                pos.expiry.substring(6, 8) +
-                                'T00:00:00'
-                            ).getTime() -
-                              new Date().setHours(0, 0, 0, 0)) /
-                              (1000 * 60 * 60 * 24)
-                          )
-                        )
-                      : null
+                    const days = tradingDaysUntil(pos.expiry)
                     return (
                       <tr key={idx}>
                         <td
@@ -2273,6 +2266,11 @@ export default function AccountOverview({
                   </div>
                 )}
 
+                {/* Daily-report note (from website USERS.report_note) */}
+                {reportNotes[account.accountId] && (
+                  <div className="report-note">{reportNotes[account.accountId]}</div>
+                )}
+
                 {/* Stock Positions (category view) */}
                 {!acctViewBySymbol &&
                   selectMode !== 'OPT' &&
@@ -2468,23 +2466,7 @@ export default function AccountOverview({
                                   {pos.quantity.toLocaleString()}
                                 </td>
                                 {(() => {
-                                  const days = pos.expiry
-                                    ? Math.max(
-                                        0,
-                                        Math.ceil(
-                                          (new Date(
-                                            pos.expiry.substring(0, 4) +
-                                              '-' +
-                                              pos.expiry.substring(4, 6) +
-                                              '-' +
-                                              pos.expiry.substring(6, 8) +
-                                              'T00:00:00'
-                                          ).getTime() -
-                                            new Date().setHours(0, 0, 0, 0)) /
-                                            (1000 * 60 * 60 * 24)
-                                        )
-                                      )
-                                    : null
+                                  const days = tradingDaysUntil(pos.expiry)
                                   return (
                                     <td
                                       style={
@@ -2668,23 +2650,7 @@ export default function AccountOverview({
                                 )
                               })}
                               {opt.map((pos, idx) => {
-                                const days = pos.expiry
-                                  ? Math.max(
-                                      0,
-                                      Math.ceil(
-                                        (new Date(
-                                          pos.expiry.substring(0, 4) +
-                                            '-' +
-                                            pos.expiry.substring(4, 6) +
-                                            '-' +
-                                            pos.expiry.substring(6, 8) +
-                                            'T00:00:00'
-                                        ).getTime() -
-                                          new Date().setHours(0, 0, 0, 0)) /
-                                          (1000 * 60 * 60 * 24)
-                                      )
-                                    )
-                                  : null
+                                const days = tradingDaysUntil(pos.expiry)
                                 const oKey = `${pos.symbol}|${pos.expiry}|${pos.strike}|${pos.right}`
                                 const lastPrice = optionQuotes[oKey]
                                 const avgUnit = pos.avgCost / 100

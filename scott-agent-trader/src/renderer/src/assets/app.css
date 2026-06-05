@@ -665,6 +665,19 @@ body {
   border-bottom: 1px solid #e8e8e8;
   background: transparent;
 }
+.report-note {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #4b3a0a;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
 .option-group-pill {
   display: inline-block;
   padding: 1px 6px;

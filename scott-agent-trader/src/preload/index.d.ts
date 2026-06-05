@@ -276,6 +276,12 @@ interface IBApi {
     d1Target?: string
   ) => Promise<{ optionGroups: Record<string, string> }>
 
+  // Per-account USERS.report_note (daily-report note managers write on the website).
+  getReportNotes: (
+    accountIds: string[],
+    d1Target?: string
+  ) => Promise<{ reportNotes: Record<string, string> }>
+
   // Single trade-group detail (rows + summary) for the dialog.
   getGroupDetail: (
     account: string,
