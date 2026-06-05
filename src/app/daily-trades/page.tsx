@@ -513,12 +513,26 @@ export default function DailyTradesPage() {
                             <div
                                 key={userGroup.user.id}
                                 className="bg-card rounded-lg border shadow-sm p-4 flex flex-col"
+                                onMouseDown={(e) => {
+                                    // The browser starts a word-selection on the
+                                    // second mousedown of a dblclick BEFORE the
+                                    // dblclick event fires — preventing default
+                                    // there is too late, the selection (and the
+                                    // Google Translate popup it triggers) has
+                                    // already happened. Intercept the second
+                                    // mousedown via e.detail === 2 and cancel
+                                    // it. Click-and-drag selection still works.
+                                    if (e.detail === 2 && cardUid) e.preventDefault();
+                                }}
                                 onDoubleClick={(e) => {
                                     // Double-click anywhere on the card toggles single-account
                                     // filter for this user. Double-clicking again (while
                                     // already filtered to this card) clears the filter.
                                     if (!cardUid) return;
                                     e.preventDefault();
+                                    // Clear any selection that may have slipped
+                                    // through (e.g. fast double-tap on touch).
+                                    window.getSelection()?.removeAllRanges();
                                     setSelectedAccount(isFilteredToThis ? 'all' : cardUid);
                                 }}
                             >
