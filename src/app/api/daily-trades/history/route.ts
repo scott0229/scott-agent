@@ -108,13 +108,30 @@ export async function GET(req: NextRequest) {
         // readout hovers on the chart and needs each day's range available
         // without an extra round-trip. Map by YYYY-MM-DD so the merge below
         // can attach OHLC onto each history point.
+        //
+        // Fallback for intraday rows (typically only today): OHLC backfill
+        // runs after close, so open/close are still null but close_price
+        // tracks the live spot. Substitute the most recent prior close as
+        // the "open" anchor + today's close_price as the "close" so the
+        // current day still surfaces a meaningful daily move on the chart.
         const { results: qqqRows } = await db.prepare(`
-            SELECT date(datetime(date, 'unixepoch')) as d, open, close
+            SELECT date(datetime(date, 'unixepoch')) as d, open, close, close_price
             FROM market_prices
             WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) >= ? AND date(datetime(date, 'unixepoch')) <= ?
-        `).bind(startDateStr, endDateStr).all<{ d: string; open: number | null; close: number | null }>();
+            ORDER BY date ASC
+        `).bind(startDateStr, endDateStr).all<{ d: string; open: number | null; close: number | null; close_price: number | null }>();
         const qqqByDate: Record<string, { open: number | null; close: number | null }> = {};
-        (qqqRows || []).forEach(r => { qqqByDate[r.d] = { open: r.open, close: r.close }; });
+        let prevClose: number | null = null;
+        for (const r of qqqRows || []) {
+            let open = r.open;
+            let close = r.close;
+            if ((open == null || close == null) && r.close_price != null && prevClose != null) {
+                open = prevClose;
+                close = r.close_price;
+            }
+            qqqByDate[r.d] = { open, close };
+            if (r.close != null) prevClose = r.close;
+        }
 
         // Bucket every trade row by its own trade_date string.
         const tradesByDate: Record<string, DailyTradeRow[]> = {};

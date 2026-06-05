@@ -107,16 +107,36 @@ export async function GET(req: NextRequest) {
         });
 
         // QQQ open/close for the selected date — surfaced in the chart card
-        // header so users see the underlying's daily range alongside their
-        // P&L without leaving the page. Returns null if the date isn't a
-        // trading day or market_prices hasn't backfilled it yet.
+        // header and per-user cards so users see the underlying's daily range
+        // alongside their P&L without leaving the page.
+        //
+        // OHLC backfill runs after close, so for the current trading day the
+        // open/close columns are still null even though close_price is being
+        // updated intraday. Fallback path: use the PREVIOUS trading day's
+        // close as the "open" anchor and today's close_price (live spot) as
+        // the "close". That keeps the QQQ readout meaningful intraday — it
+        // becomes "previous close → spot" instead of vanishing entirely.
         const dayMarket = await db.prepare(`
-            SELECT symbol, open, close FROM market_prices
+            SELECT symbol, open, close, close_price FROM market_prices
             WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) = ?
-        `).bind(dateStr).first<{ symbol: string; open: number | null; close: number | null }>();
+        `).bind(dateStr).first<{ symbol: string; open: number | null; close: number | null; close_price: number | null }>();
         const dayMarketStats: Record<string, { open: number | null; close: number | null }> = {};
         if (dayMarket) {
-            dayMarketStats[dayMarket.symbol] = { open: dayMarket.open, close: dayMarket.close };
+            let open = dayMarket.open;
+            let close = dayMarket.close;
+            if ((open == null || close == null) && dayMarket.close_price != null) {
+                const prev = await db.prepare(`
+                    SELECT close FROM market_prices
+                    WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) < ?
+                          AND close IS NOT NULL
+                    ORDER BY date DESC LIMIT 1
+                `).bind(dateStr).first<{ close: number | null }>();
+                if (prev?.close != null) {
+                    open = prev.close;
+                    close = dayMarket.close_price;
+                }
+            }
+            dayMarketStats[dayMarket.symbol] = { open, close };
         }
 
         return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats });
