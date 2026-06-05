@@ -866,26 +866,66 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                             minTickGap={20}
                         />
                         <YAxis
-                            tick={{ fontSize: 12, fill: 'var(--foreground)' }}
                             ticks={finalTickPoolSqrt}
                             domain={yDomain}
                             tickMargin={4}
-                            tickFormatter={(v) => {
-                                // Invert the signed-sqrt and round to the nearest 10
-                                // so projected ticks always read as clean $ values.
+                            tick={(props: any) => {
+                                const { x, y, payload } = props;
+                                const v = payload?.value;
                                 const raw = Math.sign(v) * v * v;
-                                // The 權利金目標 tick gets its exact value so users
-                                // see the precise number (e.g. 201) instead of a
-                                // rounded-to-10 approximation (200).
-                                if (targetRaw != null && Math.abs(raw - targetRaw) < 1) {
-                                    return targetRaw.toLocaleString('en-US');
+                                const isTarget = targetRaw != null && Math.abs(raw - targetRaw) < 1;
+                                let label = '';
+                                if (isTarget) {
+                                    label = targetRaw!.toLocaleString('en-US');
+                                } else {
+                                    const rounded = Math.round(raw / 10) * 10;
+                                    if (rounded === Math.round(tickPoolRaw[0] / 10) * 10) return <g />;
+                                    label = rounded === 0 ? '0' : rounded.toLocaleString('en-US');
                                 }
-                                const rounded = Math.round(raw / 10) * 10;
-                                // Drop the bottom-most tick label — its baseline
-                                // collides with the x-axis date row underneath.
-                                if (rounded === Math.round(tickPoolRaw[0] / 10) * 10) return '';
-                                if (rounded === 0) return '0';
-                                return rounded.toLocaleString('en-US');
+                                // The target tick gets a soft pill so it reads as
+                                // a distinct reference value rather than just
+                                // another grid label. Approximate text width by
+                                // char count since SVG measurement is async.
+                                const FONT_SIZE = 12;
+                                if (isTarget) {
+                                    const w = label.length * 7 + 10;
+                                    return (
+                                        <g transform={`translate(${x},${y})`}>
+                                            <rect
+                                                x={-w}
+                                                y={-FONT_SIZE / 2 - 2}
+                                                width={w}
+                                                height={FONT_SIZE + 4}
+                                                rx={4}
+                                                fill="var(--muted)"
+                                                stroke="var(--border)"
+                                                strokeWidth={1}
+                                            />
+                                            <text
+                                                x={-5}
+                                                y={0}
+                                                dy={4}
+                                                textAnchor="end"
+                                                fontSize={FONT_SIZE}
+                                                fill="var(--foreground)"
+                                            >
+                                                {label}
+                                            </text>
+                                        </g>
+                                    );
+                                }
+                                return (
+                                    <text
+                                        x={x}
+                                        y={y}
+                                        dy={4}
+                                        textAnchor="end"
+                                        fontSize={FONT_SIZE}
+                                        fill="var(--foreground)"
+                                    >
+                                        {label}
+                                    </text>
+                                );
                             }}
                             width={48}
                         />
