@@ -672,7 +672,8 @@ body {
   border-radius: 4px;
   padding: 8px 12px;
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   color: #333;
   white-space: pre-wrap;
   line-height: 1.5;

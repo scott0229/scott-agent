@@ -81,7 +81,11 @@ function createWindow(): void {
 function setupIpcHandlers(): void {
   // Connection
   ipcMain.handle('ib:connect', async (_event, host: string, port: number) => {
-    connect({ host, port, clientId: 0 })
+    // Use a random clientId so simultaneously-running instances (e.g. the
+    // installed .exe alongside a dev build) don't collide on TWS — clientId 0
+    // is exclusive, so a second connect with the same ID kicks the first.
+    const clientId = Math.floor(Math.random() * 999) + 1
+    connect({ host, port, clientId })
     // Wait a bit for connection to establish
     return new Promise((resolve) => setTimeout(resolve, 1000))
   })
