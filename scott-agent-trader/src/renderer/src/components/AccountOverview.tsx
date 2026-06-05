@@ -2277,6 +2277,14 @@ export default function AccountOverview({
                     className="report-note"
                     contentEditable={!!onSetReportNote}
                     suppressContentEditableWarning
+                    onMouseDown={(e) => {
+                      // Stop the card's onMouseDown from preventDefault'ing
+                      // the dblclick — we WANT native dblclick-to-select-word
+                      // inside the note for editing.
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
                     onBlur={(e) => {
                       if (!onSetReportNote) return
                       const next = e.currentTarget.innerText
@@ -3332,7 +3340,7 @@ export default function AccountOverview({
                           }}
                           title="點擊開啟群組明細"
                         >
-                          <td style={{ textAlign: 'center', color: '#888' }}>{(accountGroups || []).length - idx}</td>
+                          <td style={{ textAlign: 'center', color: '#888' }}>{(accountGroups || []).length - idx}.</td>
                           <td style={{ fontWeight: 600, fontSize: 12 }}>{g.name}</td>
                           <td style={{ textAlign: 'center' }}>{g.count}</td>
                           <td style={{ textAlign: 'center' }}>{startDate}</td>
