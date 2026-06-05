@@ -882,10 +882,13 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                     if (rounded === Math.round(tickPoolRaw[0] / 10) * 10) return <g />;
                                     label = rounded === 0 ? '0' : rounded.toLocaleString('en-US');
                                 }
-                                // The target tick gets a soft pill so it reads as
-                                // a distinct reference value rather than just
-                                // another grid label. Approximate text width by
-                                // char count since SVG measurement is async.
+                                // Canonical Recharts pattern: wrap in <g
+                                // transform="translate(x,y)"> so the SVG
+                                // honors Recharts' computed position. Bare
+                                // <text x={x} y={y}> was failing to land on
+                                // the 0 tick — a sibling <g> ancestor likely
+                                // applies an outer transform we were
+                                // double-counting against.
                                 const FONT_SIZE = 12;
                                 if (isTarget) {
                                     const w = label.length * 7 + 10;
@@ -915,16 +918,18 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                     );
                                 }
                                 return (
-                                    <text
-                                        x={x}
-                                        y={y}
-                                        dy={4}
-                                        textAnchor="end"
-                                        fontSize={FONT_SIZE}
-                                        fill="var(--foreground)"
-                                    >
-                                        {label}
-                                    </text>
+                                    <g transform={`translate(${x},${y})`}>
+                                        <text
+                                            x={0}
+                                            y={0}
+                                            dy={4}
+                                            textAnchor="end"
+                                            fontSize={FONT_SIZE}
+                                            fill="var(--foreground)"
+                                        >
+                                            {label}
+                                        </text>
+                                    </g>
                                 );
                             }}
                             width={48}
