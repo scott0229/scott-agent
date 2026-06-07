@@ -78,7 +78,7 @@ export function generateDailyTradesText(
         if (qqqDay && qqqDay.open != null && qqqDay.close != null) {
             const delta = qqqDay.close - qqqDay.open;
             const sign = delta >= 0 ? '+' : '';
-            text += `QQQ ${qqqDay.open.toFixed(2)} → ${qqqDay.close.toFixed(2)} (${sign}${delta.toFixed(2)})\n`;
+            text += `QQQ 開盤 ${qqqDay.open.toFixed(2)} → 收盤 ${qqqDay.close.toFixed(2)} (${sign}${delta.toFixed(2)})\n`;
         }
         text += `----------------------------------------\n`;
     }
