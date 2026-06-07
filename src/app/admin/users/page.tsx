@@ -1963,7 +1963,10 @@ export default function AdminUsersPage() {
                                         {editingNoteUserId === userId ? (
                                             <textarea
                                                 ref={editingNoteRef}
-                                                className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium overflow-y-auto"
+                                                // 2px ring in note-badge-fg color so the edit-mode
+                                                // box reads as visually distinct from the static
+                                                // display div (which uses the same bg + text).
+                                                className="w-full text-sm p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none ring-2 ring-note-badge-fg/50 focus:ring-note-badge-fg transition-colors placeholder:text-note-badge-fg/70 font-medium overflow-y-auto"
                                                 placeholder="在此輸入筆記"
                                                 rows={1}
                                                 style={{ maxHeight: 120 }}
@@ -1990,9 +1993,13 @@ export default function AdminUsersPage() {
                                                 const PILL_TEST = /^[A-Z]{2,5}\s\d+(?:\.\d+)?[CP]$/;
                                                 return (
                                                     <div
-                                                        className="w-full text-sm p-2 text-note-badge-fg bg-note-badge rounded-md font-medium whitespace-pre-wrap cursor-text overflow-y-auto"
+                                                        // Outlined-but-empty by default, fills in a
+                                                        // soft ring on hover so it's obvious the
+                                                        // block is clickable to edit.
+                                                        className="w-full text-sm p-2 text-note-badge-fg bg-note-badge rounded-md font-medium whitespace-pre-wrap cursor-pointer overflow-y-auto ring-0 hover:ring-2 hover:ring-note-badge-fg/30 transition-shadow"
                                                         style={{ maxHeight: 120, minHeight: '2.25rem' }}
                                                         onClick={() => setEditingNoteUserId(userId)}
+                                                        title="點擊編輯"
                                                     >
                                                         {noteRaw
                                                             ? noteRaw.split(PILL_SPLIT).map((seg, idx) =>
