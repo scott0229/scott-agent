@@ -1,21 +1,26 @@
 /**
- * Intraday minute-bar fetcher for the daily-trades view. We hit Yahoo
- * Finance's chart endpoint with interval=1m and return a map keyed by
- * "HH:MM in America/New_York" so the formatter can look up the QQQ
- * spot at each trade's time of day.
+ * Intraday minute-bar lookup for the daily-trades view. Returns a
+ * "HH:MM in ET" → spot close map for the minutes the formatter
+ * actually needs (those where the user executed an option trade).
  *
- * Why ET keys: trade timestamps in this codebase are stored as
- * "ET wall-clock interpreted as UTC" (the IB import path drops TZ
- * info), so the formatter reads them via getUTCHours()/getUTCMinutes()
- * and ends up with the literal ET hour:minute string. Yahoo returns
- * real UTC unix timestamps — we re-project them into ET via
- * Intl.DateTimeFormat so the two sides match by string equality.
+ * Layered storage:
+ *   1. DB cache `market_prices_minute` keyed by (symbol, date_str, hhmm).
+ *      Persistent — once a minute is recorded it survives Yahoo's
+ *      1m/5m history windows expiring.
+ *   2. Yahoo Finance chart endpoint (1m → 5m fallback). Hit only for
+ *      the minutes still missing after the DB lookup, and we only
+ *      write back the minutes the caller asked for so the table stays
+ *      lean ("一分鐘 一交易 一列").
  *
- * Yahoo's 1-minute interval is bounded to ~the last 7 trading days;
- * older dates fall back to 5-minute (60d history). We swallow all
- * fetch errors silently — the underlying price column on the daily
- * card is a nice-to-have, not a correctness path.
+ * Why ET keys: trade timestamps are stored as "ET wall-clock
+ * interpreted as UTC" by the IB import path, so the formatter reads
+ * them via getUTCHours()/getUTCMinutes() and ends up with the literal
+ * ET hour:minute string. Yahoo timestamps are real UTC — we
+ * re-project them into ET via Intl.DateTimeFormat so both sides
+ * (writes and reads) share the same key space.
  */
+
+import type { D1Database } from '@cloudflare/workers-types';
 
 /** Minute-of-day key → spot close from the matching bar. */
 export type IntradayMinuteMap = Record<string, number>;
@@ -28,8 +33,8 @@ const ET_HHMM = new Intl.DateTimeFormat('en-US', {
 });
 
 function unixToEtHHMM(unixSec: number): string {
-    // Intl returns e.g. "09:39"; some locales render midnight as "24:00",
-    // pin that back to "00:00".
+    // Intl renders midnight in some locales as "24:00" — pin back to "00:00"
+    // so the key space stays canonical.
     const raw = ET_HHMM.format(new Date(unixSec * 1000));
     return raw.replace('24:', '00:');
 }
@@ -56,12 +61,12 @@ async function fetchYahooBars(
     dateStr: string,
     interval: '1m' | '5m',
 ): Promise<{ ts: number[]; close: (number | null)[] } | null> {
-    // dateStr is YYYY-MM-DD. We want a window covering the full ET
-    // trading day. ET 04:00–20:00 covers pre/post market on both DST
-    // shifts; converting that to UTC and back is safer than computing
-    // exact bounds. period1 = start-of-day UTC, period2 = +1 day.
-    const dayStart = Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 1000);
-    const dayEnd = dayStart + 86400;
+    // dateStr is YYYY-MM-DD. Yahoo wants epoch bounds; we hand it the
+    // whole day in UTC and let interval do the granularity work. The
+    // ±1 day padding covers the ET offset so DST shifts don't clip
+    // edge minutes.
+    const dayStart = Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 1000) - 86400;
+    const dayEnd = dayStart + 86400 * 3;
     const url =
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
         `?period1=${dayStart}&period2=${dayEnd}&interval=${interval}`;
@@ -86,17 +91,12 @@ async function fetchYahooBars(
     }
 }
 
-/**
- * Returns a HH:MM-in-ET → close-price map for `symbol` on `dateStr`.
- * Empty object if no data could be fetched (older than ~60 days, market
- * holiday, transient Yahoo error).
- */
-export async function fetchIntradayMinuteMap(
+async function fetchYahooMinuteMapForDate(
     symbol: string,
     dateStr: string,
 ): Promise<IntradayMinuteMap> {
-    // Try 1m first for the freshest precision; fall back to 5m if Yahoo
-    // returned empty (likely outside the 1m history window).
+    // 1m gives the most precise lookup but Yahoo only retains it for
+    // ~7 calendar days. 5m extends to ~60 days at acceptable resolution.
     let bars = await fetchYahooBars(symbol, dateStr, '1m');
     if (!bars || bars.ts.length === 0) {
         bars = await fetchYahooBars(symbol, dateStr, '5m');
@@ -104,9 +104,89 @@ export async function fetchIntradayMinuteMap(
     if (!bars) return {};
     const map: IntradayMinuteMap = {};
     for (let i = 0; i < bars.ts.length; i++) {
-        const price = bars.close[i];
-        if (price == null) continue;
-        map[unixToEtHHMM(bars.ts[i])] = price;
+        const close = bars.close[i];
+        if (close == null) continue;
+        // Filter to the requested calendar date in ET before keying — the
+        // ±1 day padding above grabs prior/next-day pre-market bars we
+        // don't want polluting the map.
+        const dayIso = new Date(bars.ts[i] * 1000).toLocaleDateString('en-CA', {
+            timeZone: 'America/New_York',
+        });
+        if (dayIso !== dateStr) continue;
+        map[unixToEtHHMM(bars.ts[i])] = close;
     }
     return map;
+}
+
+/**
+ * DB-first lookup with Yahoo fallback + write-through. Returns the
+ * subset of minutes from `requiredHhmms` we managed to resolve.
+ *
+ * @param db             D1 binding
+ * @param symbol         Ticker (currently always 'QQQ', but kept open)
+ * @param dateStr        ET calendar date, 'YYYY-MM-DD'
+ * @param requiredHhmms  Set of 'HH:MM' strings the formatter wants
+ *                       prices for. We only write back the ones the
+ *                       caller cares about so the table stays small.
+ */
+export async function getIntradayPricesForMinutes(
+    db: D1Database,
+    symbol: string,
+    dateStr: string,
+    requiredHhmms: Set<string>,
+): Promise<IntradayMinuteMap> {
+    if (requiredHhmms.size === 0) return {};
+
+    // 1. DB lookup. Pull every cached minute for the day in one
+    //    round-trip — the table is leaf-narrow, so a scan-by-prefix
+    //    is cheap and avoids per-minute SELECTs.
+    const out: IntradayMinuteMap = {};
+    try {
+        const { results } = await db.prepare(
+            `SELECT hhmm, close FROM market_prices_minute WHERE symbol = ? AND date_str = ?`,
+        ).bind(symbol, dateStr).all<{ hhmm: string; close: number }>();
+        for (const r of results || []) {
+            if (requiredHhmms.has(r.hhmm)) {
+                out[r.hhmm] = r.close;
+            }
+        }
+    } catch (e) {
+        console.warn('intraday DB read failed (continuing to Yahoo):', e);
+    }
+
+    // 2. Anything still missing → Yahoo. One fetch covers the whole
+    //    day; we just pick out the required minutes from the response.
+    const missing = new Set<string>();
+    for (const hhmm of requiredHhmms) {
+        if (out[hhmm] == null) missing.add(hhmm);
+    }
+    if (missing.size === 0) return out;
+
+    const yahooMap = await fetchYahooMinuteMapForDate(symbol, dateStr);
+    if (Object.keys(yahooMap).length === 0) return out;
+
+    // 3. Write through ONLY the required-and-resolved minutes. Skips
+    //    pre-market / after-hours bars when no trade falls on them and
+    //    keeps row growth proportional to actual activity.
+    const writes: { hhmm: string; close: number }[] = [];
+    for (const hhmm of missing) {
+        const close = yahooMap[hhmm];
+        if (close == null) continue;
+        out[hhmm] = close;
+        writes.push({ hhmm, close });
+    }
+
+    if (writes.length > 0) {
+        try {
+            const stmt = db.prepare(
+                `INSERT INTO market_prices_minute (symbol, date_str, hhmm, close) VALUES (?, ?, ?, ?)
+                 ON CONFLICT(symbol, date_str, hhmm) DO UPDATE SET close = excluded.close`,
+            );
+            await db.batch(writes.map(w => stmt.bind(symbol, dateStr, w.hhmm, w.close)));
+        } catch (e) {
+            console.warn('intraday DB write failed (read path still served):', e);
+        }
+    }
+
+    return out;
 }

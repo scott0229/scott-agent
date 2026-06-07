@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
-import { fetchIntradayMinuteMap } from '@/lib/intraday-prices';
+import { getIntradayPricesForMinutes } from '@/lib/intraday-prices';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,17 +145,33 @@ export async function GET(req: NextRequest) {
 
         // QQQ minute-bar map keyed by ET HH:MM. Used by the formatter to
         // surface the underlying's spot price next to each trade's time.
-        // Fetched per request (Yahoo's chart endpoint, no key, cheap),
-        // returns empty when data isn't available — the formatter just
-        // omits the price column in that case.
+        //
+        // We only resolve the minutes that actually have option trades
+        // — open_date carries "ET wall-clock as UTC" so getUTCHours/
+        // Minutes gives the literal ET HH:MM key. Closes borrow the
+        // paired open's time client-side, so an open-minute set is a
+        // sufficient cover. The helper checks DB cache first and only
+        // hits Yahoo for the missing minutes; resolved bars are
+        // persisted via INSERT ... ON CONFLICT so the next view of the
+        // same date answers from DB alone.
         const intradayPrices: Record<string, Record<string, number>> = {};
-        try {
-            const qqqMinutes = await fetchIntradayMinuteMap('QQQ', dateStr);
-            if (Object.keys(qqqMinutes).length > 0) {
-                intradayPrices['QQQ'] = qqqMinutes;
+        const requiredMinutes = new Set<string>();
+        for (const o of (optionOpens || []) as any[]) {
+            if (o.symbol !== 'QQQ' || o.open_date == null) continue;
+            const d = new Date(o.open_date * 1000);
+            const hh = String(d.getUTCHours()).padStart(2, '0');
+            const mm = String(d.getUTCMinutes()).padStart(2, '0');
+            requiredMinutes.add(`${hh}:${mm}`);
+        }
+        if (requiredMinutes.size > 0) {
+            try {
+                const qqqMinutes = await getIntradayPricesForMinutes(db, 'QQQ', dateStr, requiredMinutes);
+                if (Object.keys(qqqMinutes).length > 0) {
+                    intradayPrices['QQQ'] = qqqMinutes;
+                }
+            } catch (e) {
+                console.warn('intraday fetch failed (non-fatal):', e);
             }
-        } catch (e) {
-            console.warn('intraday fetch failed (non-fatal):', e);
         }
 
         return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats, intradayPrices });
