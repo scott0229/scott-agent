@@ -1939,14 +1939,26 @@ export default function AdminUsersPage() {
                                     </div>
                                     <div className="mb-3">
                                         <textarea
-                                            className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium"
+                                            className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium overflow-y-auto"
                                             placeholder="在此輸入筆記"
-                                            rows={Math.min(Math.max((users.find(u => u.id === userId)?.report_note || '').trimEnd().split('\n').length, 1), 6)}
+                                            // Auto-size by scrollHeight so a single long
+                                            // Chinese sentence that wraps to multiple
+                                            // visual rows still shows in full. Capped
+                                            // at 5 visual rows × text-sm line-height
+                                            // (~24px) ≈ 120px before scrolling kicks in.
+                                            rows={1}
+                                            style={{ maxHeight: 120 }}
+                                            ref={(el) => {
+                                                if (!el) return;
+                                                el.style.height = 'auto';
+                                                el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                                            }}
                                             defaultValue={users.find(u => u.id === userId)?.report_note || ''}
                                             onInput={(e) => {
-                                                const lines = e.currentTarget.value.split('\n').length;
-                                                e.currentTarget.rows = Math.min(Math.max(lines, 1), 6);
-                                                scheduleReportNoteSave(userId, e.currentTarget.value);
+                                                const t = e.currentTarget;
+                                                t.style.height = 'auto';
+                                                t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
+                                                scheduleReportNoteSave(userId, t.value);
                                             }}
                                             onBlur={(e) => {
                                                 flushReportNoteSave(userId, e.target.value);
