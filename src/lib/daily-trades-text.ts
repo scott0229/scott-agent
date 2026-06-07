@@ -110,7 +110,10 @@ export function generateDailyTradesText(
         const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
         const tStamp = timeMap.get(trade.id) ?? (trade.action_type === 'open' ? (trade.open_date ?? null) : null);
         const hhmm = tStamp ? formatTime(tStamp) : '';
-        const timeStr = hhmm ? ` ${hhmm}` : '';
+        // Lead with the HH:MM so the executed time anchors the eye on the
+        // left edge — easier to scan a vertical stack of trades by time
+        // than to chase the timestamp at the end of variable-width symbols.
+        const timeLead = hhmm ? `${hhmm} ` : '';
         // Append the underlying spot at that exact minute when the
         // intraday map carries it. Trade timestamps are stored "ET
         // wall-clock as UTC", so the HH:MM string we compute via
@@ -118,7 +121,7 @@ export function generateDailyTradesText(
         const minuteMap = intradayPrices?.[trade.symbol];
         const spot = hhmm && minuteMap ? minuteMap[hhmm] : undefined;
         const spotStr = spot != null ? ` @${spot.toFixed(2)}` : '';
-        return `${qtyStr}口 ${symbolStr}${timeStr}${spotStr}`;
+        return `${timeLead}${qtyStr}口 ${symbolStr}${spotStr}`;
     };
 
     // Identify rolls
