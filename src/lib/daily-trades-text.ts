@@ -108,19 +108,59 @@ export function generateDailyTradesText(
 
     const rollGroups: { closed: DailyTradeRow[]; opened: DailyTradeRow[] }[] = [];
 
+    const legKey = (t: DailyTradeRow) => `${t.symbol}|${t.option_type}|${t.strike_price}|${t.to_date}`;
+
     Object.keys(closeGroups).forEach(key => {
         if (openGroups[key]) {
             const matchedC = closeGroups[key].filter(t => !matchedCloseIds.has(t.id));
             const matchedO = openGroups[key].filter(t => !matchedOpenIds.has(t.id));
             if (matchedC.length === 0 || matchedO.length === 0) return;
 
-            // Always try greedy 1-to-1 pairing by quantity FIRST. When the
-            // same underlying/type has two independent rolls on the same day
-            // (e.g. -5 Jun17 737C → +5 Jun15 734C *and* -4 Jun15 695C → +4
-            // Jun08 693C), the legs balance in aggregate (sum-9 / +9) but
-            // mashing them together yields a nonsense 調價/展期 line built
-            // from closed[0]/opened[0] only. Per-quantity 1-to-1 surfaces
-            // each real roll separately.
+            // Chained-roll detection. When the user rolls a position in
+            // multiple steps on the same day (A → B then B → C), the
+            // intermediate instrument B appears BOTH as a close (step 2)
+            // AND as an open (step 1) with the same qty. We want to bundle
+            // the whole chain as one chunk so the user sees the full
+            // A → ... → C movement instead of two split rollGroups whose
+            // intermediate legs cancel out.
+            const openedKeyToQty = new Map<string, number>();
+            matchedO.forEach(o => openedKeyToQty.set(legKey(o), (openedKeyToQty.get(legKey(o)) || 0) + o.quantity));
+            const closedKeyToQty = new Map<string, number>();
+            matchedC.forEach(c => closedKeyToQty.set(legKey(c), (closedKeyToQty.get(legKey(c)) || 0) + c.quantity));
+            const isChained = matchedC.some(c => openedKeyToQty.get(legKey(c)) === c.quantity);
+            const sumC = matchedC.reduce((s, t) => s + t.quantity, 0);
+            const sumO = matchedO.reduce((s, t) => s + t.quantity, 0);
+
+            if (isChained && sumC === sumO && sumC !== 0) {
+                // Re-order so closed[0] is the TRUE START (a close whose
+                // instrument doesn't appear in opens) and opened[0] is the
+                // TRUE END (an open whose instrument doesn't appear in
+                // closes). Intermediate cancelling legs go to the end of
+                // each array. This keeps the 調價/展期 summary computed
+                // from closed[0] / opened[0] meaningful — it reflects the
+                // full chain (start → end), not an arbitrary middle hop.
+                const orderedClosed = [...matchedC].sort((a, b) => {
+                    const aCancel = openedKeyToQty.has(legKey(a)) ? 1 : 0;
+                    const bCancel = openedKeyToQty.has(legKey(b)) ? 1 : 0;
+                    return aCancel - bCancel;
+                });
+                const orderedOpened = [...matchedO].sort((a, b) => {
+                    const aCancel = closedKeyToQty.has(legKey(a)) ? 1 : 0;
+                    const bCancel = closedKeyToQty.has(legKey(b)) ? 1 : 0;
+                    return aCancel - bCancel;
+                });
+                matchedC.forEach(t => matchedCloseIds.add(t.id));
+                matchedO.forEach(t => matchedOpenIds.add(t.id));
+                rollGroups.push({ closed: orderedClosed, opened: orderedOpened });
+                return;
+            }
+
+            // Non-chained: greedy 1-to-1 pairing by quantity. Catches the
+            // common case of two independent rolls of different positions
+            // sharing the same underlying/type/group_id on the same day
+            // (e.g. -5 Jun17 737C → +5 Jun15 734C *and* -4 Jun15 695C →
+            // +4 Jun08 693C). Each real roll surfaces separately rather
+            // than getting mashed into one nonsense 調價/展期 line.
             const opensCopy = [...matchedO];
             matchedC.forEach(c => {
                 if (matchedCloseIds.has(c.id)) return;
