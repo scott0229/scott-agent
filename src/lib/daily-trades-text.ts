@@ -114,42 +114,38 @@ export function generateDailyTradesText(
             const matchedO = openGroups[key].filter(t => !matchedOpenIds.has(t.id));
             if (matchedC.length === 0 || matchedO.length === 0) return;
 
-            const sumC = matchedC.reduce((s, t) => s + t.quantity, 0);
-            const sumO = matchedO.reduce((s, t) => s + t.quantity, 0);
+            // Always try greedy 1-to-1 pairing by quantity FIRST. When the
+            // same underlying/type has two independent rolls on the same day
+            // (e.g. -5 Jun17 737C → +5 Jun15 734C *and* -4 Jun15 695C → +4
+            // Jun08 693C), the legs balance in aggregate (sum-9 / +9) but
+            // mashing them together yields a nonsense 調價/展期 line built
+            // from closed[0]/opened[0] only. Per-quantity 1-to-1 surfaces
+            // each real roll separately.
+            const opensCopy = [...matchedO];
+            matchedC.forEach(c => {
+                if (matchedCloseIds.has(c.id)) return;
+                const idx = opensCopy.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
+                if (idx === -1) return;
+                const o = opensCopy[idx];
+                matchedCloseIds.add(c.id);
+                matchedOpenIds.add(o.id);
+                opensCopy.splice(idx, 1);
+                rollGroups.push({ closed: [c], opened: [o] });
+            });
 
-            if (sumC === sumO && sumC !== 0) {
-                matchedC.forEach(t => matchedCloseIds.add(t.id));
-                matchedO.forEach(t => matchedOpenIds.add(t.id));
-                rollGroups.push({ closed: matchedC, opened: matchedO });
-            } else {
-                let stillHasUnmatched = false;
-                matchedC.forEach(c => {
-                    if (matchedCloseIds.has(c.id)) return;
-                    const oIndex = matchedO.findIndex(o => !matchedOpenIds.has(o.id) && o.quantity === c.quantity);
-                    if (oIndex !== -1) {
-                        const o = matchedO[oIndex];
-                        matchedCloseIds.add(c.id);
-                        matchedOpenIds.add(o.id);
-                        rollGroups.push({ closed: [c], opened: [o] });
-                    } else {
-                        stillHasUnmatched = true;
-                    }
-                });
-
-                if (stillHasUnmatched || matchedO.some(o => !matchedOpenIds.has(o.id))) {
-                    const remainingC = matchedC.filter(c => !matchedCloseIds.has(c.id));
-                    const remainingO = matchedO.filter(o => !matchedOpenIds.has(o.id));
-
-                    if (remainingC.length > 0 && remainingO.length > 0) {
-                        const remSumC = remainingC.reduce((s, t) => s + t.quantity, 0);
-                        const remSumO = remainingO.reduce((s, t) => s + t.quantity, 0);
-
-                        if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
-                            remainingC.forEach(c => matchedCloseIds.add(c.id));
-                            remainingO.forEach(o => matchedOpenIds.add(o.id));
-                            rollGroups.push({ closed: remainingC, opened: remainingO });
-                        }
-                    }
+            // Whatever's left after 1-to-1 pairing — bundle it as a single
+            // roll when the residual closes and opens share sign and balance
+            // in aggregate. Covers the N-to-M splits that don't reduce to
+            // clean 1-to-1 pairs (e.g. -3 close → +1 + +2 open same day).
+            const remainingC = matchedC.filter(c => !matchedCloseIds.has(c.id));
+            const remainingO = matchedO.filter(o => !matchedOpenIds.has(o.id));
+            if (remainingC.length > 0 && remainingO.length > 0) {
+                const remSumC = remainingC.reduce((s, t) => s + t.quantity, 0);
+                const remSumO = remainingO.reduce((s, t) => s + t.quantity, 0);
+                if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
+                    remainingC.forEach(c => matchedCloseIds.add(c.id));
+                    remainingO.forEach(o => matchedOpenIds.add(o.id));
+                    rollGroups.push({ closed: remainingC, opened: remainingO });
                 }
             }
         }
