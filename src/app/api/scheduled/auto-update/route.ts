@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
+import { getIntradayPricesForMinutes } from '@/lib/intraday-prices';
 
 export const dynamic = 'force-dynamic';
 
@@ -223,6 +224,61 @@ export async function GET(req: NextRequest) {
             }
         } catch (err) {
             console.warn('[Auto Update] Yahoo QQQ refresh failed (non-fatal):', err);
+        }
+
+        // Backfill underlying spot for any option-trade minute in the last
+        // 7 calendar days that's still missing from market_prices_minute.
+        // 7 days keeps us inside Yahoo's 1m precision window — once cached
+        // the row survives indefinitely even after Yahoo forgets the bar.
+        //
+        // Why here: the per-page /api/daily-trades path is lazy and only
+        // resolves minutes a user actively viewed. If nobody opens the
+        // page for a date within ~7 days we'd silently lose 1m precision.
+        // The cron runs regardless of user activity, so it's the right
+        // place to guarantee coverage.
+        //
+        // Cost shape: getIntradayPricesForMinutes hits Yahoo at most once
+        // per (symbol, day) and only when there's at least one missing
+        // minute. Steady-state (after the first warm-up) most ticks see
+        // zero missing minutes and skip Yahoo entirely. Total upper
+        // bound per tick is ~7 Yahoo calls; in practice it's 0–1.
+        try {
+            const todayHkt = new Date(Date.now() + 8 * 3600 * 1000);
+            const backfillDates: string[] = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(todayHkt);
+                d.setUTCDate(d.getUTCDate() - i);
+                const y = d.getUTCFullYear();
+                const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                backfillDates.push(`${y}-${m}-${day}`);
+            }
+
+            let totalCached = 0;
+            for (const dateStr of backfillDates) {
+                // Pull every option open_date that lands on this date for
+                // any user. The HH:MM string is what /api/daily-trades
+                // formats, computed off the stored "ET wall-clock as UTC".
+                const { results: tradeMinutes } = await db.prepare(`
+                    SELECT DISTINCT
+                        strftime('%H:%M', datetime(open_date, 'unixepoch')) AS hhmm
+                    FROM OPTIONS
+                    WHERE underlying = 'QQQ'
+                      AND open_date IS NOT NULL
+                      AND date(datetime(open_date, 'unixepoch')) = ?
+                `).bind(dateStr).all<{ hhmm: string }>();
+
+                const required = new Set((tradeMinutes || []).map(r => r.hhmm));
+                if (required.size === 0) continue;
+
+                const resolved = await getIntradayPricesForMinutes(db, 'QQQ', dateStr, required);
+                totalCached += Object.keys(resolved).length;
+            }
+            if (totalCached > 0) {
+                console.log(`[Auto Update] Intraday backfill resolved ${totalCached} (symbol, minute) prices across last 7d`);
+            }
+        } catch (err) {
+            console.warn('[Auto Update] Intraday backfill failed (non-fatal):', err);
         }
 
         // Warm up the worker. Cold-start CPU + render CPU occasionally
