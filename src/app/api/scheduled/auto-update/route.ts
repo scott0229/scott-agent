@@ -243,9 +243,15 @@ export async function GET(req: NextRequest) {
         // zero missing minutes and skip Yahoo entirely. Total upper
         // bound per tick is ~7 Yahoo calls; in practice it's 0–1.
         try {
+            // ?backfillDays=N overrides the rolling window for one tick so
+            // an operator can sweep historical days into the minute cache
+            // without standing up a separate auth path. Clamped to 60d —
+            // Yahoo's 5m history ceiling.
+            const reqUrl = new URL(req.url);
+            const overrideDays = Math.min(60, Math.max(7, Number(reqUrl.searchParams.get('backfillDays')) || 7));
             const todayHkt = new Date(Date.now() + 8 * 3600 * 1000);
             const backfillDates: string[] = [];
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < overrideDays; i++) {
                 const d = new Date(todayHkt);
                 d.setUTCDate(d.getUTCDate() - i);
                 const y = d.getUTCFullYear();
