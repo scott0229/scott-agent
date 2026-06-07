@@ -64,14 +64,17 @@ export async function GET(req: NextRequest) {
 
         // 3. Option Opens
         const { results: optionOpens } = await db.prepare(`
-            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, premium as price, group_id, 'option' as asset_type, 'open' as action_type, to_date
+            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, premium as price, group_id, 'option' as asset_type, 'open' as action_type, to_date, open_date
             FROM OPTIONS
             WHERE date(datetime(open_date, 'unixepoch')) = ? AND owner_id IN (${userIds.join(',')})
         `).bind(dateStr).all();
 
         // 4. Option Closes/Settlements
+        //    open_date is still included so the formatter can pair each close
+        //    with its corresponding open in a roll and borrow the open's time
+        //    of day (settlement_date is rounded to midnight, no HH:MM there).
         const { results: optionCloses } = await db.prepare(`
-            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, final_profit as profit, premium as old_premium, group_id, 'option' as asset_type, 'close' as action_type, to_date, operation
+            SELECT id, owner_id, underlying as symbol, type as option_type, strike_price, quantity, final_profit as profit, premium as old_premium, group_id, 'option' as asset_type, 'close' as action_type, to_date, operation, open_date
             FROM OPTIONS
             WHERE settlement_date IS NOT NULL AND date(datetime(settlement_date, 'unixepoch')) = ? AND owner_id IN (${userIds.join(',')})
         `).bind(dateStr).all();

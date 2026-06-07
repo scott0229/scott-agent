@@ -28,6 +28,11 @@ export interface DailyTradeRow {
     profit?: number | null;
     old_premium?: number | null;
     operation?: string | null;
+    /** Unix-second timestamp of when this OPTIONS row was opened. Carries
+     *  a real HH:MM:SS for opens; for closes the column still references
+     *  the position's original open. We borrow this time for close rows
+     *  by pairing them with a same-day open in the same roll. */
+    open_date?: number | null;
 }
 
 export interface UserDailyTradesGroup {
@@ -40,6 +45,16 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 function formatNumber(val: number | null | undefined): string {
     if (val == null) return '-';
     return new Intl.NumberFormat('en-US').format(val);
+}
+
+/** HH:MM in UTC, matching the SQLite datetime() representation used when
+ *  the import path stores wall-clock times. Empty string when no timestamp. */
+function formatTime(unixSec: number | null | undefined): string {
+    if (!unixSec) return '';
+    const d = new Date(unixSec * 1000);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
 }
 
 export function generateDailyTradesText(
@@ -67,6 +82,14 @@ export function generateDailyTradesText(
     const stockLines: string[] = [];
     const optionChunks: string[] = [];
 
+    // Per-trade display time. Populated below during roll matching:
+    //   - Open rows get their own open_date.
+    //   - Close rows borrow the paired open's open_date (settlement_date
+    //     only stores the close DAY, no HH:MM).
+    // Unmatched closes fall through without a time; unmatched opens use
+    // their own open_date directly.
+    const timeMap = new Map<number, number>();
+
     const formatOptionTrade = (trade: DailyTradeRow) => {
         const transactionQty = trade.action_type === 'close' ? -trade.quantity : trade.quantity;
         const qtyStr = transactionQty > 0 ? `+${transactionQty}` : `${transactionQty}`;
@@ -81,7 +104,9 @@ export function generateDailyTradesText(
         }
 
         const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
-        return `${qtyStr}口 ${symbolStr}`;
+        const tStamp = timeMap.get(trade.id) ?? (trade.action_type === 'open' ? (trade.open_date ?? null) : null);
+        const timeStr = tStamp ? ` ${formatTime(tStamp)}` : '';
+        return `${qtyStr}口 ${symbolStr}${timeStr}`;
     };
 
     // Identify rolls
@@ -106,7 +131,7 @@ export function generateDailyTradesText(
         closeGroups[key].push(t);
     });
 
-    const rollGroups: { closed: DailyTradeRow[]; opened: DailyTradeRow[] }[] = [];
+    const rollGroups: { closed: DailyTradeRow[]; opened: DailyTradeRow[]; chained?: boolean }[] = [];
 
     const legKey = (t: DailyTradeRow) => `${t.symbol}|${t.option_type}|${t.strike_price}|${t.to_date}`;
 
@@ -132,26 +157,51 @@ export function generateDailyTradesText(
             const sumO = matchedO.reduce((s, t) => s + t.quantity, 0);
 
             if (isChained && sumC === sumO && sumC !== 0) {
-                // Re-order so closed[0] is the TRUE START (a close whose
-                // instrument doesn't appear in opens) and opened[0] is the
-                // TRUE END (an open whose instrument doesn't appear in
-                // closes). Intermediate cancelling legs go to the end of
-                // each array. This keeps the 調價/展期 summary computed
-                // from closed[0] / opened[0] meaningful — it reflects the
-                // full chain (start → end), not an arbitrary middle hop.
-                const orderedClosed = [...matchedC].sort((a, b) => {
-                    const aCancel = openedKeyToQty.has(legKey(a)) ? 1 : 0;
-                    const bCancel = openedKeyToQty.has(legKey(b)) ? 1 : 0;
-                    return aCancel - bCancel;
-                });
-                const orderedOpened = [...matchedO].sort((a, b) => {
-                    const aCancel = closedKeyToQty.has(legKey(a)) ? 1 : 0;
-                    const bCancel = closedKeyToQty.has(legKey(b)) ? 1 : 0;
-                    return aCancel - bCancel;
-                });
+                // Arrange the chunk so each chronological step reads as a
+                // (open, close) pair when zipped by the display loop:
+                //   step i open  = sortedOpens[i] (by open_date ASC)
+                //   step i close = (i === 0) the TRUE START X (a close whose
+                //                  legKey doesn't appear in any open), else
+                //                  the close whose legKey matches the
+                //                  PREVIOUS step's open (the intermediate
+                //                  being rolled off).
+                // Times are heuristically borrowed: every leg of step i
+                // shares the timestamp of sortedOpens[i].open_date — close
+                // and open of a roll happen at the same execution moment.
+                const sortedOpens = [...matchedO].sort((a, b) => (a.open_date ?? 0) - (b.open_date ?? 0));
+                const remaining = [...matchedC];
+                const orderedClosed: DailyTradeRow[] = [];
+                const openLegKeys = new Set(sortedOpens.map(legKey));
+                for (let i = 0; i < sortedOpens.length; i++) {
+                    let targetCloseIdx: number;
+                    if (i === 0) {
+                        // True start: a close whose legKey doesn't appear in any open.
+                        targetCloseIdx = remaining.findIndex(c => !openLegKeys.has(legKey(c)));
+                    } else {
+                        // Pair with the close that matches the previous step's open
+                        // (the intermediate being rolled off this step).
+                        const prevKey = legKey(sortedOpens[i - 1]);
+                        targetCloseIdx = remaining.findIndex(c => legKey(c) === prevKey);
+                    }
+                    if (targetCloseIdx === -1) {
+                        // Fallback: any remaining close. Shouldn't fire for clean
+                        // chains but keeps us safe under weird data shapes.
+                        targetCloseIdx = 0;
+                    }
+                    const c = remaining.splice(targetCloseIdx, 1)[0];
+                    if (!c) break;
+                    orderedClosed.push(c);
+                    // Both legs of this step share the open's timestamp.
+                    const stepTime = sortedOpens[i].open_date;
+                    if (stepTime != null) {
+                        timeMap.set(sortedOpens[i].id, stepTime);
+                        timeMap.set(c.id, stepTime);
+                    }
+                }
+
                 matchedC.forEach(t => matchedCloseIds.add(t.id));
                 matchedO.forEach(t => matchedOpenIds.add(t.id));
-                rollGroups.push({ closed: orderedClosed, opened: orderedOpened });
+                rollGroups.push({ closed: orderedClosed, opened: sortedOpens, chained: true });
                 return;
             }
 
@@ -170,6 +220,11 @@ export function generateDailyTradesText(
                 matchedCloseIds.add(c.id);
                 matchedOpenIds.add(o.id);
                 opensCopy.splice(idx, 1);
+                // Both legs of this roll share the open's execution time.
+                if (o.open_date != null) {
+                    timeMap.set(o.id, o.open_date);
+                    timeMap.set(c.id, o.open_date);
+                }
                 rollGroups.push({ closed: [c], opened: [o] });
             });
 
@@ -185,6 +240,17 @@ export function generateDailyTradesText(
                 if (Math.sign(remSumC) === Math.sign(remSumO) && remSumC !== 0) {
                     remainingC.forEach(c => matchedCloseIds.add(c.id));
                     remainingO.forEach(o => matchedOpenIds.add(o.id));
+                    // Share the earliest open's time across every leg in the
+                    // residual bundle — these are N-to-M splits where each
+                    // leg is part of one umbrella roll executed in one block.
+                    const earliestOpen = remainingO.reduce(
+                        (acc, o) => ((o.open_date ?? Infinity) < (acc.open_date ?? Infinity) ? o : acc),
+                        remainingO[0],
+                    );
+                    if (earliestOpen.open_date != null) {
+                        remainingO.forEach(o => timeMap.set(o.id, earliestOpen.open_date!));
+                        remainingC.forEach(c => timeMap.set(c.id, earliestOpen.open_date!));
+                    }
                     rollGroups.push({ closed: remainingC, opened: remainingO });
                 }
             }
@@ -234,18 +300,30 @@ export function generateDailyTradesText(
 
         const rollSegments: string[] = [];
 
+        // Pick the headline "from" and "to" legs for the summary. For
+        // chained chunks we want the TRUE start (close not appearing in
+        // opens) and TRUE end (open not appearing in closes) so 調價 /
+        // 展期 reflect the full chain X → Z, not an arbitrary middle hop.
+        // For non-chained chunks index 0 of each side is fine.
+        let summaryOld: DailyTradeRow = rg.closed[0];
+        let summaryNew: DailyTradeRow = rg.opened[0];
+        if (rg.chained && rg.closed.length > 0 && rg.opened.length > 0) {
+            const openKeys = new Set(rg.opened.map(legKey));
+            const closeKeys = new Set(rg.closed.map(legKey));
+            summaryOld = rg.closed.find(c => !openKeys.has(legKey(c))) ?? rg.closed[0];
+            summaryNew = rg.opened.find(o => !closeKeys.has(legKey(o))) ?? rg.opened[0];
+        }
+
         let daysDiffStr = '';
         if (rg.opened.length > 0 && rg.closed.length > 0) {
-            const openToDate = rg.opened[0].to_date;
-            const closeToDate = rg.closed[0].to_date;
+            const openToDate = summaryNew.to_date;
+            const closeToDate = summaryOld.to_date;
             if (openToDate && closeToDate) {
                 const daysDiff = Math.abs(getTradingDaysDiff(closeToDate, openToDate));
                 daysDiffStr = ` ${daysDiff}`;
             }
 
-            const newOpt = rg.opened[0];
-            const oldOpt = rg.closed[0];
-            const strikeDiff = (newOpt.strike_price ?? 0) - (oldOpt.strike_price ?? 0);
+            const strikeDiff = (summaryNew.strike_price ?? 0) - (summaryOld.strike_price ?? 0);
             if (strikeDiff !== 0) {
                 rollSegments.push(`調價 ${strikeDiff > 0 ? '+' : ''}${strikeDiff.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
             }
@@ -253,7 +331,7 @@ export function generateDailyTradesText(
 
         let itmString = '';
         if (rg.opened.length > 0 && rg.closed.length > 0) {
-            const newOpt = rg.opened[0];
+            const newOpt = summaryNew;
             const currentPrice = marketDataMap[newOpt.symbol];
             if (currentPrice != null) {
                 let diff = 0;
@@ -296,15 +374,21 @@ export function generateDailyTradesText(
             return Array.from(map.values());
         };
 
-        // For a same-day double roll (2 closes + 2 opens bundled into one
-        // chunk), interleave each open with its paired close so the user can
-        // see the two repositionings sequentially instead of "all opens then
-        // all closes". Sort both sides by strike DESC and zip by index — the
-        // highest-strike open lines up with the highest-strike close it
-        // replaced. Single-leg rolls degrade naturally to one open + one
-        // close (same display as before).
-        const mergedOpened = mergeLegs(rg.opened).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
-        const mergedClosed = mergeLegs(rg.closed).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
+        // Chained chunks: arrays are already in chronological (step) order
+        // — opened[i] is step i's NEW open, closed[i] is the matching close
+        // that gets rolled off in step i. Zip without re-sorting so the
+        // user sees each step as an adjacent (open, close) pair.
+        //
+        // Non-chained: same-day double rolls are independent positions
+        // that happen to share underlying+type; sort each side by strike
+        // DESC and zip so the highest-strike open lines up with the
+        // highest-strike close it replaced.
+        const mergedOpened = rg.chained
+            ? rg.opened
+            : mergeLegs(rg.opened).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
+        const mergedClosed = rg.chained
+            ? rg.closed
+            : mergeLegs(rg.closed).sort((a, b) => (b.strike_price ?? 0) - (a.strike_price ?? 0));
         const legPairs = Math.max(mergedOpened.length, mergedClosed.length);
         for (let i = 0; i < legPairs; i++) {
             if (i < mergedOpened.length) lines.push(formatOptionTrade(mergedOpened[i]));
