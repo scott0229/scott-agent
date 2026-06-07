@@ -24,27 +24,50 @@ export async function GET(req: NextRequest) {
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
-        let query = 'SELECT * FROM OPTIONS';
+        // LEFT JOIN market_prices_minute on (symbol, date, ET HH:MM) so
+        // 當時股價 prefers the minute cache (fresh, accurate) and falls
+        // back to OPTIONS.underlying_price only when the cache misses
+        // (older than the 60-day Yahoo horizon, or the minute wasn't
+        // resolved on the daily-trades read). Listing every column
+        // explicitly so we can swap underlying_price for the COALESCE
+        // without a duplicate-name collision against o.*. This removes
+        // the need to ever rewrite underlying_price on the OPTIONS
+        // table — single source of truth lives in market_prices_minute.
+        let query = `
+            SELECT o.id, o.status, o.operation, o.open_date, o.to_date,
+                   o.settlement_date, o.days_to_expire, o.days_held,
+                   o.quantity, o.underlying, o.type, o.strike_price,
+                   o.collateral, o.premium, o.final_profit, o.profit_percent,
+                   o.delta, o.iv, o.capital_efficiency, o.created_at,
+                   o.updated_at, o.user_id, o.owner_id, o.year, o.code,
+                   o.note_color, o.note, o.has_separator, o.group_id,
+                   COALESCE(m.close, o.underlying_price) AS underlying_price
+            FROM OPTIONS o
+            LEFT JOIN market_prices_minute m
+              ON m.symbol = o.underlying
+             AND m.date_str = date(datetime(o.open_date, 'unixepoch'))
+             AND m.hhmm = strftime('%H:%M', datetime(o.open_date, 'unixepoch'))
+        `;
         const params: any[] = [];
         let whereAdded = false;
 
         // Add year filter
         if (year && year !== 'All') {
-            query += ' WHERE year = ?';
+            query += ' WHERE o.year = ?';
             params.push(parseInt(year));
             whereAdded = true;
         }
 
         if (ownerId) {
-            query += whereAdded ? ' AND owner_id = ?' : ' WHERE owner_id = ?';
+            query += whereAdded ? ' AND o.owner_id = ?' : ' WHERE o.owner_id = ?';
             params.push(ownerId);
             whereAdded = true;
         } else if (userId) {
-            query += whereAdded ? ' AND user_id = ?' : ' WHERE user_id = ?';
+            query += whereAdded ? ' AND o.user_id = ?' : ' WHERE o.user_id = ?';
             params.push(userId);
         }
 
-        query += ' ORDER BY open_date DESC';
+        query += ' ORDER BY o.open_date DESC';
 
         const { results } = await db.prepare(query).bind(...params).all();
 
