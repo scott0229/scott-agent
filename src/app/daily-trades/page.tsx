@@ -589,7 +589,7 @@ export default function DailyTradesPage() {
 
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
 
-                                        const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權)/);
+                                        const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權|\b\d{2}:\d{2}\b)/);
                                         const renderedParts = parts.map((part, pIndex) => {
                                             if (part.startsWith('收益 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
                                                 const prefix = part.startsWith('收益 ') ? '收益 ' : part.startsWith('損益 ') ? '損益 ' : '權利金 ';
@@ -599,6 +599,18 @@ export default function DailyTradesPage() {
                                                 return <span key={pIndex}>{prefix}<span className={colorClass}>{numStr}</span></span>;
                                             } else if (part.startsWith('被突破 ') || part === '被行權') {
                                                 return <span key={pIndex} className="text-status-negative">{part}</span>;
+                                            } else if (/^\d{2}:\d{2}$/.test(part)) {
+                                                // Trade time stamp — wrap in a muted pill that mirrors
+                                                // the y-axis 權利金目標 badge so the HH:MM reads as a
+                                                // distinct field rather than runs into the spot price.
+                                                return (
+                                                    <span
+                                                        key={pIndex}
+                                                        className="bg-muted border border-border rounded px-1"
+                                                    >
+                                                        {part}
+                                                    </span>
+                                                );
                                             }
                                             return <span key={pIndex}>{part}</span>;
                                         });
