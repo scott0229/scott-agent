@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getGroupFromRequest } from '@/lib/group';
 import { verifyToken } from '@/lib/auth';
+import { fetchIntradayMinuteMap } from '@/lib/intraday-prices';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,7 +143,22 @@ export async function GET(req: NextRequest) {
             dayMarketStats[dayMarket.symbol] = { open, close };
         }
 
-        return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats });
+        // QQQ minute-bar map keyed by ET HH:MM. Used by the formatter to
+        // surface the underlying's spot price next to each trade's time.
+        // Fetched per request (Yahoo's chart endpoint, no key, cheap),
+        // returns empty when data isn't available — the formatter just
+        // omits the price column in that case.
+        const intradayPrices: Record<string, Record<string, number>> = {};
+        try {
+            const qqqMinutes = await fetchIntradayMinuteMap('QQQ', dateStr);
+            if (Object.keys(qqqMinutes).length > 0) {
+                intradayPrices['QQQ'] = qqqMinutes;
+            }
+        } catch (e) {
+            console.warn('intraday fetch failed (non-fatal):', e);
+        }
+
+        return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats, intradayPrices });
     } catch (error: any) {
         console.error('Failed to fetch daily trades:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

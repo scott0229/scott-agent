@@ -65,6 +65,10 @@ export function generateDailyTradesText(
      *  "QQQ open → close (±delta)" line right after 交易日期 so readers
      *  see the underlying's daily move next to their P&L. */
     qqqDay?: { open: number | null; close: number | null },
+    /** Per-symbol intraday minute map (key = "HH:MM" in ET, value =
+     *  spot close at that bar). When populated, each option leg's line
+     *  appends " @<price>" using its execution time. */
+    intradayPrices?: Record<string, Record<string, number>>,
 ): string {
     let text = '';
     if (date) {
@@ -105,8 +109,16 @@ export function generateDailyTradesText(
 
         const symbolStr = `${trade.symbol}${expiryStr} ${trade.strike_price}${trade.option_type === 'CALL' ? 'C' : 'P'}`;
         const tStamp = timeMap.get(trade.id) ?? (trade.action_type === 'open' ? (trade.open_date ?? null) : null);
-        const timeStr = tStamp ? ` ${formatTime(tStamp)}` : '';
-        return `${qtyStr}口 ${symbolStr}${timeStr}`;
+        const hhmm = tStamp ? formatTime(tStamp) : '';
+        const timeStr = hhmm ? ` ${hhmm}` : '';
+        // Append the underlying spot at that exact minute when the
+        // intraday map carries it. Trade timestamps are stored "ET
+        // wall-clock as UTC", so the HH:MM string we compute via
+        // getUTCHours/Minutes already matches the ET-keyed price map.
+        const minuteMap = intradayPrices?.[trade.symbol];
+        const spot = hhmm && minuteMap ? minuteMap[hhmm] : undefined;
+        const spotStr = spot != null ? ` @${spot.toFixed(2)}` : '';
+        return `${qtyStr}口 ${symbolStr}${timeStr}${spotStr}`;
     };
 
     // Identify rolls

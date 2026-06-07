@@ -37,6 +37,10 @@ export default function DailyTradesPage() {
     // the 30-day chart card. Stored per-date so jumping back/forward via
     // the chart click still shows the right day's range.
     const [dayMarketStats, setDayMarketStats] = useState<Record<string, { open: number | null; close: number | null }>>({});
+    // Per-symbol intraday minute map (HH:MM ET -> spot). Surfaced next to
+    // each option leg's execution time on the card. Empty when the
+    // selected date is too old for Yahoo's 1m/5m windows.
+    const [intradayPrices, setIntradayPrices] = useState<Record<string, Record<string, number>>>({});
     const [loading, setLoading] = useState(true);
     const [availableDates, setAvailableDates] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -122,10 +126,12 @@ export default function DailyTradesPage() {
                     setData(json.data || []);
                     setMarketDataMap(json.marketData || {});
                     setDayMarketStats(json.dayMarketStats || {});
+                    setIntradayPrices(json.intradayPrices || {});
                 } else {
                     setData([]);
                     setMarketDataMap({});
                     setDayMarketStats({});
+                    setIntradayPrices({});
                 }
             } catch (err) {
                 console.error(err);
@@ -256,6 +262,7 @@ export default function DailyTradesPage() {
             date,
             marketDataMap,
             selectedAccount === 'all' ? undefined : dayMarketStats['QQQ'],
+            intradayPrices,
         );
 
 
