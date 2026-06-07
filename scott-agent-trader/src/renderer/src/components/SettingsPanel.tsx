@@ -16,11 +16,6 @@ interface SettingsPanelProps {
   onSetWatchSymbol: (index: number, value: string) => void
   symbolPrefetch: Record<string, boolean>
   onSetSymbolPrefetch: (symbol: string, enabled: boolean) => void
-  d1Target: 'staging' | 'production'
-  onSetD1Target: (target: 'staging' | 'production') => void
-  connected: boolean
-  fetchingSymbols: boolean
-  onSyncPrices: () => void
   showOperationMode: boolean
   onSetShowOperationMode: (v: boolean) => void
   showAccountType: boolean
@@ -79,11 +74,6 @@ export default function SettingsPanel({
   onSetWatchSymbol,
   symbolPrefetch,
   onSetSymbolPrefetch,
-  d1Target,
-  onSetD1Target,
-  connected,
-  fetchingSymbols,
-  onSyncPrices,
   showOperationMode,
   onSetShowOperationMode,
   showAccountType,
@@ -96,7 +86,6 @@ export default function SettingsPanel({
   const [showRisk, setShowRisk] = useState(true)
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
-  const [showD1, setShowD1] = useState(true)
 
   if (!open) return null
 
@@ -112,56 +101,6 @@ export default function SettingsPanel({
           </button>
         </div>
         <div className="settings-body">
-          <SectionHeader
-            title="雲端資料庫同步"
-            expanded={showD1}
-            onToggle={() => setShowD1((v) => !v)}
-          />
-          {showD1 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: '0 8px',
-                marginBottom: 12
-              }}
-            >
-              {[
-                { value: 'staging' as const, label: '測試站' },
-                { value: 'production' as const, label: '正式站' }
-              ].map((opt) => (
-                <label
-                  key={opt.value}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: '0.95em',
-                    color: '#555',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="d1-target"
-                    checked={d1Target === opt.value}
-                    onChange={() => onSetD1Target(opt.value)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-              <button
-                className="upload-prices-btn"
-                style={{ marginLeft: 'auto' }}
-                disabled={!connected || fetchingSymbols}
-                onClick={onSyncPrices}
-              >
-                {fetchingSymbols ? '⏳ 查詢中...' : '📈 股價同步'}
-              </button>
-            </div>
-          )}
           <SectionHeader
             title="風險參數"
             expanded={showRisk}

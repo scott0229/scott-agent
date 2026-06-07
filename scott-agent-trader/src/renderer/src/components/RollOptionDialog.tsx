@@ -33,17 +33,20 @@ export default function RollOptionDialog({
   onRollComplete,
   initialTarget
 }: RollOptionDialogProps): React.JSX.Element | null {
-  // Snapshot positions on open so parent re-renders don't cause re-fetches
+  // Snapshot positions on open so parent re-renders don't cause re-fetches.
+  // The snapshot is taken synchronously DURING the render where open flips
+  // false → true, so the first render already has the fresh values — the
+  // previous useEffect-based approach left positions/symbol stale for the
+  // first render, which intermittently broke chain loading when the dialog
+  // was opened on a different selection than last time.
   const snappedPositions = useRef<PositionData[]>([])
   const snappedAccounts = useRef<AccountData[]>([])
-
-  // Snapshot on open
-  useEffect(() => {
-    if (open) {
-      snappedPositions.current = selectedPositions
-      snappedAccounts.current = accounts
-    }
-  }, [open]) // only on open change
+  const prevOpenRef = useRef(false)
+  if (open && !prevOpenRef.current) {
+    snappedPositions.current = selectedPositions
+    snappedAccounts.current = accounts
+  }
+  prevOpenRef.current = open
 
   // Use snapped data
   const positions = open ? snappedPositions.current : []
@@ -507,14 +510,14 @@ export default function RollOptionDialog({
               {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
             </span>
             <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
             />
             <span className="roll-order-label">賣</span>
             <span className="roll-order-value roll-order-ask">
               {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
             </span>
             <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
             />
             <span
               style={{
@@ -530,7 +533,7 @@ export default function RollOptionDialog({
               </span>
             </span>
             <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
+              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
             />
             <span className="roll-order-label" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>
               限價
@@ -572,7 +575,7 @@ export default function RollOptionDialog({
           </div>
 
           {/* Positions table */}
-          {!isSingleAccount && positions.length > 0 && (
+          {positions.length > 0 && (
             <>
               <div className="roll-dialog-table-wrapper">
                 <table className="roll-dialog-table roll-positions-table">

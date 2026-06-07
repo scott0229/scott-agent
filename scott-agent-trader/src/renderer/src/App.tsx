@@ -4,7 +4,6 @@ import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import SettingsPanel from './components/SettingsPanel'
-import PriceSyncDialog from './components/PriceSyncDialog'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
 import './assets/app.css'
@@ -56,9 +55,6 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
-  const [showSync, setShowSync] = useState(false)
-  const [uploadSymbols, setUploadSymbols] = useState<string[]>([])
-  const [fetchingSymbols, setFetchingSymbols] = useState(false)
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
   const [operationModes, setOperationModes] = useState<Record<string, string>>({})
@@ -75,8 +71,6 @@ function App(): React.JSX.Element {
     setAccountType,
     symbolPrefetch,
     setSymbolPrefetch,
-    d1Target,
-    setD1Target,
     symbolGroups,
     addSymbolGroup,
     deleteSymbolGroup,
@@ -89,6 +83,10 @@ function App(): React.JSX.Element {
     refetchSettings,
     saveAllSettings
   } = useTraderSettings()
+
+  // d1Target was a user-facing toggle for staging vs production; we removed
+  // the toggle in 2026-06 — trader is always production now.
+  const d1Target: 'production' = 'production'
 
   useEffect(() => {
     window.ibApi.onConnectionStatus((state) => {
@@ -387,7 +385,7 @@ function App(): React.JSX.Element {
               groupViewMode={activeTab === 'groups'}
               showOperationMode={showOperationMode}
               showAccountType={showAccountType}
-              d1Target={d1Target === 'production' ? 'production' : 'staging'}
+              d1Target={d1Target}
             />
           )}
           {activeTab === 'option' && (
@@ -410,37 +408,11 @@ function App(): React.JSX.Element {
         onSetWatchSymbol={setWatchSymbol}
         symbolPrefetch={symbolPrefetch}
         onSetSymbolPrefetch={setSymbolPrefetch}
-        d1Target={d1Target}
-        onSetD1Target={setD1Target}
-        connected={connected}
-        fetchingSymbols={fetchingSymbols}
         showOperationMode={showOperationMode}
         onSetShowOperationMode={setShowOperationMode}
         showAccountType={showAccountType}
         onSetShowAccountType={setShowAccountType}
-        onSyncPrices={async () => {
-          setFetchingSymbols(true)
-          try {
-            const symbols = await window.ibApi.getNeededSymbols(
-              d1Target === 'production' ? 'production' : 'staging'
-            )
-            setUploadSymbols(symbols)
-            setShowSync(true)
-          } catch (err) {
-            console.error('getNeededSymbols error:', err)
-            alert('取得需要上傳的標的清單失敗')
-          } finally {
-            setFetchingSymbols(false)
-          }
-        }}
       />
-      {showSync && (
-        <PriceSyncDialog
-          symbols={uploadSymbols}
-          d1Target={d1Target}
-          onClose={() => setShowSync(false)}
-        />
-      )}
       {updateDialogOpen && updateInfo && (
         <div
           className="roll-dialog-overlay"

@@ -1647,7 +1647,7 @@ export default function AccountOverview({
                                     }}
                                   />
                                 )}
-                                {total - idx}
+                                {total - idx}.
                               </td>
                               <td
                                 style={{
