@@ -98,8 +98,10 @@ async function fetchYahooMinuteMapForDate(
     // 1m gives the most precise lookup but Yahoo only retains it for
     // ~7 calendar days. 5m extends to ~60 days at acceptable resolution.
     let bars = await fetchYahooBars(symbol, dateStr, '1m');
+    let barSpanMinutes = 1;
     if (!bars || bars.ts.length === 0) {
         bars = await fetchYahooBars(symbol, dateStr, '5m');
+        barSpanMinutes = 5;
     }
     if (!bars) return {};
     const map: IntradayMinuteMap = {};
@@ -113,7 +115,13 @@ async function fetchYahooMinuteMapForDate(
             timeZone: 'America/New_York',
         });
         if (dayIso !== dateStr) continue;
-        map[unixToEtHHMM(bars.ts[i])] = close;
+        // Spread each bar's close across every minute inside its span so
+        // a trade at any minute within a 5m bar still finds a match.
+        // The DB write path is surgical (only requested HH:MM are
+        // persisted), so this replication just fattens the in-memory map.
+        for (let m = 0; m < barSpanMinutes; m++) {
+            map[unixToEtHHMM(bars.ts[i] + m * 60)] = close;
+        }
     }
     return map;
 }
