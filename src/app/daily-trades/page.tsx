@@ -589,7 +589,7 @@ export default function DailyTradesPage() {
 
                                         const isRollHighlight = line.includes('展期') || line.startsWith('開新倉') || line.startsWith('平倉') || line.startsWith('到期');
 
-                                        const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權|\b\d{2}:\d{2}(?: @\d+(?:\.\d+)?)?)/);
+                                        const parts = line.split(/((?:收益|損益|權利金) [+-]?[\d,]+(?:\.\d+)?|被突破 [\d,]+(?:\.\d+)?|被行權|\b\d{2}:\d{2}\b|@\d+(?:\.\d+)?)/);
                                         const renderedParts = parts.map((part, pIndex) => {
                                             if (part.startsWith('收益 ') || part.startsWith('損益 ') || part.startsWith('權利金 ')) {
                                                 const prefix = part.startsWith('收益 ') ? '收益 ' : part.startsWith('損益 ') ? '損益 ' : '權利金 ';
@@ -599,11 +599,11 @@ export default function DailyTradesPage() {
                                                 return <span key={pIndex}>{prefix}<span className={colorClass}>{numStr}</span></span>;
                                             } else if (part.startsWith('被突破 ') || part === '被行權') {
                                                 return <span key={pIndex} className="text-status-negative">{part}</span>;
-                                            } else if (/^\d{2}:\d{2}(?: @\d+(?:\.\d+)?)?$/.test(part)) {
-                                                // Trade time + optional underlying spot — wrap both in
-                                                // ONE muted pill so the time and price read as a single
-                                                // execution-context field instead of two separate
-                                                // tokens. Mirrors the y-axis 權利金目標 badge style.
+                                            } else if (/^\d{2}:\d{2}$/.test(part) || /^@\d+(?:\.\d+)?$/.test(part)) {
+                                                // Trade time and underlying spot each get their own
+                                                // muted pill — separate badges read as distinct
+                                                // execution-context fields. Style matches the y-axis
+                                                // 權利金目標 badge.
                                                 return (
                                                     <span
                                                         key={pIndex}
