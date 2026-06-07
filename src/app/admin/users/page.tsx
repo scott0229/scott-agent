@@ -199,6 +199,22 @@ export default function AdminUsersPage() {
     const jsonImportRef = useRef<HTMLInputElement>(null);
     const reportNoteSaveTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
     const reportNotePending = useRef<Map<number, string>>(new Map());
+    // Which user's report-note display has been clicked into edit mode.
+    // null = every note is rendering as a styled div with inline pills;
+    // a userId = that user's note swapped to a raw textarea for editing.
+    const [editingNoteUserId, setEditingNoteUserId] = useState<number | null>(null);
+    const editingNoteRef = useRef<HTMLTextAreaElement | null>(null);
+    useEffect(() => {
+        if (editingNoteUserId != null && editingNoteRef.current) {
+            const el = editingNoteRef.current;
+            el.focus();
+            // Place caret at end on initial focus.
+            const len = el.value.length;
+            el.setSelectionRange(len, len);
+            el.style.height = 'auto';
+            el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+        }
+    }, [editingNoteUserId]);
 
     const { toast } = useToast();
     const router = useRouter();
@@ -1938,32 +1954,58 @@ export default function AdminUsersPage() {
                                         </div>
                                     </div>
                                     <div className="mb-3">
-                                        <textarea
-                                            className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium overflow-y-auto"
-                                            placeholder="在此輸入筆記"
-                                            // Auto-size by scrollHeight so a single long
-                                            // Chinese sentence that wraps to multiple
-                                            // visual rows still shows in full. Capped
-                                            // at 5 visual rows × text-sm line-height
-                                            // (~24px) ≈ 120px before scrolling kicks in.
-                                            rows={1}
-                                            style={{ maxHeight: 120 }}
-                                            ref={(el) => {
-                                                if (!el) return;
-                                                el.style.height = 'auto';
-                                                el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-                                            }}
-                                            defaultValue={users.find(u => u.id === userId)?.report_note || ''}
-                                            onInput={(e) => {
-                                                const t = e.currentTarget;
-                                                t.style.height = 'auto';
-                                                t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
-                                                scheduleReportNoteSave(userId, t.value);
-                                            }}
-                                            onBlur={(e) => {
-                                                flushReportNoteSave(userId, e.target.value);
-                                            }}
-                                        />
+                                        {editingNoteUserId === userId ? (
+                                            <textarea
+                                                ref={editingNoteRef}
+                                                className="w-full text-sm border-none focus:ring-0 p-2 text-note-badge-fg bg-note-badge rounded-md resize-none outline-none transition-colors placeholder:text-note-badge-fg/70 font-medium overflow-y-auto"
+                                                placeholder="在此輸入筆記"
+                                                rows={1}
+                                                style={{ maxHeight: 120 }}
+                                                defaultValue={users.find(u => u.id === userId)?.report_note || ''}
+                                                onInput={(e) => {
+                                                    const t = e.currentTarget;
+                                                    t.style.height = 'auto';
+                                                    t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
+                                                    scheduleReportNoteSave(userId, t.value);
+                                                }}
+                                                onBlur={(e) => {
+                                                    flushReportNoteSave(userId, e.target.value);
+                                                    setEditingNoteUserId(null);
+                                                }}
+                                            />
+                                        ) : (
+                                            (() => {
+                                                const noteRaw = users.find(u => u.id === userId)?.report_note || '';
+                                                // Highlight option-position references like "QQQ 737C"
+                                                // or "TQQQ 65.5P" with an inline pill so they pop out
+                                                // of the prose. Split lets us interleave plain text
+                                                // and badge spans within the same paragraph.
+                                                const PILL_SPLIT = /([A-Z]{2,5}\s\d+(?:\.\d+)?[CP])/g;
+                                                const PILL_TEST = /^[A-Z]{2,5}\s\d+(?:\.\d+)?[CP]$/;
+                                                return (
+                                                    <div
+                                                        className="w-full text-sm p-2 text-note-badge-fg bg-note-badge rounded-md font-medium whitespace-pre-wrap cursor-text overflow-y-auto"
+                                                        style={{ maxHeight: 120, minHeight: '2.25rem' }}
+                                                        onClick={() => setEditingNoteUserId(userId)}
+                                                    >
+                                                        {noteRaw
+                                                            ? noteRaw.split(PILL_SPLIT).map((seg, idx) =>
+                                                                PILL_TEST.test(seg)
+                                                                    ? (
+                                                                        <span
+                                                                            key={idx}
+                                                                            className="inline-block bg-note-badge-fg/15 border border-note-badge-fg/30 rounded px-1 mx-0.5"
+                                                                        >
+                                                                            {seg}
+                                                                        </span>
+                                                                    )
+                                                                    : <span key={idx}>{seg}</span>,
+                                                            )
+                                                            : <span className="opacity-60">在此輸入筆記</span>}
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
                                     </div>
                                     <pre className="font-mono text-sm whitespace-pre-wrap flex-1 leading-relaxed">
                                         {report.split('\n').map((line, i, arr) => {
