@@ -295,6 +295,12 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({ reportNote: val })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            // Mirror the saved value into local state. Without this, when
+            // the styled note-display div re-mounts after blur it reads
+            // u.report_note (still the pre-edit value) and "loses" what
+            // the user just typed — they only see the new text after a
+            // hard refresh, which feels like the save silently failed.
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, report_note: val } : u));
             if (reportNotePending.current.get(userId) === val) {
                 reportNotePending.current.delete(userId);
             }
