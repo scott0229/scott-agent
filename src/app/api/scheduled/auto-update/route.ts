@@ -264,26 +264,34 @@ export async function GET(req: NextRequest) {
 
             let totalCached = 0;
             for (const dateStr of backfillDates) {
-                // Pull every option open_date that lands on this date for
-                // any user. The HH:MM string is what /api/daily-trades
-                // formats, computed off the stored "ET wall-clock as UTC".
+                // Pull every (underlying, open_date HH:MM) that lands on
+                // this date across all users. The HH:MM is what
+                // /api/daily-trades formats — derived from the stored
+                // "ET wall-clock as UTC". Auto-extends to any underlying
+                // the user trades (QQQ, TQQQ, QLD, …).
                 const { results: tradeMinutes } = await db.prepare(`
                     SELECT DISTINCT
+                        underlying,
                         strftime('%H:%M', datetime(open_date, 'unixepoch')) AS hhmm
                     FROM OPTIONS
-                    WHERE underlying = 'QQQ'
+                    WHERE underlying IS NOT NULL
                       AND open_date IS NOT NULL
                       AND date(datetime(open_date, 'unixepoch')) = ?
-                `).bind(dateStr).all<{ hhmm: string }>();
+                `).bind(dateStr).all<{ underlying: string; hhmm: string }>();
 
-                const required = new Set((tradeMinutes || []).map(r => r.hhmm));
-                if (required.size === 0) continue;
-
-                const resolved = await getIntradayPricesForMinutes(db, 'QQQ', dateStr, required);
-                totalCached += Object.keys(resolved).length;
+                const bySymbol = new Map<string, Set<string>>();
+                for (const r of tradeMinutes || []) {
+                    if (!bySymbol.has(r.underlying)) bySymbol.set(r.underlying, new Set());
+                    bySymbol.get(r.underlying)!.add(r.hhmm);
+                }
+                for (const [symbol, required] of bySymbol.entries()) {
+                    if (required.size === 0) continue;
+                    const resolved = await getIntradayPricesForMinutes(db, symbol, dateStr, required);
+                    totalCached += Object.keys(resolved).length;
+                }
             }
             if (totalCached > 0) {
-                console.log(`[Auto Update] Intraday backfill resolved ${totalCached} (symbol, minute) prices across last 7d`);
+                console.log(`[Auto Update] Intraday backfill resolved ${totalCached} (symbol, minute) prices`);
             }
         } catch (err) {
             console.warn('[Auto Update] Intraday backfill failed (non-fatal):', err);

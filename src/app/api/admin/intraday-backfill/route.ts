@@ -56,28 +56,35 @@ export async function POST(req: NextRequest) {
         try {
             const { results: tradeMinutes } = await db.prepare(`
                 SELECT DISTINCT
+                    underlying,
                     strftime('%H:%M', datetime(open_date, 'unixepoch')) AS hhmm
                 FROM OPTIONS
-                WHERE underlying = 'QQQ'
+                WHERE underlying IS NOT NULL
                   AND open_date IS NOT NULL
                   AND date(datetime(open_date, 'unixepoch')) = ?
-            `).bind(dateStr).all<{ hhmm: string }>();
+            `).bind(dateStr).all<{ underlying: string; hhmm: string }>();
 
-            const required = new Set((tradeMinutes || []).map(r => r.hhmm));
-            if (required.size === 0) continue;
+            const bySymbol = new Map<string, Set<string>>();
+            for (const r of tradeMinutes || []) {
+                if (!bySymbol.has(r.underlying)) bySymbol.set(r.underlying, new Set());
+                bySymbol.get(r.underlying)!.add(r.hhmm);
+            }
+            if (bySymbol.size === 0) continue;
             scannedDays++;
 
-            // Pre-check DB to count whether this day actually needs Yahoo.
-            const { results: cached } = await db.prepare(
-                `SELECT hhmm FROM market_prices_minute WHERE symbol = 'QQQ' AND date_str = ?`,
-            ).bind(dateStr).all<{ hhmm: string }>();
-            const cachedSet = new Set((cached || []).map(r => r.hhmm));
-            const missing = [...required].filter(h => !cachedSet.has(h));
-            if (missing.length === 0) continue;
+            for (const [symbol, required] of bySymbol.entries()) {
+                // Pre-check DB to count whether this (symbol, day) needs Yahoo.
+                const { results: cached } = await db.prepare(
+                    `SELECT hhmm FROM market_prices_minute WHERE symbol = ? AND date_str = ?`,
+                ).bind(symbol, dateStr).all<{ hhmm: string }>();
+                const cachedSet = new Set((cached || []).map(r => r.hhmm));
+                const missing = [...required].filter(h => !cachedSet.has(h));
+                if (missing.length === 0) continue;
 
-            const resolved = await getIntradayPricesForMinutes(db, 'QQQ', dateStr, required);
-            yahooHits++;
-            mintsCached += missing.filter(h => resolved[h] != null).length;
+                const resolved = await getIntradayPricesForMinutes(db, symbol, dateStr, required);
+                yahooHits++;
+                mintsCached += missing.filter(h => resolved[h] != null).length;
+            }
         } catch (e) {
             errors.push(`${dateStr}: ${e instanceof Error ? e.message : String(e)}`);
         }

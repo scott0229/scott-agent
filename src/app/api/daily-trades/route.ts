@@ -143,8 +143,9 @@ export async function GET(req: NextRequest) {
             dayMarketStats[dayMarket.symbol] = { open, close };
         }
 
-        // QQQ minute-bar map keyed by ET HH:MM. Used by the formatter to
-        // surface the underlying's spot price next to each trade's time.
+        // Per-symbol minute-bar map keyed by ET HH:MM. The formatter
+        // looks up intradayPrices[trade.symbol][hhmm] to surface the
+        // underlying's spot price next to each trade's time.
         //
         // We only resolve the minutes that actually have option trades
         // — open_date carries "ET wall-clock as UTC" so getUTCHours/
@@ -154,23 +155,29 @@ export async function GET(req: NextRequest) {
         // hits Yahoo for the missing minutes; resolved bars are
         // persisted via INSERT ... ON CONFLICT so the next view of the
         // same date answers from DB alone.
+        //
+        // Bucket required minutes by symbol so multi-underlying days
+        // (QQQ + TQQQ + QLD …) get all their spots resolved in one
+        // pass — one Yahoo round-trip per symbol when it's a miss.
         const intradayPrices: Record<string, Record<string, number>> = {};
-        const requiredMinutes = new Set<string>();
+        const requiredBySymbol = new Map<string, Set<string>>();
         for (const o of (optionOpens || []) as any[]) {
-            if (o.symbol !== 'QQQ' || o.open_date == null) continue;
+            if (!o.symbol || o.open_date == null) continue;
             const d = new Date(o.open_date * 1000);
             const hh = String(d.getUTCHours()).padStart(2, '0');
             const mm = String(d.getUTCMinutes()).padStart(2, '0');
-            requiredMinutes.add(`${hh}:${mm}`);
+            if (!requiredBySymbol.has(o.symbol)) requiredBySymbol.set(o.symbol, new Set());
+            requiredBySymbol.get(o.symbol)!.add(`${hh}:${mm}`);
         }
-        if (requiredMinutes.size > 0) {
+        for (const [symbol, minutes] of requiredBySymbol.entries()) {
+            if (minutes.size === 0) continue;
             try {
-                const qqqMinutes = await getIntradayPricesForMinutes(db, 'QQQ', dateStr, requiredMinutes);
-                if (Object.keys(qqqMinutes).length > 0) {
-                    intradayPrices['QQQ'] = qqqMinutes;
+                const map = await getIntradayPricesForMinutes(db, symbol, dateStr, minutes);
+                if (Object.keys(map).length > 0) {
+                    intradayPrices[symbol] = map;
                 }
             } catch (e) {
-                console.warn('intraday fetch failed (non-fatal):', e);
+                console.warn(`intraday fetch failed for ${symbol} (non-fatal):`, e);
             }
         }
 
