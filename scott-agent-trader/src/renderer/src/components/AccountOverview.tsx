@@ -133,6 +133,56 @@ function tradingDaysUntil(expiry: string | undefined): number | null {
   return count
 }
 
+// Highlight contract mentions like "QQQ 737C" / "TQQQ 60.5P" inside the
+// daily-report note. Matches SYMBOL (2–5 caps) + space + strike + C|P.
+const TICKER_RE = /\b([A-Z]{2,5})\s+(\d+(?:\.\d+)?)([CP])\b/g
+
+// Convert a click point inside the rendered note div into a string offset
+// in the raw note text. The display div may contain pill spans that wrap a
+// substring of the text — we just walk text nodes in document order until
+// we hit the click target and sum their lengths.
+function pointToTextOffset(container: Node, clientX: number, clientY: number): number | null {
+  type CaretFn = (x: number, y: number) => Range | null
+  const fn = (document as Document & { caretRangeFromPoint?: CaretFn }).caretRangeFromPoint
+  if (typeof fn !== 'function') return null
+  const range = fn.call(document, clientX, clientY)
+  if (!range || !range.startContainer) return null
+  let offset = 0
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    if (node === range.startContainer) {
+      return offset + range.startOffset
+    }
+    offset += node.textContent?.length ?? 0
+  }
+  return null
+}
+function renderReportNote(
+  text: string,
+  quotes: Record<string, number>
+): React.ReactNode {
+  const out: React.ReactNode[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  TICKER_RE.lastIndex = 0
+  while ((m = TICKER_RE.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    const symbol = m[1]
+    const price = quotes[symbol]
+    const label =
+      price != null && price > 0 ? `${m[0]} (@${price.toFixed(1)})` : m[0]
+    out.push(
+      <span key={`${m.index}-${m[0]}`} className="report-note-ticker">
+        {label}
+      </span>
+    )
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
 export default function AccountOverview({
   connected,
   accounts,
@@ -206,6 +256,56 @@ export default function AccountOverview({
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
   const [rollWarnMsg, setRollWarnMsg] = useState<string | null>(null)
+  const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null)
+  // Where to place the textarea caret when entering edit mode — derived from
+  // the click point in the display div so the user lands where they clicked,
+  // not at position 0.
+  const [editingNoteCaret, setEditingNoteCaret] = useState<number | null>(null)
+  // Initial textarea height taken from the display div's own offsetHeight, so
+  // the box doesn't visibly shrink between display and edit modes. (Computed
+  // scrollHeight on a freshly-mounted textarea can be a few px short because
+  // wrapping math differs between div and textarea.)
+  const [editingNoteHeight, setEditingNoteHeight] = useState<number | null>(null)
+  // Stable ref + one-shot init via useEffect — using a useRef'd DOM ref
+  // instead of an inline ref callback stops React from firing
+  // ref(null)/ref(el) on every parent re-render, which was disrupting IME
+  // composition (Microsoft 注音 was losing its input target between
+  // candidate updates, so Shift+數字 was hitting the textarea raw).
+  const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  // Track IME composition so onInput's height adjustment can skip while
+  // candidates are still in flight.
+  const noteComposingRef = useRef(false)
+  // If blur arrives mid-composition we can't unmount the textarea — the IME
+  // would lose its input target and the candidate window orphans. Stash the
+  // intent and act on it from compositionend instead.
+  const pendingBlurRef = useRef<{ accountId: string; value: string } | null>(null)
+  useEffect(() => {
+    if (!editingNoteFor) return
+    const el = noteTextareaRef.current
+    if (!el) return
+    if (editingNoteHeight != null) {
+      el.style.height = editingNoteHeight + 'px'
+    } else {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    }
+    if (editingNoteCaret != null) {
+      el.setSelectionRange(editingNoteCaret, editingNoteCaret)
+    }
+    el.focus()
+  }, [editingNoteFor, editingNoteHeight, editingNoteCaret])
+
+  const finishNoteEdit = useCallback(
+    (accountId: string, nextValue: string) => {
+      if (onSetReportNote && nextValue !== reportNotes[accountId]) {
+        onSetReportNote(accountId, nextValue)
+      }
+      setEditingNoteFor(null)
+      setEditingNoteCaret(null)
+      setEditingNoteHeight(null)
+    },
+    [onSetReportNote, reportNotes]
+  )
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
@@ -1587,7 +1687,19 @@ export default function AccountOverview({
                     ) : (
                       (() => {
                         const stkPos = groupPositions.filter((p) => p.secType !== 'OPT')
-                        const optPos = groupPositions.filter((p) => p.secType === 'OPT')
+                        // Sort by expiry asc (nearest first), then by strike asc.
+                        // This naturally clusters identical (expiry, strike)
+                        // contracts together so the separator lines only
+                        // appear between real group boundaries.
+                        const optPos = groupPositions
+                          .filter((p) => p.secType === 'OPT')
+                          .slice()
+                          .sort((a, b) => {
+                            const expA = a.expiry || ''
+                            const expB = b.expiry || ''
+                            if (expA !== expB) return expA < expB ? -1 : 1
+                            return (a.strike || 0) - (b.strike || 0)
+                          })
                         const currentCheckedSet = groupChecked[g.id] || new Set<string>()
                         const toggleCheck = (pk: string): void => {
                           setGroupChecked((prev) => {
@@ -2273,28 +2385,82 @@ export default function AccountOverview({
                     contentEditable + onBlur save; only renders when the note
                     has content — new notes are added via the website for now. */}
                 {reportNotes[account.accountId] && (
-                  <div
-                    className="report-note"
-                    contentEditable={!!onSetReportNote}
-                    suppressContentEditableWarning
-                    onMouseDown={(e) => {
-                      // Stop the card's onMouseDown from preventDefault'ing
-                      // the dblclick — we WANT native dblclick-to-select-word
-                      // inside the note for editing.
-                      e.stopPropagation()
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    onDoubleClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => {
-                      if (!onSetReportNote) return
-                      const next = e.currentTarget.innerText
-                      if (next !== reportNotes[account.accountId]) {
-                        onSetReportNote(account.accountId, next)
-                      }
-                    }}
-                  >
-                    {reportNotes[account.accountId]}
-                  </div>
+                  editingNoteFor === account.accountId ? (
+                    <textarea
+                      className="report-note report-note-editor"
+                      defaultValue={reportNotes[account.accountId]}
+                      ref={noteTextareaRef}
+                      onCompositionStart={() => {
+                        noteComposingRef.current = true
+                      }}
+                      onCompositionEnd={(e) => {
+                        noteComposingRef.current = false
+                        const el = e.currentTarget
+                        // Adjust height once the IME commits the composed text
+                        el.style.height = 'auto'
+                        el.style.height = el.scrollHeight + 'px'
+                        // Honour any blur that arrived while we were composing
+                        const pending = pendingBlurRef.current
+                        if (pending) {
+                          pendingBlurRef.current = null
+                          finishNoteEdit(pending.accountId, el.value)
+                        }
+                      }}
+                      onInput={(e) => {
+                        // During IME composition the textarea's value is
+                        // partial / in-flight; touching scrollHeight here can
+                        // jitter the caret and drop the candidate window.
+                        if (noteComposingRef.current) return
+                        const el = e.currentTarget
+                        el.style.height = 'auto'
+                        el.style.height = el.scrollHeight + 'px'
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onBlur={(e) => {
+                        const value = e.currentTarget.value
+                        if (noteComposingRef.current) {
+                          // Defer until compositionend so the IME candidate
+                          // window can close gracefully before unmount.
+                          pendingBlurRef.current = {
+                            accountId: account.accountId,
+                            value
+                          }
+                          return
+                        }
+                        finishNoteEdit(account.accountId, value)
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="report-note"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!onSetReportNote) return
+                        const div = e.currentTarget
+                        const caret = pointToTextOffset(
+                          div,
+                          e.clientX,
+                          e.clientY
+                        )
+                        // Reset session refs before the textarea remounts.
+                        noteComposingRef.current = false
+                        pendingBlurRef.current = null
+                        setEditingNoteCaret(
+                          caret ?? (reportNotes[account.accountId] || '').length
+                        )
+                        setEditingNoteHeight(div.offsetHeight)
+                        setEditingNoteFor(account.accountId)
+                      }}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      title={onSetReportNote ? '點擊編輯' : undefined}
+                      style={onSetReportNote ? { cursor: 'text' } : undefined}
+                    >
+                      {renderReportNote(reportNotes[account.accountId], quotes)}
+                    </div>
+                  )
                 )}
 
                 {/* Stock Positions (category view) */}

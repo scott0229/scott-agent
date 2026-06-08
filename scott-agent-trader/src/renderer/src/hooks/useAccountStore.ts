@@ -181,12 +181,13 @@ export function useAccountStore(
         })()
       }
 
+      // Subscribe to the underlying stock quote for EVERY symbol that appears
+      // in any position — including option-only positions. That way the
+      // trader card and the report-note ticker pill have access to the
+      // underlying price even when there's no direct stock holding (e.g.,
+      // accounts that only sell TQQQ puts still see TQQQ's spot price).
       const stockSymbols = [
-        ...new Set(
-          positionData
-            .filter((p: PositionData) => p.secType !== 'OPT')
-            .map((p: PositionData) => p.symbol)
-        )
+        ...new Set(positionData.map((p: PositionData) => p.symbol))
       ]
       const optionPositions = positionData.filter(
         (p: PositionData) => p.secType === 'OPT' && p.expiry && p.strike && p.right

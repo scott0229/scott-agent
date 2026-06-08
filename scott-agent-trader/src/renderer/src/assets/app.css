@@ -685,6 +685,28 @@ body {
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
+/* Pill highlight for ticker mentions like "QQQ 737C" inside the report note */
+.report-note-ticker {
+  display: inline-block;
+  padding: 0 6px;
+  margin: 0 1px;
+  border-radius: 3px;
+  background: #fde68a;
+  color: #4b3a0a;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Textarea editor mode — same look as the display box, just an actual input */
+.report-note-editor {
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .option-group-pill {
   display: inline-block;
   padding: 1px 6px;
