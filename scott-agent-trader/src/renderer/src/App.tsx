@@ -289,6 +289,14 @@ function App(): React.JSX.Element {
           </button>
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <EtClock />
+          {['QQQ', 'TQQQ'].map((sym) =>
+            quotes[sym] > 0 ? (
+              <span key={sym} className="stock-price-pill" title={`${sym} 即時股價`}>
+                <span className="stock-price-label">{sym}</span>
+                {quotes[sym].toFixed(2)}
+              </span>
+            ) : null
+          )}
           {updateInfo && (
             <button
               type="button"

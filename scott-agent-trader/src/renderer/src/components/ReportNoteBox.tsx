@@ -65,6 +65,10 @@ interface ReportNoteBoxProps {
   // Fired when the editor opens/closes. Lets a draggable parent card disable
   // its drag while editing, so dragging to select text doesn't move the card.
   onEditingChange?: (editing: boolean) => void
+  // Fired on IME composition start/end. Lets a masonry parent pause its
+  // reflow while composing — reflowing mid-composition drops the candidate
+  // window (the 注音 selection bug).
+  onComposingChange?: (composing: boolean) => void
 }
 
 /**
@@ -82,7 +86,8 @@ export default function ReportNoteBox({
   open = false,
   onClose,
   onResize,
-  onEditingChange
+  onEditingChange,
+  onComposingChange
 }: ReportNoteBoxProps): React.JSX.Element | null {
   const [editing, setEditing] = useState(false)
   const [caret, setCaret] = useState<number | null>(null)
@@ -122,8 +127,11 @@ export default function ReportNoteBox({
     if (prevEditingRef.current !== editing) {
       prevEditingRef.current = editing
       onEditingChange?.(editing)
+      // If editing ended, make sure we don't leave the parent thinking a
+      // composition is still in flight.
+      if (!editing) onComposingChange?.(false)
     }
-  }, [editing, onEditingChange])
+  }, [editing, onEditingChange, onComposingChange])
 
   // One-shot init the moment editing starts (sized, caret-positioned,
   // focused). Subsequent re-renders never touch the textarea DOM.
@@ -165,9 +173,11 @@ export default function ReportNoteBox({
         ref={textareaRef}
         onCompositionStart={() => {
           composingRef.current = true
+          onComposingChange?.(true)
         }}
         onCompositionEnd={(e) => {
           composingRef.current = false
+          onComposingChange?.(false)
           const el = e.currentTarget
           el.style.height = 'auto'
           el.style.height = el.scrollHeight + 'px'

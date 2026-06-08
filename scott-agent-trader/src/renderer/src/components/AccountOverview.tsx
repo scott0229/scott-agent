@@ -245,6 +245,8 @@ export default function AccountOverview({
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [filterGroupIndex, setFilterGroupIndex] = useState('')
   const [filterGroupSymbol, setFilterGroupSymbol] = useState('')
+  // Group-view option-right filter: '' = all, 'C' = calls only, 'P' = puts only
+  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>('')
 
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
@@ -284,6 +286,10 @@ export default function AccountOverview({
   // instead of moving the card. Set in capture phase (before the note's own
   // stopPropagation), read in onDragStart.
   const dragFromNoteRef = useRef(false)
+  // True while a note editor has an active IME composition. The masonry reflow
+  // must pause while this is set — reflowing the grid mid-composition drops the
+  // candidate window (the 注音 selection bug).
+  const noteComposingRef = useRef(false)
   // Context menu state for order cancellation
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -473,7 +479,7 @@ export default function AccountOverview({
         return `${g.id}:${count}:n${(g.note || '').length}`
       })
       .join('|')
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|edit:${noteEditorFor || ''}`
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|fgr:${filterGroupRight}|edit:${noteEditorFor || ''}`
   }, [
     groupViewMode,
     symbolGroups,
@@ -482,6 +488,7 @@ export default function AccountOverview({
     checkModeGroups,
     filterGroupIndex,
     filterGroupSymbol,
+    filterGroupRight,
     noteEditorFor
   ])
 
@@ -489,17 +496,35 @@ export default function AccountOverview({
     const grid = groupGridRef.current
     if (!grid || !groupViewMode) return
     const rafId = requestAnimationFrame(() => {
+      // Never reflow the grid while a note is being composed — it orphans the
+      // IME candidate window. The compositionend bump re-runs this afterwards.
+      if (noteComposingRef.current) return
       const rowHeight = 10
       const rowGap = 6
+      const spanFor = (h: number): number => Math.ceil((h + rowGap) / (rowHeight + rowGap))
+      // The card that currently holds the focused note editor must NOT be
+      // collapsed/reflowed — doing so mid-IME-composition drops the candidate
+      // window. We only grow it; it settles fully on edit end.
+      const activeEl = document.activeElement
+      const activeCard =
+        activeEl instanceof HTMLElement && activeEl.classList.contains('report-note-editor')
+          ? activeEl.closest<HTMLElement>('.account-card')
+          : null
       const cards = grid.querySelectorAll<HTMLElement>('.account-card')
       cards.forEach((card) => {
+        if (card === activeCard) return
         card.style.gridRowEnd = ''
       })
       void grid.offsetHeight
       cards.forEach((card) => {
-        const contentHeight = card.scrollHeight
-        const span = Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap))
-        card.style.gridRowEnd = `span ${span}`
+        if (card === activeCard) {
+          // Grow-only, no reset: keeps the textarea/IME stable while typing.
+          const current = parseInt(card.style.gridRowEnd.replace(/\D/g, ''), 10) || 0
+          const span = spanFor(card.scrollHeight)
+          if (span > current) card.style.gridRowEnd = `span ${span}`
+          return
+        }
+        card.style.gridRowEnd = `span ${spanFor(card.scrollHeight)}`
       })
     })
     return () => cancelAnimationFrame(rafId)
@@ -954,6 +979,7 @@ export default function AccountOverview({
                 onClick={() => {
                   setFilterGroupIndex('')
                   setFilterGroupSymbol('')
+                  setFilterGroupRight('')
                 }}
               >
                 <svg
@@ -987,6 +1013,15 @@ export default function AccountOverview({
                   ...Array.from(new Set(symbolGroups.map((g) => g.symbol)))
                     .sort()
                     .map((s) => ({ value: s, label: s }))
+                ]}
+              />
+              <CustomSelect
+                value={filterGroupRight}
+                onChange={(v) => setFilterGroupRight(v as '' | 'C' | 'P')}
+                options={[
+                  { value: '', label: 'All Options' },
+                  { value: 'P', label: 'PUT' },
+                  { value: 'C', label: 'CALL' }
                 ]}
               />
               <button
@@ -1197,7 +1232,7 @@ export default function AccountOverview({
                 if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
                 const groupPosKeys = new Set(g.posKeys)
-                const groupPositions = positions
+                const groupPositionsAll = positions
                   .filter((p) => {
                     if (g.autoParams) {
                       const symbolMatch = g.autoParams.symbols.includes(p.symbol)
@@ -1232,6 +1267,20 @@ export default function AccountOverview({
                     const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
                     return aAlias.localeCompare(bAlias)
                   })
+                // Option-right filter (group view): hide groups with no option of
+                // the selected right; within shown groups, drop the other right's
+                // options. Stocks stay as strategy context.
+                const matchesGroupRight = (p: PositionData): boolean =>
+                  p.right === filterGroupRight ||
+                  p.right === (filterGroupRight === 'C' ? 'CALL' : 'PUT')
+                if (
+                  filterGroupRight &&
+                  !groupPositionsAll.some((p) => p.secType === 'OPT' && matchesGroupRight(p))
+                )
+                  return null
+                const groupPositions = filterGroupRight
+                  ? groupPositionsAll.filter((p) => p.secType !== 'OPT' || matchesGroupRight(p))
+                  : groupPositionsAll
                 return (
                   <div
                     key={g.id}
@@ -1438,6 +1487,12 @@ export default function AccountOverview({
                               ed ? g.id : prev === g.id ? null : prev
                             )
                           }
+                          onComposingChange={(c) => {
+                            noteComposingRef.current = c
+                            // On composition end, re-run masonry now that the
+                            // pause is lifted so the card catches up.
+                            if (!c) bumpMasonry()
+                          }}
                         />
                       </div>
                     )}
@@ -1952,6 +2007,7 @@ export default function AccountOverview({
                   bottom of the masonry layout (after the numbered groups). */}
               {filterGroupIndex === '' &&
                 filterGroupSymbol === '' &&
+                filterGroupRight === '' &&
                 uncategorizedPositions.length > 0 &&
                 (() => {
                   const ucStkPos = uncategorizedPositions.filter((p) => p.secType !== 'OPT')
