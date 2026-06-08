@@ -7,6 +7,8 @@ export interface SymbolGroup {
   posKeys: string[]
   createdAt: number
   completedDate?: string // YYYY-MM-DD format, marks "今日已完成操作"
+  // Free-form note shown above the batch-card body, edited inline.
+  note?: string
   autoParams?: {
     symbols: string[]
     right?: string // legacy 'STK' | 'C' | 'P' | ''

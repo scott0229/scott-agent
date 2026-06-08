@@ -17,6 +17,7 @@ import CloseOptionDialog from './CloseOptionDialog'
 import AddGroupDialog from './AddGroupDialog'
 import CloseGroupDialog from './CloseGroupDialog'
 import AiAdvisorDialog from './AiAdvisorDialog'
+import ReportNoteBox from './ReportNoteBox'
 
 const TRADING_TYPE_OPTIONS = [
   { value: 'reg_t', label: 'Reg T 保證金' },
@@ -133,55 +134,6 @@ function tradingDaysUntil(expiry: string | undefined): number | null {
   return count
 }
 
-// Highlight contract mentions like "QQQ 737C" / "TQQQ 60.5P" inside the
-// daily-report note. Matches SYMBOL (2–5 caps) + space + strike + C|P.
-const TICKER_RE = /\b([A-Z]{2,5})\s+(\d+(?:\.\d+)?)([CP])\b/g
-
-// Convert a click point inside the rendered note div into a string offset
-// in the raw note text. The display div may contain pill spans that wrap a
-// substring of the text — we just walk text nodes in document order until
-// we hit the click target and sum their lengths.
-function pointToTextOffset(container: Node, clientX: number, clientY: number): number | null {
-  type CaretFn = (x: number, y: number) => Range | null
-  const fn = (document as Document & { caretRangeFromPoint?: CaretFn }).caretRangeFromPoint
-  if (typeof fn !== 'function') return null
-  const range = fn.call(document, clientX, clientY)
-  if (!range || !range.startContainer) return null
-  let offset = 0
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
-  let node: Node | null
-  while ((node = walker.nextNode())) {
-    if (node === range.startContainer) {
-      return offset + range.startOffset
-    }
-    offset += node.textContent?.length ?? 0
-  }
-  return null
-}
-function renderReportNote(
-  text: string,
-  quotes: Record<string, number>
-): React.ReactNode {
-  const out: React.ReactNode[] = []
-  let last = 0
-  let m: RegExpExecArray | null
-  TICKER_RE.lastIndex = 0
-  while ((m = TICKER_RE.exec(text)) !== null) {
-    if (m.index > last) out.push(text.slice(last, m.index))
-    const symbol = m[1]
-    const price = quotes[symbol]
-    const label =
-      price != null && price > 0 ? `${m[0]} (@${price.toFixed(1)})` : m[0]
-    out.push(
-      <span key={`${m.index}-${m[0]}`} className="report-note-ticker">
-        {label}
-      </span>
-    )
-    last = m.index + m[0].length
-  }
-  if (last < text.length) out.push(text.slice(last))
-  return out
-}
 
 export default function AccountOverview({
   connected,
@@ -256,56 +208,6 @@ export default function AccountOverview({
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
   const [rollWarnMsg, setRollWarnMsg] = useState<string | null>(null)
-  const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null)
-  // Where to place the textarea caret when entering edit mode — derived from
-  // the click point in the display div so the user lands where they clicked,
-  // not at position 0.
-  const [editingNoteCaret, setEditingNoteCaret] = useState<number | null>(null)
-  // Initial textarea height taken from the display div's own offsetHeight, so
-  // the box doesn't visibly shrink between display and edit modes. (Computed
-  // scrollHeight on a freshly-mounted textarea can be a few px short because
-  // wrapping math differs between div and textarea.)
-  const [editingNoteHeight, setEditingNoteHeight] = useState<number | null>(null)
-  // Stable ref + one-shot init via useEffect — using a useRef'd DOM ref
-  // instead of an inline ref callback stops React from firing
-  // ref(null)/ref(el) on every parent re-render, which was disrupting IME
-  // composition (Microsoft 注音 was losing its input target between
-  // candidate updates, so Shift+數字 was hitting the textarea raw).
-  const noteTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-  // Track IME composition so onInput's height adjustment can skip while
-  // candidates are still in flight.
-  const noteComposingRef = useRef(false)
-  // If blur arrives mid-composition we can't unmount the textarea — the IME
-  // would lose its input target and the candidate window orphans. Stash the
-  // intent and act on it from compositionend instead.
-  const pendingBlurRef = useRef<{ accountId: string; value: string } | null>(null)
-  useEffect(() => {
-    if (!editingNoteFor) return
-    const el = noteTextareaRef.current
-    if (!el) return
-    if (editingNoteHeight != null) {
-      el.style.height = editingNoteHeight + 'px'
-    } else {
-      el.style.height = 'auto'
-      el.style.height = el.scrollHeight + 'px'
-    }
-    if (editingNoteCaret != null) {
-      el.setSelectionRange(editingNoteCaret, editingNoteCaret)
-    }
-    el.focus()
-  }, [editingNoteFor, editingNoteHeight, editingNoteCaret])
-
-  const finishNoteEdit = useCallback(
-    (accountId: string, nextValue: string) => {
-      if (onSetReportNote && nextValue !== reportNotes[accountId]) {
-        onSetReportNote(accountId, nextValue)
-      }
-      setEditingNoteFor(null)
-      setEditingNoteCaret(null)
-      setEditingNoteHeight(null)
-    },
-    [onSetReportNote, reportNotes]
-  )
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
@@ -321,6 +223,22 @@ export default function AccountOverview({
   const [showCloseOptionDialog, setShowCloseOptionDialog] = useState(false)
   const [showCloseGroupDialog, setShowCloseGroupDialog] = useState(false)
   const [showAiAdvisor, setShowAiAdvisor] = useState<string | null>(null)
+  // Which note editor an "add note" header button has force-opened. Keys are
+  // namespaced: `acct:<id>` for account cards, `grp:<id>` for batch cards.
+  const [noteEditorFor, setNoteEditorFor] = useState<string | null>(null)
+  // Bumped whenever a group note editor changes height (typing) so the masonry
+  // layout re-measures the card and grows it live. Stable identity so it
+  // doesn't retrigger ReportNoteBox's init effect on every render.
+  const [masonryBump, setMasonryBump] = useState(0)
+  const bumpMasonry = useCallback(() => setMasonryBump((n) => n + 1), [])
+  // Group whose note is currently being edited — its card disables `draggable`
+  // so dragging to select note text doesn't start a card reorder.
+  const [editingNoteCardId, setEditingNoteCardId] = useState<string | null>(null)
+  // Group whose note is currently hovered. Disabling `draggable` BEFORE the
+  // mousedown (hover renders well ahead of the click) is what actually lets the
+  // browser treat the drag as a text selection rather than a card drag —
+  // cancelling dragstart after the fact gives neither drag nor selection.
+  const [hoverNoteCardId, setHoverNoteCardId] = useState<string | null>(null)
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
@@ -361,6 +279,11 @@ export default function AccountOverview({
   // Defer the single-click action so a follow-up dblclick can cancel it.
   // Without this the card border flashes "selected" on every dblclick.
   const cardClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // True when the current mousedown landed inside a group card's note, so the
+  // card's dragstart can be cancelled and the user can drag-select note text
+  // instead of moving the card. Set in capture phase (before the note's own
+  // stopPropagation), read in onDragStart.
+  const dragFromNoteRef = useRef(false)
   // Context menu state for order cancellation
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -545,10 +468,12 @@ export default function AccountOverview({
           }
           return groupPosKeys.has(posKey(p))
         }).length
-        return `${g.id}:${count}`
+        // Include the note (its length) so the card re-measures when a note
+        // is added/edited/removed — otherwise overflow:hidden clips it.
+        return `${g.id}:${count}:n${(g.note || '').length}`
       })
       .join('|')
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}`
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|edit:${noteEditorFor || ''}`
   }, [
     groupViewMode,
     symbolGroups,
@@ -556,7 +481,8 @@ export default function AccountOverview({
     uncategorizedPositions,
     checkModeGroups,
     filterGroupIndex,
-    filterGroupSymbol
+    filterGroupSymbol,
+    noteEditorFor
   ])
 
   useEffect(() => {
@@ -577,7 +503,7 @@ export default function AccountOverview({
       })
     })
     return () => cancelAnimationFrame(rafId)
-  }, [groupViewMode, masonryKey])
+  }, [groupViewMode, masonryKey, masonryBump])
 
   // Watch positions: when pending roll's new positions appear,
   // update group posKeys using the actual new posKey reported by IB.
@@ -1310,6 +1236,10 @@ export default function AccountOverview({
                   <div
                     key={g.id}
                     className={`account-card${selectedGroupId === g.id ? ' account-card-selected' : ''}`}
+                    onMouseDownCapture={(e) => {
+                      const t = e.target as HTMLElement
+                      dragFromNoteRef.current = !!t.closest?.('.report-note')
+                    }}
                     onMouseDown={(e) => {
                       if (e.detail > 1) e.preventDefault()
                     }}
@@ -1330,8 +1260,14 @@ export default function AccountOverview({
                       const target = String(gIdx)
                       setFilterGroupIndex((prev) => (prev === target ? '' : target))
                     }}
-                    draggable
+                    draggable={editingNoteCardId !== g.id && hoverNoteCardId !== g.id}
                     onDragStart={(e) => {
+                      // Fallback: cancel the card drag if a gesture still started
+                      // inside the note (e.g. hover state hadn't applied yet).
+                      if (dragFromNoteRef.current) {
+                        e.preventDefault()
+                        return
+                      }
                       e.dataTransfer.effectAllowed = 'move'
                       e.dataTransfer.setData('text/plain', String(gIdx))
                       ;(e.currentTarget as HTMLElement).style.opacity = '0.4'
@@ -1414,6 +1350,29 @@ export default function AccountOverview({
                         )
                       })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Add-note button: only when this group has no note yet. */}
+                        {onUpdateSymbolGroup && !g.note && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ cursor: 'pointer', opacity: 0.7 }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setNoteEditorFor(`grp:${g.id}`)
+                            }}
+                          >
+                            <title>新增註解</title>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                          </svg>
+                        )}
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="16"
@@ -1455,6 +1414,33 @@ export default function AccountOverview({
                         </svg>
                       </div>
                     </div>
+                    {/* Per-group free-form note. Same UX as the account-card
+                        note: click anywhere to edit, IME-safe textarea,
+                        ticker pills with underlying spot prices. */}
+                    {onUpdateSymbolGroup && (
+                      <div
+                        onMouseEnter={() => setHoverNoteCardId(g.id)}
+                        onMouseLeave={() =>
+                          setHoverNoteCardId((p) => (p === g.id ? null : p))
+                        }
+                      >
+                        <ReportNoteBox
+                          value={g.note}
+                          quotes={quotes}
+                          onSave={(v) => onUpdateSymbolGroup({ ...g, note: v })}
+                          open={noteEditorFor === `grp:${g.id}`}
+                          onClose={() =>
+                            setNoteEditorFor((p) => (p === `grp:${g.id}` ? null : p))
+                          }
+                          onResize={bumpMasonry}
+                          onEditingChange={(ed) =>
+                            setEditingNoteCardId((prev) =>
+                              ed ? g.id : prev === g.id ? null : prev
+                            )
+                          }
+                        />
+                      </div>
+                    )}
                     <div
                       style={{
                         display: 'flex',
@@ -2214,7 +2200,7 @@ export default function AccountOverview({
                     {formatAccountName(account.alias || account.accountId)}
                   </span>
 
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginRight: -14 }}>
+                  <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginRight: -2 }}>
                     {showOperationMode && operationModes?.[account.accountId] && (
                       <span className="account-type-label">
                         {operationModes[account.accountId]}
@@ -2248,16 +2234,60 @@ export default function AccountOverview({
                     })()}
                     {!selectMode && (
                       <button
-                        className="ai-advisor-btn"
+                        className="ai-advisor-btn icon-btn"
                         title="AI 交易建議"
                         onClick={(e) => {
                           e.stopPropagation()
                           setShowAiAdvisor(account.accountId)
                         }}
                       >
-                        💡
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M9 18h6" />
+                          <path d="M10 22h4" />
+                          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+                        </svg>
                       </button>
                     )}
+                    {/* Add-note button: only shown when the account has no note
+                        yet. Once a note exists, the box itself is the entry
+                        point (click to edit). */}
+                    {!selectMode &&
+                      onSetReportNote &&
+                      !reportNotes[account.accountId] && (
+                        <button
+                          className="ai-advisor-btn icon-btn"
+                          title="新增註解"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setNoteEditorFor(`acct:${account.accountId}`)
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                          </svg>
+                        </button>
+                      )}
                   </div>
                 </div>
 
@@ -2382,85 +2412,20 @@ export default function AccountOverview({
                 )}
 
                 {/* Daily-report note (from website USERS.report_note).
-                    contentEditable + onBlur save; only renders when the note
-                    has content — new notes are added via the website for now. */}
-                {reportNotes[account.accountId] && (
-                  editingNoteFor === account.accountId ? (
-                    <textarea
-                      className="report-note report-note-editor"
-                      defaultValue={reportNotes[account.accountId]}
-                      ref={noteTextareaRef}
-                      onCompositionStart={() => {
-                        noteComposingRef.current = true
-                      }}
-                      onCompositionEnd={(e) => {
-                        noteComposingRef.current = false
-                        const el = e.currentTarget
-                        // Adjust height once the IME commits the composed text
-                        el.style.height = 'auto'
-                        el.style.height = el.scrollHeight + 'px'
-                        // Honour any blur that arrived while we were composing
-                        const pending = pendingBlurRef.current
-                        if (pending) {
-                          pendingBlurRef.current = null
-                          finishNoteEdit(pending.accountId, el.value)
-                        }
-                      }}
-                      onInput={(e) => {
-                        // During IME composition the textarea's value is
-                        // partial / in-flight; touching scrollHeight here can
-                        // jitter the caret and drop the candidate window.
-                        if (noteComposingRef.current) return
-                        const el = e.currentTarget
-                        el.style.height = 'auto'
-                        el.style.height = el.scrollHeight + 'px'
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => e.stopPropagation()}
-                      onBlur={(e) => {
-                        const value = e.currentTarget.value
-                        if (noteComposingRef.current) {
-                          // Defer until compositionend so the IME candidate
-                          // window can close gracefully before unmount.
-                          pendingBlurRef.current = {
-                            accountId: account.accountId,
-                            value
-                          }
-                          return
-                        }
-                        finishNoteEdit(account.accountId, value)
-                      }}
-                    />
-                  ) : (
-                    <div
-                      className="report-note"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!onSetReportNote) return
-                        const div = e.currentTarget
-                        const caret = pointToTextOffset(
-                          div,
-                          e.clientX,
-                          e.clientY
-                        )
-                        // Reset session refs before the textarea remounts.
-                        noteComposingRef.current = false
-                        pendingBlurRef.current = null
-                        setEditingNoteCaret(
-                          caret ?? (reportNotes[account.accountId] || '').length
-                        )
-                        setEditingNoteHeight(div.offsetHeight)
-                        setEditingNoteFor(account.accountId)
-                      }}
-                      onDoubleClick={(e) => e.stopPropagation()}
-                      title={onSetReportNote ? '點擊編輯' : undefined}
-                      style={onSetReportNote ? { cursor: 'text' } : undefined}
-                    >
-                      {renderReportNote(reportNotes[account.accountId], quotes)}
-                    </div>
-                  )
+                    Always rendered when the account is editable so the user
+                    can also CREATE a new note inline. */}
+                {onSetReportNote && (
+                  <ReportNoteBox
+                    value={reportNotes[account.accountId]}
+                    quotes={quotes}
+                    onSave={(v) => onSetReportNote(account.accountId, v)}
+                    open={noteEditorFor === `acct:${account.accountId}`}
+                    onClose={() =>
+                      setNoteEditorFor((p) =>
+                        p === `acct:${account.accountId}` ? null : p
+                      )
+                    }
+                  />
                 )}
 
                 {/* Stock Positions (category view) */}
