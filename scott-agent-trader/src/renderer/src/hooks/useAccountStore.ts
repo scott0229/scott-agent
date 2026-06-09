@@ -24,6 +24,7 @@ export interface PositionData {
 
 export interface OpenOrderData {
   orderId: number
+  permId: number
   account: string
   symbol: string
   secType: string
@@ -37,6 +38,8 @@ export interface OpenOrderData {
   right?: string
   comboDescription?: string
   comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
+  filled?: number
+  avgFillPrice?: number
 }
 
 export interface ExecutionDataItem {
@@ -54,6 +57,7 @@ export interface ExecutionDataItem {
   strike?: number
   right?: string
   comboDescription?: string
+  commission?: number
 }
 
 interface AccountStore {
@@ -62,6 +66,7 @@ interface AccountStore {
   quotes: Record<string, number>
   optionQuotes: Record<string, number>
   openOrders: OpenOrderData[]
+  orderQuotes: Record<string, { bid: number; ask: number }>
   executions: ExecutionDataItem[]
   loading: boolean
   refresh: () => void
@@ -80,8 +85,12 @@ export function useAccountStore(
   const [quotes, setQuotes] = useState<Record<string, number>>({})
   const [optionQuotes, setOptionQuotes] = useState<Record<string, number>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrderData[]>([])
+  const [orderQuotes, setOrderQuotes] = useState<Record<string, { bid: number; ask: number }>>({})
   const [executions, setExecutions] = useState<ExecutionDataItem[]>([])
   const [loading, setLoading] = useState(false)
+  // Latest open orders, mirrored to a ref so the (positions-driven) quote
+  // subscription can include the working orders' contracts for live bid/ask.
+  const openOrdersRef = useRef<OpenOrderData[]>([])
 
   const intervalAssetsRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const intervalHistoryRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -92,6 +101,15 @@ export function useAccountStore(
   const hasDataRef = useRef(false)
   const quoteCleanupRef = useRef<(() => void) | null>(null)
   const lastOrderUpdateRef = useRef<Record<number, number>>({})
+  // Signature of the currently-subscribed contract set. We only re-subscribe
+  // when it changes — re-subscribing every poll tears down combo market data
+  // before IB finishes computing its net bid/ask (which takes a few seconds).
+  const lastQuoteSigRef = useRef<string>('')
+
+  // Mirror open orders into a ref for the quote subscription.
+  useEffect(() => {
+    openOrdersRef.current = openOrders
+  }, [openOrders])
 
   useEffect(() => {
     setAccounts([])
@@ -99,9 +117,11 @@ export function useAccountStore(
     setQuotes({})
     setOptionQuotes({})
     setOpenOrders([])
+    setOrderQuotes({})
     setExecutions([])
     aliasRef.current = {}
     hasDataRef.current = false
+    lastQuoteSigRef.current = ''
     window.ibApi
       .getCachedAliases(port)
       .then((cached) => {
@@ -211,7 +231,40 @@ export function useAccountStore(
           })
         }
       }
-      if (stockSymbols.length > 0 || optionContracts.length > 0) {
+      // Build live-quote requests for each WORKING order (combo / single) so
+      // the orders card can show net bid/ask. Keyed by `${account}|${orderId}`.
+      const orderReqs = openOrdersRef.current
+        .filter((o) => o.status !== 'Cancelled' && o.status !== 'Filled')
+        .map((o) => ({
+          key: `${o.account}|${o.permId}`,
+          symbol: o.symbol,
+          secType: o.secType,
+          expiry: o.expiry,
+          strike: o.strike,
+          right: o.right,
+          comboLegs: o.comboLegs
+        }))
+
+      // Signature of the contract set — re-subscribe only when this changes.
+      const quoteSig = [
+        stockSymbols.slice().sort().join(','),
+        optionContracts
+          .map((c) => `${c.symbol}|${c.expiry}|${c.strike}|${c.right}`)
+          .sort()
+          .join(','),
+        orderReqs
+          .map((o) => o.key)
+          .sort()
+          .join(',')
+      ].join('||')
+
+      if (
+        (stockSymbols.length > 0 ||
+          optionContracts.length > 0 ||
+          orderReqs.length > 0) &&
+        (quoteSig !== lastQuoteSigRef.current || !quoteCleanupRef.current)
+      ) {
+        lastQuoteSigRef.current = quoteSig
         if (quoteCleanupRef.current) {
           quoteCleanupRef.current()
           quoteCleanupRef.current = null
@@ -235,12 +288,18 @@ export function useAccountStore(
               return merged
             })
           }
+          if (data.orderQuotes && Object.keys(data.orderQuotes).length > 0) {
+            setOrderQuotes((prev) => ({ ...prev, ...data.orderQuotes }))
+          }
         })
         quoteCleanupRef.current = removeListener
 
         window.ibApi
-          .subscribeQuotes(stockSymbols, optionContracts)
+          .subscribeQuotes(stockSymbols, optionContracts, orderReqs)
           .then((initial) => {
+            if (initial.orderQuotes && Object.keys(initial.orderQuotes).length > 0) {
+              setOrderQuotes((prev) => ({ ...prev, ...initial.orderQuotes }))
+            }
             if (initial.quotes && Object.keys(initial.quotes).length > 0) {
               setQuotes((prev) => {
                 const merged = { ...prev }
@@ -282,20 +341,25 @@ export function useAccountStore(
       // Use merging assignment to cleanly update array and intelligently preserve recent locally updated stream data
       setOpenOrders((prev) => {
         const now = Date.now()
+        // Key by permId — orderId is NOT unique across clients (TWS-placed
+        // orders can collide), which would collapse distinct orders.
         const mergedMap = new Map<number, OpenOrderData>()
 
         for (const o of orderData) {
-          mergedMap.set(o.orderId, o)
+          mergedMap.set(o.permId, o)
         }
 
         for (const po of prev) {
-          const lastUpdate = lastOrderUpdateRef.current[po.orderId] || 0
-          if (now - lastUpdate < 10000) {
-            mergedMap.set(po.orderId, { ...mergedMap.get(po.orderId), ...po })
+          const lastUpdate = lastOrderUpdateRef.current[po.permId] || 0
+          // Keep recently-updated orders (grace window) AND keep FILLED orders
+          // for the whole session — reqOpenOrders drops filled orders, but the
+          // user wants them to stay (showing 成交價 / 已成交).
+          if (now - lastUpdate < 10000 || po.status === 'Filled') {
+            mergedMap.set(po.permId, { ...mergedMap.get(po.permId), ...po })
           }
         }
 
-        return Array.from(mergedMap.values()).sort((a, b) => b.orderId - a.orderId)
+        return Array.from(mergedMap.values()).sort((a, b) => b.permId - a.permId)
       })
       setExecutions(execData)
     } catch (err) {
@@ -311,9 +375,9 @@ export function useAccountStore(
     // Setup streaming listener for Open Orders
     const removeOrder = window.ibApi.onOpenOrderUpdate((newOrder: OpenOrderData) => {
       console.log('[Streaming] received openOrder:', newOrder)
-      lastOrderUpdateRef.current[newOrder.orderId] = Date.now()
+      lastOrderUpdateRef.current[newOrder.permId] = Date.now()
       setOpenOrders((prev) => {
-        const existingIdx = prev.findIndex((o) => o.orderId === newOrder.orderId)
+        const existingIdx = prev.findIndex((o) => o.permId === newOrder.permId)
         if (existingIdx >= 0) {
           const next = [...prev]
           next[existingIdx] = newOrder
@@ -323,16 +387,32 @@ export function useAccountStore(
       })
     })
 
-    // Setup streaming listener for Order Status
+    // Setup streaming listener for Order Status. Capture fill progress
+    // (filled qty + avg fill price, the combo NET for BAG orders) so a filled
+    // order stays in the card showing its 成交價 instead of vanishing.
     const removeStatus = window.ibApi.onOrderStatus(
-      (update: { orderId: number; status: string }) => {
+      (update: {
+        orderId: number
+        permId?: number
+        status: string
+        filled?: number
+        avgFillPrice?: number
+      }) => {
         console.log('[Streaming] received orderStatus:', update)
-        lastOrderUpdateRef.current[update.orderId] = Date.now()
+        const pid = update.permId ?? 0
+        if (pid) lastOrderUpdateRef.current[pid] = Date.now()
         setOpenOrders((prev) => {
-          const existingIdx = prev.findIndex((o) => o.orderId === update.orderId)
+          const existingIdx = prev.findIndex((o) =>
+            pid ? o.permId === pid : o.orderId === update.orderId
+          )
           if (existingIdx >= 0) {
             const next = [...prev]
-            next[existingIdx] = { ...next[existingIdx], status: update.status }
+            next[existingIdx] = {
+              ...next[existingIdx],
+              status: update.status,
+              ...(update.filled != null ? { filled: update.filled } : {}),
+              ...(update.avgFillPrice != null ? { avgFillPrice: update.avgFillPrice } : {})
+            }
             return next
           }
           return prev
@@ -387,6 +467,7 @@ export function useAccountStore(
         quoteCleanupRef.current()
         quoteCleanupRef.current = null
       }
+      lastQuoteSigRef.current = ''
       window.ibApi.unsubscribeQuotes().catch(() => {})
     }
   }, [connected, fetchAssets, fetchHistory])
@@ -402,6 +483,7 @@ export function useAccountStore(
     quotes,
     optionQuotes,
     openOrders,
+    orderQuotes,
     executions,
     loading,
     refresh

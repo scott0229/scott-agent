@@ -319,18 +319,37 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
 //  Streaming Market Data Engine
 // ════════════════════════════════════════════════════
 
+type OrderBidAsk = { bid: number; ask: number }
+
 type QuoteUpdateCallback = (data: {
   quotes: Record<string, number>
   optionQuotes: Record<string, number>
+  orderQuotes: Record<string, OrderBidAsk>
 }) => void
+
+// A working order's live market quote (net bid/ask for combos, single-leg
+// bid/ask otherwise). Keyed by `${account}|${orderId}`.
+export interface OrderQuoteRequest {
+  key: string
+  symbol: string
+  secType: string // 'BAG' | 'OPT' | 'STK'
+  expiry?: string
+  strike?: number
+  right?: string
+  comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
+}
 
 // Live price maps — updated on every tick
 const liveStockPrices: Record<string, number> = {}
 const liveOptionPrices: Record<string, number> = {}
+// Order bid/ask. NaN = not yet received (renderer shows '-'). Combos can go
+// negative (net credit), so we do NOT clamp these to >= 0.
+const liveOrderQuotes: Record<string, OrderBidAsk> = {}
 
 // reqId → symbol/key mapping for cleanup
 const streamingStockReqs = new Map<number, string>() // reqId → symbol
 const streamingOptionReqs = new Map<number, string>() // reqId → optionKey
+const streamingOrderReqs = new Map<number, string>() // reqId → `${account}|${orderId}`
 
 // Global tick handler reference (for cleanup)
 let streamTickHandler: ((id: number, tickType: number, value: number) => void) | null = null
@@ -345,7 +364,8 @@ function emitUpdate(): void {
     if (streamCallback) {
       streamCallback({
         quotes: { ...liveStockPrices },
-        optionQuotes: { ...liveOptionPrices }
+        optionQuotes: { ...liveOptionPrices },
+        orderQuotes: { ...liveOrderQuotes }
       })
     }
   }, 500)
@@ -367,6 +387,29 @@ export function subscribeStockQuotes(symbols: string[], callback: QuoteUpdateCal
   // Install global tick handler if not already done
   if (!streamTickHandler) {
     streamTickHandler = (id: number, tickType: number, value: number): void => {
+      // Order (combo/single) bid-ask FIRST — handled before the value<0 guard
+      // because combo net prices are legitimately negative (a roll credit).
+      const orderKey = streamingOrderReqs.get(id)
+      if (orderKey) {
+        // 1/68 = bid, 2/69 = ask. IB sends -1 when there is no quote at all.
+        if (tickType === 1 || tickType === 68) {
+          if (value !== -1) {
+            const e = liveOrderQuotes[orderKey] || { bid: NaN, ask: NaN }
+            e.bid = value
+            liveOrderQuotes[orderKey] = e
+            emitUpdate()
+          }
+        } else if (tickType === 2 || tickType === 69) {
+          if (value !== -1) {
+            const e = liveOrderQuotes[orderKey] || { bid: NaN, ask: NaN }
+            e.ask = value
+            liveOrderQuotes[orderKey] = e
+            emitUpdate()
+          }
+        }
+        return
+      }
+
       if (value < 0) return
 
       // Check stock subscriptions
@@ -506,6 +549,72 @@ export function subscribeOptionQuotes(
   }
 }
 
+/** Build an IB contract for a working order (combo / single option / stock). */
+function buildOrderContract(o: OrderQuoteRequest): Contract | null {
+  if (o.secType === 'BAG') {
+    if (!o.comboLegs || o.comboLegs.length === 0) return null
+    return {
+      symbol: o.symbol.toUpperCase(),
+      secType: SecType.BAG,
+      currency: 'USD',
+      exchange: 'SMART',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      comboLegs: o.comboLegs.map((l) => ({
+        conId: l.conId,
+        ratio: l.ratio,
+        action: l.action,
+        exchange: l.exchange || 'SMART'
+      })) as any
+    } as Contract
+  }
+  if (o.secType === 'OPT') {
+    if (!o.expiry || o.strike == null || !o.right) return null
+    const r = o.right.toUpperCase()
+    return {
+      symbol: o.symbol.toUpperCase(),
+      secType: SecType.OPT,
+      exchange: 'SMART',
+      currency: 'USD',
+      lastTradeDateOrContractMonth: o.expiry,
+      strike: o.strike,
+      right: r === 'C' || r === 'CALL' ? OptionType.Call : OptionType.Put
+    }
+  }
+  return {
+    symbol: o.symbol.toUpperCase(),
+    secType: SecType.STK,
+    exchange: 'SMART',
+    currency: 'USD'
+  }
+}
+
+/**
+ * Subscribe to streaming market data for each working order so we can show its
+ * live bid/ask (net for combos). Keyed by `${account}|${orderId}`.
+ */
+export function subscribeOrderQuotes(
+  orders: OrderQuoteRequest[],
+  callback: QuoteUpdateCallback
+): void {
+  const api = getIBApi()
+  if (!api) return
+  streamCallback = callback
+  api.reqMarketDataType(2)
+  if (!streamTickHandler) subscribeStockQuotes([], callback)
+
+  const activeKeys = new Set(streamingOrderReqs.values())
+  for (const o of orders) {
+    if (activeKeys.has(o.key)) continue
+    const contract = buildOrderContract(o)
+    if (!contract) continue
+    const reqId = getNextReqId()
+    streamingOrderReqs.set(reqId, o.key)
+    if (!liveOrderQuotes[o.key]) liveOrderQuotes[o.key] = { bid: NaN, ask: NaN }
+    api.reqMktData(reqId, contract, '', false, false) // streaming
+    console.log(`[IB-Stream] Subscribed order ${o.key} (${o.secType}, reqId: ${reqId})`)
+  }
+}
+
 /**
  * Unsubscribe all streaming quotes and clean up.
  */
@@ -534,6 +643,17 @@ export function unsubscribeAllQuotes(): void {
   }
   streamingOptionReqs.clear()
 
+  // Cancel all order (combo/single) subscriptions
+  for (const [reqId, key] of streamingOrderReqs) {
+    try {
+      api?.cancelMktData(reqId)
+    } catch {
+      /* ignore */
+    }
+    console.log(`[IB-Stream] Unsubscribed order ${key} (reqId: ${reqId})`)
+  }
+  streamingOrderReqs.clear()
+
   // Remove tick handler
   if (streamTickHandler && api) {
     api.off(EventName.tickPrice, streamTickHandler)
@@ -548,6 +668,7 @@ export function unsubscribeAllQuotes(): void {
   // Clear live prices
   Object.keys(liveStockPrices).forEach((k) => delete liveStockPrices[k])
   Object.keys(liveOptionPrices).forEach((k) => delete liveOptionPrices[k])
+  Object.keys(liveOrderQuotes).forEach((k) => delete liveOrderQuotes[k])
 
   console.log('[IB-Stream] All subscriptions cleared')
 }
@@ -558,9 +679,11 @@ export function unsubscribeAllQuotes(): void {
 export function getLiveQuotes(): {
   quotes: Record<string, number>
   optionQuotes: Record<string, number>
+  orderQuotes: Record<string, OrderBidAsk>
 } {
   return {
     quotes: { ...liveStockPrices },
-    optionQuotes: { ...liveOptionPrices }
+    optionQuotes: { ...liveOptionPrices },
+    orderQuotes: { ...liveOrderQuotes }
   }
 }

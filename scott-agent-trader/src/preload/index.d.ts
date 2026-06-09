@@ -228,6 +228,7 @@ interface IBApi {
     comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
   }) => Promise<void>
   cancelOrder: (orderId: number) => Promise<void>
+  cancelAllOrders: () => Promise<void>
   getFedFundsRate: () => Promise<number>
 
   // AI Advisor
@@ -331,13 +332,19 @@ interface IBApi {
   // Streaming quotes
   subscribeQuotes: (
     symbols: string[],
-    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
-  ) => Promise<{ quotes: Record<string, number>; optionQuotes: Record<string, number> }>
+    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>,
+    orders?: unknown[]
+  ) => Promise<{
+    quotes: Record<string, number>
+    optionQuotes: Record<string, number>
+    orderQuotes: Record<string, { bid: number; ask: number }>
+  }>
   unsubscribeQuotes: () => Promise<void>
   onQuoteUpdate: (
     callback: (data: {
       quotes: Record<string, number>
       optionQuotes: Record<string, number>
+      orderQuotes: Record<string, { bid: number; ask: number }>
     }) => void
   ) => () => void
 

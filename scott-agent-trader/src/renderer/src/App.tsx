@@ -1,5 +1,5 @@
 import React from 'react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
@@ -35,13 +35,12 @@ function EtClock(): React.JSX.Element {
   )
 }
 
-function getHiddenAccountsKey(port: number): string {
-  return `${HIDDEN_ACCOUNTS_PREFIX}-${port}`
-}
-
-function loadHiddenAccounts(port: number): Set<string> {
+// Hidden accounts are GLOBAL (not per-port). Account ids are globally unique,
+// and keying by port meant the hidden set didn't carry over when connecting
+// via a different port (TWS vs Gateway, paper vs live) or on reopen.
+function loadHiddenAccounts(): Set<string> {
   try {
-    const raw = localStorage.getItem(getHiddenAccountsKey(port))
+    const raw = localStorage.getItem(HIDDEN_ACCOUNTS_PREFIX)
     if (raw) return new Set(JSON.parse(raw))
   } catch {
     /* ignore */
@@ -49,12 +48,20 @@ function loadHiddenAccounts(port: number): Set<string> {
   return new Set()
 }
 
+function saveHiddenAccounts(set: Set<string>): void {
+  try {
+    localStorage.setItem(HIDDEN_ACCOUNTS_PREFIX, JSON.stringify([...set]))
+  } catch {
+    /* ignore */
+  }
+}
+
 function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
   const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option'>('overview')
   const [showSettings, setShowSettings] = useState(false)
-  const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts(7497))
+  const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts())
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
   const [returnRates, setReturnRates] = useState<Record<string, number | null>>({})
   const [operationModes, setOperationModes] = useState<Record<string, string>>({})
@@ -105,13 +112,18 @@ function App(): React.JSX.Element {
     })
   }, [])
 
-  // Reload hidden accounts when port changes
-  useEffect(() => {
-    setHiddenAccounts(loadHiddenAccounts(connectedPort))
-  }, [connectedPort])
 
-  const { accounts, positions, quotes, optionQuotes, openOrders, executions, loading, refresh } =
-    useAccountStore(connected, connectedPort, mergeAccountAliases)
+  const {
+    accounts,
+    positions,
+    quotes,
+    optionQuotes,
+    openOrders,
+    orderQuotes,
+    executions,
+    loading,
+    refresh
+  } = useAccountStore(connected, connectedPort, mergeAccountAliases)
 
   // Stable key that only changes when the set of account IDs changes (not on every poll)
   const accountIdsKey = useMemo(
@@ -215,18 +227,15 @@ function App(): React.JSX.Element {
       })
   }, [accountIdsKey, refetchSettings, d1Target, setAccountType])
 
-  const toggleHiddenAccount = useCallback(
-    (accountId: string) => {
-      setHiddenAccounts((prev) => {
-        const next = new Set(prev)
-        if (next.has(accountId)) next.delete(accountId)
-        else next.add(accountId)
-        localStorage.setItem(getHiddenAccountsKey(connectedPort), JSON.stringify([...next]))
-        return next
-      })
-    },
-    [connectedPort]
-  )
+  const toggleHiddenAccount = useCallback((accountId: string) => {
+    setHiddenAccounts((prev) => {
+      const next = new Set(prev)
+      if (next.has(accountId)) next.delete(accountId)
+      else next.add(accountId)
+      saveHiddenAccounts(next)
+      return next
+    })
+  }, [])
 
   const visibleAccounts = useMemo(
     () => accounts.filter((a) => !hiddenAccounts.has(a.accountId)),
@@ -265,6 +274,18 @@ function App(): React.JSX.Element {
     const off = window.ibApi.onUpdateAvailable((info) => setUpdateInfo(info))
     return off
   }, [])
+  // Auto-open the update dialog the first time a newer version is detected
+  // (typically right after launch) so the user is prompted to install instead
+  // of having to notice the small pill. Only fires once per session — if the
+  // user dismisses it, the header pill remains for manual access.
+  const updatePromptedRef = useRef(false)
+  useEffect(() => {
+    if (updateInfo && !updatePromptedRef.current) {
+      updatePromptedRef.current = true
+      setUpdateError(null)
+      setUpdateDialogOpen(true)
+    }
+  }, [updateInfo])
   const openUpdateDialog = useCallback(() => {
     if (!updateInfo) return
     setUpdateError(null)
@@ -385,6 +406,7 @@ function App(): React.JSX.Element {
               quotes={quotes}
               optionQuotes={optionQuotes}
               openOrders={visibleOpenOrders}
+              orderQuotes={orderQuotes}
               executions={visibleExecutions}
               loading={loading}
               refresh={refresh}

@@ -50,6 +50,7 @@ export interface AllocationConfig {
 
 export interface OrderStatusUpdate {
   orderId: number
+  permId?: number
   account: string
   status: string
   filled: number
@@ -434,9 +435,17 @@ export function setupOrderStatusListener(callback: (update: OrderStatusUpdate) =
 
   api.on(
     EventName.orderStatus,
-    (orderId: number, status: string, filled: number, remaining: number, avgFillPrice: number) => {
+    (
+      orderId: number,
+      status: string,
+      filled: number,
+      remaining: number,
+      avgFillPrice: number,
+      permId?: number
+    ) => {
       callback({
         orderId,
+        permId: permId || 0,
         account: '', // Will be filled by openOrder event
         status,
         filled,
@@ -531,6 +540,15 @@ export function cancelOrder(orderId: number): void {
   console.log(`[IB] Cancelled order #${orderId}`)
 }
 
+// Cancel ALL working orders regardless of which client/TWS placed them. This
+// is the only way to clear orders that existed before the app bound as master.
+export function cancelAllOrders(): void {
+  const api = getIBApi()
+  if (!api) throw new Error('Not connected to IB')
+  api.reqGlobalCancel()
+  console.log('[IB] reqGlobalCancel — cancelling ALL open orders')
+}
+
 // Setup next valid ID listener
 export function setupNextOrderIdListener(): void {
   const api = getIBApi()
@@ -545,6 +563,9 @@ export function setupNextOrderIdListener(): void {
 // Open order data
 export interface OpenOrder {
   orderId: number
+  // Globally-unique across ALL clients/TWS (orderId is only unique per client,
+  // so TWS-placed orders can collide on orderId). Use this as the identity.
+  permId: number
   account: string
   symbol: string
   secType: string
@@ -558,6 +579,9 @@ export interface OpenOrder {
   right?: string
   comboDescription?: string
   comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
+  // Fill progress from IB orderStatus (for partially-filled working orders).
+  filled?: number
+  avgFillPrice?: number
 }
 
 // Fetch all open orders across all FA sub-accounts
@@ -569,6 +593,8 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
   const orders: OpenOrder[] = []
   // Track combo legs for BAG orders that need resolution
   const bagOrderLegs = new Map<number, ComboLeg[]>()
+  // reqOpenOrders also fires orderStatus — capture fill progress per order.
+  const fillByOrderId = new Map<number, { filled: number; avgFillPrice: number }>()
 
   await new Promise<void>((resolve) => {
     const timeout = setTimeout(() => {
@@ -577,6 +603,16 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       resolve()
     }, 10000)
 
+    const onStatus = (
+      orderId: number,
+      _status: string,
+      filled: number,
+      _remaining: number,
+      avgFillPrice: number
+    ): void => {
+      fillByOrderId.set(orderId, { filled: filled || 0, avgFillPrice: avgFillPrice || 0 })
+    }
+
     const onOpenOrder = (
       orderId: number,
       contract: Contract,
@@ -584,7 +620,7 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       orderState: any
     ): void => {
       const status = orderState?.status || 'Unknown'
-      // Skip fully filled or cancelled orders
+      // Skip fully filled / cancelled / inactive orders (not working).
       if (status === 'Filled' || status === 'Cancelled' || status === 'Inactive') return
 
       // For BAG orders, save combo legs for later resolution
@@ -606,8 +642,11 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
             }))
           : undefined
 
+      const permId = order.permId || 0
+
       const orderEntry: OpenOrder = {
         orderId,
+        permId,
         account: order.account || '',
         symbol: contract.symbol || '',
         secType: contract.secType || '',
@@ -627,15 +666,18 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         comboLegs
       }
 
-      // Deduplicate: IB may fire onOpenOrder multiple times for the same orderId
-      const existingIdx = orders.findIndex((o) => o.orderId === orderId)
+      // Deduplicate by permId (globally unique). orderId alone collapses
+      // distinct TWS-placed orders that happen to share an orderId.
+      const existingIdx = orders.findIndex((o) =>
+        permId !== 0 ? o.permId === permId : o.orderId === orderId
+      )
       if (existingIdx >= 0) {
         orders[existingIdx] = orderEntry
       } else {
         orders.push(orderEntry)
       }
       console.log(
-        `[IB] Open order received: orderId=${orderId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`
+        `[IB] Open order received: orderId=${orderId} permId=${permId} symbol=${contract.symbol} qty=${order.totalQuantity} price=${order.lmtPrice}`
       )
     }
 
@@ -649,13 +691,26 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     function cleanup(): void {
       api!.off(EventName.openOrder, onOpenOrder)
       api!.off(EventName.openOrderEnd, onOpenOrderEnd)
+      api!.off(EventName.orderStatus, onStatus)
     }
 
     api.on(EventName.openOrder, onOpenOrder)
     api.on(EventName.openOrderEnd, onOpenOrderEnd)
-    api.reqOpenOrders()
-    console.log('[IB] Requesting all open orders')
+    api.on(EventName.orderStatus, onStatus)
+    // reqAllOpenOrders (not reqOpenOrders) so we also see orders placed
+    // directly in TWS or by other client ids — not just this connection's.
+    api.reqAllOpenOrders()
+    console.log('[IB] Requesting ALL open orders (incl. TWS-placed)')
   })
+
+  // Merge fill progress (filled qty + avg fill price) into the orders.
+  for (const o of orders) {
+    const f = fillByOrderId.get(o.orderId)
+    if (f) {
+      o.filled = f.filled
+      o.avgFillPrice = f.avgFillPrice
+    }
+  }
 
   // Phase 2: Resolve combo leg conIds for BAG orders without cached descriptions
   if (bagOrderLegs.size > 0) {
@@ -774,6 +829,30 @@ export interface ExecutionData {
   strike?: number
   right?: string
   comboDescription?: string
+  commission?: number
+}
+
+// IB delivers commission via a SEPARATE commissionReport event (keyed by
+// execId), fired shortly AFTER execDetails. We cache it here and attach it to
+// executions on the next fetch/stream. Install the listener once on connect.
+const commissionByExecId = new Map<string, number>()
+let commissionListenerInstalled = false
+export function setupCommissionTracking(): void {
+  const api = getIBApi()
+  if (!api || commissionListenerInstalled) return
+  commissionListenerInstalled = true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  api.on(EventName.commissionReport, (report: any) => {
+    const execId = report?.execId
+    if (execId && typeof report?.commission === 'number') {
+      commissionByExecId.set(execId, report.commission)
+    }
+  })
+  console.log('[IB] commissionReport listener installed')
+}
+export function resetCommissionTracking(): void {
+  commissionByExecId.clear()
+  commissionListenerInstalled = false
 }
 
 // Fetch today's executions across all FA sub-accounts
@@ -813,7 +892,8 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
         comboDescription:
           contract.secType === 'BAG' && (contract as any).comboLegsDescription
             ? (contract as any).comboLegsDescription
-            : undefined
+            : undefined,
+        commission: commissionByExecId.get(execution.execId || '')
       })
     }
 
@@ -866,6 +946,7 @@ export function setupOpenOrderListener(callback: (order: OpenOrder) => void): vo
 
       const orderEntry: OpenOrder = {
         orderId,
+        permId: order.permId || 0,
         account: order.account || '',
         symbol: contract.symbol || '',
         secType: contract.secType || '',
@@ -912,7 +993,8 @@ export function setupExecDetailsListener(callback: (exec: ExecutionData) => void
       comboDescription:
         contract.secType === 'BAG' && (contract as any).comboLegsDescription
           ? (contract as any).comboLegsDescription
-          : undefined
+          : undefined,
+      commission: commissionByExecId.get(execution.execId || '')
     })
   })
 }

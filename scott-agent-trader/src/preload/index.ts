@@ -129,14 +129,19 @@ const ibApi = {
   // Streaming quotes
   subscribeQuotes: (
     symbols: string[],
-    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
-  ): Promise<{ quotes: Record<string, number>; optionQuotes: Record<string, number> }> =>
-    ipcRenderer.invoke('ib:subscribeQuotes', symbols, optionContracts),
+    optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>,
+    orders?: unknown[]
+  ): Promise<{
+    quotes: Record<string, number>
+    optionQuotes: Record<string, number>
+    orderQuotes: Record<string, { bid: number; ask: number }>
+  }> => ipcRenderer.invoke('ib:subscribeQuotes', symbols, optionContracts, orders || []),
   unsubscribeQuotes: (): Promise<void> => ipcRenderer.invoke('ib:unsubscribeQuotes'),
   onQuoteUpdate: (
     callback: (data: {
       quotes: Record<string, number>
       optionQuotes: Record<string, number>
+      orderQuotes: Record<string, { bid: number; ask: number }>
     }) => void
   ): (() => void) => {
     const handler = (_event: any, data: any): void => callback(data)
@@ -168,6 +173,7 @@ const ibApi = {
   getExecutions: (): Promise<any[]> => ipcRenderer.invoke('ib:getExecutions'),
   modifyOrder: (req: any): Promise<void> => ipcRenderer.invoke('ib:modifyOrder', req),
   cancelOrder: (orderId: number): Promise<void> => ipcRenderer.invoke('ib:cancelOrder', orderId),
+  cancelAllOrders: (): Promise<void> => ipcRenderer.invoke('ib:cancelAllOrders'),
   getFedFundsRate: (): Promise<number> => ipcRenderer.invoke('rates:getFedFundsRate'),
 
   // AI Advisor

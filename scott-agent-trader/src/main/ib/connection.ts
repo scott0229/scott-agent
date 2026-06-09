@@ -69,7 +69,7 @@ export function connect(config: ConnectionConfig): void {
   })
 
   ibApi.on(EventName.connected, () => {
-    console.log('[IB] Connected to TWS/Gateway')
+    console.log(`[IB] Connected to TWS/Gateway (clientId=${config.clientId})`)
     connectionState = {
       status: 'connected',
       host: config.host,

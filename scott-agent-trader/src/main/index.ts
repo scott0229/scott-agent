@@ -15,12 +15,14 @@ import {
   placeRollOrder,
   modifyOrder,
   cancelOrder,
+  cancelAllOrders,
   requestExecutions,
   requestOpenOrders,
   setupNextOrderIdListener,
   setupOrderStatusListener,
   setupOpenOrderListener,
   setupExecDetailsListener,
+  setupCommissionTracking,
   requestAutoOpenOrders
 } from './ib/orders'
 import {
@@ -35,9 +37,11 @@ import {
   getCachedStockPrice,
   subscribeStockQuotes,
   subscribeOptionQuotes,
+  subscribeOrderQuotes,
   unsubscribeAllQuotes,
   getLiveQuotes
 } from './ib/quotes'
+import type { OrderQuoteRequest } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
@@ -81,10 +85,12 @@ function createWindow(): void {
 function setupIpcHandlers(): void {
   // Connection
   ipcMain.handle('ib:connect', async (_event, host: string, port: number) => {
-    // Use a random clientId so simultaneously-running instances (e.g. the
-    // installed .exe alongside a dev build) don't collide on TWS — clientId 0
-    // is exclusive, so a second connect with the same ID kicks the first.
-    const clientId = Math.floor(Math.random() * 999) + 1
+    // Connect as the MASTER client (clientId 0) so we can manage ALL orders —
+    // including ones placed directly in TWS — and cancel them. clientId 0 is
+    // exclusive: only one app instance can be connected at a time (a second
+    // connect with id 0 kicks the first / fails). Trade accepted so the
+    // consolidated 委託單 card's cancel works on TWS-placed orders.
+    const clientId = 0
     connect({ host, port, clientId })
     // Wait a bit for connection to establish
     return new Promise((resolve) => setTimeout(resolve, 1000))
@@ -198,6 +204,7 @@ function setupIpcHandlers(): void {
           mainWindow.webContents.send('ib:executionUpdate', exec)
         }
       })
+      setupCommissionTracking()
     }
   })
 
@@ -251,11 +258,13 @@ function setupIpcHandlers(): void {
     async (
       _event,
       symbols: string[],
-      optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>
+      optionContracts: Array<{ symbol: string; expiry: string; strike: number; right: string }>,
+      orders: OrderQuoteRequest[] = []
     ) => {
       const pushUpdate = (data: {
         quotes: Record<string, number>
         optionQuotes: Record<string, number>
+        orderQuotes: Record<string, { bid: number; ask: number }>
       }): void => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('ib:quoteUpdate', data)
@@ -271,9 +280,12 @@ function setupIpcHandlers(): void {
       if (optionContracts.length > 0) {
         subscribeOptionQuotes(optionContracts, pushUpdate)
       }
+      if (orders.length > 0) {
+        subscribeOrderQuotes(orders, pushUpdate)
+      }
 
       console.log(
-        `[IPC] subscribeQuotes: ${symbols.length} stocks, ${optionContracts.length} options`
+        `[IPC] subscribeQuotes: ${symbols.length} stocks, ${optionContracts.length} options, ${orders.length} orders`
       )
       return getLiveQuotes()
     }
@@ -362,6 +374,10 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('ib:cancelOrder', async (_event, orderId: number) => {
     return cancelOrder(orderId)
+  })
+
+  ipcMain.handle('ib:cancelAllOrders', async () => {
+    return cancelAllOrders()
   })
 
   // Rates
@@ -1281,6 +1297,7 @@ app.whenReady().then(() => {
           mainWindow.webContents.send('ib:orderStatus', update)
         }
       })
+      setupCommissionTracking()
     }
   })
 

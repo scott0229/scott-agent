@@ -82,6 +82,7 @@ interface AccountOverviewProps {
   quotes: Record<string, number>
   optionQuotes: Record<string, number>
   openOrders: OpenOrderData[]
+  orderQuotes: Record<string, { bid: number; ask: number }>
   executions: ExecutionDataItem[]
   loading: boolean
   refresh?: () => void
@@ -142,6 +143,7 @@ export default function AccountOverview({
   quotes,
   optionQuotes,
   openOrders,
+  orderQuotes,
   executions,
   loading,
   refresh,
@@ -965,6 +967,225 @@ export default function AccountOverview({
     if (filterSymbol || selectMode || filterRight) return acctPositions.length > 0
     return true
   })
+
+  const cancelOrder = (orderId: number): void => {
+    window.ibApi
+      .cancelOrder(orderId)
+      .then(() => {
+        setTimeout(() => refresh?.(), 300)
+        setTimeout(() => refresh?.(), 1000)
+        setTimeout(() => refresh?.(), 2000)
+      })
+      .catch((err: unknown) => {
+        alert('取消委託失敗: ' + String(err))
+      })
+  }
+
+  // Render one open-order row for the consolidated 委託單 card. First column is
+  // the account name; quantity & price stay double-click editable.
+  const renderOrderRow = (order: OpenOrderData): React.ReactNode => {
+    const arrow = <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
+    const acctName = formatAccountName(
+      accounts.find((a) => a.accountId === order.account)?.alias || order.account
+    )
+    const desc: React.ReactNode =
+      order.secType === 'OPT' ? (
+        formatOptionLabel(order.symbol, order.expiry, order.strike, order.right)
+      ) : order.secType === 'BAG' && order.comboDescription ? (
+        <>
+          {order.symbol}{' '}
+          {order.comboDescription
+            .split(' → ')
+            // Always show the BUY (+, 買回) leg first, then the SELL (-) leg.
+            .slice()
+            .sort((a, b) => {
+              const aBuy = a.trim().startsWith('+')
+              const bBuy = b.trim().startsWith('+')
+              return aBuy === bBuy ? 0 : aBuy ? -1 : 1
+            })
+            .map((p, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && arrow}
+                <span style={{ whiteSpace: 'nowrap' }}>{p}</span>
+              </React.Fragment>
+            ))}
+        </>
+      ) : (
+        order.symbol
+      )
+    const editingQty =
+      editingCell?.orderId === order.orderId && editingCell.field === 'quantity'
+    const editingPrice =
+      editingCell?.orderId === order.orderId && editingCell.field === 'price'
+    return (
+      <tr
+        key={`${order.account}-${order.permId}`}
+        className={contextMenu?.order.orderId === order.orderId ? 'force-active' : ''}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          if (order.status !== 'PendingCancel')
+            setContextMenu({ x: e.clientX, y: e.clientY, order })
+        }}
+      >
+        <td
+          style={{
+            whiteSpace: 'nowrap',
+            fontSize: '12px',
+            color: '#333',
+            paddingLeft: 8,
+            textAlign: 'left'
+          }}
+        >
+          {acctName}
+        </td>
+        <td className="pos-symbol">{desc}</td>
+        <td
+          className="editable-cell"
+          title="雙擊修改數量"
+          style={
+            editingQty
+              ? { cursor: 'pointer' }
+              : {
+                  cursor: 'pointer',
+                  color: '#fff',
+                  fontWeight: 500,
+                  backgroundColor: order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
+                }
+          }
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            startEdit(order, 'quantity')
+          }}
+        >
+          {editingQty ? (
+            <input
+              ref={editInputRef}
+              type="number"
+              step="1"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitEdit(order, 'quantity', editValue)
+                if (e.key === 'Escape') cancelEdit()
+              }}
+              onBlur={() => cancelEdit()}
+              style={{
+                width: '52px',
+                padding: '2px 4px',
+                fontSize: '13px',
+                background: 'transparent',
+                border: '1px solid #94a3b8',
+                borderRadius: '3px',
+                color: 'inherit',
+                outline: 'none',
+                textAlign: 'center'
+              }}
+            />
+          ) : (
+            <>
+              {order.action === 'BUY' ? '+' : '-'}
+              {Math.abs(order.quantity)}
+            </>
+          )}
+        </td>
+        {(() => {
+          const oq = orderQuotes[`${order.account}|${order.permId}`]
+          const fmt = (v: number | undefined): string =>
+            v != null && Number.isFinite(v) ? v.toFixed(2) : '-'
+          return (
+            <>
+              <td style={{ color: '#1a6b3a' }}>{fmt(oq?.bid)}</td>
+              <td style={{ color: '#c0392b' }}>{fmt(oq?.ask)}</td>
+            </>
+          )
+        })()}
+        <td
+          className={order.orderType === 'LMT' ? 'editable-cell' : undefined}
+          title={order.orderType === 'LMT' ? '雙擊修改價格' : undefined}
+          style={{ cursor: order.orderType === 'LMT' ? 'pointer' : 'default' }}
+          onDoubleClick={(e) => {
+            if (order.orderType === 'LMT') {
+              e.stopPropagation()
+              startEdit(order, 'price')
+            }
+          }}
+        >
+          {editingPrice ? (
+            <input
+              ref={editInputRef}
+              type="number"
+              step="0.01"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitEdit(order, 'price', editValue)
+                if (e.key === 'Escape') cancelEdit()
+              }}
+              onBlur={() => cancelEdit()}
+              style={{
+                width: '52px',
+                padding: '2px 4px',
+                fontSize: '13px',
+                background: 'transparent',
+                border: '1px solid #94a3b8',
+                borderRadius: '3px',
+                color: 'inherit',
+                outline: 'none',
+                textAlign: 'center'
+              }}
+            />
+          ) : order.orderType === 'LMT' ? (
+            (order.limitPrice ?? 0).toFixed(2)
+          ) : (
+            '市價'
+          )}
+        </td>
+        <td style={{ fontWeight: 600, color: '#1a3a6b' }}>
+          {order.filled != null && order.filled > 0 && order.avgFillPrice != null
+            ? order.avgFillPrice.toFixed(2)
+            : '-'}
+        </td>
+        {(() => {
+          const commission = executions
+            .filter((e) => e.account === order.account && e.orderId === order.orderId)
+            .reduce((s, e) => s + (e.commission ?? 0), 0)
+          return (
+            <td style={{ color: '#8a5a00' }}>
+              {commission > 0 ? commission.toFixed(2) : '-'}
+            </td>
+          )
+        })()}
+        <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>
+          {(
+            {
+              Submitted: '已送出',
+              PendingSubmit: '待送出',
+              PreSubmitted: '預送出',
+              PendingCancel: '取消中',
+              Filled: '已成交',
+              Cancelled: '已取消',
+              Inactive: '未啟用'
+            } as Record<string, string>
+          )[order.status] || order.status}
+        </td>
+        <td style={{ textAlign: 'center' }}>
+          {order.status !== 'PendingCancel' &&
+            order.status !== 'Cancelled' &&
+            order.status !== 'Filled' && (
+              <button
+                className="order-cancel-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  cancelOrder(order.orderId)
+                }}
+              >
+                取消委託
+              </button>
+            )}
+        </td>
+      </tr>
+    )
+  }
 
   return (
     <>
@@ -2203,6 +2424,73 @@ export default function AccountOverview({
           <div className="empty-state">{loading ? '正在載入帳戶資料...' : '未找到帳戶資料'}</div>
         ) : (
           <>
+          {/* Consolidated open-orders card across ALL accounts. Each row's
+              first column is the account name. */}
+          {!selectMode && openOrders.length > 0 && (
+            <div className="account-card" style={{ marginBottom: 16 }}>
+              <div className="account-header">
+                <span className="account-id">委託單 ({openOrders.length})</span>
+                <button
+                  className="select-toggle-btn"
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '4px 12px',
+                    fontSize: '13px'
+                  }}
+                  title="取消所有工作中委託(含 TWS 手動下的)"
+                  onClick={() => {
+                    if (window.confirm('確定要取消「全部」工作中委託嗎?(包含 TWS 手動下的)')) {
+                      window.ibApi
+                        .cancelAllOrders()
+                        .then(() => {
+                          setTimeout(() => refresh?.(), 300)
+                          setTimeout(() => refresh?.(), 1000)
+                          setTimeout(() => refresh?.(), 2000)
+                        })
+                        .catch((err: unknown) => alert('取消全部失敗: ' + String(err)))
+                    }
+                  }}
+                >
+                  取消全部委託
+                </button>
+              </div>
+              <div className="positions-section order-section">
+                <table
+                  className="positions-table"
+                  style={{ backgroundColor: '#fffbe6' }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={{ width: '8%', textAlign: 'left' }}></th>
+                      <th style={{ width: '23%', textAlign: 'left' }}>標的</th>
+                      <th style={{ width: '9%' }}>數量</th>
+                      <th style={{ width: '9%' }}>買價</th>
+                      <th style={{ width: '9%' }}>賣價</th>
+                      <th style={{ width: '8%' }}>限價</th>
+                      <th style={{ width: '9%' }}>成交價</th>
+                      <th style={{ width: '8%' }}>傭金</th>
+                      <th style={{ width: '9%' }}>狀態</th>
+                      <th style={{ width: '8%' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...openOrders]
+                      .sort((a, b) => {
+                        const an = formatAccountName(
+                          accounts.find((x) => x.accountId === a.account)?.alias || a.account
+                        )
+                        const bn = formatAccountName(
+                          accounts.find((x) => x.accountId === b.account)?.alias || b.account
+                        )
+                        if (an !== bn) return an.localeCompare(bn)
+                        return (a.symbol || '').localeCompare(b.symbol || '')
+                      })
+                      .map(renderOrderRow)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           <div
             style={
               filterAccount
@@ -3027,193 +3315,6 @@ export default function AccountOverview({
 
                     return elements
                   })()}
-
-                {/* Open Orders */}
-                {!selectMode &&
-                  openOrders.filter((o) => o.account === account.accountId).length > 0 && (
-                    <div className="positions-section order-section">
-                      <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ width: '54%', textAlign: 'left' }}>委託</th>
-                            <th style={{ width: '15%' }}>數量</th>
-                            <th style={{ width: '15%' }}>價格</th>
-                            <th style={{ width: '16%' }}>狀態</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {openOrders
-                            .filter((o) => o.account === account.accountId)
-                            .map((order) => {
-                              const arrow = (
-                                <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
-                              )
-                              const desc: React.ReactNode =
-                                order.secType === 'OPT' ? (
-                                  formatOptionLabel(
-                                    order.symbol,
-                                    order.expiry,
-                                    order.strike,
-                                    order.right
-                                  )
-                                ) : order.secType === 'BAG' && order.comboDescription ? (
-                                  <>
-                                    {order.symbol}{' '}
-                                    {order.comboDescription.split(' → ').map((p, i) => (
-                                      <React.Fragment key={i}>
-                                        {i > 0 && arrow}
-                                        {/* keep each leg intact; wrap only at the arrow */}
-                                        <span style={{ whiteSpace: 'nowrap' }}>{p}</span>
-                                      </React.Fragment>
-                                    ))}
-                                  </>
-                                ) : (
-                                  order.symbol
-                                )
-                              return (
-                                <tr
-                                  key={order.orderId}
-                                  className={
-                                    contextMenu?.order.orderId === order.orderId
-                                      ? 'force-active'
-                                      : ''
-                                  }
-                                  onContextMenu={(e) => {
-                                    e.preventDefault()
-                                    if (order.status !== 'PendingCancel')
-                                      setContextMenu({ x: e.clientX, y: e.clientY, order })
-                                  }}
-                                >
-                                  <td className="pos-symbol">{desc}</td>
-                                  {(() => {
-                                    const editingQty =
-                                      editingCell?.orderId === order.orderId &&
-                                      editingCell.field === 'quantity'
-                                    return (
-                                      <td
-                                        className="editable-cell"
-                                        title="雙擊修改數量"
-                                        style={
-                                          editingQty
-                                            ? { cursor: 'pointer' }
-                                            : {
-                                                // Same solid colour rule as the
-                                                // 持倉 quantity column.
-                                                cursor: 'pointer',
-                                                color: '#fff',
-                                                fontWeight: 500,
-                                                backgroundColor:
-                                                  order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
-                                              }
-                                        }
-                                        onDoubleClick={(e) => {
-                                          e.stopPropagation()
-                                          startEdit(order, 'quantity')
-                                        }}
-                                      >
-                                        {editingQty ? (
-                                          <input
-                                            ref={editInputRef}
-                                            type="number"
-                                            step="1"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter')
-                                                submitEdit(order, 'quantity', editValue)
-                                              if (e.key === 'Escape') cancelEdit()
-                                            }}
-                                            onBlur={() => cancelEdit()}
-                                            style={{
-                                              width: '60px',
-                                              padding: '2px 4px',
-                                              fontSize: '13px',
-                                              background: 'transparent',
-                                              border: '1px solid #94a3b8',
-                                              borderRadius: '3px',
-                                              color: 'inherit',
-                                              outline: 'none',
-                                              textAlign: 'center'
-                                            }}
-                                          />
-                                        ) : (
-                                          <>
-                                            {order.action === 'BUY' ? '+' : '-'}
-                                            {Math.abs(order.quantity)}
-                                          </>
-                                        )}
-                                      </td>
-                                    )
-                                  })()}
-                                  <td
-                                    className={
-                                      order.orderType === 'LMT' ? 'editable-cell' : undefined
-                                    }
-                                    title={order.orderType === 'LMT' ? '雙擊修改價格' : undefined}
-                                    style={{
-                                      cursor: order.orderType === 'LMT' ? 'pointer' : 'default'
-                                    }}
-                                    onDoubleClick={(e) => {
-                                      if (order.orderType === 'LMT') {
-                                        // Don't let the dblclick bubble to the card
-                                        // (which toggles single-account view).
-                                        e.stopPropagation()
-                                        startEdit(order, 'price')
-                                      }
-                                    }}
-                                  >
-                                    {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'price' ? (
-                                      <input
-                                        ref={editInputRef}
-                                        type="number"
-                                        step="0.01"
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter')
-                                            submitEdit(order, 'price', editValue)
-                                          if (e.key === 'Escape') cancelEdit()
-                                        }}
-                                        onBlur={() => cancelEdit()}
-                                        style={{
-                                          width: '52px',
-                                          padding: '2px 4px',
-                                          fontSize: '13px',
-                                          background: 'transparent',
-                                          border: '1px solid #94a3b8',
-                                          borderRadius: '3px',
-                                          color: 'inherit',
-                                          outline: 'none',
-                                          textAlign: 'center'
-                                        }}
-                                      />
-                                    ) : order.orderType === 'LMT' ? (
-                                      (order.limitPrice ?? 0).toFixed(2)
-                                    ) : (
-                                      '市價'
-                                    )}
-                                  </td>
-                                  <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>
-                                    {(
-                                      {
-                                        Submitted: '已送出',
-                                        PendingSubmit: '待送出',
-                                        PreSubmitted: '預送出',
-                                        PendingCancel: '取消中',
-                                        Filled: '已成交',
-                                        Cancelled: '已取消',
-                                        Inactive: '未啟用'
-                                      } as Record<string, string>
-                                    )[order.status] || order.status}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
 
                 {/* Today's Filled Orders */}
                 {!selectMode &&
