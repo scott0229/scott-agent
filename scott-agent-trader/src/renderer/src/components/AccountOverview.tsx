@@ -213,6 +213,7 @@ export default function AccountOverview({
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
+  const [cancelAllConfirm, setCancelAllConfirm] = useState(false)
   const [groupDetailDialog, setGroupDetailDialog] = useState<{
     account: string
     group: string
@@ -2438,18 +2439,7 @@ export default function AccountOverview({
                     fontSize: '13px'
                   }}
                   title="取消所有工作中委託(含 TWS 手動下的)"
-                  onClick={() => {
-                    if (window.confirm('確定要取消「全部」工作中委託嗎?(包含 TWS 手動下的)')) {
-                      window.ibApi
-                        .cancelAllOrders()
-                        .then(() => {
-                          setTimeout(() => refresh?.(), 300)
-                          setTimeout(() => refresh?.(), 1000)
-                          setTimeout(() => refresh?.(), 2000)
-                        })
-                        .catch((err: unknown) => alert('取消全部失敗: ' + String(err)))
-                    }
-                  }}
+                  onClick={() => setCancelAllConfirm(true)}
                 >
                   取消全部委託
                 </button>
@@ -3795,6 +3785,64 @@ export default function AccountOverview({
                 }}
               >
                 刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {cancelAllConfirm && (
+        <div className="roll-dialog-overlay" onClick={() => setCancelAllConfirm(false)}>
+          <div
+            className="roll-dialog"
+            style={{ width: 440, maxWidth: '92vw' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="roll-dialog-header" style={{ borderBottom: 'none' }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>⚠️</span>
+              <h3>取消全部委託</h3>
+              <button className="roll-dialog-close" onClick={() => setCancelAllConfirm(false)}>
+                ✕
+              </button>
+            </div>
+            <div
+              className="roll-dialog-body"
+              style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}
+            >
+              確定要取消「<strong>全部</strong>」工作中委託嗎?
+              <br />
+              這會取消所有帳戶的委託,包含你在 TWS 手動下的單。
+            </div>
+            <div
+              style={{
+                padding: '12px 20px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 8
+              }}
+            >
+              <button
+                className="select-toggle-btn"
+                style={{ minWidth: 80 }}
+                onClick={() => setCancelAllConfirm(false)}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                style={{ minWidth: 80 }}
+                onClick={() => {
+                  setCancelAllConfirm(false)
+                  window.ibApi
+                    .cancelAllOrders()
+                    .then(() => {
+                      setTimeout(() => refresh?.(), 300)
+                      setTimeout(() => refresh?.(), 1000)
+                      setTimeout(() => refresh?.(), 2000)
+                    })
+                    .catch((err: unknown) => alert('取消全部失敗: ' + String(err)))
+                }}
+              >
+                取消全部
               </button>
             </div>
           </div>
