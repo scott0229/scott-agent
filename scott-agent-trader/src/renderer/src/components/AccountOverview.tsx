@@ -2289,43 +2289,22 @@ export default function AccountOverview({
                       )
                     })()}
                     {!selectMode && (
-                      <button
-                        className="ai-advisor-btn icon-btn"
-                        title="AI 交易建議"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowAiAdvisor(account.accountId)
+                      // Icon group: spaced like the batch-card header icons
+                      // (gap 12px), kept slightly apart from the text labels.
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          marginLeft: '6px'
                         }}
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M9 18h6" />
-                          <path d="M10 22h4" />
-                          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
-                        </svg>
-                      </button>
-                    )}
-                    {/* Add-note button: only shown when the account has no note
-                        yet. Once a note exists, the box itself is the entry
-                        point (click to edit). */}
-                    {!selectMode &&
-                      onSetReportNote &&
-                      !reportNotes[account.accountId] && (
                         <button
                           className="ai-advisor-btn icon-btn"
-                          title="新增註解"
+                          title="AI 交易建議"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setNoteEditorFor(`acct:${account.accountId}`)
+                            setShowAiAdvisor(account.accountId)
                           }}
                         >
                           <svg
@@ -2339,11 +2318,41 @@ export default function AccountOverview({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                            <path d="M9 18h6" />
+                            <path d="M10 22h4" />
+                            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
                           </svg>
                         </button>
-                      )}
+                        {/* Add-note button: only shown when the account has no
+                            note yet. Once a note exists, the box itself is the
+                            entry point (click to edit). */}
+                        {onSetReportNote && !reportNotes[account.accountId] && (
+                          <button
+                            className="ai-advisor-btn icon-btn"
+                            title="新增註解"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setNoteEditorFor(`acct:${account.accountId}`)
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3026,11 +3035,10 @@ export default function AccountOverview({
                       <table className="positions-table" style={{ backgroundColor: '#fffbe6' }}>
                         <thead>
                           <tr>
-                            <th style={{ width: '35%', textAlign: 'left' }}>委託</th>
-                            <th style={{ width: '13%' }}>方向</th>
-                            <th style={{ width: '13%' }}>數量</th>
-                            <th style={{ width: '20%' }}>價格</th>
-                            <th style={{ width: '19%' }}>狀態</th>
+                            <th style={{ width: '54%', textAlign: 'left' }}>委託</th>
+                            <th style={{ width: '15%' }}>數量</th>
+                            <th style={{ width: '15%' }}>價格</th>
+                            <th style={{ width: '16%' }}>狀態</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3054,7 +3062,8 @@ export default function AccountOverview({
                                     {order.comboDescription.split(' → ').map((p, i) => (
                                       <React.Fragment key={i}>
                                         {i > 0 && arrow}
-                                        {p}
+                                        {/* keep each leg intact; wrap only at the arrow */}
+                                        <span style={{ whiteSpace: 'nowrap' }}>{p}</span>
                                       </React.Fragment>
                                     ))}
                                   </>
@@ -3076,48 +3085,61 @@ export default function AccountOverview({
                                   }}
                                 >
                                   <td className="pos-symbol">{desc}</td>
-                                  <td
-                                    style={{
-                                      color: order.action === 'BUY' ? '#1a6b3a' : '#8b1a1a',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    {order.action === 'BUY' ? '買' : '賣'}
-                                  </td>
-                                  <td
-                                    style={{ cursor: 'pointer' }}
-                                    onDoubleClick={() => startEdit(order, 'quantity')}
-                                  >
-                                    {editingCell?.orderId === order.orderId &&
-                                    editingCell.field === 'quantity' ? (
-                                      <input
-                                        ref={editInputRef}
-                                        type="number"
-                                        step="1"
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter')
-                                            submitEdit(order, 'quantity', editValue)
-                                          if (e.key === 'Escape') cancelEdit()
-                                        }}
-                                        onBlur={() => cancelEdit()}
-                                        style={{
-                                          width: '60px',
-                                          padding: '2px 4px',
-                                          fontSize: '13px',
-                                          background: 'transparent',
-                                          border: '1px solid #94a3b8',
-                                          borderRadius: '3px',
-                                          color: 'inherit',
-                                          outline: 'none',
-                                          textAlign: 'center'
-                                        }}
-                                      />
-                                    ) : (
-                                      order.quantity
-                                    )}
-                                  </td>
+                                  {(() => {
+                                    const editingQty =
+                                      editingCell?.orderId === order.orderId &&
+                                      editingCell.field === 'quantity'
+                                    return (
+                                      <td
+                                        style={
+                                          editingQty
+                                            ? { cursor: 'pointer' }
+                                            : {
+                                                // Same solid colour rule as the
+                                                // 持倉 quantity column.
+                                                cursor: 'pointer',
+                                                color: '#fff',
+                                                fontWeight: 500,
+                                                backgroundColor:
+                                                  order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
+                                              }
+                                        }
+                                        onDoubleClick={() => startEdit(order, 'quantity')}
+                                      >
+                                        {editingQty ? (
+                                          <input
+                                            ref={editInputRef}
+                                            type="number"
+                                            step="1"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter')
+                                                submitEdit(order, 'quantity', editValue)
+                                              if (e.key === 'Escape') cancelEdit()
+                                            }}
+                                            onBlur={() => cancelEdit()}
+                                            style={{
+                                              width: '60px',
+                                              padding: '2px 4px',
+                                              fontSize: '13px',
+                                              background: 'transparent',
+                                              border: '1px solid #94a3b8',
+                                              borderRadius: '3px',
+                                              color: 'inherit',
+                                              outline: 'none',
+                                              textAlign: 'center'
+                                            }}
+                                          />
+                                        ) : (
+                                          <>
+                                            {order.action === 'BUY' ? '+' : '-'}
+                                            {Math.abs(order.quantity)}
+                                          </>
+                                        )}
+                                      </td>
+                                    )
+                                  })()}
                                   <td
                                     style={{
                                       cursor: order.orderType === 'LMT' ? 'pointer' : 'default'

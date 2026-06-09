@@ -197,9 +197,15 @@ body {
 }
 
 .connection-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 3px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .status-dot {
@@ -255,6 +261,13 @@ body {
 
 /* === Tab Navigation (Inline in Header) === */
 .tab-nav-inline {
+  /* Absolutely centered in the whole header so the tabs sit in the true
+     middle regardless of how wide the left (clock/price pills) or right
+     (connection status) sections are. .app-header is position: relative. */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   gap: 8px;
   -webkit-app-region: no-drag;
@@ -789,6 +802,7 @@ body {
   padding-left: 8px;
 }
 
+
 .pos-long {
   color: var(--accent-green);
 }
@@ -967,6 +981,22 @@ input[type='number']::-webkit-outer-spin-button {
 .form-group .input-field,
 .form-group select {
   min-width: 120px;
+}
+
+/* Normalise every control's height in the order-form row so the account
+   select, action select, symbol/limit inputs and TIF dropdown all line up.
+   Scoped to .order-form so the account-type pills (which reuse
+   .custom-select-trigger elsewhere) are untouched. */
+.order-form .form-row .input-field,
+.order-form .form-row .custom-select-trigger,
+.order-form .form-row .tif-dropdown-trigger {
+  height: 32px;
+  box-sizing: border-box;
+}
+.order-form .form-row .custom-select-trigger,
+.order-form .form-row .tif-dropdown-trigger {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* === Custom Select === */
@@ -1518,7 +1548,7 @@ input[type='number']::-webkit-outer-spin-button {
   gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
-  padding-bottom: 6px;
+  padding-bottom: 5px;
 }
 
 .quote-label {
@@ -2720,6 +2750,7 @@ input[type='number']::-webkit-outer-spin-button {
 .ai-advisor-btn.icon-btn {
   display: inline-flex;
   align-items: center;
+  padding: 0;
   color: #1f2937;
   opacity: 0.75;
 }
@@ -3112,7 +3143,6 @@ input[type='number']::-webkit-outer-spin-button {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  margin-left: 8px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary, #6b7280);
@@ -3132,7 +3162,6 @@ input[type='number']::-webkit-outer-spin-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 12px;
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 600;
@@ -3158,7 +3187,6 @@ input[type='number']::-webkit-outer-spin-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: 8px;
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 600;
@@ -3182,7 +3210,6 @@ input[type='number']::-webkit-outer-spin-button {
 .update-available-pill {
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
   padding: 2px 12px;
   font-size: 12px;
   font-weight: 600;

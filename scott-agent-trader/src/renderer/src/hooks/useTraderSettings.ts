@@ -72,9 +72,10 @@ export function useTraderSettings() {
     ) {
       setSymbolPrefetchState(data.settings.symbol_prefetch as Record<string, boolean>)
     }
-    if (data.settings.d1_target === 'staging' || data.settings.d1_target === 'production') {
-      setD1TargetState(data.settings.d1_target)
-    }
+    // NOTE: We intentionally do NOT read data.settings.d1_target here. The app
+    // is production-only now; honouring a stored 'staging' value would flip the
+    // live target to staging and refetch STALE staging data — overwriting the
+    // real production settings (this caused deleted symbol_groups to reappear).
     if (Array.isArray(data.settings.symbol_groups)) {
       setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
     }

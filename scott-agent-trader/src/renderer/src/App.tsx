@@ -123,6 +123,25 @@ function App(): React.JSX.Element {
     [accounts]
   )
 
+  // Header price pills: underlyings that have an OPTION position, ordered
+  // QQQ → QLD → TQQQ → everything else alphabetically, capped at 5.
+  const optionUnderlyings = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of positions) {
+      if (p.secType === 'OPT' && p.symbol) set.add(p.symbol)
+    }
+    const priority = ['QQQ', 'QLD', 'TQQQ']
+    const rank = (s: string): number => {
+      const i = priority.indexOf(s)
+      return i === -1 ? priority.length : i
+    }
+    return Array.from(set).sort((a, b) => {
+      const ra = rank(a)
+      const rb = rank(b)
+      return ra !== rb ? ra - rb : a.localeCompare(b)
+    })
+  }, [positions])
+
   // Auto-detect account group when accounts are loaded
   useEffect(() => {
     if (!accountIdsKey) {
@@ -287,16 +306,16 @@ function App(): React.JSX.Element {
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <EtClock />
-          {['QQQ', 'TQQQ'].map((sym) =>
-            quotes[sym] > 0 ? (
+          {optionUnderlyings
+            .filter((sym) => quotes[sym] > 0)
+            .slice(0, 5)
+            .map((sym) => (
               <span key={sym} className="stock-price-pill" title={`${sym} 即時股價`}>
                 <span className="stock-price-label">{sym}</span>
                 {quotes[sym].toFixed(2)}
               </span>
-            ) : null
-          )}
+            ))}
           {updateInfo && (
             <button
               type="button"
@@ -351,6 +370,7 @@ function App(): React.JSX.Element {
           </button>
         </nav>
         <div className="header-actions">
+          {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <ConnectionStatus />
         </div>
       </header>

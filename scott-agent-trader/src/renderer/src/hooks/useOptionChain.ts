@@ -93,6 +93,10 @@ export function useOptionChain({
   const [selectedStrikes, setSelectedStrikes] = useState<number[]>([])
   const [strikeDropdownOpen, setStrikeDropdownOpen] = useState(false)
   const [chainHidden, setChainHidden] = useState(false)
+  // Bumped on every fetchChain (i.e. every dialog open) to force the
+  // auto-select effects to re-run even when the chain data is cached — so
+  // reopening re-centres the strikes instead of showing the last selection.
+  const [selectionNonce, setSelectionNonce] = useState(0)
 
   const fetchedExpiriesRef = useRef<Set<string>>(new Set())
   const fetchedStrikesRef = useRef<Set<number>>(new Set())
@@ -109,17 +113,24 @@ export function useOptionChain({
     const isNewSymbol = fetchedSymbolRef.current !== sym
     fetchedSymbolRef.current = sym
     setErrorMsg('')
+    // ALWAYS clear the user's strike/expiry selection on (re)open so the chain
+    // re-centres around the current price instead of restoring the previous
+    // session's checkboxes. The selectionNonce bump re-runs the auto-select
+    // effects even when the chain data is served from cache (same symbol).
+    setSelectedExpirations([])
+    setSelectedStrikes([])
+    fetchedExpiriesRef.current = new Set()
+    fetchedStrikesRef.current = new Set()
+    lastStrikeCenterRef.current = null
+    userModifiedStrikesRef.current = false
+    setSelectionNonce((n) => n + 1)
     if (isNewSymbol) {
+      // Only blow away the cached chain data for a genuinely new symbol —
+      // keeps reopening the same symbol instant (no refetch flicker).
       setLoadingChain(true)
       setChainParams([])
       setAllGreeks([])
-      setSelectedExpirations([])
-      setSelectedStrikes([])
-      fetchedExpiriesRef.current = new Set()
-      fetchedStrikesRef.current = new Set()
       setStockPrice(null)
-      lastStrikeCenterRef.current = null
-      userModifiedStrikesRef.current = false
     }
 
     // Fetch cached stock price first (instant), then update with live quote
@@ -214,7 +225,9 @@ export function useOptionChain({
     if (availableExpirations.length > 0 && selectedExpirations.length === 0) {
       setSelectedExpirations(availableExpirations.slice(0, 1))
     }
-  }, [availableExpirations])
+    // selectionNonce so reopening re-selects even when availableExpirations
+    // is unchanged (cached chain).
+  }, [availableExpirations, selectionNonce])
 
   // ── Auto-select ±5 strikes around stock price ─────────────────────────
   useEffect(() => {
@@ -244,7 +257,9 @@ export function useOptionChain({
       const end = Math.min(availableStrikes.length, start + total)
       setSelectedStrikes(availableStrikes.slice(start, end))
     }
-  }, [availableStrikes, stockPrice])
+    // selectionNonce so reopening re-centres even when availableStrikes /
+    // stockPrice are unchanged (cached chain).
+  }, [availableStrikes, stockPrice, selectionNonce])
 
   const displayExpirations = useMemo(
     () => selectedExpirations.filter((e) => availableExpirations.includes(e)).sort(),

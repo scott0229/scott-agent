@@ -409,8 +409,8 @@ function setupIpcHandlers(): void {
       console.log(
         '[settings:get] response margin_limit=',
         json?.settings?.margin_limit,
-        'watch_symbols=',
-        json?.settings?.watch_symbols
+        'symbol_groups=',
+        Array.isArray(json?.settings?.symbol_groups) ? json.settings.symbol_groups.length : 'none'
       )
       return json
     } catch {

@@ -111,20 +111,16 @@ export function getTradingClass(symbol: string, expiry: string): string | undefi
  * Request the option chain parameters (available expirations and strikes)
  * for the given underlying symbol.
  */
-export async function requestOptionChain(symbol: string): Promise<OptionChainParams[]> {
+// A single reqSecDefOptParams round-trip. Resolves with whatever params IB
+// returned by the End event (possibly empty), or rejects on per-attempt
+// timeout. Each attempt uses a fresh reqId and removes its own listeners.
+function requestOptionChainOnce(
+  symbol: string,
+  conId: number,
+  timeoutMs: number
+): Promise<OptionChainParams[]> {
   const api = getIBApi()
-  if (!api) throw new Error('Not connected to IB')
-
-  const cached = chainParamsCache.get(symbol)
-  if (cached && Date.now() - cached.fetchedAt < CHAIN_CACHE_TTL_MS) {
-    console.log(
-      `[IB] Option chain cache hit for ${symbol} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`
-    )
-    return cached.params
-  }
-
-  const conId = await getUnderlyingConId(symbol)
-
+  if (!api) return Promise.reject(new Error('Not connected to IB'))
   return new Promise((resolve, reject) => {
     const reqId = getNextReqId()
     const results: OptionChainParams[] = []
@@ -141,7 +137,7 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
       finished = true
       cleanup()
       reject(new Error('Option chain request timed out'))
-    }, 15000)
+    }, timeoutMs)
 
     const onParam = (
       id: number,
@@ -168,8 +164,6 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
       if (finished) return
       finished = true
       cleanup()
-      chainParamsCache.set(symbol, { params: results, fetchedAt: Date.now() })
-      console.log(`[IB] Option chain cached for ${symbol} (${results.length} exchanges)`)
       resolve(results)
     }
 
@@ -179,6 +173,66 @@ export async function requestOptionChain(symbol: string): Promise<OptionChainPar
     api.reqSecDefOptParams(reqId, symbol, '', 'STK', conId)
     console.log(`[IB] Requesting option chain for ${symbol} (conId: ${conId}, reqId: ${reqId})`)
   })
+}
+
+export async function requestOptionChain(symbol: string): Promise<OptionChainParams[]> {
+  const api = getIBApi()
+  if (!api) throw new Error('Not connected to IB')
+
+  const cached = chainParamsCache.get(symbol)
+  // Only honour a NON-empty cache entry. An empty entry would mean a prior
+  // transient failure — never serve that for the full TTL.
+  if (cached && cached.params.length > 0 && Date.now() - cached.fetchedAt < CHAIN_CACHE_TTL_MS) {
+    console.log(
+      `[IB] Option chain cache hit for ${symbol} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`
+    )
+    return cached.params
+  }
+
+  const conId = await getUnderlyingConId(symbol)
+
+  // IB intermittently returns an immediate End with zero params (or no End at
+  // all) on the FIRST reqSecDefOptParams for a symbol whose contract isn't
+  // warm yet. The old single-shot 15s request would then hang or cache an
+  // empty chain, which is the "open roll dialog → empty, reopen works" bug.
+  // Retry a few times with a short per-attempt timeout and a small backoff so
+  // the first open already recovers without the user reopening.
+  const MAX_ATTEMPTS = 4
+  const PER_ATTEMPT_TIMEOUT_MS = 4000
+  let lastErr: unknown = null
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    try {
+      const results = await requestOptionChainOnce(symbol, conId, PER_ATTEMPT_TIMEOUT_MS)
+      if (results.length > 0) {
+        chainParamsCache.set(symbol, { params: results, fetchedAt: Date.now() })
+        console.log(
+          `[IB] Option chain cached for ${symbol} (${results.length} exchanges, attempt ${i + 1})`
+        )
+        return results
+      }
+      console.warn(
+        `[IB] Option chain empty for ${symbol} (attempt ${i + 1}/${MAX_ATTEMPTS}), retrying`
+      )
+    } catch (err) {
+      lastErr = err
+      console.warn(
+        `[IB] Option chain attempt ${i + 1}/${MAX_ATTEMPTS} for ${symbol} failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      )
+    }
+    if (i < MAX_ATTEMPTS - 1) {
+      await new Promise((r) => setTimeout(r, 400))
+    }
+  }
+
+  console.error(
+    `[IB] Option chain unavailable for ${symbol} after ${MAX_ATTEMPTS} attempts` +
+      (lastErr ? `: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}` : '')
+  )
+  // Return empty (not cached) so the renderer shows "未找到期權鏈資料" and a
+  // later reopen re-attempts from scratch rather than serving a stale empty.
+  return []
 }
 
 /**

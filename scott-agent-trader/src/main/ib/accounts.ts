@@ -139,16 +139,16 @@ async function requestAccountAliases(accountIds: string[]): Promise<Map<string, 
     }
   }
 
-  // Fetch remaining in parallel
-  if (uncached.length > 0) {
-    const results = await Promise.all(
-      uncached.map(async (id) => ({ id, alias: await requestSingleAccountAlias(id) }))
-    )
-    for (const { id, alias } of results) {
-      if (alias) {
-        aliasCache.set(id, alias)
-        result.set(id, alias)
-      }
+  // Fetch remaining SEQUENTIALLY. reqAccountUpdates supports only ONE active
+  // account subscription at a time per connection — firing them in parallel
+  // makes each reqAccountUpdates(true, id) replace the previous subscription,
+  // so most accounts never receive their AccountOrGroup value, time out, and
+  // fall back to the raw UXXXXX id. One at a time removes the contention.
+  for (const id of uncached) {
+    const alias = await requestSingleAccountAlias(id)
+    if (alias) {
+      aliasCache.set(id, alias)
+      result.set(id, alias)
     }
   }
 
