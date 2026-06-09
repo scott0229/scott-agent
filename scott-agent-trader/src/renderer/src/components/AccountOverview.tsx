@@ -3091,6 +3091,8 @@ export default function AccountOverview({
                                       editingCell.field === 'quantity'
                                     return (
                                       <td
+                                        className="editable-cell"
+                                        title="雙擊修改數量"
                                         style={
                                           editingQty
                                             ? { cursor: 'pointer' }
@@ -3104,7 +3106,10 @@ export default function AccountOverview({
                                                   order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
                                               }
                                         }
-                                        onDoubleClick={() => startEdit(order, 'quantity')}
+                                        onDoubleClick={(e) => {
+                                          e.stopPropagation()
+                                          startEdit(order, 'quantity')
+                                        }}
                                       >
                                         {editingQty ? (
                                           <input
@@ -3141,11 +3146,20 @@ export default function AccountOverview({
                                     )
                                   })()}
                                   <td
+                                    className={
+                                      order.orderType === 'LMT' ? 'editable-cell' : undefined
+                                    }
+                                    title={order.orderType === 'LMT' ? '雙擊修改價格' : undefined}
                                     style={{
                                       cursor: order.orderType === 'LMT' ? 'pointer' : 'default'
                                     }}
-                                    onDoubleClick={() => {
-                                      if (order.orderType === 'LMT') startEdit(order, 'price')
+                                    onDoubleClick={(e) => {
+                                      if (order.orderType === 'LMT') {
+                                        // Don't let the dblclick bubble to the card
+                                        // (which toggles single-account view).
+                                        e.stopPropagation()
+                                        startEdit(order, 'price')
+                                      }
                                     }}
                                   >
                                     {editingCell?.orderId === order.orderId &&
@@ -3163,7 +3177,7 @@ export default function AccountOverview({
                                         }}
                                         onBlur={() => cancelEdit()}
                                         style={{
-                                          width: '80px',
+                                          width: '52px',
                                           padding: '2px 4px',
                                           fontSize: '13px',
                                           background: 'transparent',

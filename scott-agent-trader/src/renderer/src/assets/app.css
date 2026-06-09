@@ -802,6 +802,16 @@ body {
   padding-left: 8px;
 }
 
+/* Double-click-to-edit cells (order quantity / price). The inset overlay
+   darkens whatever background the cell has — white price cell or the
+   green/red quantity block — so the hover hint reads on both. */
+.positions-table td.editable-cell {
+  cursor: pointer;
+}
+.positions-table td.editable-cell:hover {
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.07);
+}
+
 
 .pos-long {
   color: var(--accent-green);
