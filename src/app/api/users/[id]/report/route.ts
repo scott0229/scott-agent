@@ -336,6 +336,46 @@ export async function GET(
         // Add accumulated interest to annual premium
         annualPremium += totalDailyInterest;
 
+        // 平倉費用「只計入被突破」adjustment. monthlyStats already rolled every
+        // open position's final_profit (mark-to-market) into total_profit, so
+        // to switch the open contribution to "OTM premium + ITM mark-to-
+        // market" we add the net delta:
+        //   (open_otm_premium + open_itm_final_profit) - open_all_final_profit
+        // Mirrors src/lib/options-metrics.ts and the trade-groups 盈虧 column.
+        const closeCostOnlyBreached = req.nextUrl.searchParams.get('closeCostOnlyBreached') === 'true';
+        if (closeCostOnlyBreached) {
+            try {
+                const openAgg = await db.prepare(`
+                    SELECT
+                        COALESCE(SUM(CASE
+                            WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN 0
+                            WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN 0
+                            ELSE O.premium
+                        END), 0) AS open_otm_premium,
+                        COALESCE(SUM(CASE
+                            WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN O.final_profit
+                            WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN O.final_profit
+                            ELSE 0
+                        END), 0) AS open_itm_final_profit,
+                        COALESCE(SUM(O.final_profit), 0) AS open_all_final_profit
+                    FROM OPTIONS O
+                    LEFT JOIN (
+                        SELECT symbol, close_price
+                        FROM market_prices mp1
+                        WHERE date = (SELECT MAX(date) FROM market_prices mp2 WHERE mp2.symbol = mp1.symbol)
+                    ) LP ON LP.symbol = O.underlying
+                    WHERE O.owner_id = ? AND O.year = ? AND O.operation = 'Open'
+                `).bind(userId, currentYear).first<{
+                    open_otm_premium: number; open_itm_final_profit: number; open_all_final_profit: number;
+                }>();
+                if (openAgg) {
+                    annualPremium += (openAgg.open_otm_premium + openAgg.open_itm_final_profit - openAgg.open_all_final_profit);
+                }
+            } catch (err) {
+                console.warn('breach-mode open aggregate failed (non-fatal):', err);
+            }
+        }
+
         const highestEquityResult = await db.prepare(`
             SELECT MAX(net_equity) as max_net_equity
             FROM DAILY_NET_EQUITY

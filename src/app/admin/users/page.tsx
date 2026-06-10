@@ -367,7 +367,7 @@ export default function AdminUsersPage() {
         const reportsMap = new Map<number, { userName: string; report: string }>();
         await Promise.all(nonAdminUsers.map(async (user) => {
             try {
-                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}&t=${Date.now()}`);
+                const res = await fetch(`/api/users/${user.id}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}&closeCostOnlyBreached=${settings.closeCostOnlyBreached === true}&t=${Date.now()}`);
                 const data = await res.json();
                 if (data.success) {
                     const report = formatUserReport(data.reportData, user);
@@ -574,7 +574,7 @@ export default function AdminUsersPage() {
     const handleGenerateReport = async (userId: number) => {
         setIsGeneratingReport(true);
         try {
-            const res = await fetch(`/api/users/${userId}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}`);
+            const res = await fetch(`/api/users/${userId}/report?premiumTargetPercent=${settings.premiumTargetPercent}&year=${selectedYear}&closeCostOnlyBreached=${settings.closeCostOnlyBreached === true}`);
             const data = await res.json();
 
             if (data.success) {
