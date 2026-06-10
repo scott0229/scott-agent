@@ -224,6 +224,7 @@ export default function AccountOverview({
   const [orderFilterAccount, setOrderFilterAccount] = useState('')
   const [orderFilterSymbol, setOrderFilterSymbol] = useState('')
   const [orderFilterType, setOrderFilterType] = useState<'' | 'STK' | 'CALL' | 'PUT'>('')
+  const [orderFilterFill, setOrderFilterFill] = useState<'' | 'filled' | 'unfilled'>('')
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
   const [showOptionOrder, setShowOptionOrder] = useState(false)
@@ -941,9 +942,17 @@ export default function AccountOverview({
       if (orderFilterType) {
         if (getOrderType(o) !== orderFilterType) return false
       }
+      if (orderFilterFill === 'filled' && (o.filled ?? 0) === 0) return false
+      if (orderFilterFill === 'unfilled' && (o.filled ?? 0) > 0) return false
       return true
     })
-  }, [openOrders, orderFilterAccount, orderFilterSymbol, orderFilterType])
+  }, [
+    openOrders,
+    orderFilterAccount,
+    orderFilterSymbol,
+    orderFilterType,
+    orderFilterFill
+  ])
 
   const getPositionsForAccount = (accountId: string): PositionData[] => {
     return positions
@@ -2562,6 +2571,7 @@ export default function AccountOverview({
                       setOrderFilterAccount('')
                       setOrderFilterSymbol('')
                       setOrderFilterType('')
+                      setOrderFilterFill('')
                     }}
                     title="清除所有篩選"
                     style={{
@@ -2598,13 +2608,13 @@ export default function AccountOverview({
                     value={orderFilterAccount}
                     onChange={setOrderFilterAccount}
                     options={orderAccountOptions}
-                    className="order-filter-select"
+                    className={`order-filter-select${orderFilterAccount ? ' active' : ''}`}
                   />
                   <CustomSelect
                     value={orderFilterSymbol}
                     onChange={setOrderFilterSymbol}
                     options={orderSymbolOptions}
-                    className="order-filter-select"
+                    className={`order-filter-select${orderFilterSymbol ? ' active' : ''}`}
                   />
                   <CustomSelect
                     value={orderFilterType}
@@ -2612,7 +2622,19 @@ export default function AccountOverview({
                       setOrderFilterType(v as '' | 'STK' | 'CALL' | 'PUT')
                     }
                     options={orderTypeOptions}
-                    className="order-filter-select"
+                    className={`order-filter-select${orderFilterType ? ' active' : ''}`}
+                  />
+                  <CustomSelect
+                    value={orderFilterFill}
+                    onChange={(v) =>
+                      setOrderFilterFill(v as '' | 'filled' | 'unfilled')
+                    }
+                    options={[
+                      { value: '', label: '全部交易' },
+                      { value: 'filled', label: '已成交' },
+                      { value: 'unfilled', label: '未成交' }
+                    ]}
+                    className={`order-filter-select${orderFilterFill ? ' active' : ''}`}
                   />
                 <button
                   className="select-toggle-btn"

@@ -344,7 +344,11 @@ export default function RollOptionDialog({
 
   return (
     <div className="roll-dialog-overlay" onClick={onClose}>
-      <div className="roll-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="roll-dialog"
+        style={{ width: 820, maxWidth: '96vw' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="roll-dialog-header">
           <h3>
             {symbol} 展期
@@ -469,109 +473,133 @@ export default function RollOptionDialog({
           )}
 
           {/* Order entry section */}
-          <div className="roll-order-section" style={{ overflowX: 'hidden', flexWrap: 'nowrap' }}>
-            {/* Row 1: Roll direction */}
-            {targetExpiry &&
-              targetStrike !== null &&
-              targetRight !== null &&
-              positions.length > 0 &&
-              (() => {
-                return (
-                  <>
-                    <span style={{ whiteSpace: 'nowrap', color: '#333', fontSize: 13 }}>
-                      → {symbol} {formatExpiry(targetExpiry)}{' '}
-                      {Number.isInteger(Number(targetStrike))
-                        ? Number(targetStrike)
-                        : Number(targetStrike).toFixed(1)}
-                      {targetRight}
-                    </span>
-                  </>
-                )
-              })()}
-            {/* Row 2: Spread prices + limit */}
-            {targetExpiry &&
-              targetStrike !== null &&
-              targetRight !== null &&
-              positions.length > 0 && (
+          <div
+            className="roll-order-section"
+            style={{
+              flexWrap: 'nowrap',
+              gap: 10,
+              justifyContent: 'space-between'
+            }}
+          >
+            {/* Chunk 1: source → target option signature. Always rendered so
+                the section stays symmetric; target half shows a placeholder
+                until the user picks an expiry/strike on the chain. */}
+            {(() => {
+              const srcPos = positions[0]
+              const haveSrc = srcPos && srcPos.expiry && srcPos.strike != null
+              const srcStrikeStr =
+                srcPos && srcPos.strike != null
+                  ? Number.isInteger(Number(srcPos.strike))
+                    ? Number(srcPos.strike)
+                    : Number(srcPos.strike).toFixed(1)
+                  : ''
+              const srcRight =
+                srcPos?.right === 'C' || srcPos?.right === 'CALL'
+                  ? 'C'
+                  : srcPos?.right === 'P' || srcPos?.right === 'PUT'
+                    ? 'P'
+                    : ''
+              const haveTgt =
+                targetExpiry && targetStrike !== null && targetRight !== null
+              const tgtStrikeStr =
+                targetStrike !== null
+                  ? Number.isInteger(Number(targetStrike))
+                    ? Number(targetStrike)
+                    : Number(targetStrike).toFixed(1)
+                  : ''
+              return (
                 <span
-                  style={{
-                    width: 1,
-                    height: 16,
-                    background: '#ccc',
-                    flexShrink: 0,
-                    margin: '0 6px'
-                  }}
-                />
-              )}
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
-              買
-            </span>
-            <span className="roll-order-value roll-order-bid">
-              {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
-            />
-            <span className="roll-order-label">賣</span>
-            <span className="roll-order-value roll-order-ask">
-              {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
-            />
-            <span
-              style={{
-                background: '#fff9db',
-                padding: '2px 8px',
-                borderRadius: 4,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span className="roll-order-label">中間</span>{' '}
-              <span className="roll-order-value roll-order-mid">
+                  className="roll-order-chunk"
+                  style={{ fontSize: 13, color: '#333', background: '#fff7d1' }}
+                >
+                  {haveSrc ? (
+                    <>
+                      {symbol} {formatExpiry(srcPos.expiry!)} {srcStrikeStr}
+                      {srcRight}
+                    </>
+                  ) : (
+                    <span style={{ color: '#9ca3af' }}>來源 -</span>
+                  )}
+                  <span style={{ margin: '0 8px', color: '#888' }}>→</span>
+                  {haveTgt ? (
+                    <>
+                      {formatExpiry(targetExpiry!)} {tgtStrikeStr}
+                      {targetRight}
+                    </>
+                  ) : (
+                    <span style={{ color: '#9ca3af' }}>選擇目標</span>
+                  )}
+                </span>
+              )
+            })()}
+            {/* Chunk 2: prices + limit + qty inputs */}
+            <span className="roll-order-chunk" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+                買
+              </span>
+              <span className="roll-order-value roll-order-bid" style={{ marginLeft: 4 }}>
+                {spreadPrices ? spreadPrices.bid.toFixed(2) : '-'}
+              </span>
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
+              />
+              <span className="roll-order-label">賣</span>
+              <span className="roll-order-value roll-order-ask" style={{ marginLeft: 4 }}>
+                {spreadPrices ? spreadPrices.ask.toFixed(2) : '-'}
+              </span>
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
+              />
+              <span className="roll-order-label">中間</span>
+              <span className="roll-order-value roll-order-mid" style={{ marginLeft: 4 }}>
                 {spreadPrices ? spreadPrices.mid.toFixed(2) : '-'}
               </span>
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
-            />
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>
-              限價
-            </span>
-            <div className="roll-limit-wrapper" ref={limitInputRef}>
-              <input
-                type="text"
-                className="roll-order-input"
-                style={{ width: 55, padding: '2px 6px', fontSize: 12 }}
-                value={limitPrice}
-                onChange={(e) => {
-                  userEditedPriceRef.current = true
-                  setLimitPrice(e.target.value)
-                }}
-                placeholder="0.00"
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
               />
-            </div>
-
-            {isSingleAccount && (
-              <>
-                <span
-                  style={{ marginLeft: 12, whiteSpace: 'nowrap', fontSize: 12 }}
-                  className="roll-order-label"
-                >
-                  口數
-                </span>
-                <div className="roll-limit-wrapper">
-                  <input
-                    type="number"
-                    className="roll-order-input"
-                    style={{ width: 45, padding: '2px 6px', fontSize: 12 }}
-                    value={rollQty}
-                    onChange={(e) => setRollQty(e.target.value)}
-                  />
-                </div>
-                <div style={{ width: 12, flexShrink: 0 }}></div>
-              </>
-            )}
+              <span className="roll-order-label" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>
+                限價
+              </span>
+              <div className="roll-limit-wrapper" ref={limitInputRef} style={{ marginLeft: 4 }}>
+                <input
+                  type="text"
+                  className="roll-order-input"
+                  style={{ width: 55, padding: '0 6px', height: 22, fontSize: 12 }}
+                  value={limitPrice}
+                  onFocus={() => {
+                    // Stop the mid-price auto-fill the moment focus lands
+                    // here — otherwise the value can shift under the user's
+                    // cursor before they even type, knocking them off the
+                    // digit they were about to edit.
+                    userEditedPriceRef.current = true
+                  }}
+                  onChange={(e) => {
+                    userEditedPriceRef.current = true
+                    setLimitPrice(e.target.value)
+                  }}
+                  placeholder="0.00"
+                />
+              </div>
+              {isSingleAccount && (
+                <>
+                  <span
+                    style={{ marginLeft: 12, whiteSpace: 'nowrap', fontSize: 12 }}
+                    className="roll-order-label"
+                  >
+                    口數
+                  </span>
+                  <div className="roll-limit-wrapper" style={{ marginLeft: 4 }}>
+                    <input
+                      type="number"
+                      className="roll-order-input"
+                      style={{ width: 45, padding: '0 6px', height: 22, fontSize: 12 }}
+                      value={rollQty}
+                      onChange={(e) => setRollQty(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </span>
           </div>
 
           {/* Positions table */}
