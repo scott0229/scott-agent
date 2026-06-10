@@ -429,7 +429,7 @@ export default function OptionsPage() {
                                                 dailyPremium={client.daily_premium || []}
                                                 initialCost={(client.initial_cost && client.initial_cost > 0) ? client.initial_cost : (client.net_deposit || 0)}
                                                 totalDailyInterest={(client as any).total_daily_interest || 0}
-                                                annualPremium={calculateAnnualPremium(client as any, { includeStockDiff: settings.includeStockDiffInPremium !== false })}
+                                                annualPremium={calculateAnnualPremium(client as any, { includeStockDiff: settings.includeStockDiffInPremium !== false, closeCostOnlyBreached: settings.closeCostOnlyBreached === true })}
                                                 name={displayName}
                                             />
                                         </div>

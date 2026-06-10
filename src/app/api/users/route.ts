@@ -433,16 +433,56 @@ export async function GET(req: NextRequest) {
                         .bind(startFilter, endOfYear)
                         .first();
                     marketDataCount = countResult?.count || 0;
+                }
 
-                    return {
-                        users,
-                        meta: {
-                            marketDataCount
-                        }
-                    };
-                } else {
-                    const countResult = await db.prepare('SELECT COUNT(*) as count FROM market_prices').first();
-                    marketDataCount = countResult?.count || 0;
+                // Open-option aggregates per user, keyed by spot vs strike.
+                // Powers the "只計入被突破" 期權收益率 adjustment so the rate
+                // can mirror trade-groups 盈虧 when the admin opts into the
+                // breach-only mode. Lives here (instead of as more inline
+                // subqueries) so the per-row work is one extra SQL trip per
+                // request, not N.
+                try {
+                    const yearFilter = (year && year !== 'All') ? ' AND O.year = ?' : '';
+                    const aggBindings: (string | number)[] = year && year !== 'All' ? [parseInt(year as string)] : [];
+                    const openAggSql = `
+                        SELECT
+                            O.owner_id,
+                            COALESCE(SUM(CASE
+                                WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN 0
+                                WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN 0
+                                ELSE O.premium
+                            END), 0) AS open_otm_premium,
+                            COALESCE(SUM(CASE
+                                WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN O.final_profit
+                                WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN O.final_profit
+                                ELSE 0
+                            END), 0) AS open_itm_final_profit
+                        FROM OPTIONS O
+                        LEFT JOIN (
+                            SELECT symbol, close_price
+                            FROM market_prices mp1
+                            WHERE date = (SELECT MAX(date) FROM market_prices mp2 WHERE mp2.symbol = mp1.symbol)
+                        ) LP ON LP.symbol = O.underlying
+                        WHERE O.operation = 'Open'${yearFilter}
+                        GROUP BY O.owner_id
+                    `;
+                    const { results: openAggRows } = await db.prepare(openAggSql).bind(...aggBindings).all<{
+                        owner_id: number; open_otm_premium: number; open_itm_final_profit: number;
+                    }>();
+                    const openAggMap = new Map<number, { open_otm_premium: number; open_itm_final_profit: number }>();
+                    for (const r of openAggRows || []) {
+                        openAggMap.set(r.owner_id, {
+                            open_otm_premium: r.open_otm_premium,
+                            open_itm_final_profit: r.open_itm_final_profit,
+                        });
+                    }
+                    (users as any[]).forEach((u) => {
+                        const agg = openAggMap.get(u.id) || { open_otm_premium: 0, open_itm_final_profit: 0 };
+                        u.open_otm_premium = agg.open_otm_premium;
+                        u.open_itm_final_profit = agg.open_itm_final_profit;
+                    });
+                } catch (err) {
+                    console.warn('Open-option aggregate query failed (non-fatal):', err);
                 }
 
                 return { users, meta: { marketDataCount } };

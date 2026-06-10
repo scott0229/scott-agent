@@ -27,6 +27,15 @@ export interface PremiumInput {
     total_daily_interest?: number;
     initial_cost?: number | null;
     net_deposit?: number | null;
+    /** Sum of premium for OTM (unbreached) open positions. Populated by
+     *  /api/users when the option's spot is on the safe side of the strike.
+     *  Added to annualPremium when the admin's 平倉費用 setting is
+     *  「只計入被突破」 — treats those positions as already-earned. */
+    open_otm_premium?: number;
+    /** Sum of final_profit (mark-to-market unrealized) for ITM (breached)
+     *  open positions. Added in 「只計入被突破」 mode so the breached side
+     *  still surfaces its current valuation. */
+    open_itm_final_profit?: number;
 }
 
 export function getPremiumCostBase(user: PremiumInput): number {
@@ -36,14 +45,22 @@ export function getPremiumCostBase(user: PremiumInput): number {
 
 export function calculateAnnualPremium(
     user: PremiumInput,
-    options: { includeStockDiff?: boolean } = {},
+    options: { includeStockDiff?: boolean; closeCostOnlyBreached?: boolean } = {},
 ): number {
-    const { includeStockDiff = true } = options;
+    const { includeStockDiff = true, closeCostOnlyBreached = false } = options;
     const stats = user.monthly_stats || [];
     const put = stats.reduce((s, m) => s + (m.put_profit || 0), 0);
     const call = stats.reduce((s, m) => s + (m.call_profit || 0), 0);
     const stock = stats.reduce((s, m) => s + (m.stock_pnl || 0), 0);
-    return put + call + (includeStockDiff ? stock : 0) + (user.total_daily_interest || 0);
+    const base = put + call + (includeStockDiff ? stock : 0) + (user.total_daily_interest || 0);
+    // Mirror the trade-groups 盈虧 logic: "只計入被突破" mode treats OTM
+    // open positions as locked-in premium (will-expire-worthless) and
+    // marks ITM open positions to market. Sum both adjustments onto the
+    // base realized total so 期權收益率 surfaces the same view.
+    if (closeCostOnlyBreached) {
+        return base + (user.open_otm_premium || 0) + (user.open_itm_final_profit || 0);
+    }
+    return base;
 }
 
 export function calculatePremiumRate(annualPremium: number, costBase: number): number {

@@ -37,6 +37,8 @@ interface User {
     current_net_equity?: number;
     start_date?: string;
     total_daily_interest?: number;
+    open_otm_premium?: number;
+    open_itm_final_profit?: number;
 }
 
 interface OptionsSummaryPanelProps {
@@ -194,6 +196,7 @@ export function OptionsSummaryPanel({ users, year }: OptionsSummaryPanelProps) {
         const annualStockPnl = user.monthly_stats?.reduce((s, stat) => s + (stat.stock_pnl || 0), 0) || 0;
         const annualPremium = calculateAnnualPremium(user, {
             includeStockDiff: settings.includeStockDiffInPremium !== false,
+            closeCostOnlyBreached: settings.closeCostOnlyBreached === true,
         });
 
         // Daily Premium = annual total / trading days so far (from user's start_date)

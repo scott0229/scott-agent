@@ -316,12 +316,19 @@ export default function TradeGroupsPage() {
                     
                     const ownerName = userMap.get(stat.ownerId) || `User ${stat.ownerId}`;
                     
+                    // Derive 盈虧 from the same components the table renders
+                    // (現金流入 + 持股獲利 - 平倉費用). Keeps it consistent when
+                    // the close-cost is filtered to "只計入被突破" — otherwise
+                    // 盈虧 would still reflect the raw final_profit sum that
+                    // includes the cost we just suppressed.
+                    const derivedProfit = stat.netCashInflow + stat.stockProfit - stat.openCostToClose;
+
                     return {
                         ownerId: stat.ownerId,
                         ownerName,
                         name: actualName,
                         count: stat.count,
-                        profit: stat.profit,
+                        profit: derivedProfit,
                         netCashInflow: stat.netCashInflow,
                         openCostToClose: stat.openCostToClose,
                         stockProfit: stat.stockProfit,
