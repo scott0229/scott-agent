@@ -263,16 +263,35 @@ function requestAccountSummaryRaw(reqId: number, group: string): Promise<Account
   })
 }
 
-// Request positions for all accounts
+// Request positions for all accounts.
+//
+// reqPositions() opens a *streaming subscription*, not a one-shot request:
+// after the initial snapshot + positionEnd, IB keeps pushing incremental
+// (delta) updates until cancelPositions() is called. The old code never
+// cancelled, so overlapping calls and stray delta cycles could let one call
+// resolve on a positionEnd that belonged to a partial update — handing back a
+// snapshot that was missing a leg at random (e.g. a strangle's short put would
+// vanish from the card until the next complete poll).
+//
+// Fix: cancel the subscription the instant the snapshot completes, so every
+// call is a clean one-shot; and dedupe concurrent callers onto one in-flight
+// request so two polls can't interleave on the shared event stream.
+let positionsInFlight: Promise<PositionData[]> | null = null
+
 export function requestPositions(): Promise<PositionData[]> {
-  return new Promise((resolve, reject) => {
+  if (positionsInFlight) return positionsInFlight
+
+  positionsInFlight = new Promise<PositionData[]>((resolve, reject) => {
     const api = getIBApi()
     if (!api) {
+      positionsInFlight = null
       reject(new Error('Not connected to IB'))
       return
     }
 
     const positions: PositionData[] = []
+    let settled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
 
     const posHandler = (account: string, contract: any, pos: number, avgCost: number): void => {
       if (pos !== 0) {
@@ -289,24 +308,34 @@ export function requestPositions(): Promise<PositionData[]> {
       }
     }
 
-    const endHandler = (): void => {
+    const finish = (label: string): void => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
       api.removeListener(EventName.position, posHandler)
       api.removeListener(EventName.positionEnd, endHandler)
-      console.log(`[IB] Positions received: ${positions.length}`)
+      try {
+        // Close the streaming subscription so it can't leak delta updates into
+        // the next caller's snapshot.
+        api.cancelPositions()
+      } catch {
+        /* subscription may already be gone — ignore */
+      }
+      console.log(`[IB] Positions ${label}: ${positions.length}`)
+      positionsInFlight = null
       resolve(positions)
     }
+
+    const endHandler = (): void => finish('received')
 
     api.on(EventName.position, posHandler as any)
     api.on(EventName.positionEnd, endHandler)
 
-    // Timeout after 15 seconds
-    setTimeout(() => {
-      api.removeListener(EventName.position, posHandler)
-      api.removeListener(EventName.positionEnd, endHandler)
-      console.log(`[IB] Positions timeout: ${positions.length} received so far`)
-      resolve(positions) // Return what we have
-    }, 15000)
+    // Timeout after 15 seconds — return whatever arrived.
+    timer = setTimeout(() => finish('timeout'), 15000)
 
     api.reqPositions()
   })
+
+  return positionsInFlight
 }

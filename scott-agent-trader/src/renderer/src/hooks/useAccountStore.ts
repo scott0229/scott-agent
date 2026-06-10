@@ -101,6 +101,11 @@ export function useAccountStore(
   const hasDataRef = useRef(false)
   const quoteCleanupRef = useRef<(() => void) | null>(null)
   const lastOrderUpdateRef = useRef<Record<number, number>>({})
+  // Consecutive-miss counter (keyed by position) for the snapshot merge below.
+  // A leg that drops out of a single (possibly partial) IB snapshot is kept for
+  // one grace cycle so it doesn't blink out of the card; it's only removed once
+  // it's been absent from two snapshots in a row (a genuinely-closed position).
+  const posMissRef = useRef<Map<string, number>>(new Map())
   // Signature of the currently-subscribed contract set. We only re-subscribe
   // when it changes — re-subscribing every poll tears down combo market data
   // before IB finishes computing its net bid/ask (which takes a few seconds).
@@ -159,9 +164,36 @@ export function useAccountStore(
       }
       if (positionData.length > 0) {
         setPositions((prev) => {
+          const keyOf = (p: PositionData): string =>
+            `${p.account}|${p.symbol}|${p.secType}|${p.expiry || ''}|${p.strike || ''}|${p.right || ''}`
           const incomingAccounts = new Set(positionData.map((p: PositionData) => p.account))
-          const kept = prev.filter((p) => !incomingAccounts.has(p.account))
-          return [...kept, ...positionData]
+          const incomingKeys = new Set(positionData.map(keyOf))
+          const misses = posMissRef.current
+
+          // Positions for accounts NOT in this snapshot are untouched.
+          const result = prev.filter((p) => !incomingAccounts.has(p.account))
+
+          // Positions for accounts that ARE in this snapshot but missing a leg:
+          // keep that leg for one grace cycle (it may have transiently dropped
+          // out of a partial IB snapshot). Only drop it after two misses in a
+          // row, so a genuinely-closed position still clears promptly.
+          for (const p of prev) {
+            if (!incomingAccounts.has(p.account)) continue
+            const k = keyOf(p)
+            if (incomingKeys.has(k)) continue // refreshed from incoming below
+            const n = (misses.get(k) || 0) + 1
+            if (n < 2) {
+              misses.set(k, n)
+              result.push(p)
+            } else {
+              misses.delete(k)
+            }
+          }
+
+          // Everything present in this snapshot resets its miss counter.
+          for (const p of positionData) misses.delete(keyOf(p))
+
+          return [...result, ...positionData]
         })
       }
       hasDataRef.current = true
