@@ -1205,7 +1205,8 @@ export default function AccountOverview({
             // TWS-style "filled / total" — direction is conveyed by the
             // green/red cell background, so we drop the explicit +/- sign.
             <>
-              {order.filled ?? 0}/{Math.abs(order.quantity)}
+              {(order.filled ?? 0).toLocaleString('en-US')}/
+              {Math.abs(order.quantity).toLocaleString('en-US')}
             </>
           )}
         </td>
@@ -1722,11 +1723,6 @@ export default function AccountOverview({
                         }, 0)
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', marginRight: '12px' }}>
-                            {g.autoParams && (
-                              <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px' }}>
-                                自動
-                              </span>
-                            )}
                             <span
                               style={{
                                 fontSize: '14px',
@@ -1737,6 +1733,11 @@ export default function AccountOverview({
                               {totalPnl >= 0 ? '+' : ''}
                               {Math.round(totalPnl).toLocaleString()}
                             </span>
+                            {g.autoParams && (
+                              <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px' }}>
+                                自動
+                              </span>
+                            )}
                           </div>
                         )
                       })()}
