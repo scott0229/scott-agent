@@ -443,6 +443,25 @@ export function UserProfileMenu() {
                                             autoComplete="new-password"
                                         />
                                     </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="report-cc-enabled-4"
+                                                checked={settings.reportCcEnabled4 !== false}
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled4', !!v)}
+                                            />
+                                            <Label htmlFor="report-cc-email-4" className="cursor-pointer">同步報表 4</Label>
+                                        </div>
+                                        <Input
+                                            id="report-cc-email-4"
+                                            name="report-cc-email-4"
+                                            type="text"
+                                            value={settings.reportCcEmail4 || ''}
+                                            onChange={(e) => updateSetting('reportCcEmail4', e.target.value)}
+                                            placeholder="輸入 Email (選填)"
+                                            autoComplete="new-password"
+                                        />
+                                    </div>
                                     <div className="grid grid-cols-[100px_1fr] items-start gap-4">
                                         <Label className="pt-1">BCC 寄出報告</Label>
                                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

@@ -15,6 +15,8 @@ interface AdminSettings {
     reportCcEnabled2?: boolean;
     reportCcEmail3?: string;
     reportCcEnabled3?: boolean;
+    reportCcEmail4?: string;
+    reportCcEnabled4?: boolean;
     // BCC 寄出報告 內容選項 (multi-select). Default both on so existing
     // recipients keep seeing the full report.
     bccIncludeTradeAdvice?: boolean;
@@ -42,6 +44,8 @@ const defaultSettings: AdminSettings = {
     reportCcEnabled2: true,
     reportCcEmail3: '',
     reportCcEnabled3: true,
+    reportCcEmail4: '',
+    reportCcEnabled4: true,
     bccIncludeTradeAdvice: true,
     bccIncludeDailyOps: true,
 };

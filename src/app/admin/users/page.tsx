@@ -623,6 +623,7 @@ export default function AdminUsersPage() {
             settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
             settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
             settings.reportCcEnabled3 ? settings.reportCcEmail3 : null,
+            settings.reportCcEnabled4 ? settings.reportCcEmail4 : null,
         ].filter(e => e && typeof e === 'string' && e.trim() !== '') as string[];
 
         // Fetch the latest /api/daily-trades once and reuse for every user
@@ -1884,6 +1885,7 @@ export default function AdminUsersPage() {
                                                             settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
                                                             settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
                                                             settings.reportCcEnabled3 ? settings.reportCcEmail3 : null,
+                                                            settings.reportCcEnabled4 ? settings.reportCcEmail4 : null,
                                                         ].filter(e => e && typeof e === 'string' && e.trim() !== '') as string[];
 
                                                         // Build BCC extras (含交易建議 / 含當日操作) when the admin
@@ -2150,13 +2152,14 @@ export default function AdminUsersPage() {
                     }}
                     title="選擇要寄出報告的用戶"
                     description={
-                        ((settings.reportCcEnabled1 && settings.reportCcEmail1) || (settings.reportCcEnabled2 && settings.reportCcEmail2) || (settings.reportCcEnabled3 && settings.reportCcEmail3)) ? (
+                        ((settings.reportCcEnabled1 && settings.reportCcEmail1) || (settings.reportCcEnabled2 && settings.reportCcEmail2) || (settings.reportCcEnabled3 && settings.reportCcEmail3) || (settings.reportCcEnabled4 && settings.reportCcEmail4)) ? (
                             <>
                                 將同步密件副本 (BCC) 至：<br />
                                 {[
                                     settings.reportCcEnabled1 ? settings.reportCcEmail1 : null,
                                     settings.reportCcEnabled2 ? settings.reportCcEmail2 : null,
-                                    settings.reportCcEnabled3 ? settings.reportCcEmail3 : null
+                                    settings.reportCcEnabled3 ? settings.reportCcEmail3 : null,
+                                    settings.reportCcEnabled4 ? settings.reportCcEmail4 : null
                                 ].filter(e => e && typeof e === 'string' && e.trim() !== '').join(', ')}
                             </>
                         ) : undefined
