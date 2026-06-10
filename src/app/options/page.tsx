@@ -26,7 +26,7 @@ import { OptionsSummaryPanel } from '@/components/OptionsSummaryPanel';
 import { EquityPremiumChart } from '@/components/EquityPremiumChart';
 import { useWindowSize } from '@/hooks/use-window-size';
 import { useAdminSettings } from '@/contexts/AdminSettingsContext';
-import { calculateAnnualPremium } from '@/lib/options-metrics';
+import { calculateAnnualPremium, calculatePremiumRate, getPremiumCostBase } from '@/lib/options-metrics';
 import { calculateMarginRate } from '@/lib/margin-rate';
 
 interface UserStats {
@@ -212,14 +212,16 @@ export default function OptionsPage() {
 
             return marginRateB - marginRateA;
         } else if (sortOrder === 'premium-rate-desc') {
-            // Mirror the badge formula in OptionsSummaryPanel:
-            // denominator = initial_cost; fall back to net_deposit
-            // numerator   = total_profit (already includes put+call+stock+interest)
-            const costA = (a.initial_cost && a.initial_cost > 0) ? a.initial_cost : (a.net_deposit || 0);
-            const rateA = costA > 0 ? (a.total_profit || 0) / costA : 0;
-
-            const costB = (b.initial_cost && b.initial_cost > 0) ? b.initial_cost : (b.net_deposit || 0);
-            const rateB = costB > 0 ? (b.total_profit || 0) / costB : 0;
+            // Use the exact canonical formula the badge renders so the sort
+            // order matches the visible numbers — the old total_profit/cost
+            // shortcut drifted from calculateAnnualPremium (esp. now that
+            // breach-mode adjusts the numerator).
+            const premOpts = {
+                includeStockDiff: settings.includeStockDiffInPremium !== false,
+                closeCostOnlyBreached: settings.closeCostOnlyBreached === true,
+            };
+            const rateA = calculatePremiumRate(calculateAnnualPremium(a as any, premOpts), getPremiumCostBase(a as any));
+            const rateB = calculatePremiumRate(calculateAnnualPremium(b as any, premOpts), getPremiumCostBase(b as any));
 
             return rateB - rateA;
         }
