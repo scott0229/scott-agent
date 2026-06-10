@@ -159,16 +159,17 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        // Unconditional QQQ OHLC refresh via Yahoo Finance. The per-user
-        // Alpha Vantage block above only runs for users whose
-        // auto_update_time falls in the current 15-min window — and even
-        // then the free-tier 25/day cap silently 503s after the quota's
-        // gone. Yahoo's chart endpoint has no key, no day cap, and returns
-        // full OHLC, so we hit it once per tick to keep market_prices
-        // current. range=5d covers any same-week gap; small payload, one
-        // HTTP call.
-        try {
-            const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=5d&interval=1d`;
+        // Unconditional Yahoo OHLC refresh for the benchmark symbols.
+        // Pass 1 is a cheap 5d window (covers the normal case where
+        // yesterday's bar just needs to land); Pass 2 fires range=1mo
+        // ONLY when the last 7 calendar days hold fewer than 4 trading
+        // days in the DB — that means a prior tick lost the Yahoo call
+        // and a backfill is needed. The fallback bounds 06-08-style
+        // gaps that previously required a manual curl.
+        const refreshSymbols = ['QQQ', 'QLD'];
+
+        async function yahooUpsertOHLC(symbol: string, range: string): Promise<number> {
+            const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=1d`;
             const yRes = await fetch(yUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
@@ -176,54 +177,76 @@ export async function GET(req: NextRequest) {
                 },
                 signal: AbortSignal.timeout(10000),
             });
-            if (yRes.ok) {
-                const yData = await yRes.json() as {
-                    chart?: { result?: {
-                        timestamp?: number[];
-                        indicators?: { quote?: {
-                            open?: (number | null)[]; high?: (number | null)[];
-                            low?: (number | null)[]; close?: (number | null)[];
-                            volume?: (number | null)[];
-                        }[]; };
-                    }[]; };
-                };
-                const result = yData.chart?.result?.[0];
-                const timestamps = result?.timestamp;
-                const quote = result?.indicators?.quote?.[0];
-                if (timestamps && quote) {
-                    const stmt = db.prepare(`
-                        INSERT INTO market_prices (symbol, date, close_price, open, high, low, close, volume)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(symbol, date) DO UPDATE SET
-                            close_price=excluded.close_price,
-                            open=excluded.open, high=excluded.high,
-                            low=excluded.low, close=excluded.close,
-                            volume=excluded.volume
-                    `);
-                    const batch: ReturnType<typeof stmt.bind>[] = [];
-                    for (let i = 0; i < timestamps.length; i++) {
-                        const ts = timestamps[i];
-                        const close = quote.close?.[i];
-                        const open = quote.open?.[i];
-                        if (close == null || open == null) continue;
-                        const d = new Date(ts * 1000);
-                        const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
-                        batch.push(stmt.bind(
-                            'QQQ', midnight, close, open,
-                            quote.high?.[i] ?? null, quote.low?.[i] ?? null,
-                            close, quote.volume?.[i] ?? null,
-                        ));
-                    }
-                    if (batch.length > 0) {
-                        await db.batch(batch);
-                        console.log(`[Auto Update] Yahoo QQQ OHLC upserted ${batch.length} rows`);
-                    }
-                }
-            } else {
-                console.warn(`[Auto Update] Yahoo QQQ fetch returned ${yRes.status}`);
+            if (!yRes.ok) {
+                console.warn(`[Auto Update] Yahoo ${symbol}@${range} returned ${yRes.status}`);
+                return 0;
             }
-        } catch (err) {
-            console.warn('[Auto Update] Yahoo QQQ refresh failed (non-fatal):', err);
+            const yData = await yRes.json() as {
+                chart?: { result?: {
+                    timestamp?: number[];
+                    indicators?: { quote?: {
+                        open?: (number | null)[]; high?: (number | null)[];
+                        low?: (number | null)[]; close?: (number | null)[];
+                        volume?: (number | null)[];
+                    }[]; };
+                }[]; };
+            };
+            const result = yData.chart?.result?.[0];
+            const timestamps = result?.timestamp;
+            const quote = result?.indicators?.quote?.[0];
+            if (!timestamps || !quote) return 0;
+            const stmt = db.prepare(`
+                INSERT INTO market_prices (symbol, date, close_price, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, date) DO UPDATE SET
+                    close_price=excluded.close_price,
+                    open=excluded.open, high=excluded.high,
+                    low=excluded.low, close=excluded.close,
+                    volume=excluded.volume
+            `);
+            const batch: ReturnType<typeof stmt.bind>[] = [];
+            for (let i = 0; i < timestamps.length; i++) {
+                const ts = timestamps[i];
+                const close = quote.close?.[i];
+                const open = quote.open?.[i];
+                if (close == null || open == null) continue;
+                const d = new Date(ts * 1000);
+                const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
+                batch.push(stmt.bind(
+                    symbol, midnight, close, open,
+                    quote.high?.[i] ?? null, quote.low?.[i] ?? null,
+                    close, quote.volume?.[i] ?? null,
+                ));
+            }
+            if (batch.length === 0) return 0;
+            await db.batch(batch);
+            return batch.length;
+        }
+
+        for (const refreshSymbol of refreshSymbols) {
+            try {
+                const upserted5d = await yahooUpsertOHLC(refreshSymbol, '5d');
+                if (upserted5d > 0) {
+                    console.log(`[Auto Update] Yahoo ${refreshSymbol} 5d upserted ${upserted5d} rows`);
+                }
+
+                // Gap detector: count distinct trading days the DB holds
+                // for this symbol in the last 7 calendar days. A normal
+                // M-F week with no holidays gives 5 trading days, so
+                // <4 means a prior tick missed at least one. Backfill
+                // with range=1mo to be safe.
+                const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
+                const gapRow = await db.prepare(
+                    `SELECT COUNT(DISTINCT date) AS recent_count FROM market_prices WHERE symbol = ? AND date >= ?`,
+                ).bind(refreshSymbol, sevenDaysAgo).first<{ recent_count: number }>();
+                const recentCount = gapRow?.recent_count ?? 0;
+                if (recentCount < 4) {
+                    const upserted1mo = await yahooUpsertOHLC(refreshSymbol, '1mo');
+                    console.log(`[Auto Update] Yahoo ${refreshSymbol} gap fallback (recent=${recentCount}): 1mo upserted ${upserted1mo} rows`);
+                }
+            } catch (err) {
+                console.warn(`[Auto Update] Yahoo ${refreshSymbol} refresh failed (non-fatal):`, err);
+            }
         }
 
         // Backfill underlying spot for any option-trade minute in the last
