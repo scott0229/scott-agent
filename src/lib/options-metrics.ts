@@ -27,15 +27,14 @@ export interface PremiumInput {
     total_daily_interest?: number;
     initial_cost?: number | null;
     net_deposit?: number | null;
-    /** Sum of premium for OTM (unbreached) open positions. Populated by
-     *  /api/users when the option's spot is on the safe side of the strike.
-     *  Added to annualPremium when the admin's 平倉費用 setting is
-     *  「只計入被突破」 — treats those positions as already-earned. */
+    /** Sum of premium for OTM (unbreached) open positions. */
     open_otm_premium?: number;
-    /** Sum of final_profit (mark-to-market unrealized) for ITM (breached)
-     *  open positions. Added in 「只計入被突破」 mode so the breached side
-     *  still surfaces its current valuation. */
+    /** Sum of final_profit for ITM (breached) open positions. */
     open_itm_final_profit?: number;
+    /** Sum of final_profit for ALL open positions. monthly_stats already
+     *  rolls open final_profit into the put/call totals, so the breach-only
+     *  adjustment has to subtract this to avoid double-counting. */
+    open_all_final_profit?: number;
 }
 
 export function getPremiumCostBase(user: PremiumInput): number {
@@ -53,12 +52,20 @@ export function calculateAnnualPremium(
     const call = stats.reduce((s, m) => s + (m.call_profit || 0), 0);
     const stock = stats.reduce((s, m) => s + (m.stock_pnl || 0), 0);
     const base = put + call + (includeStockDiff ? stock : 0) + (user.total_daily_interest || 0);
-    // Mirror the trade-groups 盈虧 logic: "只計入被突破" mode treats OTM
-    // open positions as locked-in premium (will-expire-worthless) and
-    // marks ITM open positions to market. Sum both adjustments onto the
-    // base realized total so 期權收益率 surfaces the same view.
+    // Mirror the trade-groups 盈虧 logic: "只計入被突破" mode swaps the
+    // open positions' contribution from "mark-to-market for all" (what
+    // monthly_stats already aggregates via final_profit) to "OTM premium +
+    // ITM mark-to-market". Net adjustment = new_open_contribution minus
+    // what monthly_stats already counted = (open_otm_premium +
+    // open_itm_final_profit) - open_all_final_profit. Without the
+    // subtraction we'd double-count the open MTM that's already inside
+    // put_profit / call_profit.
     if (closeCostOnlyBreached) {
-        return base + (user.open_otm_premium || 0) + (user.open_itm_final_profit || 0);
+        const adjustment =
+            (user.open_otm_premium || 0)
+            + (user.open_itm_final_profit || 0)
+            - (user.open_all_final_profit || 0);
+        return base + adjustment;
     }
     return base;
 }

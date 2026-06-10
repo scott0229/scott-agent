@@ -392,7 +392,7 @@ export function UserProfileMenu() {
                                             value={settings.closeCostOnlyBreached ? 'breached' : 'all'}
                                             onValueChange={(val) => updateSetting('closeCostOnlyBreached', val === 'breached')}
                                         >
-                                            <SelectTrigger className="w-[180px] h-9">
+                                            <SelectTrigger className="w-full h-9">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>

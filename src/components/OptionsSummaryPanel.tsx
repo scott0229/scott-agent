@@ -39,6 +39,7 @@ interface User {
     total_daily_interest?: number;
     open_otm_premium?: number;
     open_itm_final_profit?: number;
+    open_all_final_profit?: number;
 }
 
 interface OptionsSummaryPanelProps {

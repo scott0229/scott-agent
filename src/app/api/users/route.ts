@@ -456,7 +456,8 @@ export async function GET(req: NextRequest) {
                                 WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN O.final_profit
                                 WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN O.final_profit
                                 ELSE 0
-                            END), 0) AS open_itm_final_profit
+                            END), 0) AS open_itm_final_profit,
+                            COALESCE(SUM(O.final_profit), 0) AS open_all_final_profit
                         FROM OPTIONS O
                         LEFT JOIN (
                             SELECT symbol, close_price
@@ -467,19 +468,21 @@ export async function GET(req: NextRequest) {
                         GROUP BY O.owner_id
                     `;
                     const { results: openAggRows } = await db.prepare(openAggSql).bind(...aggBindings).all<{
-                        owner_id: number; open_otm_premium: number; open_itm_final_profit: number;
+                        owner_id: number; open_otm_premium: number; open_itm_final_profit: number; open_all_final_profit: number;
                     }>();
-                    const openAggMap = new Map<number, { open_otm_premium: number; open_itm_final_profit: number }>();
+                    const openAggMap = new Map<number, { open_otm_premium: number; open_itm_final_profit: number; open_all_final_profit: number }>();
                     for (const r of openAggRows || []) {
                         openAggMap.set(r.owner_id, {
                             open_otm_premium: r.open_otm_premium,
                             open_itm_final_profit: r.open_itm_final_profit,
+                            open_all_final_profit: r.open_all_final_profit,
                         });
                     }
                     (users as any[]).forEach((u) => {
-                        const agg = openAggMap.get(u.id) || { open_otm_premium: 0, open_itm_final_profit: 0 };
+                        const agg = openAggMap.get(u.id) || { open_otm_premium: 0, open_itm_final_profit: 0, open_all_final_profit: 0 };
                         u.open_otm_premium = agg.open_otm_premium;
                         u.open_itm_final_profit = agg.open_itm_final_profit;
+                        u.open_all_final_profit = agg.open_all_final_profit;
                     });
                 } catch (err) {
                     console.warn('Open-option aggregate query failed (non-fatal):', err);

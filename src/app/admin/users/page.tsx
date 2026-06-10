@@ -110,6 +110,7 @@ interface User {
     operation_mode?: string;
     open_otm_premium?: number;
     open_itm_final_profit?: number;
+    open_all_final_profit?: number;
     report_note?: string;
 }
 
@@ -466,6 +467,7 @@ export default function AdminUsersPage() {
             net_deposit: user?.net_deposit ?? null,
             open_otm_premium: user?.open_otm_premium ?? 0,
             open_itm_final_profit: user?.open_itm_final_profit ?? 0,
+            open_all_final_profit: user?.open_all_final_profit ?? 0,
         };
         const annualPremium = monthly
             ? calculateAnnualPremium(premiumInput, {
