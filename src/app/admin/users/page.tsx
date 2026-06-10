@@ -1597,16 +1597,18 @@ export default function AdminUsersPage() {
                                     </SelectContent>
                                 </Select>
 
-                                {userReports.size > 0 && (
-                                    <Button
-                                        variant="outline"
-                                        className="font-normal hover:bg-accent hover:text-accent-foreground"
-                                        onClick={handleBatchMailClick}
-                                    >
-                                        <Mail className="h-4 w-4 mr-2" />
-                                        寄出報告
-                                    </Button>
-                                )}
+                                {/* Always render the button so the toolbar doesn't
+                                    reflow when reports finish loading; disable it
+                                    until at least one report is ready. */}
+                                <Button
+                                    variant="outline"
+                                    className="font-normal hover:bg-accent hover:text-accent-foreground"
+                                    onClick={handleBatchMailClick}
+                                    disabled={isLoadingReports || userReports.size === 0}
+                                >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    寄出報告
+                                </Button>
 
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
