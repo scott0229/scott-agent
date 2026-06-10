@@ -46,6 +46,7 @@ export default function DailyTradesPage() {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<string>('all');
     const [selectedUnderlying, setSelectedUnderlying] = useState<string>('all');
+    const [selectedType, setSelectedType] = useState<string>('all');
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
     const [historyData, setHistoryData] = useState<{ date: string; profit: number; qqqOpen: number | null; qqqClose: number | null }[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -286,11 +287,20 @@ export default function DailyTradesPage() {
     // dropping groups that go empty as a result.
     const filteredData = (() => {
         let groups = selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount);
-        if (selectedUnderlying !== 'all') {
+        // Combined trade-row predicate for the 標的 + 類型 filters. We apply
+        // them in one pass so groups that go empty after BOTH filters disappear.
+        const tradeMatches = (t: any): boolean => {
+            if (selectedUnderlying !== 'all' && t.symbol !== selectedUnderlying) return false;
+            if (selectedType === 'stock' && t.asset_type !== 'stock') return false;
+            if (selectedType === 'CALL' && !(t.asset_type === 'option' && t.option_type === 'CALL')) return false;
+            if (selectedType === 'PUT' && !(t.asset_type === 'option' && t.option_type === 'PUT')) return false;
+            return true;
+        };
+        if (selectedUnderlying !== 'all' || selectedType !== 'all') {
             groups = groups
                 .map((g: any) => ({
                     ...g,
-                    trades: (g.trades || []).filter((t: any) => t.symbol === selectedUnderlying),
+                    trades: (g.trades || []).filter(tradeMatches),
                 }))
                 .filter((g: any) => g.trades.length > 0);
         }
@@ -333,6 +343,7 @@ export default function DailyTradesPage() {
                         onClick={() => {
                             setSelectedAccount('all');
                             setSelectedUnderlying('all');
+                            setSelectedType('all');
                             if (availableDates && availableDates.length > 0) {
                                 const maxDate = availableDates.reduce((a, b) => a > b ? a : b);
                                 silentDateRef.current = true;
@@ -421,6 +432,20 @@ export default function DailyTradesPage() {
                                     {sym}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* 類型 filter — 股票 / CALL / PUT. Compounds with 標的 so
+                        e.g. QQQ + PUT shows only short-put rows for QQQ. */}
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="w-[110px] h-10 bg-card/50 dark:bg-black/50">
+                            <SelectValue placeholder="全部類型" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-none">
+                            <SelectItem value="all">全部類型</SelectItem>
+                            <SelectItem value="stock">股票</SelectItem>
+                            <SelectItem value="CALL">CALL</SelectItem>
+                            <SelectItem value="PUT">PUT</SelectItem>
                         </SelectContent>
                     </Select>
 
