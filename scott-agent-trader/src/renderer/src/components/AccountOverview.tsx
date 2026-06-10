@@ -220,6 +220,10 @@ export default function AccountOverview({
   } | null>(null)
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
+  const [ordersCollapsed, setOrdersCollapsed] = useState(false)
+  const [orderFilterAccount, setOrderFilterAccount] = useState('')
+  const [orderFilterSymbol, setOrderFilterSymbol] = useState('')
+  const [orderFilterType, setOrderFilterType] = useState<'' | 'STK' | 'CALL' | 'PUT'>('')
   const [showTransferDialog, setShowTransferDialog] = useState(false)
   const [showCloseDialog, setShowCloseDialog] = useState(false)
   const [showOptionOrder, setShowOptionOrder] = useState(false)
@@ -284,6 +288,12 @@ export default function AccountOverview({
   // Defer the single-click action so a follow-up dblclick can cancel it.
   // Without this the card border flashes "selected" on every dblclick.
   const cardClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Track the first-seen timestamp for each open order so we can sort the
+  // committee list by "submission time". IB's permId is the canonical key
+  // but it's 0 for orders we haven't seen acknowledged yet (very common on
+  // BAG combo rolls right after submission), so fall back to orderId. This
+  // ref is per-mount, which is fine — re-mount happens only on reconnect.
+  const orderSeenAtRef = useRef<Map<string, number>>(new Map())
   // True when the current mousedown landed inside a group card's note, so the
   // card's dragstart can be cancelled and the user can drag-select note text
   // instead of moving the card. Set in capture phase (before the note's own
@@ -333,6 +343,24 @@ export default function AccountOverview({
     setShowOptionOrder(false)
     setShowCloseOptionDialog(false)
   }, [connected])
+
+  // Stamp every order's first-seen time so the sort can pin newest on top.
+  // Permanent permId is preferred; fall back to orderId for combo BAG orders
+  // that haven't been acknowledged yet (their permId is still 0).
+  useEffect(() => {
+    const seen = orderSeenAtRef.current
+    const now = Date.now()
+    let assigned = 0
+    for (const o of openOrders) {
+      const key = o.permId > 0 ? `p:${o.permId}` : `o:${o.orderId}`
+      if (!seen.has(key)) {
+        // Spread initial mounts across 1ms slots so a fresh fetch keeps
+        // IB's reported order (latest-first from setOpenOrders prepend),
+        // and freshly-streamed orders later naturally sort above old ones.
+        seen.set(key, now + assigned++)
+      }
+    }
+  }, [openOrders])
 
   // Reset filters when switching between 帳戶總覽 / 批次交易 tabs
   useEffect(() => {
@@ -482,13 +510,17 @@ export default function AccountOverview({
         return `${g.id}:${count}:n${(g.note || '').length}`
       })
       .join('|')
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|chk:${checkModeGroups.size}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|fgr:${filterGroupRight}|edit:${noteEditorFor || ''}`
+    // NOTE: checkModeGroups intentionally NOT in masonryKey. Toggling check
+    // mode only adds a 14px-wide checkbox column, not card height — so
+    // re-running the masonry collapse/expand on every toggle is wasted work
+    // and (more importantly) caused the page to snap to top because all
+    // cards briefly collapsed to 1 row during the recompute.
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|fgr:${filterGroupRight}|edit:${noteEditorFor || ''}`
   }, [
     groupViewMode,
     symbolGroups,
     positions,
     uncategorizedPositions,
-    checkModeGroups,
     filterGroupIndex,
     filterGroupSymbol,
     filterGroupRight,
@@ -840,6 +872,79 @@ export default function AccountOverview({
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [accounts])
 
+  // Classify an order into STK / CALL / PUT for the type filter. BAG combo
+  // orders don't carry a `right` field, so for those we peek at the combo
+  // description (e.g. "QQQ +Jun11 721P → -Jun12 721P") to recover the side.
+  const getOrderType = (o: OpenOrderData): 'STK' | 'CALL' | 'PUT' | 'OTHER' => {
+    if (o.secType === 'STK') return 'STK'
+    if (o.right === 'C' || o.right === 'CALL') return 'CALL'
+    if (o.right === 'P' || o.right === 'PUT') return 'PUT'
+    if (o.comboDescription) {
+      const m = o.comboDescription.match(/\d+([CP])\b/)
+      if (m) return m[1] === 'C' ? 'CALL' : 'PUT'
+    }
+    return 'OTHER'
+  }
+
+  // Cascading filters: each filter's option list reflects what's actually
+  // selectable given the OTHER two filters. Picking PUT in the type filter
+  // will collapse the account filter to only accounts with PUT orders, etc.
+  const orderAccountOptions = useMemo(() => {
+    const visible = openOrders.filter((o) => {
+      if (orderFilterSymbol && o.symbol !== orderFilterSymbol) return false
+      if (orderFilterType && getOrderType(o) !== orderFilterType) return false
+      return true
+    })
+    const ids = new Set(visible.map((o) => o.account))
+    const opts = Array.from(ids)
+      .map((id) => {
+        const acct = accounts.find((a) => a.accountId === id)
+        return { value: id, label: formatAccountName(acct?.alias || id) }
+      })
+      .sort((a, b) => a.label.localeCompare(b.label))
+    return [{ value: '', label: '全部帳戶' }, ...opts]
+  }, [openOrders, accounts, orderFilterSymbol, orderFilterType])
+
+  const orderSymbolOptions = useMemo(() => {
+    const visible = openOrders.filter((o) => {
+      if (orderFilterAccount && o.account !== orderFilterAccount) return false
+      if (orderFilterType && getOrderType(o) !== orderFilterType) return false
+      return true
+    })
+    const syms = new Set<string>()
+    for (const o of visible) if (o.symbol) syms.add(o.symbol)
+    const opts = Array.from(syms)
+      .sort()
+      .map((s) => ({ value: s, label: s }))
+    return [{ value: '', label: '全部標的' }, ...opts]
+  }, [openOrders, orderFilterAccount, orderFilterType])
+
+  const orderTypeOptions = useMemo(() => {
+    const visible = openOrders.filter((o) => {
+      if (orderFilterAccount && o.account !== orderFilterAccount) return false
+      if (orderFilterSymbol && o.symbol !== orderFilterSymbol) return false
+      return true
+    })
+    const present = new Set<string>()
+    for (const o of visible) present.add(getOrderType(o))
+    const opts: { value: string; label: string }[] = []
+    if (present.has('STK')) opts.push({ value: 'STK', label: '股票' })
+    if (present.has('CALL')) opts.push({ value: 'CALL', label: 'CALL' })
+    if (present.has('PUT')) opts.push({ value: 'PUT', label: 'PUT' })
+    return [{ value: '', label: '全部類型' }, ...opts]
+  }, [openOrders, orderFilterAccount, orderFilterSymbol])
+
+  const filteredOpenOrders = useMemo(() => {
+    return openOrders.filter((o) => {
+      if (orderFilterAccount && o.account !== orderFilterAccount) return false
+      if (orderFilterSymbol && o.symbol !== orderFilterSymbol) return false
+      if (orderFilterType) {
+        if (getOrderType(o) !== orderFilterType) return false
+      }
+      return true
+    })
+  }, [openOrders, orderFilterAccount, orderFilterSymbol, orderFilterType])
+
   const getPositionsForAccount = (accountId: string): PositionData[] => {
     return positions
       .filter((p) => p.account === accountId)
@@ -1041,17 +1146,22 @@ export default function AccountOverview({
         </td>
         <td className="pos-symbol">{desc}</td>
         <td
+          style={{
+            textAlign: 'center',
+            color: '#fff',
+            fontWeight: 600,
+            backgroundColor: order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
+          }}
+        >
+          {order.action === 'BUY' ? '買' : '賣'}
+        </td>
+        <td
           className="editable-cell"
           title="雙擊修改數量"
           style={
             editingQty
               ? { cursor: 'pointer' }
-              : {
-                  cursor: 'pointer',
-                  color: '#fff',
-                  fontWeight: 500,
-                  backgroundColor: order.action === 'BUY' ? '#1a6b3a' : '#dc2626'
-                }
+              : { cursor: 'pointer', fontWeight: 500 }
           }
           onDoubleClick={(e) => {
             e.stopPropagation()
@@ -1083,9 +1193,10 @@ export default function AccountOverview({
               }}
             />
           ) : (
+            // TWS-style "filled / total" — direction is conveyed by the
+            // green/red cell background, so we drop the explicit +/- sign.
             <>
-              {order.action === 'BUY' ? '+' : '-'}
-              {Math.abs(order.quantity)}
+              {order.filled ?? 0}/{Math.abs(order.quantity)}
             </>
           )}
         </td>
@@ -2430,12 +2541,84 @@ export default function AccountOverview({
           {!selectMode && openOrders.length > 0 && (
             <div className="account-card" style={{ marginBottom: 16 }}>
               <div className="account-header">
-                <span className="account-id">委託單 ({openOrders.length})</span>
+                <span className="account-id">
+                  委託單 ({filteredOpenOrders.length}
+                  {filteredOpenOrders.length !== openOrders.length
+                    ? ` / ${openOrders.length}`
+                    : ''}
+                  )
+                </span>
+                <div
+                  style={{
+                    marginLeft: 'auto',
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center'
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderFilterAccount('')
+                      setOrderFilterSymbol('')
+                      setOrderFilterType('')
+                    }}
+                    title="清除所有篩選"
+                    style={{
+                      padding: 0,
+                      width: 30,
+                      height: 30,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 6,
+                      background: '#fff',
+                      cursor: 'pointer',
+                      color: '#374151',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.055" />
+                      <path d="m22 3-5 5" />
+                      <path d="m17 3 5 5" />
+                    </svg>
+                  </button>
+                  <CustomSelect
+                    value={orderFilterAccount}
+                    onChange={setOrderFilterAccount}
+                    options={orderAccountOptions}
+                    className="order-filter-select"
+                  />
+                  <CustomSelect
+                    value={orderFilterSymbol}
+                    onChange={setOrderFilterSymbol}
+                    options={orderSymbolOptions}
+                    className="order-filter-select"
+                  />
+                  <CustomSelect
+                    value={orderFilterType}
+                    onChange={(v) =>
+                      setOrderFilterType(v as '' | 'STK' | 'CALL' | 'PUT')
+                    }
+                    options={orderTypeOptions}
+                    className="order-filter-select"
+                  />
                 <button
                   className="select-toggle-btn"
                   style={{
-                    marginLeft: 'auto',
-                    padding: '4px 12px',
+                    height: 30,
+                    padding: '0 12px',
                     fontSize: '13px'
                   }}
                   title="取消所有工作中委託(含 TWS 手動下的)"
@@ -2443,7 +2626,44 @@ export default function AccountOverview({
                 >
                   取消全部委託
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setOrdersCollapsed((v) => !v)}
+                  title={ordersCollapsed ? '展開委託單' : '收合委託單'}
+                  style={{
+                    padding: 0,
+                    width: 30,
+                    height: 30,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    background: '#fff',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      transform: ordersCollapsed ? 'rotate(-90deg)' : 'none',
+                      transition: 'transform 0.15s'
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                </div>
               </div>
+              {!ordersCollapsed && (
               <div className="positions-section order-section">
                 <table
                   className="positions-table"
@@ -2452,7 +2672,8 @@ export default function AccountOverview({
                   <thead>
                     <tr>
                       <th style={{ width: '8%', textAlign: 'left' }}></th>
-                      <th style={{ width: '23%', textAlign: 'left' }}>標的</th>
+                      <th style={{ width: '16%', textAlign: 'left' }}>標的</th>
+                      <th style={{ width: '7%' }}>行動</th>
                       <th style={{ width: '9%' }}>數量</th>
                       <th style={{ width: '9%' }}>買價</th>
                       <th style={{ width: '9%' }}>賣價</th>
@@ -2464,21 +2685,31 @@ export default function AccountOverview({
                     </tr>
                   </thead>
                   <tbody>
-                    {[...openOrders]
+                    {[...filteredOpenOrders]
                       .sort((a, b) => {
+                        // 1. 委託時間（first-seen timestamp，desc = 新單在上）
+                        const aKey = a.permId > 0 ? `p:${a.permId}` : `o:${a.orderId}`
+                        const bKey = b.permId > 0 ? `p:${b.permId}` : `o:${b.orderId}`
+                        const aT = orderSeenAtRef.current.get(aKey) ?? 0
+                        const bT = orderSeenAtRef.current.get(bKey) ?? 0
+                        if (aT !== bT) return bT - aT
+                        // 2. 標的字母
+                        const symCmp = (a.symbol || '').localeCompare(b.symbol || '')
+                        if (symCmp !== 0) return symCmp
+                        // 3. 帳戶 alias 字母
                         const an = formatAccountName(
                           accounts.find((x) => x.accountId === a.account)?.alias || a.account
                         )
                         const bn = formatAccountName(
                           accounts.find((x) => x.accountId === b.account)?.alias || b.account
                         )
-                        if (an !== bn) return an.localeCompare(bn)
-                        return (a.symbol || '').localeCompare(b.symbol || '')
+                        return an.localeCompare(bn)
                       })
                       .map(renderOrderRow)}
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
           )}
           <div

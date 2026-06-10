@@ -1102,6 +1102,31 @@ input[type='number']::-webkit-outer-spin-button {
   color: white;
 }
 
+/* Compact variant used by the order-list filters — matches the 取消全部委託
+   button and the collapse chevron in this row at a uniform 30px height. */
+.custom-select.order-filter-select {
+  min-width: 0;
+}
+.custom-select.order-filter-select .custom-select-trigger {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+  background: #fff;
+  border-color: #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Without the ▾, center the label so it doesn't look left-stranded. */
+  justify-content: center;
+}
+.custom-select.order-filter-select .custom-select-trigger:hover {
+  border-color: #9ca3af;
+}
+/* Hide the ▾ chevron in the compact order-filter variant — the row has
+   limited horizontal space and the chevron looks redundant when every
+   filter is the same kind of dropdown. */
+.custom-select.order-filter-select .custom-select-arrow {
+  display: none;
+}
+
 /* Stepper variant — when onPrev/onNext are provided the container becomes a
    horizontal flex with ‹ and › buttons sharing the trigger's border. NOTE:
    do NOT use overflow: hidden here — the dropdown is positioned absolutely
