@@ -271,8 +271,20 @@ export function GroupTradesDialog({
         ? `+${totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
         : (totalNetCashInflow < 0 ? totalNetCashInflow.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : '0');
 
+    // Mark-to-market cost to close every open leg. Mirrors the trade-groups
+    // page setting: when closeCostOnlyBreached is on, OTM legs contribute
+    // 0 (no realistic buyback cost) and only ITM legs roll up here.
     const totalOpenCostToClose = filteredSortedOptions
         .filter(opt => opt.type !== 'STK' && (opt.operation === 'Open' || !opt.settlement_date))
+        .filter(opt => {
+            if (!settings.closeCostOnlyBreached) return true;
+            const spot = (opt as { current_market_price?: number | null }).current_market_price;
+            const strike = opt.strike_price;
+            if (spot == null || strike == null) return true; // fall back to including when we can't decide
+            if (opt.type === 'CALL') return spot > strike;
+            if (opt.type === 'PUT') return spot < strike;
+            return true;
+        })
         .reduce((sum, opt) => sum + ((opt.premium || 0) - (opt.final_profit || 0)), 0);
 
     const formattedOpenCost = totalOpenCostToClose > 0 

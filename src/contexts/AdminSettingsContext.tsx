@@ -21,6 +21,11 @@ interface AdminSettings {
     // recipients keep seeing the full report.
     bccIncludeTradeAdvice?: boolean;
     bccIncludeDailyOps?: boolean;
+    /** Trade groups 平倉費用 calculation mode. False (default) = include
+     *  mark-to-market cost for every open option ("一律計入"). True =
+     *  only count it for options the spot has breached the strike on
+     *  ("只計入被突破") — OTM positions contribute 0. */
+    closeCostOnlyBreached?: boolean;
 }
 
 interface AdminSettingsContextType {
@@ -48,6 +53,7 @@ const defaultSettings: AdminSettings = {
     reportCcEnabled4: true,
     bccIncludeTradeAdvice: true,
     bccIncludeDailyOps: true,
+    closeCostOnlyBreached: false,
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);

@@ -41,12 +41,18 @@ export async function GET(req: NextRequest) {
                    o.delta, o.iv, o.capital_efficiency, o.created_at,
                    o.updated_at, o.user_id, o.owner_id, o.year, o.code,
                    o.note_color, o.note, o.has_separator, o.group_id,
-                   COALESCE(m.close, o.underlying_price) AS underlying_price
+                   COALESCE(m.close, o.underlying_price) AS underlying_price,
+                   LP.close_price AS current_market_price
             FROM OPTIONS o
             LEFT JOIN market_prices_minute m
               ON m.symbol = o.underlying
              AND m.date_str = date(datetime(o.open_date, 'unixepoch'))
              AND m.hhmm = strftime('%H:%M', datetime(o.open_date, 'unixepoch'))
+            LEFT JOIN (
+                SELECT symbol, close_price
+                FROM market_prices mp1
+                WHERE date = (SELECT MAX(date) FROM market_prices mp2 WHERE mp2.symbol = mp1.symbol)
+            ) LP ON LP.symbol = o.underlying
         `;
         const params: any[] = [];
         let whereAdded = false;

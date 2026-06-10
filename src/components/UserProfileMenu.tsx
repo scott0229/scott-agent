@@ -387,11 +387,26 @@ export function UserProfileMenu() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                        <Label className="cursor-default">平倉費用</Label>
+                                        <Select
+                                            value={settings.closeCostOnlyBreached ? 'breached' : 'all'}
+                                            onValueChange={(val) => updateSetting('closeCostOnlyBreached', val === 'breached')}
+                                        >
+                                            <SelectTrigger className="w-[180px] h-9">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all" className="cursor-pointer">一律計入</SelectItem>
+                                                <SelectItem value="breached" className="cursor-pointer">只計入被突破</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid grid-cols-[100px_1fr] items-center gap-4">
                                         <div className="flex items-center gap-2">
-                                            <Checkbox 
-                                                id="report-cc-enabled-1" 
-                                                checked={settings.reportCcEnabled1 !== false} 
-                                                onCheckedChange={(v) => updateSetting('reportCcEnabled1', !!v)} 
+                                            <Checkbox
+                                                id="report-cc-enabled-1"
+                                                checked={settings.reportCcEnabled1 !== false}
+                                                onCheckedChange={(v) => updateSetting('reportCcEnabled1', !!v)}
                                             />
                                             <Label htmlFor="report-cc-email-1" className="cursor-pointer">同步報表 1</Label>
                                         </div>

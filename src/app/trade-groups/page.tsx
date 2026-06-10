@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useYearFilter } from '@/contexts/YearFilterContext';
+import { useAdminSettings } from '@/contexts/AdminSettingsContext';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -104,6 +105,7 @@ interface GroupStat {
 
 export default function TradeGroupsPage() {
     const { selectedYear } = useYearFilter();
+    const { settings } = useAdminSettings();
     const [mounted, setMounted] = useState(false);
     const [users, setUsers] = useState<any[]>([]);
     const [isUsersLoaded, setIsUsersLoaded] = useState(false);
@@ -238,7 +240,20 @@ export default function TradeGroupsPage() {
                     if (opt.type !== 'STK') {
                         if (opt.operation === 'Open' || !opt.settlement_date) {
                             stat.netCashInflow += (opt.premium || 0);
-                            stat.openCostToClose += ((opt.premium || 0) - (opt.final_profit || 0));
+                            // Mark-to-market cost to close this open leg.
+                            // 只計入被突破 mode: skip when the spot hasn't
+                            // breached the strike — OTM positions contribute
+                            // zero close-out cost.
+                            const spot = opt.current_market_price as number | null | undefined;
+                            const strike = opt.strike_price as number | null | undefined;
+                            const breached = spot != null && strike != null && (
+                                (opt.type === 'CALL' && spot > strike) ||
+                                (opt.type === 'PUT' && spot < strike)
+                            );
+                            const includeCost = !settings.closeCostOnlyBreached || breached;
+                            if (includeCost) {
+                                stat.openCostToClose += ((opt.premium || 0) - (opt.final_profit || 0));
+                            }
                         } else {
                             stat.netCashInflow += (opt.final_profit || 0);
                         }
