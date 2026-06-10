@@ -45,6 +45,7 @@ export default function DailyTradesPage() {
     const [availableDates, setAvailableDates] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<string>('all');
+    const [selectedUnderlying, setSelectedUnderlying] = useState<string>('all');
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
     const [historyData, setHistoryData] = useState<{ date: string; profit: number; qqqOpen: number | null; qqqClose: number | null }[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -266,15 +267,41 @@ export default function DailyTradesPage() {
         );
 
 
+    // Union of every underlying that traded today across every shown card,
+    // sorted alpha. Feeds the 標的 filter dropdown so the picker only
+    // surfaces tickers that actually have a row today.
+    const availableUnderlyings: string[] = (() => {
+        const set = new Set<string>();
+        for (const g of data) {
+            for (const t of (g.trades || []) as any[]) {
+                if (t.symbol) set.add(t.symbol);
+            }
+        }
+        return Array.from(set).sort();
+    })();
+
     // Sort cards alphabetically by user_id so the grid scans predictably
-    // regardless of the order the API returns groups in.
-    const filteredData = (selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount))
-        .slice()
-        .sort((a: any, b: any) => {
-            const ka = (a.user?.user_id || a.user?.name || '').toLowerCase();
-            const kb = (b.user?.user_id || b.user?.name || '').toLowerCase();
-            return ka.localeCompare(kb);
-        });
+    // regardless of the order the API returns groups in. Apply the 標的
+    // filter by paring each user's trades down to the selected ticker and
+    // dropping groups that go empty as a result.
+    const filteredData = (() => {
+        let groups = selectedAccount === 'all' ? data : data.filter((group: any) => group.user?.user_id === selectedAccount);
+        if (selectedUnderlying !== 'all') {
+            groups = groups
+                .map((g: any) => ({
+                    ...g,
+                    trades: (g.trades || []).filter((t: any) => t.symbol === selectedUnderlying),
+                }))
+                .filter((g: any) => g.trades.length > 0);
+        }
+        return groups
+            .slice()
+            .sort((a: any, b: any) => {
+                const ka = (a.user?.user_id || a.user?.name || '').toLowerCase();
+                const kb = (b.user?.user_id || b.user?.name || '').toLowerCase();
+                return ka.localeCompare(kb);
+            });
+    })();
 
     // Daily 權利金目標 reference line. Cost basis mirrors the badge formula on
     // the options summary page: prefer the user's initial_cost; fall back to
@@ -305,6 +332,7 @@ export default function DailyTradesPage() {
                         className="h-10 w-10 bg-card/50 dark:bg-black/50"
                         onClick={() => {
                             setSelectedAccount('all');
+                            setSelectedUnderlying('all');
                             if (availableDates && availableDates.length > 0) {
                                 const maxDate = availableDates.reduce((a, b) => a > b ? a : b);
                                 silentDateRef.current = true;
@@ -378,6 +406,23 @@ export default function DailyTradesPage() {
                             </div>
                         );
                     })()}
+
+                    {/* 標的 filter — narrows every card to a single underlying.
+                        Sits between account and date so all three filters read
+                        as one row of equally-weighted dimensions. */}
+                    <Select value={selectedUnderlying} onValueChange={setSelectedUnderlying}>
+                        <SelectTrigger className="w-[120px] h-10 bg-card/50 dark:bg-black/50">
+                            <SelectValue placeholder="全部標的" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-none">
+                            <SelectItem value="all">全部標的</SelectItem>
+                            {availableUnderlyings.map(sym => (
+                                <SelectItem key={sym} value={sym}>
+                                    {sym}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
                     <div className="flex items-center h-10 bg-card/50 dark:bg-black/50 rounded-md border shadow-sm">
                         <Button variant="ghost" size="icon" className="h-full rounded-r-none" onClick={() => changeDate(-1)}>
