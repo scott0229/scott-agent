@@ -478,7 +478,11 @@ export default function RollOptionDialog({
             style={{
               flexWrap: 'nowrap',
               gap: 10,
-              justifyContent: 'space-between'
+              // Single-account mode has the 口數 input, which widens Chunk 2
+              // enough that space-between reads as balanced. Batch mode drops
+              // 口數, so space-between would fling the two chunks to opposite
+              // edges and leave a wide gap — left-align them instead.
+              justifyContent: isSingleAccount ? 'space-between' : 'flex-start'
             }}
           >
             {/* Chunk 1: source → target option signature. Always rendered so
@@ -510,7 +514,7 @@ export default function RollOptionDialog({
               return (
                 <span
                   className="roll-order-chunk"
-                  style={{ fontSize: 13, color: '#333', background: '#fff7d1' }}
+                  style={{ fontSize: 13, fontWeight: 700, color: '#333', background: '#fff7d1' }}
                 >
                   {haveSrc ? (
                     <>
