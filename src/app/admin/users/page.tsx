@@ -289,6 +289,16 @@ export default function AdminUsersPage() {
         }
     }, [settings.premiumTargetPercent]);
 
+    // Re-fetch reports when the 平倉費用 mode changes — formatUserReport
+    // pipes settings.closeCostOnlyBreached through calculateAnnualPremium,
+    // so the previously-cached report strings still hold the prior mode's
+    // 期權收益率 until we rerun the format step.
+    useEffect(() => {
+        if (users.length > 0) {
+            fetchAllReports(users);
+        }
+    }, [settings.closeCostOnlyBreached]);
+
     const saveReportNote = async (userId: number, val: string) => {
         try {
             const res = await fetch(`/api/users/${userId}/report-note`, {
