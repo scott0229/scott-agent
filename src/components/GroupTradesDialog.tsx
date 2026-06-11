@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { groupPillClass } from '@/lib/group-colors';
 import {
     Dialog,
     DialogContent,
@@ -663,17 +664,7 @@ export function GroupTradesDialog({
                                                 </TableCell>
                                             )}
                                             <TableCell className="py-1 min-w-[110px]">
-                                                <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${
-                                                    opt.group_id && String(opt.group_id).endsWith('-0')
-                                                        ? 'cell-note'
-                                                        : opt.group_id && String(opt.group_id).endsWith('-2')
-                                                            ? 'cell-positive'
-                                                            : opt.group_id && String(opt.group_id).endsWith('-4')
-                                                                ? 'cell-accent'
-                                                                : opt.group_id && String(opt.group_id).endsWith('-5')
-                                                                    ? 'cell-info'
-                                                                    : 'bg-muted'
-                                                }`}>
+                                                <div className={`w-[80px] mx-auto h-7 flex items-center justify-center rounded-md font-normal text-[13px] ${groupPillClass(opt.group_id) || 'bg-muted'}`}>
                                                     {opt.group_id || '-'}
                                                 </div>
                                             </TableCell>

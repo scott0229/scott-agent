@@ -151,7 +151,7 @@ export function BatchSetGroupDialog({ open, onOpenChange, sortedOptions, onSucce
                                 <SelectContent>
                                     <SelectItem value="none" className="text-muted-foreground">清除群組 (-)</SelectItem>
                                     {[
-                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                        'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5', 'QQQ-6', 'QQQ-7', 'QQQ-8', 'QQQ-9', 'QQQ-10',
                                         'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
                                         'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                     ].map(n => (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
+import { groupPillClass } from '@/lib/group-colors';
 import {
     Table,
     TableBody,
@@ -176,23 +177,13 @@ export function StockTradesTable({
                                                     value={trade.group_id ? String(trade.group_id) : "none"} 
                                                     onValueChange={(val) => onGroupUpdate && onGroupUpdate(trade.id, val === "none" ? null : val)}
                                                 >
-                                                    <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${
-                                                        trade.group_id && String(trade.group_id).endsWith('-0')
-                                                            ? 'cell-note'
-                                                            : trade.group_id && String(trade.group_id).endsWith('-2')
-                                                                ? 'cell-positive'
-                                                                : trade.group_id && String(trade.group_id).endsWith('-4')
-                                                                    ? 'cell-accent'
-                                                                    : trade.group_id && String(trade.group_id).endsWith('-5')
-                                                                        ? 'cell-info'
-                                                                        : 'bg-muted text-foreground hover:bg-muted/80'
-                                                    }`}>
+                                                    <SelectTrigger hideIcon className={`w-[80px] mx-auto h-7 px-1 py-0 border-none focus:ring-0 shadow-none text-center justify-center font-normal ${groupPillClass(trade.group_id) || 'bg-muted text-foreground hover:bg-muted/80'}`}>
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="none" className="text-muted-foreground">-</SelectItem>
                                                         {[
-                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5',
+                                                            'QQQ-0', 'QQQ-1', 'QQQ-2', 'QQQ-3', 'QQQ-4', 'QQQ-5', 'QQQ-6', 'QQQ-7', 'QQQ-8', 'QQQ-9', 'QQQ-10',
                                                             'TQQQ-0', 'TQQQ-1', 'TQQQ-2', 'TQQQ-3', 'TQQQ-4', 'TQQQ-5',
                                                             'GROUP-0', 'GROUP-1', 'GROUP-2', 'GROUP-3', 'GROUP-4', 'GROUP-5'
                                                         ].map(n => (
