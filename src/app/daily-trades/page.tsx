@@ -588,7 +588,7 @@ export default function DailyTradesPage() {
                         />
                         {/* Quiet day, but the account still HELD positions —
                             surface them under the empty-state box. */}
-                        <HoldingsCard holdings={holdings} date={date} />
+                        <HoldingsCard holdings={holdings} />
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
@@ -759,10 +759,10 @@ export default function DailyTradesPage() {
                             }}
                         />
                     )}
-                    {/* 該日持倉 — grid auto-placement drops this into the left
+                    {/* 當日持倉 — grid auto-placement drops this into the left
                         column's second row, directly under the trades card. */}
                     {selectedAccount !== 'all' && filteredData.length === 1 && (
-                        <HoldingsCard holdings={holdings} date={date} />
+                        <HoldingsCard holdings={holdings} />
                     )}
                 </div>
             )}
@@ -776,15 +776,13 @@ interface HoldingsCardProps {
         stocks: any[];
         marketData: Record<string, number>;
     } | null;
-    /** YYYY-MM-DD the holdings snapshot belongs to — echoed in the title. */
-    date: string;
 }
 
-// 該日持倉 — point-in-time positions at end of the viewed date.
+// 當日持倉 — point-in-time positions at end of the viewed date.
 // Line format mirrors the daily report's 持有期權 section so the two
 // surfaces read identically; the 被突破 indicator uses the close as of
 // the SNAPSHOT date (delivered in marketData), not today's price.
-function HoldingsCard({ holdings, date }: HoldingsCardProps) {
+function HoldingsCard({ holdings }: HoldingsCardProps) {
     if (!holdings) return null;
     const options = holdings.options || [];
     const stocks = holdings.stocks || [];
@@ -795,9 +793,8 @@ function HoldingsCard({ holdings, date }: HoldingsCardProps) {
 
     return (
         <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
-            <h3 className="font-semibold text-sm mb-2">
-                持倉
-                <span className="text-muted-foreground font-normal"> · {date.substring(5)}</span>
+            <h3 className="text-sm mb-2">
+                <span className="cell-note px-1 rounded font-medium">當日持倉</span>
             </h3>
             <div className="font-mono text-sm leading-relaxed text-foreground">
                 {stocks.map((pos: any, i: number) => (
@@ -806,7 +803,7 @@ function HoldingsCard({ holdings, date }: HoldingsCardProps) {
                     </div>
                 ))}
                 {stocks.length > 0 && options.length > 0 && (
-                    <div className="text-muted-foreground select-none">--------</div>
+                    <div className="select-none">----------------------------------------</div>
                 )}
                 {options.map((opt: any, i: number) => {
                     const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
