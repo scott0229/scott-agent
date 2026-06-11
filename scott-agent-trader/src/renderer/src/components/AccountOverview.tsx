@@ -256,6 +256,10 @@ export default function AccountOverview({
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [ordersCollapsed, setOrdersCollapsed] = useState(false)
+  // Same-batch order groups that the user has expanded (keyed by batch
+  // signature). A batch placed across many accounts collapses to its first
+  // row by default; clicking the ＋ reveals the rest.
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set())
   const [orderFilterAccount, setOrderFilterAccount] = useState('')
   const [orderFilterSymbol, setOrderFilterSymbol] = useState('')
   const [orderFilterType, setOrderFilterType] = useState<'' | 'STK' | 'CALL' | 'PUT'>('')
@@ -773,7 +777,15 @@ export default function AccountOverview({
   }, [])
 
   const submitEdit = useCallback(
-    (order: OpenOrderData, field: 'quantity' | 'price', value: string) => {
+    (
+      order: OpenOrderData,
+      field: 'quantity' | 'price',
+      value: string,
+      // When the collapsed batch row is edited, apply a PRICE change to every
+      // order in the batch (each keeps its own quantity). Quantity edits stay
+      // per-order.
+      batchOrders?: OpenOrderData[]
+    ) => {
       const val = parseFloat(value)
       if (isNaN(val)) {
         cancelEdit()
@@ -784,24 +796,27 @@ export default function AccountOverview({
         cancelEdit()
         return
       }
-      const newQty = field === 'quantity' ? val : order.quantity
-      const newPrice = field === 'price' ? val : (order.limitPrice ?? 0)
-      console.log('[EDIT] submitting modify order:', { orderId: order.orderId, newQty, newPrice })
-      window.ibApi
-        .modifyOrder({
-          orderId: order.orderId,
-          account: order.account,
-          symbol: order.symbol,
-          secType: order.secType,
-          action: order.action,
-          orderType: order.orderType,
-          quantity: newQty,
-          limitPrice: newPrice,
-          expiry: order.expiry,
-          strike: order.strike,
-          right: order.right,
-          comboLegs: order.comboLegs
+
+      const applyModify = (o: OpenOrderData): Promise<void> =>
+        window.ibApi.modifyOrder({
+          orderId: o.orderId,
+          account: o.account,
+          symbol: o.symbol,
+          secType: o.secType,
+          action: o.action,
+          orderType: o.orderType,
+          quantity: field === 'quantity' ? val : o.quantity,
+          limitPrice: field === 'price' ? val : (o.limitPrice ?? 0),
+          expiry: o.expiry,
+          strike: o.strike,
+          right: o.right,
+          comboLegs: o.comboLegs
         })
+
+      const targets =
+        field === 'price' && batchOrders && batchOrders.length > 0 ? batchOrders : [order]
+      console.log('[EDIT] submitting modify for', targets.length, 'order(s):', { field, val })
+      Promise.all(targets.map(applyModify))
         .then(() => {
           console.log('[EDIT] modifyOrder succeeded')
           setTimeout(() => refresh?.(), 500)
@@ -1147,9 +1162,30 @@ export default function AccountOverview({
       })
   }
 
+  // Cancel a whole batch at once (used by the collapsed batch row). Fires all
+  // cancels in parallel, then refreshes once.
+  const cancelOrders = (orderIds: number[]): void => {
+    if (orderIds.length === 0) return
+    Promise.allSettled(orderIds.map((id) => window.ibApi.cancelOrder(id))).then((results) => {
+      const failed = results.filter((r) => r.status === 'rejected').length
+      if (failed > 0) alert(`取消委託失敗 (${failed}/${orderIds.length})`)
+      setTimeout(() => refresh?.(), 300)
+      setTimeout(() => refresh?.(), 1000)
+      setTimeout(() => refresh?.(), 2000)
+    })
+  }
+
   // Render one open-order row for the consolidated 委託單 card. First column is
   // the account name; quantity & price stay double-click editable.
-  const renderOrderRow = (order: OpenOrderData): React.ReactNode => {
+  const renderOrderRow = (
+    order: OpenOrderData,
+    batchToggle?: {
+      count: number
+      collapsed: boolean
+      onToggle: () => void
+      orders: OpenOrderData[]
+    }
+  ): React.ReactNode => {
     const arrow = <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
     const acctName = formatAccountName(
       accounts.find((a) => a.accountId === order.account)?.alias || order.account
@@ -1202,7 +1238,25 @@ export default function AccountOverview({
             textAlign: 'left'
           }}
         >
+          {batchToggle && (
+            <button
+              type="button"
+              className="batch-toggle-btn"
+              title={batchToggle.collapsed ? '展開此批次' : '收合此批次'}
+              onClick={(e) => {
+                e.stopPropagation()
+                batchToggle.onToggle()
+              }}
+            >
+              {batchToggle.collapsed ? '+' : '−'}
+            </button>
+          )}
           {acctName}
+          {batchToggle?.collapsed && (
+            <span style={{ color: '#374151', fontWeight: 700, marginLeft: 5, fontSize: 12 }}>
+              ({batchToggle.count})
+            </span>
+          )}
         </td>
         <td className="pos-symbol">{desc}</td>
         <td
@@ -1274,7 +1328,13 @@ export default function AccountOverview({
         })()}
         <td
           className={order.orderType === 'LMT' ? 'editable-cell' : undefined}
-          title={order.orderType === 'LMT' ? '雙擊修改價格' : undefined}
+          title={
+            order.orderType === 'LMT'
+              ? batchToggle?.collapsed
+                ? '雙擊修改全部限價'
+                : '雙擊修改價格'
+              : undefined
+          }
           style={{ cursor: order.orderType === 'LMT' ? 'pointer' : 'default' }}
           onDoubleClick={(e) => {
             if (order.orderType === 'LMT') {
@@ -1291,7 +1351,13 @@ export default function AccountOverview({
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') submitEdit(order, 'price', editValue)
+                if (e.key === 'Enter')
+                  submitEdit(
+                    order,
+                    'price',
+                    editValue,
+                    batchToggle?.collapsed ? batchToggle.orders : undefined
+                  )
                 if (e.key === 'Escape') cancelEdit()
               }}
               onBlur={() => cancelEdit()}
@@ -1342,9 +1408,29 @@ export default function AccountOverview({
           )[order.status] || order.status}
         </td>
         <td style={{ textAlign: 'center' }}>
-          {order.status !== 'PendingCancel' &&
-            order.status !== 'Cancelled' &&
-            order.status !== 'Filled' && (
+          {(() => {
+            const cancellable = (o: OpenOrderData): boolean =>
+              o.status !== 'PendingCancel' &&
+              o.status !== 'Cancelled' &&
+              o.status !== 'Filled'
+            // Collapsed batch row → one button cancels every (cancellable)
+            // order in the batch.
+            if (batchToggle?.collapsed) {
+              const targets = batchToggle.orders.filter(cancellable)
+              if (targets.length === 0) return null
+              return (
+                <button
+                  className="order-cancel-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    cancelOrders(targets.map((o) => o.orderId))
+                  }}
+                >
+                  取消全部
+                </button>
+              )
+            }
+            return cancellable(order) ? (
               <button
                 className="order-cancel-btn"
                 onClick={(e) => {
@@ -1354,7 +1440,8 @@ export default function AccountOverview({
               >
                 取消委託
               </button>
-            )}
+            ) : null
+          })()}
         </td>
       </tr>
     )
@@ -2759,8 +2846,8 @@ export default function AccountOverview({
                     </tr>
                   </thead>
                   <tbody>
-                    {[...filteredOpenOrders]
-                      .sort((a, b) => {
+                    {(() => {
+                      const sorted = [...filteredOpenOrders].sort((a, b) => {
                         // 1. 委託時間（first-seen timestamp，desc = 新單在上）
                         const aKey = a.permId > 0 ? `p:${a.permId}` : `o:${a.orderId}`
                         const bKey = b.permId > 0 ? `p:${b.permId}` : `o:${b.orderId}`
@@ -2779,7 +2866,57 @@ export default function AccountOverview({
                         )
                         return an.localeCompare(bn)
                       })
-                      .map(renderOrderRow)}
+
+                      // Group orders that share the same 標的 + 行動 (i.e. one
+                      // batch placed across many accounts), preserving sort
+                      // order. A multi-order group collapses to its first row.
+                      const batchKey = (o: OpenOrderData): string =>
+                        `${o.symbol}|${o.secType}|${o.comboDescription || ''}|${o.expiry || ''}|${o.strike || ''}|${o.right || ''}|${o.action}|${o.orderType}`
+                      const groups: { key: string; orders: OpenOrderData[] }[] = []
+                      const idxByKey = new Map<string, number>()
+                      for (const o of sorted) {
+                        const k = batchKey(o)
+                        let gi = idxByKey.get(k)
+                        if (gi === undefined) {
+                          gi = groups.length
+                          idxByKey.set(k, gi)
+                          groups.push({ key: k, orders: [] })
+                        }
+                        groups[gi].orders.push(o)
+                      }
+
+                      // Within each batch, order accounts alphabetically by
+                      // alias (so the rows — and the collapsed representative —
+                      // read A→Z instead of by arrival time).
+                      const aliasOf = (o: OpenOrderData): string =>
+                        formatAccountName(
+                          accounts.find((x) => x.accountId === o.account)?.alias || o.account
+                        )
+                      for (const g of groups) {
+                        g.orders.sort((a, b) => aliasOf(a).localeCompare(aliasOf(b)))
+                      }
+
+                      return groups.flatMap((g) => {
+                        if (g.orders.length === 1) return [renderOrderRow(g.orders[0])]
+                        const collapsed = !expandedBatches.has(g.key)
+                        const toggle = {
+                          count: g.orders.length,
+                          collapsed,
+                          orders: g.orders,
+                          onToggle: () =>
+                            setExpandedBatches((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(g.key)) next.delete(g.key)
+                              else next.add(g.key)
+                              return next
+                            })
+                        }
+                        if (collapsed) return [renderOrderRow(g.orders[0], toggle)]
+                        return g.orders.map((o, i) =>
+                          renderOrderRow(o, i === 0 ? toggle : undefined)
+                        )
+                      })
+                    })()}
                   </tbody>
                 </table>
               </div>

@@ -385,6 +385,30 @@ body {
   border-color: #9ca3af;
 }
 
+/* Collapse/expand toggle for a same-batch order group (委託單 card). */
+.batch-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  padding: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.batch-toggle-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 .select-toggle-btn.active {
   background: #2563eb;
   color: #fff;
