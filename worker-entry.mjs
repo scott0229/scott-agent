@@ -1,21 +1,19 @@
-/**
- * Custom worker entrypoint wrapping the OpenNext-generated handler.
- *
- * Why this exists: wrangler.toml declares `crons = ["*/15 * * * *"]`,
- * but the OpenNext build output (.open-next/worker.js) only exports a
- * `fetch` handler — no `scheduled`. Cloudflare fired the cron into a
- * worker that had nothing listening, so /api/scheduled/auto-update
- * NEVER ran on schedule; market data only refreshed when someone
- * manually curled the endpoint (the 06-08 ~ 06-10 QQQ gap).
- *
- * The wrapper re-exports everything OpenNext produces and adds a
- * `scheduled` handler that invokes the auto-update route through the
- * same in-worker fetch handler (no public-edge round trip, can't be
- * blocked by WAF/bot rules).
- *
- * wrangler.toml `main` points here; the relative import is bundled by
- * wrangler at deploy time, after `build:cf` regenerates .open-next.
- */
+// Custom worker entrypoint wrapping the OpenNext-generated handler.
+//
+// Why this exists: wrangler.toml declares an every-15-minutes cron,
+// but the OpenNext build output (.open-next/worker.js) only exports a
+// `fetch` handler — no `scheduled`. Cloudflare fired the cron into a
+// worker that had nothing listening, so /api/scheduled/auto-update
+// NEVER ran on schedule; market data only refreshed when someone
+// manually curled the endpoint (the 06-08 ~ 06-10 QQQ gap).
+//
+// The wrapper re-exports everything OpenNext produces and adds a
+// `scheduled` handler that invokes the auto-update route through the
+// same in-worker fetch handler (no public-edge round trip, can't be
+// blocked by WAF/bot rules).
+//
+// wrangler.toml `main` points here; the relative import is bundled by
+// wrangler at deploy time, after `build:cf` regenerates .open-next.
 
 import handler from './.open-next/worker.js';
 
