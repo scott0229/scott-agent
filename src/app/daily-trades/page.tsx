@@ -55,6 +55,13 @@ export default function DailyTradesPage() {
     // we only want the left card to swap; the chart's range should stay put
     // so the user can keep scrubbing without losing their place.
     const [historyEndDate, setHistoryEndDate] = useState<string>('');
+    // Point-in-time holdings (options + stocks still open at end of `date`)
+    // for the selected single account. null while loading / in 'all' mode.
+    const [holdings, setHoldings] = useState<{
+        options: any[];
+        stocks: any[];
+        marketData: Record<string, number>;
+    } | null>(null);
     const chartClickRef = useRef(false);
     // Suppress the skeleton loader on chart-driven date changes — swapping
     // cards mid-scrub should feel instant, not a fresh page load.
@@ -187,6 +194,39 @@ export default function DailyTradesPage() {
         fetchHistory();
         return () => { cancelled = true; };
     }, [selectedAccount, historyEndDate, selectedYear]);
+
+    // Point-in-time holdings card data — single-account mode only,
+    // re-fetched whenever the viewed date changes so the card always
+    // shows what was held at end of THAT day.
+    useEffect(() => {
+        if (selectedAccount === 'all' || !date) {
+            setHoldings(null);
+            return;
+        }
+        let cancelled = false;
+        const fetchHoldings = async () => {
+            try {
+                const res = await fetch(`/api/daily-trades/holdings?user_id=${encodeURIComponent(selectedAccount)}&date=${date}`);
+                if (cancelled) return;
+                if (res.ok) {
+                    const json = await res.json() as {
+                        success?: boolean;
+                        options: any[];
+                        stocks: any[];
+                        marketData: Record<string, number>;
+                    };
+                    setHoldings(json.success ? json : null);
+                } else {
+                    setHoldings(null);
+                }
+            } catch (err) {
+                console.error('Failed to fetch holdings', err);
+                if (!cancelled) setHoldings(null);
+            }
+        };
+        fetchHoldings();
+        return () => { cancelled = true; };
+    }, [selectedAccount, date]);
 
     const changeDate = (offset: number) => {
         if (!date) return;
@@ -546,6 +586,9 @@ export default function DailyTradesPage() {
                                 setDate(d);
                             }}
                         />
+                        {/* Quiet day, but the account still HELD positions —
+                            surface them under the empty-state box. */}
+                        <HoldingsCard holdings={holdings} date={date} />
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
@@ -716,8 +759,87 @@ export default function DailyTradesPage() {
                             }}
                         />
                     )}
+                    {/* 該日持倉 — grid auto-placement drops this into the left
+                        column's second row, directly under the trades card. */}
+                    {selectedAccount !== 'all' && filteredData.length === 1 && (
+                        <HoldingsCard holdings={holdings} date={date} />
+                    )}
                 </div>
             )}
+        </div>
+    );
+}
+
+interface HoldingsCardProps {
+    holdings: {
+        options: any[];
+        stocks: any[];
+        marketData: Record<string, number>;
+    } | null;
+    /** YYYY-MM-DD the holdings snapshot belongs to — echoed in the title. */
+    date: string;
+}
+
+// 該日持倉 — point-in-time positions at end of the viewed date.
+// Line format mirrors the daily report's 持有期權 section so the two
+// surfaces read identically; the 被突破 indicator uses the close as of
+// the SNAPSHOT date (delivered in marketData), not today's price.
+function HoldingsCard({ holdings, date }: HoldingsCardProps) {
+    if (!holdings) return null;
+    const options = holdings.options || [];
+    const stocks = holdings.stocks || [];
+    if (options.length === 0 && stocks.length === 0) return null;
+
+    const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const fmtQty = (n: number) => new Intl.NumberFormat('en-US').format(n);
+
+    return (
+        <div className="bg-card rounded-lg border shadow-sm p-4 flex flex-col">
+            <h3 className="font-semibold text-sm mb-2">
+                持倉
+                <span className="text-muted-foreground font-normal"> · {date.substring(5)}</span>
+            </h3>
+            <div className="font-mono text-sm leading-relaxed text-foreground">
+                {stocks.map((pos: any, i: number) => (
+                    <div key={`s-${i}`}>
+                        {pos.symbol} {fmtQty(pos.quantity)} 股
+                    </div>
+                ))}
+                {stocks.length > 0 && options.length > 0 && (
+                    <div className="text-muted-foreground select-none">--------</div>
+                )}
+                {options.map((opt: any, i: number) => {
+                    const expiryDate = opt.to_date ? new Date(opt.to_date * 1000) : null;
+                    let desc = `${opt.underlying} ${opt.strike_price}${opt.type === 'CALL' ? 'C' : 'P'}`;
+                    if (expiryDate) {
+                        const mon = MONTHS_EN[expiryDate.getMonth()];
+                        const dd = String(expiryDate.getDate()).padStart(2, '0');
+                        const yy = String(expiryDate.getFullYear()).slice(2);
+                        desc = `${opt.underlying} ${mon}${dd}'${yy} ${opt.strike_price}${opt.type === 'CALL' ? 'C' : 'P'}`;
+                    }
+                    const qtyStr = opt.quantity < 0 ? opt.quantity : Math.abs(opt.quantity);
+
+                    // Breach vs the snapshot-date close. Same definition the
+                    // trades card uses: CALL breached when spot > strike,
+                    // PUT breached when spot < strike.
+                    const px = holdings.marketData?.[opt.underlying];
+                    let breach = 0;
+                    if (px != null) {
+                        if (opt.type === 'CALL') breach = px - (opt.strike_price ?? 0);
+                        else if (opt.type === 'PUT') breach = (opt.strike_price ?? 0) - px;
+                    }
+
+                    return (
+                        <div key={`o-${i}`}>
+                            {qtyStr}口 {desc}
+                            {opt.trade_group ? ` (${opt.trade_group})` : ''}
+                            {breach > 0 && (
+                                <span className="text-status-negative"> 被突破 {breach.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
