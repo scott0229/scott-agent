@@ -2,7 +2,9 @@
 name = "scott-agent"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-main = ".open-next/worker.js"
+# Custom entry wrapping .open-next/worker.js — adds the `scheduled`
+# handler the cron triggers need (OpenNext only generates `fetch`).
+main = "worker-entry.mjs"
 minify = true
 account_id = "9946dede036802fcd2a0b9cef8e13574"
 
