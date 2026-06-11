@@ -622,6 +622,7 @@ export function GroupTradesDialog({
                                 {!isOpenOptionsOnly && <TableHead className="text-center">平倉日</TableHead>}
                                 <TableHead className="text-center">數量</TableHead>
                                 <TableHead className="text-center">標的</TableHead>
+                                <TableHead className="text-center">DTE</TableHead>
                                 <TableHead className="text-center">累積持股</TableHead>
                                 {!isOpenOptionsOnly && <TableHead className="text-center">當時股價</TableHead>}
                                 {settings.showPremium && !isOpenOptionsOnly && <TableHead className="text-center">權利金</TableHead>}
@@ -741,6 +742,16 @@ export function GroupTradesDialog({
                                                 {opt.quantity > 0 ? `+${opt.quantity}` : opt.quantity}
                                             </TableCell>
                                             <TableCell className="py-1">{formatOptionTicker(opt)}</TableCell>
+                                            <TableCell className="py-1 text-center text-muted-foreground">
+                                                {(() => {
+                                                    // DTE = trading days from open_date to expiry (to_date),
+                                                    // i.e. weekends + market holidays excluded. Options only;
+                                                    // stocks have no expiry.
+                                                    if (opt.type === 'STK' || !opt.open_date || !opt.to_date) return opt.type === 'STK' ? '' : '-';
+                                                    const days = Math.abs(getTradingDaysDiff(opt.open_date, opt.to_date));
+                                                    return `${days} 天`;
+                                                })()}
+                                            </TableCell>
                                             <TableCell className="py-1 text-center whitespace-nowrap">
                                                 {runningDataMap[opt.id]?.total > 0 ? (
                                                     <div className="flex items-center justify-center gap-1">
