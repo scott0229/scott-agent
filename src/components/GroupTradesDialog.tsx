@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { groupPillClass } from '@/lib/group-colors';
+import { getTradingDaysDiff } from '@/lib/holidays';
 import {
     Dialog,
     DialogContent,
@@ -301,6 +302,9 @@ export function GroupTradesDialog({
         : (totalStockPnL === 0 ? "0" : totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
 
     const rollProfitsMap = new Map<number, number>();
+    // 展期天數 — trading days between the rolled-from expiry and the new
+    // expiry, keyed by the open's id (same key space as rollProfitsMap).
+    const rollDaysMap = new Map<number, number>();
 
     // Sequential roll pairing: each open consumes the most recent unconsumed close
     // of the same underlying+type with matching quantity. This matches the user's
@@ -311,6 +315,7 @@ export function GroupTradesDialog({
         id: number;
         settlement_date: number;
         open_date: number;
+        to_date: number | null;
         key: string;
         cost: number;
         qty: number;
@@ -325,6 +330,7 @@ export function GroupTradesDialog({
                 id: t.id,
                 settlement_date: t.settlement_date,
                 open_date: t.open_date,
+                to_date: t.to_date ?? null,
                 key: `${t.underlying}_${t.type}`,
                 cost: t.premium - t.final_profit,
                 qty: t.quantity,
@@ -332,6 +338,13 @@ export function GroupTradesDialog({
             });
         }
     });
+
+    // Trading days from a rolled-from close to the new open's expiry. Both
+    // legs carry to_date; abs() so it always reads as a positive duration.
+    const rollDaysBetween = (closeToDate: number | null | undefined, openToDate: number | null | undefined): number | null => {
+        if (closeToDate == null || openToDate == null) return null;
+        return Math.abs(getTradingDaysDiff(closeToDate, openToDate));
+    };
 
     // Sort closes by settlement_date asc, then by open_date asc so that on a tied
     // close date the position with the older lifecycle is consumed first (FIFO).
@@ -387,9 +400,14 @@ export function GroupTradesDialog({
         // Distribute total close cost across the opens proportionally by qty
         // so each open's 展期收益 reflects its share of the rolled position.
         const totalCost = closes.reduce((s, ce) => s + ce.cost, 0);
+        // Representative close for the day-count — they share a settlement day,
+        // so any close's to_date gives the same rolled-from expiry.
+        const repToDate = closes[0]?.to_date ?? null;
         for (const ot of validOpens) {
             const proRatedCost = totalCost * (ot.quantity / openQty);
             rollProfitsMap.set(ot.id, (ot.premium as number) - proRatedCost);
+            const days = rollDaysBetween(repToDate, ot.to_date);
+            if (days != null) rollDaysMap.set(ot.id, days);
         }
         closes.forEach(ce => { ce.consumed = true; });
     }
@@ -411,6 +429,8 @@ export function GroupTradesDialog({
             if (ce.settlement_date > ot.open_date) continue; // close must happen on/before the open
             if (ce.qty !== ot.quantity) continue;
             rollProfitsMap.set(ot.id, (ot.premium as number) - ce.cost);
+            const days = rollDaysBetween(ce.to_date, ot.to_date);
+            if (days != null) rollDaysMap.set(ot.id, days);
             ce.consumed = true;
             matched = true;
             break;
@@ -457,6 +477,8 @@ export function GroupTradesDialog({
                 if (bestSubset) {
                     const totalCost = bestSubset.reduce((s, ce) => s + ce.cost, 0);
                     rollProfitsMap.set(ot.id, (ot.premium as number) - totalCost);
+                    const days = rollDaysBetween(bestSubset[0]?.to_date ?? null, ot.to_date);
+                    if (days != null) rollDaysMap.set(ot.id, days);
                     bestSubset.forEach(ce => { ce.consumed = true; });
                 }
             }
@@ -509,6 +531,8 @@ export function GroupTradesDialog({
             bestSubset.forEach(ot => {
                 const proRatedCost = ce.cost * (ot.quantity / totalQty);
                 rollProfitsMap.set(ot.id, (ot.premium as number) - proRatedCost);
+                const days = rollDaysBetween(ce.to_date, ot.to_date);
+                if (days != null) rollDaysMap.set(ot.id, days);
             });
             ce.consumed = true;
         }
@@ -516,7 +540,7 @@ export function GroupTradesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1150px]' : 'sm:max-w-[1400px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent className={`max-h-[85vh] flex flex-col ${isOpenOptionsOnly ? 'sm:max-w-[1150px]' : 'sm:max-w-[1550px]'}`} onOpenAutoFocus={(e) => e.preventDefault()}>
                 <DialogHeader className="shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                         <span>{ownerName ? (hideOwnerSuffix ? ownerName : `${ownerName} 群組`) : '群組交易明細'}</span>
@@ -602,6 +626,7 @@ export function GroupTradesDialog({
                                 {!isOpenOptionsOnly && <TableHead className="text-center">當時股價</TableHead>}
                                 {settings.showPremium && !isOpenOptionsOnly && <TableHead className="text-center">權利金</TableHead>}
                                 <TableHead className="text-center">損益</TableHead>
+                                {!isOpenOptionsOnly && <TableHead className="text-center">展期天數</TableHead>}
                                 {!isOpenOptionsOnly && <TableHead className="text-center">展期收益</TableHead>}
                                 {settings.showTradeCode && <TableHead className="text-center">交易代碼</TableHead>}
                             </TableRow>
@@ -616,6 +641,7 @@ export function GroupTradesDialog({
                             ) : (
                                 filteredSortedOptions.map((opt, index) => {
                                     const rollProfit = rollProfitsMap.has(opt.id) ? rollProfitsMap.get(opt.id) : null;
+                                    const rollDays = rollDaysMap.has(opt.id) ? rollDaysMap.get(opt.id) : null;
 
                                     return (
                                         <TableRow
@@ -736,6 +762,11 @@ export function GroupTradesDialog({
                                             <TableCell className={`py-1 ${opt.final_profit && opt.final_profit > 0 ? 'text-status-positive' : opt.final_profit && opt.final_profit < 0 ? 'text-status-negative' : ''}`}>
                                                 {opt.final_profit != null ? `${opt.final_profit > 0 ? '+' : ''}${Math.round(opt.final_profit).toLocaleString('en-US')}` : '-'}
                                             </TableCell>
+                                            {!isOpenOptionsOnly && (
+                                                <TableCell className="py-1 text-center text-muted-foreground">
+                                                    {rollDays != null ? `${rollDays} 天` : (opt.type === 'STK' ? '' : '-')}
+                                                </TableCell>
+                                            )}
                                             {!isOpenOptionsOnly && (
                                                 <TableCell className={`py-1 text-center ${rollProfit && rollProfit > 0 ? 'text-status-positive' : rollProfit && rollProfit < 0 ? 'text-status-negative' : ''}`}>
                                                     {rollProfit != null ? `${rollProfit > 0 ? '+' : ''}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : (opt.type === 'STK' ? '' : '-')}
