@@ -54,6 +54,46 @@ const greeksCache = new Map<string, CachedGreeks>()
 // This prevents exceeding IB's ~100 concurrent market data request limit.
 let greeksQueue: Promise<unknown> = Promise.resolve()
 
+// ── Option-chain request serialization ────────────────────────────────────
+// IB rejects concurrent reqSecDefOptParams with error 322, so every chain
+// round-trip must run one at a time. A plain FIFO isn't enough: the on-connect
+// background prefetch can queue a dozen symbols, and if the user opens a roll
+// dialog mid-prefetch their request would sit behind all of them and the
+// dialog shows an empty "載入中…" grid. So this is a *priority* gate — on-demand
+// dialog requests (higher priority) jump ahead of the background prefetch
+// (lower priority), waiting at most for the one round-trip already in flight.
+interface ChainSlotWaiter {
+  priority: number
+  grant: () => void
+}
+let chainSlotBusy = false
+const chainSlotWaiters: ChainSlotWaiter[] = []
+
+function acquireChainSlot(priority: number): Promise<() => void> {
+  return new Promise((resolve) => {
+    const release = (): void => {
+      if (chainSlotWaiters.length === 0) {
+        chainSlotBusy = false
+        return
+      }
+      // Hand off to the highest-priority waiter; ties broken FIFO (the reduce
+      // keeps the earliest index on equal priority).
+      let bestIdx = 0
+      for (let i = 1; i < chainSlotWaiters.length; i++) {
+        if (chainSlotWaiters[i].priority > chainSlotWaiters[bestIdx].priority) bestIdx = i
+      }
+      const [next] = chainSlotWaiters.splice(bestIdx, 1)
+      next.grant()
+    }
+    if (!chainSlotBusy) {
+      chainSlotBusy = true
+      resolve(release)
+    } else {
+      chainSlotWaiters.push({ priority, grant: () => resolve(release) })
+    }
+  })
+}
+
 /** Build cache key for greeks lookup — keyed by symbol+expiry only */
 function buildGreeksCacheKey(symbol: string, expiry: string): string {
   return `${symbol}_${expiry}`
@@ -130,6 +170,7 @@ function requestOptionChainOnce(
       clearTimeout(timeout)
       api.removeListener(EventName.securityDefinitionOptionParameter, onParam)
       api.removeListener(EventName.securityDefinitionOptionParameterEnd, onEnd)
+      api.removeListener(EventName.error, onErr)
     }
 
     const timeout = setTimeout(() => {
@@ -138,6 +179,17 @@ function requestOptionChainOnce(
       cleanup()
       reject(new Error('Option chain request timed out'))
     }, timeoutMs)
+
+    // Fail fast on an IB error for THIS reqId (e.g. 322 "max requests
+    // exceeded" when a chain request collides with another) instead of
+    // silently waiting out the full per-attempt timeout — lets the caller's
+    // retry kick in immediately.
+    const onErr = (err: Error, code: number, id: number): void => {
+      if (id !== reqId || finished) return
+      finished = true
+      cleanup()
+      reject(new Error(`Option chain error ${code}: ${err.message}`))
+    }
 
     const onParam = (
       id: number,
@@ -175,64 +227,89 @@ function requestOptionChainOnce(
   })
 }
 
-export async function requestOptionChain(symbol: string): Promise<OptionChainParams[]> {
+// priority: 1 = on-demand (roll/option dialog), 0 = background prefetch.
+// On-demand requests jump ahead of the prefetch on the shared chain slot.
+export async function requestOptionChain(
+  symbol: string,
+  priority = 1
+): Promise<OptionChainParams[]> {
   const api = getIBApi()
   if (!api) throw new Error('Not connected to IB')
 
+  const isFresh = (c: CachedChain | undefined): c is CachedChain =>
+    !!c && c.params.length > 0 && Date.now() - c.fetchedAt < CHAIN_CACHE_TTL_MS
+
   const cached = chainParamsCache.get(symbol)
   // Only honour a NON-empty cache entry. An empty entry would mean a prior
-  // transient failure — never serve that for the full TTL.
-  if (cached && cached.params.length > 0 && Date.now() - cached.fetchedAt < CHAIN_CACHE_TTL_MS) {
+  // transient failure — never serve that for the full TTL. Cache hits skip the
+  // queue entirely so they stay instant.
+  if (isFresh(cached)) {
     console.log(
       `[IB] Option chain cache hit for ${symbol} (age: ${Math.round((Date.now() - cached.fetchedAt) / 1000)}s)`
     )
     return cached.params
   }
 
-  const conId = await getUnderlyingConId(symbol)
+  // Serialize the actual IB round-trip — concurrent reqSecDefOptParams get
+  // rejected with error 322, which is what left the dialog blank when an
+  // on-demand open collided with the prefetch.
+  const release = await acquireChainSlot(priority)
+  try {
+    // Re-check the cache: a queued request for the same symbol (or the
+    // prefetch) may have populated it while we waited for the slot.
+    const justCached = chainParamsCache.get(symbol)
+    if (isFresh(justCached)) {
+      console.log(`[IB] Option chain ready for ${symbol} after waiting for slot`)
+      return justCached.params
+    }
 
-  // IB intermittently returns an immediate End with zero params (or no End at
-  // all) on the FIRST reqSecDefOptParams for a symbol whose contract isn't
-  // warm yet. The old single-shot 15s request would then hang or cache an
-  // empty chain, which is the "open roll dialog → empty, reopen works" bug.
-  // Retry a few times with a short per-attempt timeout and a small backoff so
-  // the first open already recovers without the user reopening.
-  const MAX_ATTEMPTS = 4
-  const PER_ATTEMPT_TIMEOUT_MS = 4000
-  let lastErr: unknown = null
-  for (let i = 0; i < MAX_ATTEMPTS; i++) {
-    try {
-      const results = await requestOptionChainOnce(symbol, conId, PER_ATTEMPT_TIMEOUT_MS)
-      if (results.length > 0) {
-        chainParamsCache.set(symbol, { params: results, fetchedAt: Date.now() })
-        console.log(
-          `[IB] Option chain cached for ${symbol} (${results.length} exchanges, attempt ${i + 1})`
+    const conId = await getUnderlyingConId(symbol)
+
+    // IB intermittently returns an immediate End with zero params (or no End at
+    // all) on the FIRST reqSecDefOptParams for a symbol whose contract isn't
+    // warm yet. The old single-shot 15s request would then hang or cache an
+    // empty chain, which is the "open roll dialog → empty, reopen works" bug.
+    // Retry a few times with a short per-attempt timeout and a small backoff so
+    // the first open already recovers without the user reopening.
+    const MAX_ATTEMPTS = 4
+    const PER_ATTEMPT_TIMEOUT_MS = 4000
+    let lastErr: unknown = null
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      try {
+        const results = await requestOptionChainOnce(symbol, conId, PER_ATTEMPT_TIMEOUT_MS)
+        if (results.length > 0) {
+          chainParamsCache.set(symbol, { params: results, fetchedAt: Date.now() })
+          console.log(
+            `[IB] Option chain cached for ${symbol} (${results.length} exchanges, attempt ${i + 1})`
+          )
+          return results
+        }
+        console.warn(
+          `[IB] Option chain empty for ${symbol} (attempt ${i + 1}/${MAX_ATTEMPTS}), retrying`
         )
-        return results
+      } catch (err) {
+        lastErr = err
+        console.warn(
+          `[IB] Option chain attempt ${i + 1}/${MAX_ATTEMPTS} for ${symbol} failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        )
       }
-      console.warn(
-        `[IB] Option chain empty for ${symbol} (attempt ${i + 1}/${MAX_ATTEMPTS}), retrying`
-      )
-    } catch (err) {
-      lastErr = err
-      console.warn(
-        `[IB] Option chain attempt ${i + 1}/${MAX_ATTEMPTS} for ${symbol} failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      )
+      if (i < MAX_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, 400))
+      }
     }
-    if (i < MAX_ATTEMPTS - 1) {
-      await new Promise((r) => setTimeout(r, 400))
-    }
-  }
 
-  console.error(
-    `[IB] Option chain unavailable for ${symbol} after ${MAX_ATTEMPTS} attempts` +
-      (lastErr ? `: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}` : '')
-  )
-  // Return empty (not cached) so the renderer shows "未找到期權鏈資料" and a
-  // later reopen re-attempts from scratch rather than serving a stale empty.
-  return []
+    console.error(
+      `[IB] Option chain unavailable for ${symbol} after ${MAX_ATTEMPTS} attempts` +
+        (lastErr ? `: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}` : '')
+    )
+    // Return empty (not cached) so the renderer shows "未找到期權鏈資料" and a
+    // later reopen re-attempts from scratch rather than serving a stale empty.
+    return []
+  } finally {
+    release()
+  }
 }
 
 /**

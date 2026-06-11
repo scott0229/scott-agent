@@ -145,7 +145,8 @@ function setupIpcHandlers(): void {
       let chainFail = 0
       for (const symbol of tradableSymbols) {
         try {
-          await requestOptionChain(symbol)
+          // priority 0 = background: an on-demand dialog open jumps ahead.
+          await requestOptionChain(symbol, 0)
           chainOk++
           console.log(`[prefetch] ✓ chain ${symbol}`)
         } catch (err) {
