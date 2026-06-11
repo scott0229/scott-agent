@@ -847,6 +847,49 @@ function HoldingsCard({ holdings }: HoldingsCardProps) {
                         </div>
                     );
                 })}
+                {/* 裸賣 CALL 檢查 — covered-call coverage per underlying:
+                    naked ⇔ shortCalls×100 > shares + longCalls×100. All
+                    inputs are already in this card's payload, so the
+                    analysis is pure client-side arithmetic on the same
+                    point-in-time snapshot the lines above render. */}
+                {(() => {
+                    const byUnderlying = new Map<string, { short: number; long: number }>();
+                    for (const opt of options) {
+                        if (opt.type !== 'CALL') continue;
+                        const u = opt.underlying;
+                        if (!byUnderlying.has(u)) byUnderlying.set(u, { short: 0, long: 0 });
+                        const agg = byUnderlying.get(u)!;
+                        if (opt.quantity < 0) agg.short += -opt.quantity;
+                        else agg.long += opt.quantity;
+                    }
+                    const checks = [...byUnderlying.entries()]
+                        .filter(([, agg]) => agg.short > 0)
+                        .map(([u, agg]) => {
+                            const shares = stocks
+                                .filter((s: any) => s.symbol === u)
+                                .reduce((sum: number, s: any) => sum + s.quantity, 0);
+                            const gap = agg.short * 100 - (shares + agg.long * 100);
+                            return { u, ...agg, shares, gap };
+                        });
+                    if (checks.length === 0) return null;
+                    return (
+                        <>
+                            <div className="select-none">----------------------------------------</div>
+                            {checks.map(c => (
+                                <div key={`nc-${c.u}`}>
+                                    {c.u} 賣CALL {c.short}口 vs {fmtQty(c.shares)} 股
+                                    {c.long > 0 ? ` + ${c.long}口長倉` : ''}
+                                    {' '}
+                                    {c.gap > 0 ? (
+                                        <span className="text-status-negative">裸賣，缺 {fmtQty(c.gap)} 股</span>
+                                    ) : (
+                                        <span className="text-status-positive">已覆蓋</span>
+                                    )}
+                                </div>
+                            ))}
+                        </>
+                    );
+                })()}
             </div>
         </div>
     );
