@@ -355,9 +355,16 @@ export default function DailyTradesPage() {
                 }))
                 .filter((g: any) => g.trades.length > 0);
         }
+        // Naked-CALL accounts float to the front of the grid so the risk
+        // is the first thing seen; bigger total share-gap sorts earlier
+        // within that set. Everyone else stays alphabetical.
+        const totalGap = (g: any) =>
+            (nakedCallsByOwner[g.user?.id] || []).reduce((s, c) => s + c.gap, 0);
         return groups
             .slice()
             .sort((a: any, b: any) => {
+                const gapDiff = totalGap(b) - totalGap(a);
+                if (gapDiff !== 0) return gapDiff;
                 const ka = (a.user?.user_id || a.user?.name || '').toLowerCase();
                 const kb = (b.user?.user_id || b.user?.name || '').toLowerCase();
                 return ka.localeCompare(kb);
