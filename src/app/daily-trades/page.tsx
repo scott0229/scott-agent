@@ -63,6 +63,9 @@ export default function DailyTradesPage() {
         cash?: number | null;
         netEquity?: number | null;
     } | null>(null);
+    // Server-computed naked-CALL warnings keyed by owner id — covers
+    // every card in 全部帳戶 mode, not just the selected account.
+    const [nakedCallsByOwner, setNakedCallsByOwner] = useState<Record<number, { u: string; short: number; long: number; shares: number; gap: number }[]>>({});
     const chartClickRef = useRef(false);
     // Suppress the skeleton loader on chart-driven date changes — swapping
     // cards mid-scrub should feel instant, not a fresh page load.
@@ -137,11 +140,13 @@ export default function DailyTradesPage() {
                     setMarketDataMap(json.marketData || {});
                     setDayMarketStats(json.dayMarketStats || {});
                     setIntradayPrices(json.intradayPrices || {});
+                    setNakedCallsByOwner(json.nakedCalls || {});
                 } else {
                     setData([]);
                     setMarketDataMap({});
                     setDayMarketStats({});
                     setIntradayPrices({});
+                    setNakedCallsByOwner({});
                 }
             } catch (err) {
                 console.error(err);
@@ -309,33 +314,9 @@ export default function DailyTradesPage() {
             intradayPrices,
         );
 
-    // 裸賣 CALL 檢查 over the same point-in-time snapshot the holdings
-    // card renders: naked ⇔ shortCalls×100 > shares + longCalls×100,
-    // per underlying. Only entries with a positive gap survive — the
-    // trades card surfaces these as a warning banner under 交易日期.
-    // holdings is null in 全部帳戶 mode, so this is single-account only.
-    const nakedCallChecks = (() => {
-        if (!holdings) return [] as { u: string; short: number; long: number; shares: number; gap: number }[];
-        const byUnderlying = new Map<string, { short: number; long: number }>();
-        for (const opt of holdings.options || []) {
-            if (opt.type !== 'CALL') continue;
-            const u = opt.underlying;
-            if (!byUnderlying.has(u)) byUnderlying.set(u, { short: 0, long: 0 });
-            const agg = byUnderlying.get(u)!;
-            if (opt.quantity < 0) agg.short += -opt.quantity;
-            else agg.long += opt.quantity;
-        }
-        return [...byUnderlying.entries()]
-            .filter(([, agg]) => agg.short > 0)
-            .map(([u, agg]) => {
-                const shares = (holdings.stocks || [])
-                    .filter((s: any) => s.symbol === u)
-                    .reduce((sum: number, s: any) => sum + s.quantity, 0);
-                const gap = agg.short * 100 - (shares + agg.long * 100);
-                return { u, ...agg, shares, gap };
-            })
-            .filter(c => c.gap > 0);
-    })();
+    // 裸賣 CALL warnings come precomputed from /api/daily-trades
+    // (nakedCallsByOwner) so they render on every card in 全部帳戶
+    // mode as well as single-account mode.
 
 
     // Union of every underlying that traded today across every shown card,
@@ -640,6 +621,9 @@ export default function DailyTradesPage() {
                     {filteredData.map((userGroup: any) => {
                         const reportText = generateTradesText(userGroup);
                         const userName = userGroup.user.name || userGroup.user.user_id;
+                        // Per-card naked-CALL warnings (server-computed) —
+                        // available in BOTH 全部帳戶 and single-account mode.
+                        const cardNakedChecks = nakedCallsByOwner[userGroup.user.id] || [];
 
                         // Sum option-only 收益 and 權利金 amounts → day's option cash
                         // inflow. Iterate per-line and skip stock close lines (they
@@ -762,10 +746,9 @@ export default function DailyTradesPage() {
                                         // 裸賣 CALL warning — injected directly under the
                                         // 交易日期 line so it's the first thing read on the
                                         // card. Red badge styling makes it unmissable.
-                                        // nakedCallChecks is empty in 全部帳戶 mode (no
-                                        // holdings snapshot), so this only fires for the
-                                        // single selected account.
-                                        const showNakedWarning = line.startsWith('交易日期') && nakedCallChecks.length > 0;
+                                        // Server-computed per owner, so it renders in
+                                        // 全部帳戶 mode as well as single-account mode.
+                                        const showNakedWarning = line.startsWith('交易日期') && cardNakedChecks.length > 0;
 
                                         return (
                                             <span key={i}>
@@ -773,7 +756,7 @@ export default function DailyTradesPage() {
                                                     {renderedParts}
                                                 </span>
                                                 {i < arr.length - 1 ? '\n' : ''}
-                                                {showNakedWarning && nakedCallChecks.map(c => (
+                                                {showNakedWarning && cardNakedChecks.map(c => (
                                                     <span key={`naked-${c.u}`}>
                                                         <span className="bg-status-negative-soft text-status-negative border border-status-negative-border rounded px-1 font-medium">
                                                             ⚠ 裸賣 {c.u} CALL：{c.short}口 vs {new Intl.NumberFormat('en-US').format(c.shares)} 股{c.long > 0 ? ` + ${c.long}口長倉` : ''}，缺 {new Intl.NumberFormat('en-US').format(c.gap)} 股

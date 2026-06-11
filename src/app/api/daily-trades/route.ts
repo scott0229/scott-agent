@@ -181,7 +181,64 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats, intradayPrices });
+        // Naked-CALL coverage check for EVERY shown user at end of the
+        // viewed date, so the warning renders in 全部帳戶 mode too (the
+        // holdings endpoint only serves single-account mode). Point-in-
+        // time rules match /api/daily-trades/holdings:
+        //   held on D ⇔ open<=D && (settle null || settle>D) && expiry>=D
+        // naked ⇔ shortCalls×100 > shares + longCalls×100, per underlying.
+        const nakedCalls: Record<number, { u: string; short: number; long: number; shares: number; gap: number }[]> = {};
+        try {
+            const { results: callAgg } = await db.prepare(`
+                SELECT owner_id, underlying,
+                       SUM(CASE WHEN quantity < 0 THEN -quantity ELSE 0 END) as short_calls,
+                       SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) as long_calls
+                FROM OPTIONS
+                WHERE owner_id IN (${userIds.join(',')})
+                  AND type = 'CALL'
+                  AND date(datetime(open_date, 'unixepoch')) <= ?
+                  AND (settlement_date IS NULL OR date(datetime(settlement_date, 'unixepoch')) > ?)
+                  AND (to_date IS NULL OR date(datetime(to_date, 'unixepoch')) >= ?)
+                GROUP BY owner_id, underlying
+                HAVING SUM(CASE WHEN quantity < 0 THEN -quantity ELSE 0 END) > 0
+            `).bind(dateStr, dateStr, dateStr).all<{
+                owner_id: number; underlying: string; short_calls: number; long_calls: number;
+            }>();
+
+            if ((callAgg || []).length > 0) {
+                const { results: shareAgg } = await db.prepare(`
+                    SELECT owner_id, symbol, SUM(quantity) as shares
+                    FROM STOCK_TRADES
+                    WHERE owner_id IN (${userIds.join(',')})
+                      AND date(datetime(open_date, 'unixepoch')) <= ?
+                      AND (close_date IS NULL OR date(datetime(close_date, 'unixepoch')) > ?)
+                    GROUP BY owner_id, symbol
+                `).bind(dateStr, dateStr).all<{ owner_id: number; symbol: string; shares: number }>();
+
+                const sharesByKey = new Map<string, number>();
+                for (const r of shareAgg || []) {
+                    sharesByKey.set(`${r.owner_id}|${r.symbol}`, r.shares);
+                }
+
+                for (const c of callAgg || []) {
+                    const shares = sharesByKey.get(`${c.owner_id}|${c.underlying}`) || 0;
+                    const gap = c.short_calls * 100 - (shares + c.long_calls * 100);
+                    if (gap <= 0) continue;
+                    if (!nakedCalls[c.owner_id]) nakedCalls[c.owner_id] = [];
+                    nakedCalls[c.owner_id].push({
+                        u: c.underlying,
+                        short: c.short_calls,
+                        long: c.long_calls,
+                        shares,
+                        gap,
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('naked-call check failed (non-fatal):', e);
+        }
+
+        return NextResponse.json({ data: groupedData, marketData: marketDataMap, dayMarketStats, intradayPrices, nakedCalls });
     } catch (error: any) {
         console.error('Failed to fetch daily trades:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
