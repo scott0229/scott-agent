@@ -184,6 +184,13 @@ export async function GET(req: NextRequest) {
             const yData = await yRes.json() as {
                 chart?: { result?: {
                     timestamp?: number[];
+                    meta?: {
+                        regularMarketPrice?: number | null;
+                        regularMarketTime?: number | null;
+                        regularMarketDayHigh?: number | null;
+                        regularMarketDayLow?: number | null;
+                        regularMarketVolume?: number | null;
+                    };
                     indicators?: { quote?: {
                         open?: (number | null)[]; high?: (number | null)[];
                         low?: (number | null)[]; close?: (number | null)[];
@@ -194,7 +201,20 @@ export async function GET(req: NextRequest) {
             const result = yData.chart?.result?.[0];
             const timestamps = result?.timestamp;
             const quote = result?.indicators?.quote?.[0];
+            const meta = result?.meta;
             if (!timestamps || !quote) return 0;
+
+            // Yahoo leaves the most recent session's bar close=null for
+            // hours after the close (observed: 06-10 still null at 00:20
+            // ET on 06-11) — but chart meta carries the finalized last
+            // trade (regularMarketPrice at regularMarketTime = 16:00:01
+            // ET). When a bar's close is missing and it belongs to the
+            // meta session's calendar day, substitute the meta values so
+            // the row lands instead of being skipped for a day.
+            const metaDay = meta?.regularMarketTime
+                ? new Date(meta.regularMarketTime * 1000).toISOString().substring(0, 10)
+                : null;
+            const barDay = (ts: number) => new Date(ts * 1000).toISOString().substring(0, 10);
             const stmt = db.prepare(`
                 INSERT INTO market_prices (symbol, date, close_price, open, high, low, close, volume)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -207,15 +227,19 @@ export async function GET(req: NextRequest) {
             const batch: ReturnType<typeof stmt.bind>[] = [];
             for (let i = 0; i < timestamps.length; i++) {
                 const ts = timestamps[i];
-                const close = quote.close?.[i];
+                const isMetaDay = metaDay != null && barDay(ts) === metaDay;
+                const close = quote.close?.[i] ?? (isMetaDay ? meta?.regularMarketPrice ?? null : null);
                 const open = quote.open?.[i];
                 if (close == null || open == null) continue;
+                const high = quote.high?.[i] ?? (isMetaDay ? meta?.regularMarketDayHigh ?? null : null);
+                const low = quote.low?.[i] ?? (isMetaDay ? meta?.regularMarketDayLow ?? null : null);
+                const volume = quote.volume?.[i] ?? (isMetaDay ? meta?.regularMarketVolume ?? null : null);
                 const d = new Date(ts * 1000);
                 const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
                 batch.push(stmt.bind(
                     symbol, midnight, close, open,
-                    quote.high?.[i] ?? null, quote.low?.[i] ?? null,
-                    close, quote.volume?.[i] ?? null,
+                    high, low,
+                    close, volume,
                 ));
             }
             if (batch.length === 0) return 0;
