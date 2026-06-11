@@ -61,6 +61,7 @@ export default function DailyTradesPage() {
         options: any[];
         stocks: any[];
         cash?: number | null;
+        netEquity?: number | null;
     } | null>(null);
     const chartClickRef = useRef(false);
     // Suppress the skeleton loader on chart-driven date changes — swapping
@@ -214,6 +215,7 @@ export default function DailyTradesPage() {
                         options: any[];
                         stocks: any[];
                         cash?: number | null;
+                        netEquity?: number | null;
                     };
                     setHoldings(json.success ? json : null);
                 } else {
@@ -775,6 +777,7 @@ interface HoldingsCardProps {
         options: any[];
         stocks: any[];
         cash?: number | null;
+        netEquity?: number | null;
     } | null;
 }
 
@@ -797,18 +800,20 @@ function HoldingsCard({ holdings }: HoldingsCardProps) {
                 <span className="cell-note px-1 rounded font-medium">當日持倉</span>
             </h3>
             <div className="font-mono text-sm leading-relaxed text-foreground">
-                {/* Cash balance as of the viewed date — same label as the
-                    daily report so the two surfaces read identically.
-                    Negative (margin loan) gets the warning color. */}
+                {/* Net equity + cash balance as of the viewed date — same
+                    labels as the daily report so the two surfaces read
+                    identically. Negative cash (margin loan) gets the
+                    warning color. */}
+                {holdings.netEquity != null && (
+                    <div>帳戶淨值 : {fmtQty(Math.round(holdings.netEquity))}</div>
+                )}
                 {holdings.cash != null && (
-                    <>
-                        <div>
-                            帳上現金 : <span className={holdings.cash < 0 ? 'text-status-negative' : ''}>{fmtQty(Math.round(holdings.cash))}</span>
-                        </div>
-                        {(stocks.length > 0 || options.length > 0) && (
-                            <div className="select-none">----------------------------------------</div>
-                        )}
-                    </>
+                    <div>
+                        帳上現金 : <span className={holdings.cash < 0 ? 'text-status-negative' : ''}>{fmtQty(Math.round(holdings.cash))}</span>
+                    </div>
+                )}
+                {(holdings.cash != null || holdings.netEquity != null) && (stocks.length > 0 || options.length > 0) && (
+                    <div className="select-none">----------------------------------------</div>
                 )}
                 {stocks.map((pos: any, i: number) => (
                     <div key={`s-${i}`}>

@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
             options: options || [],
             stocks: stocks || [],
             cash: equityRow?.cash_balance ?? null,
+            netEquity: equityRow?.net_equity ?? null,
         });
     } catch (error: any) {
         console.error('Failed to fetch holdings:', error);
