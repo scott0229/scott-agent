@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const userIdStr = searchParams.get('user_id'); // string user_id, matches the page's selectedAccount
         const dateStr = searchParams.get('date');      // YYYY-MM-DD
+        const yearStr = searchParams.get('year');
         if (!userIdStr || !dateStr) {
             return NextResponse.json({ error: 'Missing user_id or date' }, { status: 400 });
         }
@@ -36,15 +37,25 @@ export async function GET(req: NextRequest) {
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
 
-        const user = await db.prepare(
-            `SELECT id, user_id FROM USERS WHERE user_id = ?`,
-        ).bind(userIdStr).first<{ id: number; user_id: string }>();
+        // Resolve user_id (string alias) → numeric id. USERS holds ONE ROW
+        // PER YEAR per account (ck.380 exists as a 2025 id AND a 2026 id),
+        // so the lookup MUST be year-scoped — an unscoped .first() can land
+        // on the prior year's row, whose owner_id holds stale carried-over
+        // stock rows and only expired options. Mirrors the history route.
+        let userQuery = `SELECT id, user_id FROM USERS WHERE user_id = ? AND email != 'admin'`;
+        const userParams: (string | number)[] = [userIdStr];
+        if (yearStr && yearStr !== 'All') {
+            userQuery += ` AND year = ?`;
+            userParams.push(parseInt(yearStr, 10));
+        }
+        if (payload.role === 'customer') {
+            // Customers can only inspect their own holdings.
+            userQuery += ` AND id = ?`;
+            userParams.push(payload.userId);
+        }
+        const user = await db.prepare(userQuery).bind(...userParams).first<{ id: number; user_id: string }>();
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-        // Customers can only inspect their own holdings.
-        if (payload.role === 'customer' && payload.userId !== user.id) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         // Options held at end of day D. The extra to_date guard drops

@@ -206,7 +206,7 @@ export default function DailyTradesPage() {
         let cancelled = false;
         const fetchHoldings = async () => {
             try {
-                const res = await fetch(`/api/daily-trades/holdings?user_id=${encodeURIComponent(selectedAccount)}&date=${date}`);
+                const res = await fetch(`/api/daily-trades/holdings?user_id=${encodeURIComponent(selectedAccount)}&date=${date}&year=${selectedYear}`);
                 if (cancelled) return;
                 if (res.ok) {
                     const json = await res.json() as {
@@ -226,7 +226,7 @@ export default function DailyTradesPage() {
         };
         fetchHoldings();
         return () => { cancelled = true; };
-    }, [selectedAccount, date]);
+    }, [selectedAccount, date, selectedYear]);
 
     const changeDate = (offset: number) => {
         if (!date) return;
