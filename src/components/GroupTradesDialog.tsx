@@ -256,9 +256,6 @@ export function GroupTradesDialog({
         return map;
     }, [localTrades, stockTradesContext]);
 
-    const totalPnL = filteredSortedOptions.reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
-    const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
-
     const totalNetCashInflow = filteredSortedOptions
         .filter(opt => opt.type !== 'STK')
         .reduce((sum, opt) => {
@@ -297,9 +294,17 @@ export function GroupTradesDialog({
         .filter(opt => opt.type === 'STK')
         .reduce((sum, opt) => sum + (opt.final_profit ? opt.final_profit : 0), 0);
 
-    const formattedStockPnL = totalStockPnL > 0 
-        ? `+${totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` 
+    const formattedStockPnL = totalStockPnL > 0
+        ? `+${totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`
         : (totalStockPnL === 0 ? "0" : totalStockPnL.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 }));
+
+    // 總損益 is the identity of the boxes the header shows:
+    //   總現金流入 − 平倉成本 + 持股獲利
+    // Derived (not a raw final_profit sum) so it stays consistent when
+    // 平倉成本 is suppressed by the 只計入被突破 setting — otherwise the
+    // equation visibly failed (e.g. -18.5 + 0 displayed as -1,209).
+    const totalPnL = totalNetCashInflow - totalOpenCostToClose + totalStockPnL;
+    const formattedPnL = totalPnL > 0 ? `+${Math.round(totalPnL).toLocaleString('en-US')}` : (totalPnL < 0 ? Math.round(totalPnL).toLocaleString('en-US') : '');
 
     const rollProfitsMap = new Map<number, number>();
     // 展期天數 — trading days between the rolled-from expiry and the new
