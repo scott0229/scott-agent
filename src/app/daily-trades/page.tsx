@@ -759,7 +759,10 @@ export default function DailyTradesPage() {
 
                                         return (
                                             <span key={i}>
-                                                <span className={isRollHighlight ? 'cell-note px-1 rounded font-medium' : ''}>
+                                                {/* Amber pill background stays, but the label text reads in the
+                                                    normal foreground white — only the 收益/權利金 numbers keep
+                                                    their red/green status colors (set on inner spans). */}
+                                                <span className={isRollHighlight ? 'bg-note-badge text-foreground px-1 rounded font-medium' : ''}>
                                                     {renderedParts}
                                                 </span>
                                                 {i < arr.length - 1 ? '\n' : ''}
