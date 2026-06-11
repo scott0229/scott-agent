@@ -7,9 +7,9 @@
  *
  * No mark-to-market, TWR, or interest math involved — this is the
  * cheap subset of the daily report that CAN be reproduced for any
- * historical date. marketData carries each symbol's close as of D so
- * the client can paint a 被突破 indicator with the price that was
- * true THAT day, not today's.
+ * historical date. Rows opened ON the viewed date carry a
+ * traded_today flag so the card can highlight which holdings came
+ * from that day's activity.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -64,11 +64,14 @@ export async function GET(req: NextRequest) {
         // can't have been holdings on D. to_date == D stays in: the
         // position exists during D's session and the daily report's
         // current-day view shows it the same way.
+        // traded_today flags groups where ANY contributing leg was
+        // opened ON the viewed date — the card highlights those rows.
         // Ordering mirrors the daily report's 持有期權 section:
         // sellers first, QQQ → QLD → TQQQ → others, CALL before PUT,
         // expiry ASC, group.
         const { results: options } = await db.prepare(`
-            SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, group_id as trade_group
+            SELECT SUM(quantity) as quantity, to_date, type, underlying, strike_price, group_id as trade_group,
+                   MAX(CASE WHEN date(datetime(open_date, 'unixepoch')) = ? THEN 1 ELSE 0 END) as traded_today
             FROM OPTIONS
             WHERE owner_id = ?
               AND date(datetime(open_date, 'unixepoch')) <= ?
@@ -87,11 +90,13 @@ export async function GET(req: NextRequest) {
                 underlying,
                 CASE type WHEN 'CALL' THEN 1 WHEN 'PUT' THEN 2 ELSE 3 END,
                 to_date, group_id
-        `).bind(user.id, dateStr, dateStr, dateStr).all();
+        `).bind(dateStr, user.id, dateStr, dateStr, dateStr).all();
 
-        // Stock positions held at end of day D.
+        // Stock positions held at end of day D, with the same
+        // bought-on-D highlight flag.
         const { results: stocks } = await db.prepare(`
-            SELECT symbol, SUM(quantity) as quantity
+            SELECT symbol, SUM(quantity) as quantity,
+                   MAX(CASE WHEN date(datetime(open_date, 'unixepoch')) = ? THEN 1 ELSE 0 END) as traded_today
             FROM STOCK_TRADES
             WHERE owner_id = ?
               AND date(datetime(open_date, 'unixepoch')) <= ?
@@ -106,7 +111,7 @@ export async function GET(req: NextRequest) {
                     ELSE 4
                 END,
                 symbol
-        `).bind(user.id, dateStr, dateStr).all();
+        `).bind(dateStr, user.id, dateStr, dateStr).all();
 
         // Cash balance as of D — DAILY_NET_EQUITY is one row per trading
         // day, already scoped to this per-year user id. Latest row on or
@@ -119,28 +124,10 @@ export async function GET(req: NextRequest) {
             LIMIT 1
         `).bind(user.id, dateStr).first<{ cash_balance: number | null; net_equity: number | null }>();
 
-        // Per-symbol close as of D (latest bar on or before D) so the
-        // breach indicator reflects that day's market, not today's.
-        const { results: marketPrices } = await db.prepare(`
-            SELECT symbol, close_price FROM market_prices
-            WHERE date(datetime(date, 'unixepoch')) <= ?
-            AND date = (
-                SELECT MAX(date) FROM market_prices AS mp2
-                WHERE mp2.symbol = market_prices.symbol
-                AND date(datetime(mp2.date, 'unixepoch')) <= ?
-            )
-        `).bind(dateStr, dateStr).all();
-
-        const marketData: Record<string, number> = {};
-        (marketPrices as any[] | undefined)?.forEach(mp => {
-            marketData[mp.symbol] = mp.close_price;
-        });
-
         return NextResponse.json({
             success: true,
             options: options || [],
             stocks: stocks || [],
-            marketData,
             cash: equityRow?.cash_balance ?? null,
         });
     } catch (error: any) {

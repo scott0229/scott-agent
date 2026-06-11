@@ -60,7 +60,6 @@ export default function DailyTradesPage() {
     const [holdings, setHoldings] = useState<{
         options: any[];
         stocks: any[];
-        marketData: Record<string, number>;
         cash?: number | null;
     } | null>(null);
     const chartClickRef = useRef(false);
@@ -214,7 +213,6 @@ export default function DailyTradesPage() {
                         success?: boolean;
                         options: any[];
                         stocks: any[];
-                        marketData: Record<string, number>;
                         cash?: number | null;
                     };
                     setHoldings(json.success ? json : null);
@@ -776,15 +774,14 @@ interface HoldingsCardProps {
     holdings: {
         options: any[];
         stocks: any[];
-        marketData: Record<string, number>;
         cash?: number | null;
     } | null;
 }
 
 // 當日持倉 — point-in-time positions at end of the viewed date.
 // Line format mirrors the daily report's 持有期權 section so the two
-// surfaces read identically; the 被突破 indicator uses the close as of
-// the SNAPSHOT date (delivered in marketData), not today's price.
+// surfaces read identically; rows opened ON the viewed date carry a
+// red 當日交易 tag so that day's activity stands out in the stack.
 function HoldingsCard({ holdings }: HoldingsCardProps) {
     if (!holdings) return null;
     const options = holdings.options || [];
@@ -816,6 +813,9 @@ function HoldingsCard({ holdings }: HoldingsCardProps) {
                 {stocks.map((pos: any, i: number) => (
                     <div key={`s-${i}`}>
                         {pos.symbol} {fmtQty(pos.quantity)} 股
+                        {!!pos.traded_today && (
+                            <span className="text-status-negative"> 當日交易</span>
+                        )}
                     </div>
                 ))}
                 {stocks.length > 0 && options.length > 0 && (
@@ -832,22 +832,12 @@ function HoldingsCard({ holdings }: HoldingsCardProps) {
                     }
                     const qtyStr = opt.quantity < 0 ? opt.quantity : Math.abs(opt.quantity);
 
-                    // Breach vs the snapshot-date close. Same definition the
-                    // trades card uses: CALL breached when spot > strike,
-                    // PUT breached when spot < strike.
-                    const px = holdings.marketData?.[opt.underlying];
-                    let breach = 0;
-                    if (px != null) {
-                        if (opt.type === 'CALL') breach = px - (opt.strike_price ?? 0);
-                        else if (opt.type === 'PUT') breach = (opt.strike_price ?? 0) - px;
-                    }
-
                     return (
                         <div key={`o-${i}`}>
                             {qtyStr}口 {desc}
                             {opt.trade_group ? ` (${opt.trade_group})` : ''}
-                            {breach > 0 && (
-                                <span className="text-status-negative"> 被突破 {breach.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>
+                            {!!opt.traded_today && (
+                                <span className="text-status-negative"> 當日交易</span>
                             )}
                         </div>
                     );
