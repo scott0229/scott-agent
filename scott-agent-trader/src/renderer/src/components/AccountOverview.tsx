@@ -113,6 +113,41 @@ interface AccountOverviewProps {
 const posKey = (pos: PositionData): string =>
   `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
 
+// Naked short-CALL detector — mirrors the website daily-trades warning. Per
+// underlying, a sold call is "naked" (uncovered) when the contracts you're
+// short exceed what you can deliver: shortCalls×100 > shares + longCalls×100.
+// Computed from the live IB positions so it stays real-time.
+interface NakedCall {
+  u: string
+  short: number
+  long: number
+  shares: number
+  gap: number
+}
+function computeNakedCalls(positions: PositionData[], accountId: string): NakedCall[] {
+  const calls = new Map<string, { short: number; long: number }>()
+  const sharesByU = new Map<string, number>()
+  for (const p of positions) {
+    if (p.account !== accountId) continue
+    if (p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) {
+      const e = calls.get(p.symbol) || { short: 0, long: 0 }
+      if (p.quantity < 0) e.short += -p.quantity
+      else e.long += p.quantity
+      calls.set(p.symbol, e)
+    } else if (p.secType !== 'OPT') {
+      sharesByU.set(p.symbol, (sharesByU.get(p.symbol) || 0) + p.quantity)
+    }
+  }
+  const out: NakedCall[] = []
+  for (const [u, { short, long }] of calls) {
+    if (short <= 0) continue
+    const shares = sharesByU.get(u) || 0
+    const gap = short * 100 - (shares + long * 100)
+    if (gap > 0) out.push({ u, short, long, shares, gap })
+  }
+  return out
+}
+
 // Trading days until expiry — calendar days minus weekends.
 // IB expiry comes as YYYYMMDD; today is local "today" (midnight).
 // US market holidays aren't filtered yet; if needed we can wire a holiday
@@ -1082,6 +1117,22 @@ export default function AccountOverview({
     if (filterSymbol || selectMode || filterRight) return acctPositions.length > 0
     return true
   })
+
+  // Precompute 裸賣 CALL warnings per account once (reused by the card render),
+  // then float accounts that have one to the FRONT of the grid — a stable
+  // partition that keeps the chosen sort order within each half.
+  const nakedByAccount = new Map<string, NakedCall[]>()
+  for (const a of displayAccounts) {
+    const n = computeNakedCalls(positions, a.accountId)
+    if (n.length > 0) nakedByAccount.set(a.accountId, n)
+  }
+  const orderedAccounts =
+    !selectMode && nakedByAccount.size > 0
+      ? [
+          ...displayAccounts.filter((a) => nakedByAccount.has(a.accountId)),
+          ...displayAccounts.filter((a) => !nakedByAccount.has(a.accountId))
+        ]
+      : displayAccounts
 
   const cancelOrder = (orderId: number): void => {
     window.ibApi
@@ -2751,7 +2802,7 @@ export default function AccountOverview({
             className="accounts-grid"
             style={filterAccount ? { gridTemplateColumns: '1fr' } : undefined}
           >
-            {displayAccounts.map((account) => (
+            {orderedAccounts.map((account) => (
               <div
                 key={account.accountId}
                 className={`account-card${!filterAccount && selectedAccount === account.accountId ? ' account-card-selected' : ''}`}
@@ -3007,6 +3058,25 @@ export default function AccountOverview({
                     })()}
                   </div>
                 )}
+
+                {/* 裸賣 CALL warning — uncovered short calls per underlying.
+                    Mirrors the website daily-trades badge; placed right under
+                    the metrics so it's the first thing read on the card. */}
+                {!selectMode && (() => {
+                  const nakedCalls = nakedByAccount.get(account.accountId)
+                  if (!nakedCalls || nakedCalls.length === 0) return null
+                  return (
+                    <div className="naked-call-warnings">
+                      {nakedCalls.map((c) => (
+                        <div key={c.u} className="naked-call-badge">
+                          ⚠ 請儘速處理裸賣 {c.u} CALL：{c.short}口 vs{' '}
+                          {c.shares.toLocaleString('en-US')} 股
+                          {c.long > 0 ? ` + ${c.long}口長倉` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
 
                 {/* Daily-report note (from website USERS.report_note).
                     Always rendered when the account is editable so the user

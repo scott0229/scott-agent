@@ -541,6 +541,24 @@ body {
   font-weight: 600;
 }
 
+/* === 裸賣 CALL warning === */
+.naked-call-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 10px;
+}
+
+.naked-call-badge {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* === Positions === */
 .positions-section {
   padding: 0;
