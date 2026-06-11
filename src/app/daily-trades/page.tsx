@@ -309,6 +309,34 @@ export default function DailyTradesPage() {
             intradayPrices,
         );
 
+    // 裸賣 CALL 檢查 over the same point-in-time snapshot the holdings
+    // card renders: naked ⇔ shortCalls×100 > shares + longCalls×100,
+    // per underlying. Only entries with a positive gap survive — the
+    // trades card surfaces these as a warning banner under 交易日期.
+    // holdings is null in 全部帳戶 mode, so this is single-account only.
+    const nakedCallChecks = (() => {
+        if (!holdings) return [] as { u: string; short: number; long: number; shares: number; gap: number }[];
+        const byUnderlying = new Map<string, { short: number; long: number }>();
+        for (const opt of holdings.options || []) {
+            if (opt.type !== 'CALL') continue;
+            const u = opt.underlying;
+            if (!byUnderlying.has(u)) byUnderlying.set(u, { short: 0, long: 0 });
+            const agg = byUnderlying.get(u)!;
+            if (opt.quantity < 0) agg.short += -opt.quantity;
+            else agg.long += opt.quantity;
+        }
+        return [...byUnderlying.entries()]
+            .filter(([, agg]) => agg.short > 0)
+            .map(([u, agg]) => {
+                const shares = (holdings.stocks || [])
+                    .filter((s: any) => s.symbol === u)
+                    .reduce((sum: number, s: any) => sum + s.quantity, 0);
+                const gap = agg.short * 100 - (shares + agg.long * 100);
+                return { u, ...agg, shares, gap };
+            })
+            .filter(c => c.gap > 0);
+    })();
+
 
     // Union of every underlying that traded today across every shown card,
     // sorted alpha. Feeds the 標的 filter dropdown so the picker only
@@ -731,12 +759,28 @@ export default function DailyTradesPage() {
                                             return <span key={pIndex}>{part}</span>;
                                         });
 
+                                        // 裸賣 CALL warning — injected directly under the
+                                        // 交易日期 line so it's the first thing read on the
+                                        // card. Red badge styling makes it unmissable.
+                                        // nakedCallChecks is empty in 全部帳戶 mode (no
+                                        // holdings snapshot), so this only fires for the
+                                        // single selected account.
+                                        const showNakedWarning = line.startsWith('交易日期') && nakedCallChecks.length > 0;
+
                                         return (
                                             <span key={i}>
                                                 <span className={isRollHighlight ? 'cell-note px-1 rounded font-medium' : ''}>
                                                     {renderedParts}
                                                 </span>
                                                 {i < arr.length - 1 ? '\n' : ''}
+                                                {showNakedWarning && nakedCallChecks.map(c => (
+                                                    <span key={`naked-${c.u}`}>
+                                                        <span className="bg-status-negative-soft text-status-negative border border-status-negative-border rounded px-1 font-medium">
+                                                            ⚠ 裸賣 {c.u} CALL：{c.short}口 vs {new Intl.NumberFormat('en-US').format(c.shares)} 股{c.long > 0 ? ` + ${c.long}口長倉` : ''}，缺 {new Intl.NumberFormat('en-US').format(c.gap)} 股
+                                                        </span>
+                                                        {'\n'}
+                                                    </span>
+                                                ))}
                                             </span>
                                         );
                                     })}
@@ -847,49 +891,6 @@ function HoldingsCard({ holdings }: HoldingsCardProps) {
                         </div>
                     );
                 })}
-                {/* 裸賣 CALL 檢查 — covered-call coverage per underlying:
-                    naked ⇔ shortCalls×100 > shares + longCalls×100. All
-                    inputs are already in this card's payload, so the
-                    analysis is pure client-side arithmetic on the same
-                    point-in-time snapshot the lines above render. */}
-                {(() => {
-                    const byUnderlying = new Map<string, { short: number; long: number }>();
-                    for (const opt of options) {
-                        if (opt.type !== 'CALL') continue;
-                        const u = opt.underlying;
-                        if (!byUnderlying.has(u)) byUnderlying.set(u, { short: 0, long: 0 });
-                        const agg = byUnderlying.get(u)!;
-                        if (opt.quantity < 0) agg.short += -opt.quantity;
-                        else agg.long += opt.quantity;
-                    }
-                    const checks = [...byUnderlying.entries()]
-                        .filter(([, agg]) => agg.short > 0)
-                        .map(([u, agg]) => {
-                            const shares = stocks
-                                .filter((s: any) => s.symbol === u)
-                                .reduce((sum: number, s: any) => sum + s.quantity, 0);
-                            const gap = agg.short * 100 - (shares + agg.long * 100);
-                            return { u, ...agg, shares, gap };
-                        });
-                    if (checks.length === 0) return null;
-                    return (
-                        <>
-                            <div className="select-none">----------------------------------------</div>
-                            {checks.map(c => (
-                                <div key={`nc-${c.u}`}>
-                                    {c.u} 賣CALL {c.short}口 vs {fmtQty(c.shares)} 股
-                                    {c.long > 0 ? ` + ${c.long}口長倉` : ''}
-                                    {' '}
-                                    {c.gap > 0 ? (
-                                        <span className="text-status-negative">裸賣，缺 {fmtQty(c.gap)} 股</span>
-                                    ) : (
-                                        <span className="text-status-positive">已覆蓋</span>
-                                    )}
-                                </div>
-                            ))}
-                        </>
-                    );
-                })()}
             </div>
         </div>
     );
