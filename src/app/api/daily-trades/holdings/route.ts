@@ -108,6 +108,17 @@ export async function GET(req: NextRequest) {
                 symbol
         `).bind(user.id, dateStr, dateStr).all();
 
+        // Cash balance as of D — DAILY_NET_EQUITY is one row per trading
+        // day, already scoped to this per-year user id. Latest row on or
+        // before D covers weekends/holidays (carries Friday's balance).
+        const equityRow = await db.prepare(`
+            SELECT cash_balance, net_equity
+            FROM DAILY_NET_EQUITY
+            WHERE user_id = ? AND date(datetime(date, 'unixepoch')) <= ?
+            ORDER BY date DESC
+            LIMIT 1
+        `).bind(user.id, dateStr).first<{ cash_balance: number | null; net_equity: number | null }>();
+
         // Per-symbol close as of D (latest bar on or before D) so the
         // breach indicator reflects that day's market, not today's.
         const { results: marketPrices } = await db.prepare(`
@@ -130,6 +141,7 @@ export async function GET(req: NextRequest) {
             options: options || [],
             stocks: stocks || [],
             marketData,
+            cash: equityRow?.cash_balance ?? null,
         });
     } catch (error: any) {
         console.error('Failed to fetch holdings:', error);
