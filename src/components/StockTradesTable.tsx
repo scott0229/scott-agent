@@ -183,7 +183,9 @@ export function StockTradesTable({
                                                                 ? 'cell-positive'
                                                                 : trade.group_id && String(trade.group_id).endsWith('-4')
                                                                     ? 'cell-accent'
-                                                                    : 'bg-muted text-foreground hover:bg-muted/80'
+                                                                    : trade.group_id && String(trade.group_id).endsWith('-5')
+                                                                        ? 'cell-info'
+                                                                        : 'bg-muted text-foreground hover:bg-muted/80'
                                                     }`}>
                                                         <SelectValue placeholder="-" />
                                                     </SelectTrigger>

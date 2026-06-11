@@ -670,7 +670,9 @@ export function GroupTradesDialog({
                                                             ? 'cell-positive'
                                                             : opt.group_id && String(opt.group_id).endsWith('-4')
                                                                 ? 'cell-accent'
-                                                                : 'bg-muted'
+                                                                : opt.group_id && String(opt.group_id).endsWith('-5')
+                                                                    ? 'cell-info'
+                                                                    : 'bg-muted'
                                                 }`}>
                                                     {opt.group_id || '-'}
                                                 </div>
