@@ -208,8 +208,73 @@ export interface RollOrderRequest {
   outsideRth?: boolean
 }
 
-// Map orderId → readable combo description for display
-const comboDescriptionMap = new Map<number, string>()
+// Cache of resolved option-leg details, keyed by conId (globally unique — the
+// old comboDescriptionMap was keyed by the per-client orderId, so siblings of a
+// batch roll that shared an orderId only ever got ONE description filled and the
+// rest showed the bare symbol). Build each order's combo description from its
+// own legs against this shared cache, so the whole batch resolves together.
+const legDetailCache = new Map<number, { expiry: string; strike: number; right: string }>()
+
+const COMBO_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec'
+]
+function fmtComboExpiry(e: string): string {
+  const m = COMBO_MONTHS[parseInt(e.substring(4, 6)) - 1]
+  const d = e.substring(6, 8)
+  return `${m}${d}`
+}
+
+// Remember each order's legs by permId (globally unique). IB sends comboLegs on
+// the FIRST open-order snapshot but routinely OMITS them on later polls — so
+// without this the 標的 would build once then revert to the bare symbol.
+const orderLegsByPermId = new Map<number, Array<{ conId: number; action: string }>>()
+
+// Build "+Jun15 719P → -Jun16 718C" from an order's legs + the conId cache.
+// Returns undefined if any leg isn't resolved yet, so the UI keeps falling back
+// to the bare symbol rather than showing a half-built "?" string.
+function buildComboDescription(
+  legs: Array<{ conId: number; action: string }> | undefined
+): string | undefined {
+  if (!legs || legs.length === 0) return undefined
+  const parts: string[] = []
+  for (const leg of legs) {
+    const d = leg.conId ? legDetailCache.get(leg.conId) : undefined
+    if (!d) return undefined
+    const r = d.right === 'C' || d.right === 'CALL' ? 'C' : 'P'
+    const prefix = leg.action === 'BUY' ? '+' : '-'
+    parts.push(`${prefix}${fmtComboExpiry(d.expiry)} ${d.strike}${r}`)
+  }
+  return parts.join(' → ')
+}
+
+// Resolve a BAG order's description, remembering its legs by permId so a later
+// snapshot that omits comboLegs still renders the full 標的.
+function comboDescriptionForOrder(
+  permId: number,
+  comboLegs: Array<{ conId: number; action: string }> | undefined
+): string | undefined {
+  if (comboLegs && comboLegs.length > 0 && permId) {
+    orderLegsByPermId.set(permId, comboLegs)
+  }
+  const legs =
+    comboLegs && comboLegs.length > 0
+      ? comboLegs
+      : permId
+        ? orderLegsByPermId.get(permId)
+        : undefined
+  return buildComboDescription(legs)
+}
 
 let rollReqIdCounter = 500000
 function getNextRollReqId(): number {
@@ -366,6 +431,19 @@ export async function placeRollOrder(
     comboLegs
   }
 
+  // Seed the leg cache from the legs we just resolved, so every order in this
+  // batch renders its full 標的 immediately — no later reqContractDetails needed.
+  legDetailCache.set(closeConId, {
+    expiry: request.closeExpiry,
+    strike: request.closeStrike,
+    right: request.closeRight
+  })
+  legDetailCache.set(openConId, {
+    expiry: request.openExpiry,
+    strike: request.openStrike,
+    right: request.openRight
+  })
+
   // 3. Place one order per account
   const results: OrderStatusUpdate[] = []
 
@@ -373,31 +451,6 @@ export async function placeRollOrder(
     if (quantity <= 0) continue
 
     const orderId = getNextOrderId()
-
-    // Build readable combo description for UI display
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ]
-    const fmtExp = (e: string): string => {
-      const m = months[parseInt(e.substring(4, 6)) - 1]
-      const d = e.substring(6, 8)
-      return `${m}${d}`
-    }
-    const closePrefix = closeAction === 'BUY' ? '+' : '-'
-    const openPrefix = openAction === 'BUY' ? '+' : '-'
-    const comboDesc = `${closePrefix}${fmtExp(request.closeExpiry)} ${request.closeStrike}${request.closeRight} → ${openPrefix}${fmtExp(request.openExpiry)} ${request.openStrike}${request.openRight}`
-    comboDescriptionMap.set(orderId, comboDesc)
 
     const order: Order = {
       action: OrderAction.BUY,
@@ -591,8 +644,6 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
 
   // Phase 1: Collect all open orders
   const orders: OpenOrder[] = []
-  // Track combo legs for BAG orders that need resolution
-  const bagOrderLegs = new Map<number, ComboLeg[]>()
   // reqOpenOrders also fires orderStatus — capture fill progress per order.
   const fillByOrderId = new Map<number, { filled: number; avgFillPrice: number }>()
 
@@ -622,14 +673,6 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
       const status = orderState?.status || 'Unknown'
       // Skip fully filled / cancelled / inactive orders (not working).
       if (status === 'Filled' || status === 'Cancelled' || status === 'Inactive') return
-
-      // For BAG orders, save combo legs for later resolution
-      if (contract.secType === 'BAG' && !comboDescriptionMap.has(orderId)) {
-        const legs = (contract as any).comboLegs as ComboLeg[] | undefined
-        if (legs && legs.length > 0) {
-          bagOrderLegs.set(orderId, legs)
-        }
-      }
 
       const comboLegs =
         contract.secType === 'BAG'
@@ -662,7 +705,7 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         strike: contract.strike || undefined,
         right: contract.right || undefined,
         comboDescription:
-          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined,
+          contract.secType === 'BAG' ? comboDescriptionForOrder(permId, comboLegs) : undefined,
         comboLegs
       }
 
@@ -712,102 +755,68 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
     }
   }
 
-  // Phase 2: Resolve combo leg conIds for BAG orders without cached descriptions
-  if (bagOrderLegs.size > 0) {
-    // Collect all unique conIds that need resolution
-    const allConIds = new Set<number>()
-    for (const legs of bagOrderLegs.values()) {
-      for (const leg of legs) {
-        if (leg.conId) allConIds.add(leg.conId)
-      }
+  // Phase 2: resolve any BAG leg conIds we don't have cached yet, then build
+  // every order's description from its OWN legs against the shared (conId-keyed)
+  // cache — so all siblings of a batch roll resolve together, not just the first
+  // order that happened to own the orderId.
+  const missingConIds = new Set<number>()
+  for (const o of orders) {
+    if (o.secType !== 'BAG') continue
+    const legs =
+      o.comboLegs && o.comboLegs.length > 0 ? o.comboLegs : orderLegsByPermId.get(o.permId)
+    if (!legs) continue
+    for (const leg of legs) {
+      if (leg.conId && !legDetailCache.has(leg.conId)) missingConIds.add(leg.conId)
     }
+  }
 
-    // Resolve each conId to contract details
-    const conIdDetails = new Map<number, { expiry: string; strike: number; right: string }>()
-    console.log(`[IB] Resolving ${allConIds.size} conIds for BAG order legs...`)
-
-    for (const conId of allConIds) {
-      try {
-        const reqId = getNextRollReqId()
-        const details = await new Promise<{ expiry: string; strike: number; right: string } | null>(
-          (res) => {
-            const t = setTimeout(() => {
-              api.removeListener(EventName.contractDetails, onDetails)
-              api.removeListener(EventName.error, onErr)
-              res(null)
-            }, 5000)
-
-            const onDetails = (id: number, d: any): void => {
-              if (id !== reqId) return
-              clearTimeout(t)
-              api.removeListener(EventName.contractDetails, onDetails)
-              api.removeListener(EventName.error, onErr)
-              const c = d?.contract || d?.summary
-              if (c) {
-                res({
-                  expiry: c.lastTradeDateOrContractMonth || '',
-                  strike: c.strike || 0,
-                  right: c.right || ''
-                })
-              } else {
-                res(null)
-              }
-            }
-
-            const onErr = (_err: Error, _code: number, id: number): void => {
-              if (id !== reqId) return
-              clearTimeout(t)
-              api.removeListener(EventName.contractDetails, onDetails)
-              api.removeListener(EventName.error, onErr)
-              res(null)
-            }
-
-            api.on(EventName.contractDetails, onDetails)
-            api.on(EventName.error, onErr)
-            api.reqContractDetails(reqId, { conId })
+  if (missingConIds.size > 0) {
+    console.log(`[IB] Resolving ${missingConIds.size} BAG leg conId(s)...`)
+    for (const conId of missingConIds) {
+      const details = await new Promise<{ expiry: string; strike: number; right: string } | null>(
+        (res) => {
+          const reqId = getNextRollReqId()
+          const t = setTimeout(() => {
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            res(null)
+          }, 5000)
+          const onDetails = (id: number, d: any): void => {
+            if (id !== reqId) return
+            clearTimeout(t)
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            const c = d?.contract || d?.summary
+            res(
+              c
+                ? {
+                    expiry: c.lastTradeDateOrContractMonth || '',
+                    strike: c.strike || 0,
+                    right: c.right || ''
+                  }
+                : null
+            )
           }
-        )
-        if (details) conIdDetails.set(conId, details)
-      } catch {
-        // ignore resolution errors
-      }
+          const onErr = (_err: Error, _code: number, id: number): void => {
+            if (id !== reqId) return
+            clearTimeout(t)
+            api.removeListener(EventName.contractDetails, onDetails)
+            api.removeListener(EventName.error, onErr)
+            res(null)
+          }
+          api.on(EventName.contractDetails, onDetails)
+          api.on(EventName.error, onErr)
+          api.reqContractDetails(reqId, { conId })
+        }
+      )
+      if (details) legDetailCache.set(conId, details)
     }
+  }
 
-    // Build descriptions for each BAG order
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ]
-    const fmtExp = (e: string): string => {
-      const m = months[parseInt(e.substring(4, 6)) - 1]
-      const d = e.substring(6, 8)
-      return `${m}${d}`
-    }
-    for (const [orderId, legs] of bagOrderLegs.entries()) {
-      const legDescs = legs.map((leg) => {
-        const d = leg.conId ? conIdDetails.get(leg.conId) : undefined
-        if (!d) return '?'
-        const r = d.right === 'C' || d.right === 'CALL' ? 'C' : 'P'
-        const prefix = leg.action === 'BUY' ? '+' : '-'
-        return `${prefix}${fmtExp(d.expiry)} ${d.strike}${r}`
-      })
-      const desc = legDescs.join(' → ')
-      comboDescriptionMap.set(orderId, desc)
-
-      // Update the order object
-      const order = orders.find((o) => o.orderId === orderId)
-      if (order) order.comboDescription = desc
-    }
+  // Fill in (or refresh) every BAG order's description — from its own legs when
+  // present, else from the permId-remembered legs.
+  for (const o of orders) {
+    if (o.secType === 'BAG') o.comboDescription = comboDescriptionForOrder(o.permId, o.comboLegs)
   }
 
   return orders
@@ -962,7 +971,9 @@ export function setupOpenOrderListener(callback: (order: OpenOrder) => void): vo
         strike: contract.strike || undefined,
         right: contract.right || undefined,
         comboDescription:
-          contract.secType === 'BAG' ? comboDescriptionMap.get(orderId) || undefined : undefined,
+          contract.secType === 'BAG'
+            ? comboDescriptionForOrder(order.permId || 0, comboLegs)
+            : undefined,
         comboLegs
       }
 

@@ -1253,7 +1253,7 @@ export default function AccountOverview({
           )}
           {acctName}
           {batchToggle?.collapsed && (
-            <span style={{ color: '#374151', fontWeight: 700, marginLeft: 5, fontSize: 12 }}>
+            <span style={{ color: '#333', marginLeft: 5, fontSize: 12 }}>
               ({batchToggle.count})
             </span>
           )}
