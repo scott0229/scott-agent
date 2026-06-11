@@ -766,7 +766,7 @@ export default function DailyTradesPage() {
                                                 {showNakedWarning && cardNakedChecks.map(c => (
                                                     <span key={`naked-${c.u}`}>
                                                         <span className="bg-status-negative-soft text-status-negative border border-status-negative-border rounded px-1 font-medium">
-                                                            ⚠ 裸賣 {c.u} CALL：{c.short}口 vs {new Intl.NumberFormat('en-US').format(c.shares)} 股{c.long > 0 ? ` + ${c.long}口長倉` : ''}，缺 {new Intl.NumberFormat('en-US').format(c.gap)} 股
+                                                            ⚠ 裸賣 {c.u} CALL：{c.short}口 vs {new Intl.NumberFormat('en-US').format(c.shares)} 股{c.long > 0 ? ` + ${c.long}口長倉` : ''}
                                                         </span>
                                                         {'\n'}
                                                     </span>
