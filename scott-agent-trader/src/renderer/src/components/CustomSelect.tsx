@@ -61,7 +61,9 @@ export default function CustomSelect({
       )}
       <button type="button" className="custom-select-trigger" onClick={() => setOpen(!open)}>
         <span>{selectedLabel}</span>
-        <span className="custom-select-arrow">▾</span>
+        {/* The ‹ › steppers already convey it's cyclable — drop the ▾ and
+            centre the label in that mode. */}
+        {!showSteppers && <span className="custom-select-arrow">▾</span>}
       </button>
       {onNext && (
         <button

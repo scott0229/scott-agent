@@ -226,7 +226,13 @@ export function useOptionChain({
 
   // ── Auto-select first expiration ──────────────────────────────────────
   useEffect(() => {
-    if (availableExpirations.length > 0 && selectedExpirations.length === 0) {
+    if (availableExpirations.length === 0) return
+    // Re-pick when nothing valid is selected. This also self-heals the race
+    // where a cached chain auto-selected an early expiry BEFORE the roll
+    // dialog's expiryFilter (>= source expiry) narrowed the list — leaving the
+    // selection filtered out and the chain stuck on "載入中".
+    const hasValidSelection = selectedExpirations.some((e) => availableExpirations.includes(e))
+    if (!hasValidSelection) {
       setSelectedExpirations(availableExpirations.slice(0, 1))
     }
     // selectionNonce so reopening re-selects even when availableExpirations

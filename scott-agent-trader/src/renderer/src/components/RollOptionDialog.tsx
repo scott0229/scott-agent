@@ -143,6 +143,12 @@ export default function RollOptionDialog({
   const userEditedPriceRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
   const [rollQty, setRollQty] = useState('')
+  // Heads-up when rolling QQQ out more than 2 trading days — shown the moment a
+  // long target is picked. Track the last-warned expiry so it pops once per
+  // distinct target rather than on every click.
+  const [longRollWarnOpen, setLongRollWarnOpen] = useState(false)
+  const [longRollDays, setLongRollDays] = useState(0)
+  const lastWarnedExpiryRef = useRef<string | null>(null)
   const initialExpirySetRef = useRef(false)
 
   // ── Reset on open ───────────────────────────────────────────────────────
@@ -302,6 +308,52 @@ export default function RollOptionDialog({
     return `${side} ${sourceRight === 'P' ? 'PUT' : 'CALL'}`
   }, [sourceRight, positions])
 
+  // Places the roll across all selected accounts. Extracted so it can run
+  // either directly or after the long-roll confirmation.
+  const performRoll = async (): Promise<void> => {
+    if (!targetExpiry || targetStrike === null || targetRight === null || !limitPrice || !rollQty)
+      return
+    setSubmitting(true)
+    try {
+      const totalPosQty = positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)
+      const targetTotalQty = parseInt(rollQty, 10) || 0
+      const multiplier = totalPosQty > 0 ? targetTotalQty / totalPosQty : 1
+
+      for (const pos of positions) {
+        const originalQty = Math.abs(pos.quantity)
+        const qty =
+          positions.length === 1 ? targetTotalQty : Math.round(originalQty * multiplier) || 1
+        const isShort = pos.quantity < 0
+        const closeAction = isShort ? 'BUY' : 'SELL'
+        await window.ibApi.placeRollOrder(
+          {
+            symbol,
+            closeExpiry: pos.expiry || '',
+            closeStrike: pos.strike || 0,
+            closeRight: pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P',
+            openExpiry: targetExpiry,
+            openStrike: targetStrike,
+            openRight: targetRight,
+            action: closeAction,
+            limitPrice: parseFloat(limitPrice),
+            outsideRth: true
+          },
+          { [pos.account]: qty }
+        )
+      }
+      onRollComplete?.(positions, {
+        expiry: targetExpiry,
+        strike: targetStrike,
+        right: targetRight
+      })
+      onClose()
+    } catch (err: unknown) {
+      alert('展期下單失敗: ' + String(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSelect = useCallback(
     (expiry: string, strike: number, right: 'C' | 'P') => {
       // 防呆: ignore a pick on the wrong side (CALL when rolling a PUT, etc.).
@@ -310,9 +362,26 @@ export default function RollOptionDialog({
       setTargetExpiry(expiry)
       setTargetStrike(strike)
       setTargetRight(right)
+      // QQQ: warn as soon as a >2-trading-day target is chosen.
+      if (symbol === 'QQQ' && lastWarnedExpiryRef.current !== expiry) {
+        const maxRollDays = positions.reduce(
+          (m, p) => Math.max(m, rollTradingDays(p.expiry, expiry) ?? 0),
+          0
+        )
+        if (maxRollDays > 2) {
+          lastWarnedExpiryRef.current = expiry
+          setLongRollDays(maxRollDays)
+          setLongRollWarnOpen(true)
+        }
+      }
     },
-    [sourceRight]
+    [sourceRight, symbol, positions]
   )
+
+  // Reset the long-roll warning gate each time the dialog opens.
+  useEffect(() => {
+    if (open) lastWarnedExpiryRef.current = null
+  }, [open])
 
   const findCurrentGreek = useCallback(
     (pos: PositionData): OptionGreek | undefined => {
@@ -391,6 +460,7 @@ export default function RollOptionDialog({
   const targetMid = midPrice(targetGreek)
 
   return (
+    <>
     <div className="roll-dialog-overlay" onClick={onClose}>
       <div
         className="roll-dialog"
@@ -713,6 +783,24 @@ export default function RollOptionDialog({
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {currentDesc} → {targetDesc}
                           </td>
+                          <td
+                            style={{
+                              width: 1,
+                              textAlign: 'center',
+                              whiteSpace: 'nowrap',
+                              paddingLeft: 16,
+                              paddingRight: 16
+                            }}
+                          >
+                            {(() => {
+                              // DTE = trading days from today to this option's
+                              // (source) expiry — how much life is left on it.
+                              const now = new Date()
+                              const todayYmd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+                              const dte = rollTradingDays(todayYmd, pos.expiry)
+                              return dte != null ? `DTE ${dte}` : '-'
+                            })()}
+                          </td>
                           {(() => {
                             const rd = rollTradingDays(pos.expiry, targetExpiry)
                             const srcStrike = Number(pos.strike)
@@ -776,57 +864,7 @@ export default function RollOptionDialog({
               !rollQty ||
               submitting
             }
-            onClick={async () => {
-              if (
-                !targetExpiry ||
-                targetStrike === null ||
-                targetRight === null ||
-                !limitPrice ||
-                !rollQty
-              )
-                return
-              setSubmitting(true)
-              try {
-                const totalPosQty = positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)
-                const targetTotalQty = parseInt(rollQty, 10) || 0
-                const multiplier = totalPosQty > 0 ? targetTotalQty / totalPosQty : 1
-
-                for (const pos of positions) {
-                  const originalQty = Math.abs(pos.quantity)
-                  const qty =
-                    positions.length === 1
-                      ? targetTotalQty
-                      : Math.round(originalQty * multiplier) || 1
-                  const isShort = pos.quantity < 0
-                  const closeAction = isShort ? 'BUY' : 'SELL'
-                  await window.ibApi.placeRollOrder(
-                    {
-                      symbol,
-                      closeExpiry: pos.expiry || '',
-                      closeStrike: pos.strike || 0,
-                      closeRight: pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P',
-                      openExpiry: targetExpiry,
-                      openStrike: targetStrike,
-                      openRight: targetRight,
-                      action: closeAction,
-                      limitPrice: parseFloat(limitPrice),
-                      outsideRth: true
-                    },
-                    { [pos.account]: qty }
-                  )
-                }
-                onRollComplete?.(positions, {
-                  expiry: targetExpiry,
-                  strike: targetStrike,
-                  right: targetRight
-                })
-                onClose()
-              } catch (err: unknown) {
-                alert('展期下單失敗: ' + String(err))
-              } finally {
-                setSubmitting(false)
-              }
-            }}
+            onClick={() => void performRoll()}
           >
             {submitting
               ? '下單中...'
@@ -837,5 +875,33 @@ export default function RollOptionDialog({
         </div>
       </div>
     </div>
+
+    {longRollWarnOpen && (
+      <div
+        className="roll-dialog-overlay"
+        style={{ zIndex: 1000 }}
+        onClick={() => setLongRollWarnOpen(false)}
+      >
+        <div
+          className="roll-dialog"
+          style={{ width: 460, maxWidth: '92vw' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="roll-dialog-header">
+            <h3 style={{ margin: 0 }}>⚠️ 展期天數過長</h3>
+          </div>
+          <div className="roll-dialog-body" style={{ padding: 20, lineHeight: 1.7, fontSize: 14 }}>
+            請留意展期為 {longRollDays} 天，期權的 DTE
+            越長，日後的滾動會越難操作，如果不是處於極端劣勢應儘量避免，也同時可以考慮支付費用做滾動。
+          </div>
+          <div className="roll-dialog-footer">
+            <button className="roll-dialog-confirm" onClick={() => setLongRollWarnOpen(false)}>
+              知道了
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

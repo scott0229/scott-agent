@@ -22,6 +22,37 @@ function ymd(ts: number | null | undefined): string {
   return `${String(d.getFullYear()).slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// US market holidays — mirrors the website's src/lib/holidays.ts so DTE / 展期天數
+// match the daily-trades 群組 dialog exactly.
+const US_MARKET_HOLIDAYS = new Set([
+  '2024-01-01', '2024-01-15', '2024-02-19', '2024-03-29', '2024-05-27', '2024-06-19',
+  '2024-07-04', '2024-09-02', '2024-11-28', '2024-12-25',
+  '2025-01-01', '2025-01-20', '2025-02-17', '2025-04-18', '2025-05-26', '2025-06-19',
+  '2025-07-04', '2025-09-01', '2025-11-27', '2025-12-25',
+  '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03', '2026-05-25', '2026-06-19',
+  '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25'
+])
+
+// Trading days between two unix-second timestamps — weekends + US market
+// holidays excluded (same convention as the website's getTradingDaysDiff).
+function tradingDaysDiff(startTs?: number | null, endTs?: number | null): number | null {
+  if (!startTs || !endTs) return null
+  const a = new Date(startTs * 1000)
+  a.setHours(0, 0, 0, 0)
+  const b = new Date(endTs * 1000)
+  b.setHours(0, 0, 0, 0)
+  const cur = a < b ? new Date(a) : new Date(b)
+  const target = a < b ? b : a
+  let days = 0
+  while (cur < target) {
+    cur.setDate(cur.getDate() + 1)
+    const dow = cur.getDay()
+    const ds = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+    if (dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(ds)) days++
+  }
+  return days
+}
+
 function tickerText(r: GroupDetailRow): React.ReactNode {
   if (r.type === 'STK') {
     if (r.underlying_price != null) {
@@ -130,7 +161,7 @@ export default function TradeGroupDialog({
     <div className="roll-dialog-overlay" onClick={onClose}>
       <div
         className="roll-dialog"
-        style={{ width: 1050, maxWidth: '96vw', maxHeight: '70vh', overflow: 'hidden' }}
+        style={{ width: 1200, maxWidth: '96vw', maxHeight: '70vh', overflow: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="roll-dialog-header" style={{ flexWrap: 'wrap', gap: 12, borderBottom: 'none' }}>
@@ -214,17 +245,19 @@ export default function TradeGroupDialog({
                   <th style={{ width: 90, textAlign: 'center' }}>平倉日</th>
                   <th style={{ width: 60, textAlign: 'center' }}>數量</th>
                   <th>標的</th>
+                  <th style={{ width: 60, textAlign: 'center' }}>DTE</th>
                   <th style={{ width: 120, textAlign: 'center' }}>累積持股</th>
                   <th style={{ width: 90, textAlign: 'center' }}>當時股價</th>
                   <th style={{ width: 90, textAlign: 'center' }}>權利金</th>
                   <th style={{ width: 90, textAlign: 'center' }}>損益</th>
+                  <th style={{ width: 80, textAlign: 'center' }}>展期天數</th>
                   <th style={{ width: 90, textAlign: 'center' }}>展期收益</th>
                 </tr>
               </thead>
               <tbody>
                 {data.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="empty-state" style={{ padding: 20 }}>
+                    <td colSpan={13} className="empty-state" style={{ padding: 20 }}>
                       此群組沒有資料
                     </td>
                   </tr>
@@ -255,6 +288,14 @@ export default function TradeGroupDialog({
                         <td style={{ textAlign: 'center' }}>{r.quantity}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{tickerText(r)}</td>
                         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {(() => {
+                            // DTE = trading days from open to expiry.
+                            if (r.type === 'STK') return ''
+                            const d = tradingDaysDiff(r.open_date, r.to_date)
+                            return d != null ? `${d} 天` : '-'
+                          })()}
+                        </td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {holdingsText}
                         </td>
                         <td style={{ textAlign: 'center' }}>
@@ -274,6 +315,24 @@ export default function TradeGroupDialog({
                           className={signClass(r.final_profit)}
                         >
                           {r.final_profit != null ? signed(r.final_profit, 0) : '-'}
+                        </td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {(() => {
+                            // 展期天數 = trading days from the rolled-from (next
+                            // older option) expiry to this one. Rows are
+                            // newest-first, so scan downward for the older leg.
+                            if (r.type === 'STK') return ''
+                            let prevToDate: number | null | undefined
+                            for (let j = idx + 1; j < data.rows.length; j++) {
+                              const o = data.rows[j]
+                              if (o.type !== 'STK' && o.to_date) {
+                                prevToDate = o.to_date
+                                break
+                              }
+                            }
+                            const d = tradingDaysDiff(prevToDate, r.to_date)
+                            return d != null ? `${d} 天` : '-'
+                          })()}
                         </td>
                         <td
                           style={{ textAlign: 'center' }}
