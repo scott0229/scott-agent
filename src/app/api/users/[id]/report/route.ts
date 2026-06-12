@@ -433,9 +433,32 @@ export async function GET(
             console.warn('25-trading-day premium calc failed (non-fatal):', err);
         }
 
+        // Open-position aggregates for the 不含浮虧 rate. The 含浮虧 rate
+        // (= annualPremium) marks open positions to market via their
+        // final_profit. To strip the floating loss we swap that MTM
+        // contribution for the full premium received:
+        //   不含浮虧 numerator = annualPremium − open_final_profit + open_premium
+        // The delta (open_premium − open_final_profit) is the current
+        // buy-back value, i.e. the unrealized loss being removed.
+        let openTotalPremium = 0;
+        let openTotalFinalProfit = 0;
+        try {
+            const openAgg = await db.prepare(`
+                SELECT COALESCE(SUM(premium), 0) AS prem, COALESCE(SUM(final_profit), 0) AS fp
+                FROM OPTIONS
+                WHERE owner_id = ? AND year = ? AND operation = 'Open'
+            `).bind(userId, currentYear).first<{ prem: number; fp: number }>();
+            openTotalPremium = openAgg?.prem ?? 0;
+            openTotalFinalProfit = openAgg?.fp ?? 0;
+        } catch (err) {
+            console.warn('open-position aggregate failed (non-fatal):', err);
+        }
+
         return NextResponse.json({
             success: true,
             reportData: {
+                openTotalPremium,
+                openTotalFinalProfit,
                 user_id: user.user_id || user.email.split('@')[0],
                 year: currentYear,
                 accountNetWorth,

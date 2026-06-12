@@ -539,6 +539,14 @@ export default function AdminUsersPage() {
 
         // Premium section
         report += `期權收益率 (含浮虧) : ${calculatePremiumRate(annualPremium, costBase).toFixed(2)}%\n`;
+        // 不含浮虧: swap open positions' mark-to-market (final_profit) for the
+        // full premium received, removing the unrealized buy-back cost.
+        {
+            const openFP = data.openTotalFinalProfit ?? 0;
+            const openPrem = data.openTotalPremium ?? 0;
+            const annualPremiumExFloat = annualPremium - openFP + openPrem;
+            report += `期權收益率 (不含浮虧) : ${calculatePremiumRate(annualPremiumExFloat, costBase).toFixed(2)}%\n`;
+        }
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
         report += `整年累積收益 : $${formatMoney(annualPremium)}\n`;
         report += `整年${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
