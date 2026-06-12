@@ -374,6 +374,7 @@ export default function RollOptionDialog({
         const messages: string[] = []
         let daysHit = false
         let strikeHit = false
+        let breachHit = false
 
         if (rules.rollDays?.get()) {
           const maxRollDays = positions.reduce(
@@ -408,17 +409,49 @@ export default function RollOptionDialog({
           }
         }
 
+        // Strike breached by the underlying, and the roll keeps it on the wrong
+        // side (short CALL not rolled up / short PUT not rolled down).
+        const stock = chain.stockPrice
+        if (rules.breachNoImprove?.get() && stock != null && stock > 0) {
+          for (const p of positions) {
+            const s = Number(p.strike)
+            if (!s) continue
+            const isCall = p.right === 'C' || p.right === 'CALL'
+            const isPut = p.right === 'P' || p.right === 'PUT'
+            const breach = isCall ? stock - s : isPut ? s - stock : -1 // points ITM
+            if (breach <= 0) continue
+            const breachPct = (breach / stock) * 100
+            if (breachPct <= rules.breachNoImprove.threshold) continue
+            const improves = isCall ? strike > s : strike < s
+            if (!improves) {
+              breachHit = true
+              const dir = isCall ? '上調' : '下調'
+              messages.push(
+                `行權價 ${s} 已被股價 ${stock.toFixed(2)} 突破 ${breach.toFixed(2)} 點（${breachPct.toFixed(2)}%），此次滾動目標 ${strike} 未${dir}、未改善風險，請確認是否符合預期。`
+              )
+              break
+            }
+          }
+        }
+
         if (messages.length > 0) {
           lastWarnedExpiryRef.current = targetKey
+          const hitCount = [daysHit, strikeHit, breachHit].filter(Boolean).length
           setWarnHeader(
-            daysHit && strikeHit ? '展期風險提示' : strikeHit ? '行權價變動過大' : '展期天數過長'
+            hitCount > 1
+              ? '展期風險提示'
+              : daysHit
+                ? '展期天數過長'
+                : strikeHit
+                  ? '行權價變動過大'
+                  : '行權價已被突破'
           )
           setWarnMessages(messages)
           setLongRollWarnOpen(true)
         }
       }
     },
-    [sourceRight, symbol, positions]
+    [sourceRight, symbol, positions, chain.stockPrice]
   )
 
   // Reset the long-roll warning gate each time the dialog opens.
