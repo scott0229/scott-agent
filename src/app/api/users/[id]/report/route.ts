@@ -337,6 +337,12 @@ export async function GET(
         // Add accumulated interest to annual premium
         annualPremium += totalDailyInterest;
 
+        // Snapshot BEFORE the breach adjustment below. This is the
+        // mode-independent "realized + open mark-to-market" total that the
+        // 含/不含平倉費用 rates derive from, so they stay stable regardless
+        // of the 只計入被突破 setting.
+        const annualPremiumBeforeAdj = annualPremium;
+
         // 平倉費用「只計入被突破」adjustment. monthlyStats already rolled every
         // open position's final_profit (mark-to-market) into total_profit, so
         // to switch the open contribution to "OTM premium + ITM mark-to-
@@ -442,6 +448,12 @@ export async function GET(
         // buy-back value, i.e. the unrealized loss being removed.
         let openTotalPremium = 0;
         let openTotalFinalProfit = 0;
+        // 平倉費用 = buy-back cost (premium − final_profit) of open positions.
+        // Respects the 只計入被突破 setting: when on, only breached legs
+        // (CALL spot>strike / PUT spot<strike) contribute; otherwise all
+        // open legs do. This is the exact amount that separates the two
+        // 期權收益率 lines, so when nothing is breached they read equal.
+        let breachedCloseCost = 0;
         try {
             const openAgg = await db.prepare(`
                 SELECT COALESCE(SUM(premium), 0) AS prem, COALESCE(SUM(final_profit), 0) AS fp
@@ -450,15 +462,44 @@ export async function GET(
             `).bind(userId, currentYear).first<{ prem: number; fp: number }>();
             openTotalPremium = openAgg?.prem ?? 0;
             openTotalFinalProfit = openAgg?.fp ?? 0;
+
+            const costAgg = await db.prepare(`
+                SELECT COALESCE(SUM(
+                    CASE
+                        WHEN ? = 0 THEN (O.premium - O.final_profit)
+                        WHEN O.type = 'CALL' AND LP.close_price IS NOT NULL AND LP.close_price > O.strike_price THEN (O.premium - O.final_profit)
+                        WHEN O.type = 'PUT'  AND LP.close_price IS NOT NULL AND LP.close_price < O.strike_price THEN (O.premium - O.final_profit)
+                        ELSE 0
+                    END
+                ), 0) AS cost
+                FROM OPTIONS O
+                LEFT JOIN (
+                    SELECT symbol, close_price FROM market_prices mp1
+                    WHERE date = (SELECT MAX(date) FROM market_prices mp2 WHERE mp2.symbol = mp1.symbol)
+                ) LP ON LP.symbol = O.underlying
+                WHERE O.owner_id = ? AND O.year = ? AND O.operation = 'Open'
+            `).bind(closeCostOnlyBreached ? 1 : 0, userId, currentYear).first<{ cost: number }>();
+            breachedCloseCost = costAgg?.cost ?? 0;
         } catch (err) {
             console.warn('open-position aggregate failed (non-fatal):', err);
         }
+
+        // 不含平倉費用 numerator = realized + interest + full open premium.
+        // annualPremiumBeforeAdj = realized + interest + open mark-to-market
+        // (final_profit); swap that MTM for the full premium received.
+        // 含平倉費用 = 不含 − 平倉費用 (breach-aware). When nothing is
+        // breached, breachedCloseCost = 0 → the two are identical.
+        const premiumExCloseCost = annualPremiumBeforeAdj - openTotalFinalProfit + openTotalPremium;
+        const premiumIncCloseCost = premiumExCloseCost - breachedCloseCost;
 
         return NextResponse.json({
             success: true,
             reportData: {
                 openTotalPremium,
                 openTotalFinalProfit,
+                breachedCloseCost,
+                premiumExCloseCost,
+                premiumIncCloseCost,
                 user_id: user.user_id || user.email.split('@')[0],
                 year: currentYear,
                 accountNetWorth,

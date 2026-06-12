@@ -538,14 +538,12 @@ export default function AdminUsersPage() {
         const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
 
         // Premium section
-        report += `期權收益率 (含平倉費用) : ${calculatePremiumRate(annualPremium, costBase).toFixed(2)}%\n`;
-        // 不含浮虧: swap open positions' mark-to-market (final_profit) for the
-        // full premium received, removing the unrealized buy-back cost.
-        {
-            const openFP = data.openTotalFinalProfit ?? 0;
-            const openPrem = data.openTotalPremium ?? 0;
-            const annualPremiumExFloat = annualPremium - openFP + openPrem;
-            report += `期權收益率 (不含平倉費用) : ${calculatePremiumRate(annualPremiumExFloat, costBase).toFixed(2)}%\n`;
+        // 含/不含平倉費用 — numerators come straight from the report API
+        // (mode-independent: realized + open premium, minus breach-aware
+        // close cost). When nothing is breached they read identical.
+        if (data.premiumExCloseCost != null && data.premiumIncCloseCost != null) {
+            report += `期權收益率 (含平倉費用) : ${calculatePremiumRate(data.premiumIncCloseCost, costBase).toFixed(2)}%\n`;
+            report += `期權收益率 (不含平倉費用) : ${calculatePremiumRate(data.premiumExCloseCost, costBase).toFixed(2)}%\n`;
         }
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
         report += `整年累積收益 : $${formatMoney(annualPremium)}\n`;
