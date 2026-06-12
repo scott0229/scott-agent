@@ -6,6 +6,7 @@ import { calculateUserTwr } from '@/lib/twr';
 import { getMarketData } from '@/lib/market-data';
 import { fetchFredRatesForYear, calculateDailyInterest } from '@/lib/fred';
 import { calculateMarginRate } from '@/lib/margin-rate';
+import { computeDailyOptionProfits } from '@/lib/daily-profit-history';
 
 export const dynamic = 'force-dynamic';
 
@@ -402,6 +403,36 @@ export async function GET(
                 to_date, group_id
         `).bind(userId, currentYear).all();
 
+        // Past-25-trading-day option 收益 — counts every NYSE trading day
+        // (QQQ market_prices = the authoritative open-day list); days with no
+        // fills count as 0. Uses the shared helper so the per-day numbers
+        // match the daily-trades chart exactly.
+        let last25TradingDaysPremium: number | null = null;
+        try {
+            const { results: tdRows } = await db.prepare(`
+                SELECT date(datetime(date, 'unixepoch')) AS d
+                FROM market_prices
+                WHERE symbol = 'QQQ'
+                ORDER BY date DESC
+                LIMIT 25
+            `).all<{ d: string }>();
+            const tradingDays = (tdRows || []).map(r => r.d).filter(Boolean);
+            if (tradingDays.length > 0) {
+                const windowStart = tradingDays[tradingDays.length - 1]; // oldest of the 25
+                const windowEnd = tradingDays[0];                        // newest of the 25
+                const profitByDate = await computeDailyOptionProfits(
+                    db,
+                    { id: userId, user_id: user.user_id, name: (user as { name?: string | null }).name },
+                    windowStart,
+                    windowEnd,
+                );
+                // Sum over the trading-day calendar; missing day → 0.
+                last25TradingDaysPremium = tradingDays.reduce((s, d) => s + (profitByDate[d] || 0), 0);
+            }
+        } catch (err) {
+            console.warn('25-trading-day premium calc failed (non-fatal):', err);
+        }
+
         return NextResponse.json({
             success: true,
             reportData: {
@@ -424,6 +455,7 @@ export async function GET(
                 annualPremium,
                 premiumCostBase,
                 annualTarget,
+                last25TradingDaysPremium,
                 openOptions: openOptions || [],
                 lastUpdateDate: latestEquity?.date || null,
                 startDate: user.start_date || null

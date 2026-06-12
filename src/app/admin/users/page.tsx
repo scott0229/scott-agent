@@ -542,6 +542,10 @@ export default function AdminUsersPage() {
         report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
         report += `年-累積期權收益 : $${formatMoney(annualPremium)}\n`;
         report += `年-${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
+        if (data.last25TradingDaysPremium != null) {
+            const v = Math.round(data.last25TradingDaysPremium);
+            report += `近25交易日收益 : ${v > 0 ? '+' : ''}$${formatMoney(v)}\n`;
+        }
         report += `----------------------------------------\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
 
