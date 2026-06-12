@@ -5,6 +5,7 @@ import type { AccountData, PositionData } from '../hooks/useAccountStore'
 import { useOptionChain, formatExpiry, mergeGreek } from '../hooks/useOptionChain'
 import type { OptionGreek } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
+import { SYMBOL_RISK_RULES } from '../lib/riskPrefs'
 
 // Trading days the expiry is being pushed out by (source expiry → target
 // expiry), weekends excluded — same convention as the app's DTE.
@@ -147,7 +148,10 @@ export default function RollOptionDialog({
   // long target is picked. Track the last-warned expiry so it pops once per
   // distinct target rather than on every click.
   const [longRollWarnOpen, setLongRollWarnOpen] = useState(false)
-  const [longRollDays, setLongRollDays] = useState(0)
+  const [warnHeader, setWarnHeader] = useState('風險提示')
+  const [warnMessages, setWarnMessages] = useState<string[]>([])
+  // Keyed by the picked target (expiry|strike) so the warning pops once per
+  // distinct target rather than on every click.
   const lastWarnedExpiryRef = useRef<string | null>(null)
   const initialExpirySetRef = useRef(false)
 
@@ -362,15 +366,54 @@ export default function RollOptionDialog({
       setTargetExpiry(expiry)
       setTargetStrike(strike)
       setTargetRight(right)
-      // QQQ: warn as soon as a >2-trading-day target is chosen.
-      if (symbol === 'QQQ' && lastWarnedExpiryRef.current !== expiry) {
-        const maxRollDays = positions.reduce(
-          (m, p) => Math.max(m, rollTradingDays(p.expiry, expiry) ?? 0),
-          0
-        )
-        if (maxRollDays > 2) {
-          lastWarnedExpiryRef.current = expiry
-          setLongRollDays(maxRollDays)
+      // Per-symbol roll-risk warnings (展期天數 / 行權價變動 %) — shown the moment a
+      // breaching target is picked, unless disabled in Settings → 風險提示.
+      const rules = SYMBOL_RISK_RULES[symbol]
+      const targetKey = `${expiry}|${strike}`
+      if (rules && lastWarnedExpiryRef.current !== targetKey) {
+        const messages: string[] = []
+        let daysHit = false
+        let strikeHit = false
+
+        if (rules.rollDays?.get()) {
+          const maxRollDays = positions.reduce(
+            (m, p) => Math.max(m, rollTradingDays(p.expiry, expiry) ?? 0),
+            0
+          )
+          if (maxRollDays > rules.rollDays.threshold) {
+            daysHit = true
+            messages.push(
+              `請留意展期為 ${maxRollDays} 天，期權的 DTE 越長，日後的滾動會越難操作，如果不是處於極端劣勢應儘量避免，也同時可以考慮支付費用做滾動。`
+            )
+          }
+        }
+
+        if (rules.strikePct?.get()) {
+          let maxPct = 0
+          let fromStrike = 0
+          for (const p of positions) {
+            const s = Number(p.strike)
+            if (!s) continue
+            const pct = (Math.abs(strike - s) / s) * 100
+            if (pct > maxPct) {
+              maxPct = pct
+              fromStrike = s
+            }
+          }
+          if (maxPct > rules.strikePct.threshold) {
+            strikeHit = true
+            messages.push(
+              `請留意此次滾動將行權價 ${fromStrike} 調整為 ${strike}，變動約 ${maxPct.toFixed(2)}%（超過 ${rules.strikePct.threshold}%），幅度較大，請確認是否符合預期。`
+            )
+          }
+        }
+
+        if (messages.length > 0) {
+          lastWarnedExpiryRef.current = targetKey
+          setWarnHeader(
+            daysHit && strikeHit ? '展期風險提示' : strikeHit ? '行權價變動過大' : '展期天數過長'
+          )
+          setWarnMessages(messages)
           setLongRollWarnOpen(true)
         }
       }
@@ -888,11 +931,15 @@ export default function RollOptionDialog({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="roll-dialog-header">
-            <h3 style={{ margin: 0 }}>⚠️ 展期天數過長</h3>
+            <h3 style={{ margin: 0 }}>⚠️ {warnHeader}</h3>
           </div>
-          <div className="roll-dialog-body" style={{ padding: 20, lineHeight: 1.7, fontSize: 14 }}>
-            請留意展期為 {longRollDays} 天，期權的 DTE
-            越長，日後的滾動會越難操作，如果不是處於極端劣勢應儘量避免，也同時可以考慮支付費用做滾動。
+          <div
+            className="roll-dialog-body"
+            style={{ padding: 20, lineHeight: 1.7, fontSize: 14, display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            {warnMessages.map((m, i) => (
+              <div key={i}>{m}</div>
+            ))}
           </div>
           <div className="roll-dialog-footer">
             <button className="roll-dialog-confirm" onClick={() => setLongRollWarnOpen(false)}>

@@ -1,6 +1,16 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import type { AccountData } from '../hooks/useAccountStore'
+import {
+  getWarnQqqLongRoll,
+  setWarnQqqLongRoll,
+  getWarnTqqqLongRoll,
+  setWarnTqqqLongRoll,
+  getWarnQqqLargeStrike,
+  setWarnQqqLargeStrike,
+  getWarnTqqqLargeStrike,
+  setWarnTqqqLargeStrike
+} from '../lib/riskPrefs'
 
 const LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
 
@@ -84,6 +94,11 @@ export default function SettingsPanel({
     setLimitInput(String(marginLimit))
   }, [marginLimit])
   const [showRisk, setShowRisk] = useState(true)
+  const [showRiskAlerts, setShowRiskAlerts] = useState(true)
+  const [warnQqqLongRoll, setWarnQqqLongRollState] = useState(getWarnQqqLongRoll())
+  const [warnTqqqLongRoll, setWarnTqqqLongRollState] = useState(getWarnTqqqLongRoll())
+  const [warnQqqLargeStrike, setWarnQqqLargeStrikeState] = useState(getWarnQqqLargeStrike())
+  const [warnTqqqLargeStrike, setWarnTqqqLargeStrikeState] = useState(getWarnTqqqLargeStrike())
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
 
@@ -144,6 +159,112 @@ export default function SettingsPanel({
                 }}
               />
             </div>
+          )}
+
+          <SectionHeader
+            title="風險提示"
+            expanded={showRiskAlerts}
+            onToggle={() => setShowRiskAlerts((v) => !v)}
+          />
+          {showRiskAlerts && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 12,
+                padding: '0 8px',
+                fontSize: '0.95em',
+                color: '#555',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={warnQqqLongRoll}
+                onChange={(e) => {
+                  setWarnQqqLongRollState(e.target.checked)
+                  setWarnQqqLongRoll(e.target.checked)
+                }}
+              />
+              QQQ 展期天數超過 2 時將有提示
+            </label>
+          )}
+          {showRiskAlerts && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 12,
+                padding: '0 8px',
+                fontSize: '0.95em',
+                color: '#555',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={warnTqqqLongRoll}
+                onChange={(e) => {
+                  setWarnTqqqLongRollState(e.target.checked)
+                  setWarnTqqqLongRoll(e.target.checked)
+                }}
+              />
+              TQQQ 展期天數超過 5 時將有提示
+            </label>
+          )}
+          {showRiskAlerts && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 12,
+                padding: '0 8px',
+                fontSize: '0.95em',
+                color: '#555',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={warnQqqLargeStrike}
+                onChange={(e) => {
+                  setWarnQqqLargeStrikeState(e.target.checked)
+                  setWarnQqqLargeStrike(e.target.checked)
+                }}
+              />
+              QQQ 滾動行權價超過 0.5% 將有提示
+            </label>
+          )}
+          {showRiskAlerts && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 12,
+                padding: '0 8px',
+                fontSize: '0.95em',
+                color: '#555',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={warnTqqqLargeStrike}
+                onChange={(e) => {
+                  setWarnTqqqLargeStrikeState(e.target.checked)
+                  setWarnTqqqLargeStrike(e.target.checked)
+                }}
+              />
+              TQQQ 滾動行權價超過 3% 將有提示
+            </label>
           )}
 
           <SectionHeader
