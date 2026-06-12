@@ -11,6 +11,9 @@ interface OptionChainTableProps {
   selectedStrike: number | null
   selectedRight: 'C' | 'P' | null
   onSelect: (expiry: string, strike: number, right: 'C' | 'P') => void
+  // When set, only this side is selectable — a PUT roll can't target a CALL and
+  // vice-versa. The other side renders greyed-out and non-clickable.
+  allowedRight?: 'C' | 'P' | null
 }
 
 export default function OptionChainTable({
@@ -21,9 +24,12 @@ export default function OptionChainTable({
   selectedExpiry,
   selectedStrike,
   selectedRight,
-  onSelect
+  onSelect,
+  allowedRight = null
 }: OptionChainTableProps): React.JSX.Element {
   const dataReady = displayExpirations.length > 0 && displayStrikes.length > 0
+  const callDisabled = allowedRight != null && allowedRight !== 'C'
+  const putDisabled = allowedRight != null && allowedRight !== 'P'
 
   return (
     <div className="roll-chain-multi">
@@ -116,57 +122,41 @@ export default function OptionChainTable({
                     selectedExpiry === expiry && selectedStrike === strike && selectedRight === 'C'
                   const putSel =
                     selectedExpiry === expiry && selectedStrike === strike && selectedRight === 'P'
+                  const callCls = `roll-chain-cell roll-chain-call${callSel ? ' roll-chain-selected' : ''}${callDisabled ? ' roll-chain-disabled' : ''}`
+                  const putCls = `roll-chain-cell roll-chain-put${putSel ? ' roll-chain-selected' : ''}${putDisabled ? ' roll-chain-disabled' : ''}`
+                  const onCall = callDisabled
+                    ? undefined
+                    : (): void => onSelect(expiry, strike, 'C')
+                  const onPut = putDisabled
+                    ? undefined
+                    : (): void => onSelect(expiry, strike, 'P')
                   return (
                     <tr key={`${expiry}-${strike}`}>
                       {/* Call side: Delta | Bid | Ask | Last */}
-                      <td
-                        className={`roll-chain-cell roll-chain-call${callSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'C')}
-                      >
+                      <td className={callCls} onClick={onCall}>
                         {cg ? formatGreekValue(cg.delta) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-call chain-bid${callSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'C')}
-                      >
+                      <td className={`${callCls} chain-bid`} onClick={onCall}>
                         {cg ? formatPrice(cg.bid) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-call chain-ask${callSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'C')}
-                      >
+                      <td className={`${callCls} chain-ask`} onClick={onCall}>
                         {cg ? formatPrice(cg.ask) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-call${callSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'C')}
-                      >
+                      <td className={callCls} onClick={onCall}>
                         {cg ? formatPrice(cg.last) : '-'}
                       </td>
                       <td className="roll-chain-strike">{strike}</td>
                       {/* Put side: Bid | Ask | Last | Delta */}
-                      <td
-                        className={`roll-chain-cell roll-chain-put chain-bid${putSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'P')}
-                      >
+                      <td className={`${putCls} chain-bid`} onClick={onPut}>
                         {pg ? formatPrice(pg.bid) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-put chain-ask${putSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'P')}
-                      >
+                      <td className={`${putCls} chain-ask`} onClick={onPut}>
                         {pg ? formatPrice(pg.ask) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-put${putSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'P')}
-                      >
+                      <td className={putCls} onClick={onPut}>
                         {pg ? formatPrice(pg.last) : '-'}
                       </td>
-                      <td
-                        className={`roll-chain-cell roll-chain-put${putSel ? ' roll-chain-selected' : ''}`}
-                        onClick={() => onSelect(expiry, strike, 'P')}
-                      >
+                      <td className={putCls} onClick={onPut}>
                         {pg ? formatGreekValue(pg.delta) : '-'}
                       </td>
                     </tr>

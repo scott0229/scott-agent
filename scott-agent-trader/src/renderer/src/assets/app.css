@@ -1178,6 +1178,12 @@ input[type='number']::-webkit-outer-spin-button {
   border-color: #f59e0b;
 }
 
+/* Batch-trading filters: subtle background when a non-default value is set
+   (keep the default border — no colour change). */
+.custom-select.group-filter-select.active .custom-select-trigger {
+  background: #fffbeb;
+}
+
 /* Stepper variant — when onPrev/onNext are provided the container becomes a
    horizontal flex with ‹ and › buttons sharing the trigger's border. NOTE:
    do NOT use overflow: hidden here — the dropdown is positioned absolutely
@@ -1241,7 +1247,7 @@ input[type='number']::-webkit-outer-spin-button {
    and trigger's border stays the same neutral grey so it doesn't compete
    with the other top-row controls. */
 .custom-select.account-filter-active {
-  background: #eff6ff;
+  background: #fffbeb;
 }
 
 /* === Allocation Table === */
@@ -2068,6 +2074,17 @@ input[type='number']::-webkit-outer-spin-button {
   color: #1d4ed8;
 }
 
+/* Opposite side of a roll (CALL when rolling a PUT, etc.) — not selectable. */
+.roll-chain-disabled {
+  cursor: default;
+  opacity: 0.65;
+  color: #6b7280;
+}
+
+.roll-chain-disabled:hover {
+  background: transparent !important;
+}
+
 .roll-loading-block {
   padding: 32px;
   text-align: center;
@@ -2157,12 +2174,13 @@ input[type='number']::-webkit-outer-spin-button {
   white-space: nowrap;
 }
 
+/* 價差 ≤ 0 means a credit (收益) — same green as 買. > 0 (a debit) — red. */
 .spread-positive {
-  color: #333;
+  color: #15803d;
 }
 
 .spread-negative {
-  color: #333;
+  color: #c0392b;
 }
 
 /* Order entry section */

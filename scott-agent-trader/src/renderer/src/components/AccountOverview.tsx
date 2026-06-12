@@ -113,6 +113,55 @@ interface AccountOverviewProps {
 const posKey = (pos: PositionData): string =>
   `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
 
+// Batch-trading toolbar filters persist across tab switches (and app reopen) —
+// switching to the account tab and back used to wipe them.
+const GROUP_FILTERS_KEY = 'trader.groupFilters'
+interface GroupFilters {
+  index: string
+  symbol: string
+  right: '' | 'C' | 'P'
+}
+function loadGroupFilters(): GroupFilters {
+  try {
+    const raw = localStorage.getItem(GROUP_FILTERS_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      return {
+        index: typeof p.index === 'string' ? p.index : '',
+        symbol: typeof p.symbol === 'string' ? p.symbol : '',
+        right: p.right === 'C' || p.right === 'P' ? p.right : ''
+      }
+    }
+  } catch {
+    /* ignore malformed storage */
+  }
+  return { index: '', symbol: '', right: '' }
+}
+
+// 帳戶總覽 toolbar filters — same persistence as the batch filters. Only the
+// two always-visible filters (標的 / 帳戶) persist; filterRight is tied to the
+// transient 選取期權 mode and resets with it.
+const ACCOUNT_FILTERS_KEY = 'trader.accountFilters'
+interface AccountFilters {
+  symbol: string
+  account: string
+}
+function loadAccountFilters(): AccountFilters {
+  try {
+    const raw = localStorage.getItem(ACCOUNT_FILTERS_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      return {
+        symbol: typeof p.symbol === 'string' ? p.symbol : '',
+        account: typeof p.account === 'string' ? p.account : ''
+      }
+    }
+  } catch {
+    /* ignore malformed storage */
+  }
+  return { symbol: '', account: '' }
+}
+
 // Naked short-CALL detector — mirrors the website daily-trades warning. Per
 // underlying, a sold call is "naked" (uncovered) when the contracts you're
 // short exceed what you can deliver: shortCalls×100 > shares + longCalls×100.
@@ -201,8 +250,8 @@ export default function AccountOverview({
   d1Target = 'production'
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
-  const [filterSymbol, setFilterSymbol] = useState('')
-  const [filterAccount, setFilterAccount] = useState('')
+  const [filterSymbol, setFilterSymbol] = useState(() => loadAccountFilters().symbol)
+  const [filterAccount, setFilterAccount] = useState(() => loadAccountFilters().account)
 
   // Trade-groups panel data — fetched from the website when the user filters
   // down to one account. Mirrors the /trade-groups page on scott-agent.com.
@@ -290,10 +339,12 @@ export default function AccountOverview({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
-  const [filterGroupIndex, setFilterGroupIndex] = useState('')
-  const [filterGroupSymbol, setFilterGroupSymbol] = useState('')
+  const [filterGroupIndex, setFilterGroupIndex] = useState(() => loadGroupFilters().index)
+  const [filterGroupSymbol, setFilterGroupSymbol] = useState(() => loadGroupFilters().symbol)
   // Group-view option-right filter: '' = all, 'C' = calls only, 'P' = puts only
-  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>('')
+  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>(
+    () => loadGroupFilters().right
+  )
 
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
@@ -402,18 +453,45 @@ export default function AccountOverview({
     }
   }, [openOrders])
 
-  // Reset filters when switching between 帳戶總覽 / 批次交易 tabs
+  // Reset only the transient selection state when switching between 帳戶總覽 /
+  // 批次交易 tabs. Both tabs' toolbar filters deliberately persist (remembered
+  // across tab switches and app reopen via localStorage).
   useEffect(() => {
-    setFilterSymbol('')
-    setFilterAccount('')
     setFilterRight('')
-    setFilterGroupIndex('')
-    setFilterGroupSymbol('')
     setSelectMode(false)
     setSelectedPositions(new Set())
     setGroupChecked({})
     setCheckModeGroups(new Set())
   }, [groupViewMode])
+
+  // Persist the batch-trading group filters so they survive tab switches /
+  // reopen.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        GROUP_FILTERS_KEY,
+        JSON.stringify({
+          index: filterGroupIndex,
+          symbol: filterGroupSymbol,
+          right: filterGroupRight
+        })
+      )
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [filterGroupIndex, filterGroupSymbol, filterGroupRight])
+
+  // Persist the 帳戶總覽 filters too (the two always-visible ones).
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        ACCOUNT_FILTERS_KEY,
+        JSON.stringify({ symbol: filterSymbol, account: filterAccount })
+      )
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [filterSymbol, filterAccount])
 
   // Resolve the filter target into a string alias. Memoising the *string*
   // means the effect below skips re-fires when accounts gets a new array
@@ -1479,6 +1557,7 @@ export default function AccountOverview({
                 </svg>
               </button>
               <CustomSelect
+                className={`group-filter-select${filterGroupIndex ? ' active' : ''}`}
                 value={filterGroupIndex}
                 onChange={setFilterGroupIndex}
                 options={[
@@ -1487,6 +1566,7 @@ export default function AccountOverview({
                 ]}
               />
               <CustomSelect
+                className={`group-filter-select${filterGroupSymbol ? ' active' : ''}`}
                 value={filterGroupSymbol}
                 onChange={setFilterGroupSymbol}
                 options={[
@@ -1497,6 +1577,7 @@ export default function AccountOverview({
                 ]}
               />
               <CustomSelect
+                className={`group-filter-select${filterGroupRight ? ' active' : ''}`}
                 value={filterGroupRight}
                 onChange={(v) => setFilterGroupRight(v as '' | 'C' | 'P')}
                 options={[
@@ -1561,6 +1642,7 @@ export default function AccountOverview({
                     : ''}
                 </button>
                 <CustomSelect
+                  className={`group-filter-select${filterSymbol ? ' active' : ''}`}
                   value={filterSymbol}
                   onChange={(v) => {
                     setFilterSymbol(v)
@@ -1573,6 +1655,7 @@ export default function AccountOverview({
                 />
                 {selectMode === 'OPT' && (
                   <CustomSelect
+                    className={`group-filter-select${filterRight ? ' active' : ''}`}
                     value={filterRight}
                     onChange={(v) => {
                       setFilterRight(v as '' | 'C' | 'P')

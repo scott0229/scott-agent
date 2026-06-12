@@ -6,6 +6,23 @@ import { useOptionChain, formatExpiry, mergeGreek } from '../hooks/useOptionChai
 import type { OptionGreek } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
 
+// Trading days the expiry is being pushed out by (source expiry → target
+// expiry), weekends excluded — same convention as the app's DTE.
+function rollTradingDays(from?: string, to?: string | null): number | null {
+  if (!from || from.length < 8 || !to || to.length < 8) return null
+  const d1 = new Date(`${from.substring(0, 4)}-${from.substring(4, 6)}-${from.substring(6, 8)}T00:00:00`)
+  const d2 = new Date(`${to.substring(0, 4)}-${to.substring(4, 6)}-${to.substring(6, 8)}T00:00:00`)
+  if (d2.getTime() <= d1.getTime()) return 0
+  let count = 0
+  const cur = new Date(d1)
+  while (cur.getTime() < d2.getTime()) {
+    cur.setDate(cur.getDate() + 1)
+    const dow = cur.getDay() // 0 = Sun, 6 = Sat
+    if (dow !== 0 && dow !== 6) count++
+  }
+  return count
+}
+
 interface RollOptionDialogProps {
   open: boolean
   onClose: () => void
@@ -97,10 +114,20 @@ export default function RollOptionDialog({
     [maxCurrentExpiry]
   )
 
+  // Keep the source position's strike(s) selected by default, so the
+  // same-strike roll is visible without scrolling the strike list.
+  const pinnedStrikes = useMemo(
+    () =>
+      Array.from(
+        new Set(positions.map((p) => p.strike).filter((s): s is number => s != null))
+      ),
+    [positions]
+  )
   const chain = useOptionChain({
     symbol,
     expiryFilter,
-    cancelSubscriptionsOnCleanup: true
+    cancelSubscriptionsOnCleanup: true,
+    pinnedStrikes
   })
 
   // ── Roll-specific state ─────────────────────────────────────────────────
@@ -259,12 +286,33 @@ export default function RollOptionDialog({
     }
   }, [symbol, currentCombos])
 
-  const handleSelect = useCallback((expiry: string, strike: number, right: 'C' | 'P') => {
-    userEditedPriceRef.current = false
-    setTargetExpiry(expiry)
-    setTargetStrike(strike)
-    setTargetRight(right)
-  }, [])
+  // The option type we're rolling FROM. A PUT can only roll into a PUT and a
+  // CALL into a CALL — used to lock the chain's opposite side.
+  const sourceRight = useMemo<'C' | 'P' | null>(() => {
+    const r = positions[0]?.right
+    if (r === 'C' || r === 'CALL') return 'C'
+    if (r === 'P' || r === 'PUT') return 'P'
+    return null
+  }, [positions])
+
+  // "SELL PUT" / "SELL CALL" (or BUY for long positions) for the dialog title.
+  const positionLabel = useMemo(() => {
+    if (!sourceRight) return ''
+    const side = (positions[0]?.quantity ?? 0) < 0 ? 'SELL' : 'BUY'
+    return `${side} ${sourceRight === 'P' ? 'PUT' : 'CALL'}`
+  }, [sourceRight, positions])
+
+  const handleSelect = useCallback(
+    (expiry: string, strike: number, right: 'C' | 'P') => {
+      // 防呆: ignore a pick on the wrong side (CALL when rolling a PUT, etc.).
+      if (sourceRight && right !== sourceRight) return
+      userEditedPriceRef.current = false
+      setTargetExpiry(expiry)
+      setTargetStrike(strike)
+      setTargetRight(right)
+    },
+    [sourceRight]
+  )
 
   const findCurrentGreek = useCallback(
     (pos: PositionData): OptionGreek | undefined => {
@@ -351,7 +399,8 @@ export default function RollOptionDialog({
       >
         <div className="roll-dialog-header">
           <h3>
-            {symbol} 展期
+            {symbol}
+            {positionLabel ? ` ${positionLabel}` : ''} 展期
             {isSingleAccount && positions.length > 0 ? ` ${getAlias(positions[0].account)}` : ''}
           </h3>
           <button className="roll-dialog-close" onClick={onClose}>
@@ -468,6 +517,7 @@ export default function RollOptionDialog({
               selectedExpiry={targetExpiry}
               selectedStrike={targetStrike}
               selectedRight={targetRight}
+              allowedRight={sourceRight}
               onSelect={handleSelect}
             />
           )}
@@ -491,6 +541,16 @@ export default function RollOptionDialog({
             {(() => {
               const srcPos = positions[0]
               const haveSrc = srcPos && srcPos.expiry && srcPos.strike != null
+              // When the selected positions are NOT all the same source option
+              // (different accounts rolling different expiries/strikes into one
+              // target), a single "Jun24 704C" would misrepresent the batch —
+              // show "多組 SELL CALL" instead.
+              const uniformSource = positions.every(
+                (p) =>
+                  p.expiry === srcPos?.expiry &&
+                  p.strike === srcPos?.strike &&
+                  p.right === srcPos?.right
+              )
               const srcStrikeStr =
                 srcPos && srcPos.strike != null
                   ? Number.isInteger(Number(srcPos.strike))
@@ -517,10 +577,16 @@ export default function RollOptionDialog({
                   style={{ fontSize: 13, fontWeight: 700, color: '#333', background: '#fff7d1' }}
                 >
                   {haveSrc ? (
-                    <>
-                      {symbol} {formatExpiry(srcPos.expiry!)} {srcStrikeStr}
-                      {srcRight}
-                    </>
+                    uniformSource ? (
+                      <>
+                        {symbol} {formatExpiry(srcPos.expiry!)} {srcStrikeStr}
+                        {srcRight}
+                      </>
+                    ) : (
+                      <>
+                        {symbol} 多組{positionLabel ? ` ${positionLabel}` : ''}
+                      </>
+                    )
                   ) : (
                     <span style={{ color: '#9ca3af' }}>來源 -</span>
                   )}
@@ -647,18 +713,44 @@ export default function RollOptionDialog({
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {currentDesc} → {targetDesc}
                           </td>
-                          <td
-                            className={
-                              displayVal !== null && !isNaN(displayVal as number)
-                                ? (displayVal as number) <= 0
-                                  ? 'spread-positive'
-                                  : 'spread-negative'
-                                : ''
-                            }
-                          >
-                            {displayVal !== null && !isNaN(displayVal as number)
-                              ? `價差 ${(displayVal as number) >= 0 ? '+' : ''}${(displayVal as number).toFixed(2)}`
-                              : '-'}
+                          {(() => {
+                            const rd = rollTradingDays(pos.expiry, targetExpiry)
+                            const srcStrike = Number(pos.strike)
+                            const pd =
+                              targetStrike !== null && Number.isFinite(srcStrike)
+                                ? targetStrike - srcStrike
+                                : null
+                            const pdStr =
+                              pd === null ? '-' : Number.isInteger(pd) ? `${pd}` : pd.toFixed(1)
+                            return (
+                              <>
+                                <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  {rd !== null ? `展 ${rd} 天` : '-'}
+                                </td>
+                                <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  {pd !== null ? `展 ${pdStr} 點` : '-'}
+                                </td>
+                              </>
+                            )
+                          })()}
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {displayVal !== null && !isNaN(displayVal as number) ? (
+                              <>
+                                價差{' '}
+                                <span
+                                  className={
+                                    (displayVal as number) <= 0
+                                      ? 'spread-positive'
+                                      : 'spread-negative'
+                                  }
+                                >
+                                  {(displayVal as number) >= 0 ? '+' : ''}
+                                  {(displayVal as number).toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              '-'
+                            )}
                           </td>
                         </tr>
                       )

@@ -72,12 +72,16 @@ interface UseOptionChainOptions {
   expiryFilter?: (expiry: string) => boolean
   /** Whether to cancel greek subscriptions on cleanup (roll dialog does this) */
   cancelSubscriptionsOnCleanup?: boolean
+  /** Strikes to always keep selected by default (e.g. the source position's
+   *  strike, so the same-strike roll is visible without scrolling). */
+  pinnedStrikes?: number[]
 }
 
 export function useOptionChain({
   symbol,
   expiryFilter,
-  cancelSubscriptionsOnCleanup = false
+  cancelSubscriptionsOnCleanup = false,
+  pinnedStrikes
 }: UseOptionChainOptions) {
   // ── Chain state ─────────────────────────────────────────────────────────
   const [chainParams, setChainParams] = useState<OptionChainParams[]>([])
@@ -230,11 +234,17 @@ export function useOptionChain({
   }, [availableExpirations, selectionNonce])
 
   // ── Auto-select ±5 strikes around stock price ─────────────────────────
+  // Stable key so a fresh pinnedStrikes array reference doesn't re-run this.
+  const pinnedKey = (pinnedStrikes || []).join(',')
   useEffect(() => {
     if (availableStrikes.length === 0) return
     if (userModifiedStrikesRef.current) return
 
     const total = Math.min(10, availableStrikes.length)
+    // Always keep the pinned (source) strikes selected, merged into the window.
+    const pinned = (pinnedStrikes || []).filter((s) => availableStrikes.includes(s))
+    const withPinned = (base: number[]): number[] =>
+      Array.from(new Set([...base, ...pinned])).sort((a, b) => a - b)
 
     if (stockPrice !== null) {
       // Re-center around stock price
@@ -249,17 +259,17 @@ export function useOptionChain({
         end = availableStrikes.length
         start = Math.max(0, end - total)
       }
-      setSelectedStrikes(availableStrikes.slice(start, end))
+      setSelectedStrikes(withPinned(availableStrikes.slice(start, end)))
     } else if (selectedStrikes.length === 0) {
       // Immediately show strikes from the middle (don't wait for stockPrice)
       const mid = Math.floor(availableStrikes.length / 2)
       const start = Math.max(0, mid - Math.floor(total / 2))
       const end = Math.min(availableStrikes.length, start + total)
-      setSelectedStrikes(availableStrikes.slice(start, end))
+      setSelectedStrikes(withPinned(availableStrikes.slice(start, end)))
     }
     // selectionNonce so reopening re-centres even when availableStrikes /
     // stockPrice are unchanged (cached chain).
-  }, [availableStrikes, stockPrice, selectionNonce])
+  }, [availableStrikes, stockPrice, selectionNonce, pinnedKey])
 
   const displayExpirations = useMemo(
     () => selectedExpirations.filter((e) => availableExpirations.includes(e)).sort(),
