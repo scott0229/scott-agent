@@ -113,54 +113,24 @@ interface AccountOverviewProps {
 const posKey = (pos: PositionData): string =>
   `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
 
-// Batch-trading toolbar filters persist across tab switches (and app reopen) —
-// switching to the account tab and back used to wipe them.
-const GROUP_FILTERS_KEY = 'trader.groupFilters'
+// Toolbar filters are kept in MODULE-level memory (not localStorage) so they
+// survive tab switches — which unmount/remount this component — but reset when
+// the app is closed and reopened (a fresh renderer reloads the module). The
+// batch (群組) filters and the 帳戶總覽 filters each get their own store.
 interface GroupFilters {
   index: string
   symbol: string
   right: '' | 'C' | 'P'
 }
-function loadGroupFilters(): GroupFilters {
-  try {
-    const raw = localStorage.getItem(GROUP_FILTERS_KEY)
-    if (raw) {
-      const p = JSON.parse(raw)
-      return {
-        index: typeof p.index === 'string' ? p.index : '',
-        symbol: typeof p.symbol === 'string' ? p.symbol : '',
-        right: p.right === 'C' || p.right === 'P' ? p.right : ''
-      }
-    }
-  } catch {
-    /* ignore malformed storage */
-  }
-  return { index: '', symbol: '', right: '' }
-}
+const groupFiltersMemory: GroupFilters = { index: '', symbol: '', right: '' }
 
-// 帳戶總覽 toolbar filters — same persistence as the batch filters. Only the
-// two always-visible filters (標的 / 帳戶) persist; filterRight is tied to the
-// transient 選取期權 mode and resets with it.
-const ACCOUNT_FILTERS_KEY = 'trader.accountFilters'
 interface AccountFilters {
   symbol: string
   account: string
 }
-function loadAccountFilters(): AccountFilters {
-  try {
-    const raw = localStorage.getItem(ACCOUNT_FILTERS_KEY)
-    if (raw) {
-      const p = JSON.parse(raw)
-      return {
-        symbol: typeof p.symbol === 'string' ? p.symbol : '',
-        account: typeof p.account === 'string' ? p.account : ''
-      }
-    }
-  } catch {
-    /* ignore malformed storage */
-  }
-  return { symbol: '', account: '' }
-}
+// Only the two always-visible filters (標的 / 帳戶) survive; filterRight is tied
+// to the transient 選取期權 mode and resets with it.
+const accountFiltersMemory: AccountFilters = { symbol: '', account: '' }
 
 // Naked short-CALL detector — mirrors the website daily-trades warning. Per
 // underlying, a sold call is "naked" (uncovered) when the contracts you're
@@ -250,8 +220,8 @@ export default function AccountOverview({
   d1Target = 'production'
 }: AccountOverviewProps): React.JSX.Element {
   const [sortBy, setSortBy] = useState('netLiquidation')
-  const [filterSymbol, setFilterSymbol] = useState(() => loadAccountFilters().symbol)
-  const [filterAccount, setFilterAccount] = useState(() => loadAccountFilters().account)
+  const [filterSymbol, setFilterSymbol] = useState(accountFiltersMemory.symbol)
+  const [filterAccount, setFilterAccount] = useState(accountFiltersMemory.account)
 
   // Trade-groups panel data — fetched from the website when the user filters
   // down to one account. Mirrors the /trade-groups page on scott-agent.com.
@@ -339,12 +309,10 @@ export default function AccountOverview({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
-  const [filterGroupIndex, setFilterGroupIndex] = useState(() => loadGroupFilters().index)
-  const [filterGroupSymbol, setFilterGroupSymbol] = useState(() => loadGroupFilters().symbol)
+  const [filterGroupIndex, setFilterGroupIndex] = useState(groupFiltersMemory.index)
+  const [filterGroupSymbol, setFilterGroupSymbol] = useState(groupFiltersMemory.symbol)
   // Group-view option-right filter: '' = all, 'C' = calls only, 'P' = puts only
-  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>(
-    () => loadGroupFilters().right
-  )
+  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>(groupFiltersMemory.right)
 
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
@@ -464,33 +432,18 @@ export default function AccountOverview({
     setCheckModeGroups(new Set())
   }, [groupViewMode])
 
-  // Persist the batch-trading group filters so they survive tab switches /
-  // reopen.
+  // Mirror the batch-trading group filters into module memory so they survive
+  // a tab-switch unmount (but not an app restart).
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        GROUP_FILTERS_KEY,
-        JSON.stringify({
-          index: filterGroupIndex,
-          symbol: filterGroupSymbol,
-          right: filterGroupRight
-        })
-      )
-    } catch {
-      /* ignore storage errors */
-    }
+    groupFiltersMemory.index = filterGroupIndex
+    groupFiltersMemory.symbol = filterGroupSymbol
+    groupFiltersMemory.right = filterGroupRight
   }, [filterGroupIndex, filterGroupSymbol, filterGroupRight])
 
-  // Persist the 帳戶總覽 filters too (the two always-visible ones).
+  // Same for the 帳戶總覽 filters (the two always-visible ones).
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        ACCOUNT_FILTERS_KEY,
-        JSON.stringify({ symbol: filterSymbol, account: filterAccount })
-      )
-    } catch {
-      /* ignore storage errors */
-    }
+    accountFiltersMemory.symbol = filterSymbol
+    accountFiltersMemory.account = filterAccount
   }, [filterSymbol, filterAccount])
 
   // Resolve the filter target into a string alias. Memoising the *string*
@@ -691,8 +644,16 @@ export default function AccountOverview({
   useEffect(() => {
     if (!pendingRollUpdate) return
     const { rolledPositions, target } = pendingRollUpdate
-    // Build old→new posKey replacements; bail if any new position hasn't appeared yet
+
+    // Resolve whatever new positions have appeared so far and apply each
+    // old→new replacement INCREMENTALLY. The old code bailed ("return") if ANY
+    // leg's new position hadn't arrived yet — so when a multi-account roll
+    // filled at staggered times, the already-closed legs left their group
+    // matching nothing ("無匹配持倉"), and a single never-matching leg stranded
+    // the whole group permanently. Now each leg updates the moment it fills and
+    // laggards no longer hold up the rest.
     const replacements = new Map<string, string>()
+    const stillPending: PositionData[] = []
     for (const oldPos of rolledPositions) {
       const newPos = positions.find(
         (p) =>
@@ -703,28 +664,34 @@ export default function AccountOverview({
           p.strike === target.strike &&
           (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
       )
-      if (!newPos) return // new not yet arrived — wait for next position update
-      replacements.set(posKey(oldPos), posKey(newPos))
+      if (newPos) replacements.set(posKey(oldPos), posKey(newPos))
+      else stillPending.push(oldPos)
     }
-    // All new positions found → update groups
-    console.log(
-      '[ROLL] All new positions detected, updating groups',
-      Object.fromEntries(replacements)
-    )
-    for (const g of symbolGroups) {
-      if (g.autoParams) continue
-      if (!g.posKeys.some((k) => replacements.has(k))) continue
-      const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
-      const finalPosKeys = Array.from(new Set(newPosKeys))
-      // Only update if there's an actual change in the keys
-      if (
-        finalPosKeys.length !== g.posKeys.length ||
-        finalPosKeys.some((k, i) => k !== g.posKeys[i])
-      ) {
-        onUpdateSymbolGroup?.({ ...g, posKeys: finalPosKeys })
+
+    if (replacements.size > 0) {
+      console.log('[ROLL] Applying posKey replacements', Object.fromEntries(replacements))
+      for (const g of symbolGroups) {
+        if (g.autoParams) continue
+        if (!g.posKeys.some((k) => replacements.has(k))) continue
+        const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
+        const finalPosKeys = Array.from(new Set(newPosKeys))
+        if (
+          finalPosKeys.length !== g.posKeys.length ||
+          finalPosKeys.some((k, i) => k !== g.posKeys[i])
+        ) {
+          onUpdateSymbolGroup?.({ ...g, posKeys: finalPosKeys })
+        }
       }
     }
-    setPendingRollUpdate(null)
+
+    // Done once every leg resolved; otherwise keep only the laggards pending so
+    // they're retried (without reprocessing the resolved ones) on the next
+    // position update.
+    if (stillPending.length === 0) {
+      setPendingRollUpdate(null)
+    } else if (stillPending.length !== rolledPositions.length) {
+      setPendingRollUpdate({ rolledPositions: stillPending, target })
+    }
   }, [positions, pendingRollUpdate, symbolGroups, onUpdateSymbolGroup])
 
   // Watch positions: when pending transfer changes are confirmed, update group posKeys
@@ -4592,6 +4559,7 @@ export default function AccountOverview({
         }}
         positions={positions}
         accounts={accounts}
+        uncategorizedKeys={new Set(uncategorizedPositions.map(posKey))}
         onAddGroup={onAddSymbolGroup!}
         editGroup={editingGroup}
         onUpdateGroup={onUpdateSymbolGroup}

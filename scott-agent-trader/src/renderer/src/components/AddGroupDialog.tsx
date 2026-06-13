@@ -103,6 +103,8 @@ interface AddGroupDialogProps {
   onClose: () => void
   positions: PositionData[]
   accounts: AccountData[]
+  // posKeys of positions not belonging to any group — shown with a "(未歸類)" tag.
+  uncategorizedKeys?: Set<string>
   onAddGroup: (group: SymbolGroup) => void
   editGroup?: SymbolGroup | null
   onUpdateGroup?: (group: SymbolGroup) => void
@@ -147,6 +149,7 @@ export default function AddGroupDialog({
   onClose,
   positions,
   accounts,
+  uncategorizedKeys,
   onAddGroup,
   editGroup,
   onUpdateGroup
@@ -379,17 +382,6 @@ export default function AddGroupDialog({
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label
-              style={{
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#555',
-                display: 'block',
-                marginBottom: '6px'
-              }}
-            >
-              群組名稱
-            </label>
             <input
               type="text"
               className="input-field"
@@ -468,14 +460,9 @@ export default function AddGroupDialog({
                 alignItems: 'center',
                 gap: '8px',
                 marginBottom: '12px',
-                justifyContent: 'flex-end'
+                width: '100%'
               }}
             >
-              <label
-                style={{ fontSize: '13px', fontWeight: 600, color: '#555', marginRight: 'auto' }}
-              >
-                群組標的
-              </label>
               <button
                 onClick={() => {
                   setFilterSymbol('')
@@ -511,8 +498,9 @@ export default function AddGroupDialog({
                   <path d="m21.5 3.5-5 5" />
                 </svg>
               </button>
-              <div style={{ zIndex: 20, position: 'relative' }}>
+              <div style={{ flex: 1, minWidth: 0, zIndex: 20, position: 'relative' }}>
                 <CustomSelect
+                  className="fill-width"
                   value={filterSymbol}
                   onChange={(v) => setFilterSymbol(v)}
                   options={[
@@ -521,8 +509,9 @@ export default function AddGroupDialog({
                   ]}
                 />
               </div>
-              <div style={{ zIndex: 10, position: 'relative' }}>
+              <div style={{ flex: 1, minWidth: 0, zIndex: 10, position: 'relative' }}>
                 <CustomSelect
+                  className="fill-width"
                   value={filterRight}
                   onChange={(v) => setFilterRight(v)}
                   options={[
@@ -564,7 +553,7 @@ export default function AddGroupDialog({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '8px 12px',
+                    padding: '3px 12px',
                     cursor: isAutoMode ? 'default' : 'pointer',
                     borderBottom: '1px solid #f0ede8',
                     background: isSelected ? '#eef2ff' : 'transparent',
@@ -583,16 +572,21 @@ export default function AddGroupDialog({
                   </span>
                   <span style={{ fontSize: '12px', flex: 1 }}>
                     {formatOptionLabel(pos)}
+                    {uncategorizedKeys?.has(key) && (
+                      <span style={{ color: '#555' }}> (未歸類)</span>
+                    )}
                   </span>
                   <span
                     style={{
                       fontSize: '12px',
                       color: '#333',
-                      minWidth: '40px',
-                      textAlign: 'right'
+                      minWidth: '52px',
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     {pos.quantity.toLocaleString()}
+                    {pos.secType === 'STK' ? '股' : '口'}
                   </span>
                 </div>
               )

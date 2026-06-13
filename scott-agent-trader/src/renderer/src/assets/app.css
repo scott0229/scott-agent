@@ -1078,6 +1078,12 @@ input[type='number']::-webkit-outer-spin-button {
   min-width: 120px;
 }
 
+/* Fill the parent's width (used in flex rows where the select should stretch). */
+.custom-select.fill-width {
+  width: 100%;
+  min-width: 0;
+}
+
 .custom-select-trigger {
   display: flex;
   align-items: center;
