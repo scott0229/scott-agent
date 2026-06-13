@@ -1,15 +1,6 @@
-// Local (per-device) risk-warning preferences. Kept in localStorage so the
-// Settings toggles and the roll dialog can share them without prop-drilling
-// through the whole component tree.
-
-const KEYS = {
-  qqqDays: 'trader.warnQqqLongRoll',
-  tqqqDays: 'trader.warnTqqqLongRoll',
-  qqqStrike: 'trader.warnQqqLargeStrike',
-  tqqqStrike: 'trader.warnTqqqLargeStrike',
-  qqqBreach: 'trader.warnQqqBreachNoImprove',
-  tqqqBreach: 'trader.warnTqqqBreachNoImprove'
-}
+// Local (per-device) risk-warning preferences. Each rule has an on/off toggle
+// and an editable threshold, both persisted in localStorage so the Settings
+// panel and the roll dialog share them without prop-drilling.
 
 function getBool(key: string): boolean {
   return localStorage.getItem(key) !== 'false' // default on
@@ -17,45 +8,119 @@ function getBool(key: string): boolean {
 function setBool(key: string, enabled: boolean): void {
   localStorage.setItem(key, enabled ? 'true' : 'false')
 }
+function getNum(key: string, def: number): number {
+  const raw = localStorage.getItem(key)
+  const n = raw == null ? NaN : parseFloat(raw)
+  return Number.isFinite(n) && n >= 0 ? n : def
+}
+function setNum(key: string, v: number): void {
+  localStorage.setItem(key, String(v))
+}
 
-// QQQ / TQQQ — long-roll (展期天數) warnings.
-export const getWarnQqqLongRoll = (): boolean => getBool(KEYS.qqqDays)
-export const setWarnQqqLongRoll = (v: boolean): void => setBool(KEYS.qqqDays, v)
-export const getWarnTqqqLongRoll = (): boolean => getBool(KEYS.tqqqDays)
-export const setWarnTqqqLongRoll = (v: boolean): void => setBool(KEYS.tqqqDays, v)
+export type RiskKind = 'rollDays' | 'strikePct' | 'breach'
 
-// QQQ / TQQQ — large strike-move (滾動行權價 %) warnings.
-export const getWarnQqqLargeStrike = (): boolean => getBool(KEYS.qqqStrike)
-export const setWarnQqqLargeStrike = (v: boolean): void => setBool(KEYS.qqqStrike, v)
-export const getWarnTqqqLargeStrike = (): boolean => getBool(KEYS.tqqqStrike)
-export const setWarnTqqqLargeStrike = (v: boolean): void => setBool(KEYS.tqqqStrike, v)
+export interface RiskRuleDef {
+  id: string
+  symbol: string
+  kind: RiskKind
+  enabledKey: string
+  thresholdKey: string
+  defaultThreshold: number
+  // The Settings label is rendered as: labelBefore + [editable number] + labelAfter
+  labelBefore: string
+  labelAfter: string
+  step: number
+}
 
-// QQQ / TQQQ — strike breached by the underlying and the roll doesn't improve it.
-export const getWarnQqqBreachNoImprove = (): boolean => getBool(KEYS.qqqBreach)
-export const setWarnQqqBreachNoImprove = (v: boolean): void => setBool(KEYS.qqqBreach, v)
-export const getWarnTqqqBreachNoImprove = (): boolean => getBool(KEYS.tqqqBreach)
-export const setWarnTqqqBreachNoImprove = (v: boolean): void => setBool(KEYS.tqqqBreach, v)
+export const RISK_RULES: RiskRuleDef[] = [
+  {
+    id: 'qqqDays',
+    symbol: 'QQQ',
+    kind: 'rollDays',
+    enabledKey: 'trader.warnQqqLongRoll',
+    thresholdKey: 'trader.thQqqLongRoll',
+    defaultThreshold: 2,
+    labelBefore: 'QQQ 展期天數超過',
+    labelAfter: '時將有提示',
+    step: 1
+  },
+  {
+    id: 'tqqqDays',
+    symbol: 'TQQQ',
+    kind: 'rollDays',
+    enabledKey: 'trader.warnTqqqLongRoll',
+    thresholdKey: 'trader.thTqqqLongRoll',
+    defaultThreshold: 5,
+    labelBefore: 'TQQQ 展期天數超過',
+    labelAfter: '時將有提示',
+    step: 1
+  },
+  {
+    id: 'qqqStrike',
+    symbol: 'QQQ',
+    kind: 'strikePct',
+    enabledKey: 'trader.warnQqqLargeStrike',
+    thresholdKey: 'trader.thQqqLargeStrike',
+    defaultThreshold: 0.5,
+    labelBefore: 'QQQ 滾動行權價超過',
+    labelAfter: '% 將有提示',
+    step: 0.1
+  },
+  {
+    id: 'tqqqStrike',
+    symbol: 'TQQQ',
+    kind: 'strikePct',
+    enabledKey: 'trader.warnTqqqLargeStrike',
+    thresholdKey: 'trader.thTqqqLargeStrike',
+    defaultThreshold: 3,
+    labelBefore: 'TQQQ 滾動行權價超過',
+    labelAfter: '% 將有提示',
+    step: 0.1
+  },
+  {
+    id: 'qqqBreach',
+    symbol: 'QQQ',
+    kind: 'breach',
+    enabledKey: 'trader.warnQqqBreachNoImprove',
+    thresholdKey: 'trader.thQqqBreach',
+    defaultThreshold: 0.5,
+    labelBefore: 'QQQ 被突破',
+    labelAfter: '%，滾動不改善將提示',
+    step: 0.1
+  },
+  {
+    id: 'tqqqBreach',
+    symbol: 'TQQQ',
+    kind: 'breach',
+    enabledKey: 'trader.warnTqqqBreachNoImprove',
+    thresholdKey: 'trader.thTqqqBreach',
+    defaultThreshold: 5,
+    labelBefore: 'TQQQ 被突破',
+    labelAfter: '%，滾動不改善將提示',
+    step: 0.1
+  }
+]
 
-// Per-symbol roll-risk rules. `rollDays` warns when the target is more than
-// `threshold` trading days out; `strikePct` warns when the strike moves more
-// than `threshold` percent. Each `get` is the on/off Settings toggle.
+export const getRuleEnabled = (r: RiskRuleDef): boolean => getBool(r.enabledKey)
+export const setRuleEnabled = (r: RiskRuleDef, v: boolean): void => setBool(r.enabledKey, v)
+export const getRuleThreshold = (r: RiskRuleDef): number => getNum(r.thresholdKey, r.defaultThreshold)
+export const setRuleThreshold = (r: RiskRuleDef, v: number): void => setNum(r.thresholdKey, v)
+
 export interface SymbolRiskRules {
   rollDays?: { threshold: number; get: () => boolean }
   strikePct?: { threshold: number; get: () => boolean }
-  // Warn when the short strike is breached (ITM) by more than `threshold`% of
-  // the underlying AND the roll keeps the strike on the wrong side (a short
-  // CALL not rolled up, or a short PUT not rolled down).
   breachNoImprove?: { threshold: number; get: () => boolean }
 }
-export const SYMBOL_RISK_RULES: Record<string, SymbolRiskRules> = {
-  QQQ: {
-    rollDays: { threshold: 2, get: getWarnQqqLongRoll },
-    strikePct: { threshold: 0.5, get: getWarnQqqLargeStrike },
-    breachNoImprove: { threshold: 0.5, get: getWarnQqqBreachNoImprove }
-  },
-  TQQQ: {
-    rollDays: { threshold: 5, get: getWarnTqqqLongRoll },
-    strikePct: { threshold: 3, get: getWarnTqqqLargeStrike },
-    breachNoImprove: { threshold: 5, get: getWarnTqqqBreachNoImprove }
+
+// Built fresh each call so the roll dialog always sees the latest edited values.
+export function getSymbolRiskRules(symbol: string): SymbolRiskRules {
+  const out: SymbolRiskRules = {}
+  for (const r of RISK_RULES) {
+    if (r.symbol !== symbol) continue
+    const entry = { threshold: getRuleThreshold(r), get: (): boolean => getRuleEnabled(r) }
+    if (r.kind === 'rollDays') out.rollDays = entry
+    else if (r.kind === 'strikePct') out.strikePct = entry
+    else if (r.kind === 'breach') out.breachNoImprove = entry
   }
+  return out
 }

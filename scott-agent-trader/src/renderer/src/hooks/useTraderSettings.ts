@@ -15,6 +15,12 @@ export interface SymbolGroup {
     rights?: string[]
     accounts?: string[]
   }
+  // 展期觀察: up to 3 observed roll targets (each a "B" leg). The "A" leg is the
+  // group's current option; the card shows one A→B row per target with live
+  // bid/ask/mid. Legacy single-object values are still accepted on read.
+  rollWatch?:
+    | Array<{ expiry: string; strike: number; right: 'C' | 'P' }>
+    | { expiry: string; strike: number; right: 'C' | 'P' }
 }
 
 

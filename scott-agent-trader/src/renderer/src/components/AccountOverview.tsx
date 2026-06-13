@@ -8,6 +8,8 @@ import type {
 } from '../hooks/useAccountStore'
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
+import RollWatchChunk from './RollWatchChunk'
+import { rollTradingDays } from '../lib/tradingDays'
 import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
@@ -169,24 +171,13 @@ function computeNakedCalls(positions: PositionData[], accountId: string): NakedC
 
 // Trading days until expiry — calendar days minus weekends.
 // IB expiry comes as YYYYMMDD; today is local "today" (midnight).
-// US market holidays aren't filtered yet; if needed we can wire a holiday
-// list, but weekends alone fix the common Fri → Mon = "3 days" off-by-2.
+// DTE in trading days from today to the option's expiry — weekends AND US
+// market holidays excluded (delegates to the shared holiday-aware helper).
 function tradingDaysUntil(expiry: string | undefined): number | null {
   if (!expiry || expiry.length < 8) return null
-  const target = new Date(
-    `${expiry.substring(0, 4)}-${expiry.substring(4, 6)}-${expiry.substring(6, 8)}T00:00:00`
-  )
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  if (target.getTime() <= today.getTime()) return 0
-  let count = 0
-  const cur = new Date(today)
-  while (cur.getTime() < target.getTime()) {
-    cur.setDate(cur.getDate() + 1)
-    const dow = cur.getDay() // 0 = Sun, 6 = Sat
-    if (dow !== 0 && dow !== 6) count++
-  }
-  return count
+  const todayYmd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+  return rollTradingDays(todayYmd, expiry)
 }
 
 
@@ -263,7 +254,20 @@ export default function AccountOverview({
   const [filterRight, setFilterRight] = useState<'' | 'C' | 'P'>('')
   const [selectedPositions, setSelectedPositions] = useState<Set<string>>(new Set())
   const [showRollDialog, setShowRollDialog] = useState(false)
-  const [rollWarnMsg, setRollWarnMsg] = useState<string | null>(null)
+  // When set, the roll dialog is in 展期觀察 (observe) mode for this group id.
+  const [observeGroupId, setObserveGroupId] = useState<string | null>(null)
+  // Drag-to-reorder state for 展期觀察 rows: which group + which row is dragging.
+  const [watchDrag, setWatchDrag] = useState<{ groupId: string; from: number } | null>(null)
+  // When the GO button on a 展期觀察 row fires, pre-select this target in the
+  // (real, non-observe) roll dialog.
+  const [rollInitialTarget, setRollInitialTarget] = useState<{
+    expiry: string
+    strike: number
+    right: 'C' | 'P'
+  } | null>(null)
+  const [rollWarnMsg, setRollWarnMsg] = useState<{ title: string; message: string } | null>(
+    null
+  )
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
@@ -576,9 +580,16 @@ export default function AccountOverview({
           }
           return groupPosKeys.has(posKey(p))
         }).length
-        // Include the note (its length) so the card re-measures when a note
-        // is added/edited/removed — otherwise overflow:hidden clips it.
-        return `${g.id}:${count}:n${(g.note || '').length}`
+        // Include the note (its length) and the 展期觀察 target so the card
+        // re-measures when either is added/edited/removed — otherwise
+        // overflow:hidden clips the extra row.
+        const rwArr = Array.isArray(g.rollWatch)
+          ? g.rollWatch
+          : g.rollWatch
+            ? [g.rollWatch]
+            : []
+        const rw = rwArr.map((w) => `${w.expiry}:${w.strike}${w.right}`).join(',')
+        return `${g.id}:${count}:n${(g.note || '').length}:rw${rw}`
       })
       .join('|')
     // NOTE: checkModeGroups intentionally NOT in masonryKey. Toggling check
@@ -938,15 +949,17 @@ export default function AccountOverview({
       const max = Math.max(...strikes)
       const spread = (max - min) / min
       if (spread > 0.01) {
-        setRollWarnMsg(
-          `所選期權行權價差距 ${(spread * 100).toFixed(1)}%（${min} ~ ${max}）超過 1%，請分開選擇後再展期。`
-        )
+        setRollWarnMsg({
+          title: '無法展期',
+          message: `所選期權行權價差距 ${(spread * 100).toFixed(1)}%（${min} ~ ${max}）超過 1%，請分開選擇後再展期。`
+        })
         return
       }
     }
     if (rollPositions) {
       setSelectedPositions(new Set(rollPositions.map((p) => posKey(p))))
     }
+    setRollInitialTarget(null)
     setShowRollDialog(true)
   }
 
@@ -1953,6 +1966,56 @@ export default function AccountOverview({
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z" />
                           </svg>
                         )}
+                        {onUpdateSymbolGroup &&
+                          (() => {
+                            const obsOpt = groupPositions.filter((p) => p.secType === 'OPT')
+                            const canObserve =
+                              obsOpt.length > 0 &&
+                              new Set(obsOpt.map((p) => p.symbol)).size === 1 &&
+                              new Set(
+                                obsOpt.map((p) =>
+                                  p.right === 'C' || p.right === 'CALL' ? 'C' : 'P'
+                                )
+                              ).size === 1
+                            if (!canObserve) return null
+                            return (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ cursor: 'pointer', opacity: 0.7 }}
+                                onClick={() => {
+                                  const cur = Array.isArray(g.rollWatch)
+                                    ? g.rollWatch
+                                    : g.rollWatch
+                                      ? [g.rollWatch]
+                                      : []
+                                  if (cur.length >= 3) {
+                                    setRollWarnMsg({
+                                      title: '展期觀察已達上限',
+                                      message:
+                                        '每個群組最多只能設定 3 個展期觀察，請先移除其中一個再新增。'
+                                    })
+                                    return
+                                  }
+                                  setSelectedPositions(new Set(obsOpt.map((p) => posKey(p))))
+                                  setObserveGroupId(g.id)
+                                  setRollInitialTarget(null)
+                                  setShowRollDialog(true)
+                                }}
+                              >
+                                <title>展期觀察</title>
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            )
+                          })()}
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="16"
@@ -2027,6 +2090,103 @@ export default function AccountOverview({
                         />
                       </div>
                     )}
+                    {/* 展期觀察: up to 3 saved roll targets → one live A→B row each. */}
+                    {onUpdateSymbolGroup &&
+                      (() => {
+                        const watches = Array.isArray(g.rollWatch)
+                          ? g.rollWatch
+                          : g.rollWatch
+                            ? [g.rollWatch]
+                            : []
+                        if (watches.length === 0) return null
+                        const normRight = (r: string): 'C' | 'P' =>
+                          r === 'C' || r === 'CALL' ? 'C' : 'P'
+                        return watches.map((watch, wi) => {
+                          const src = groupPositions.find(
+                            (p) =>
+                              p.secType === 'OPT' &&
+                              normRight(p.right || '') === watch.right &&
+                              !!p.expiry &&
+                              p.strike != null
+                          )
+                          if (!src || !src.expiry || src.strike == null) return null
+                          const isDragging =
+                            watchDrag?.groupId === g.id && watchDrag.from === wi
+                          return (
+                            <div
+                              key={`${watch.expiry}-${watch.strike}-${watch.right}-${wi}`}
+                              draggable={watches.length > 1}
+                              onDragStart={(e) => {
+                                // Don't let this bubble to the card's group-reorder
+                                // drag handlers (which dim the whole card).
+                                e.stopPropagation()
+                                setWatchDrag({ groupId: g.id, from: wi })
+                                e.dataTransfer.effectAllowed = 'move'
+                              }}
+                              onDragOver={(e) => {
+                                if (watchDrag?.groupId === g.id) {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (!watchDrag || watchDrag.groupId !== g.id) return
+                                const from = watchDrag.from
+                                setWatchDrag(null)
+                                if (from === wi) return
+                                const arr = [...watches]
+                                const [moved] = arr.splice(from, 1)
+                                arr.splice(wi, 0, moved)
+                                onUpdateSymbolGroup({ ...g, rollWatch: arr })
+                              }}
+                              onDragEnd={(e) => {
+                                e.stopPropagation()
+                                setWatchDrag(null)
+                              }}
+                              className={watches.length > 1 ? 'roll-watch-drag' : undefined}
+                              style={{ opacity: isDragging ? 0.4 : 1 }}
+                            >
+                              <RollWatchChunk
+                                symbol={src.symbol}
+                                source={{
+                                  expiry: src.expiry,
+                                  strike: src.strike,
+                                  right: watch.right
+                                }}
+                                target={watch}
+                                isShort={src.quantity < 0}
+                                onGo={() => {
+                                  const optKeys = groupPositions
+                                    .filter((p) => p.secType === 'OPT')
+                                    .map((p) => posKey(p))
+                                  setSelectedPositions(new Set(optKeys))
+                                  setObserveGroupId(null)
+                                  setRollInitialTarget({
+                                    expiry: watch.expiry,
+                                    strike: watch.strike,
+                                    right: watch.right
+                                  })
+                                  setShowRollDialog(true)
+                                }}
+                                onClear={() => {
+                                  const cur = Array.isArray(g.rollWatch)
+                                    ? g.rollWatch
+                                    : g.rollWatch
+                                      ? [g.rollWatch]
+                                      : []
+                                  const next = cur.filter((_, i) => i !== wi)
+                                  onUpdateSymbolGroup({
+                                    ...g,
+                                    rollWatch: next.length ? next : undefined
+                                  })
+                                }}
+                              />
+                            </div>
+                          )
+                        })
+                      })()}
                     <div
                       style={{
                         display: 'flex',
@@ -4202,9 +4362,37 @@ export default function AccountOverview({
         open={showRollDialog}
         onClose={() => {
           setShowRollDialog(false)
+          setObserveGroupId(null)
+          setRollInitialTarget(null)
         }}
         selectedPositions={positions.filter((p) => selectedPositions.has(posKey(p)))}
         accounts={accounts}
+        observeMode={observeGroupId !== null}
+        initialTarget={rollInitialTarget ?? undefined}
+        onObserve={(target) => {
+          const g = symbolGroups.find((x) => x.id === observeGroupId)
+          if (g) {
+            const cur = Array.isArray(g.rollWatch)
+              ? g.rollWatch
+              : g.rollWatch
+                ? [g.rollWatch]
+                : []
+            // Drop an exact duplicate, append the new target, keep the last 3.
+            const next = [
+              ...cur.filter(
+                (w) =>
+                  !(
+                    w.expiry === target.expiry &&
+                    w.strike === target.strike &&
+                    w.right === target.right
+                  )
+              ),
+              target
+            ].slice(-3)
+            onUpdateSymbolGroup?.({ ...g, rollWatch: next })
+          }
+          setObserveGroupId(null)
+        }}
         onRollComplete={(rolledPositions, target) => {
           // Store intent: will be applied once IB confirms the fill via position updates
           setPendingRollUpdate({ rolledPositions, target })
@@ -4219,7 +4407,7 @@ export default function AccountOverview({
           >
             <div className="roll-dialog-header">
               <span style={{ fontSize: 20, lineHeight: 1 }}>⚠️</span>
-              <h3>無法展期</h3>
+              <h3>{rollWarnMsg.title}</h3>
               <button className="roll-dialog-close" onClick={() => setRollWarnMsg(null)}>
                 ✕
               </button>
@@ -4228,7 +4416,7 @@ export default function AccountOverview({
               className="roll-dialog-body"
               style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}
             >
-              {rollWarnMsg}
+              {rollWarnMsg.message}
             </div>
             <div
               style={{

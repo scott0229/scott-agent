@@ -2196,6 +2196,94 @@ input[type='number']::-webkit-outer-spin-button {
   color: #c0392b;
 }
 
+/* Draggable 展期觀察 row: normal cursor on hover, closed-hand once you press. */
+.roll-watch-drag {
+  cursor: default;
+}
+
+.roll-watch-drag:active {
+  cursor: grabbing;
+}
+
+/* 展期觀察 chunk on a group card: A→B with live 買/賣/中間 spread. */
+.roll-watch-chunk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 2px;
+  padding: 5px 9px;
+  background: #f6f4ef;
+  border: 1px solid #e3ddd0;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.roll-watch-spec {
+  font-weight: 600;
+  color: #3a342a;
+  white-space: nowrap;
+}
+
+.roll-watch-delta {
+  margin-left: 18px;
+  font-weight: 500;
+  color: #333;
+}
+
+.roll-watch-prices {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.roll-watch-prices b {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.roll-watch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roll-watch-go {
+  border: none;
+  background: transparent;
+  color: #333;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.roll-watch-go:hover {
+  background: #e7e0d2;
+  color: #333;
+}
+
+.roll-watch-clear {
+  border: none;
+  background: transparent;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.roll-watch-clear:hover {
+  background: #e7e0d2;
+  color: #333;
+}
+
 /* Order entry section */
 .roll-order-section {
   padding: 10px 20px;
@@ -2648,7 +2736,7 @@ input[type='number']::-webkit-outer-spin-button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.1s;
@@ -2659,7 +2747,7 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .settings-account-name {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-primary);
 }
 

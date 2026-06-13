@@ -2,18 +2,11 @@ import React from 'react'
 import { useState, useEffect } from 'react'
 import type { AccountData } from '../hooks/useAccountStore'
 import {
-  getWarnQqqLongRoll,
-  setWarnQqqLongRoll,
-  getWarnTqqqLongRoll,
-  setWarnTqqqLongRoll,
-  getWarnQqqLargeStrike,
-  setWarnQqqLargeStrike,
-  getWarnTqqqLargeStrike,
-  setWarnTqqqLargeStrike,
-  getWarnQqqBreachNoImprove,
-  setWarnQqqBreachNoImprove,
-  getWarnTqqqBreachNoImprove,
-  setWarnTqqqBreachNoImprove
+  RISK_RULES,
+  getRuleEnabled,
+  setRuleEnabled,
+  getRuleThreshold,
+  setRuleThreshold
 } from '../lib/riskPrefs'
 
 const LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
@@ -99,12 +92,14 @@ export default function SettingsPanel({
   }, [marginLimit])
   const [showRisk, setShowRisk] = useState(true)
   const [showRiskAlerts, setShowRiskAlerts] = useState(true)
-  const [warnQqqLongRoll, setWarnQqqLongRollState] = useState(getWarnQqqLongRoll())
-  const [warnTqqqLongRoll, setWarnTqqqLongRollState] = useState(getWarnTqqqLongRoll())
-  const [warnQqqLargeStrike, setWarnQqqLargeStrikeState] = useState(getWarnQqqLargeStrike())
-  const [warnTqqqLargeStrike, setWarnTqqqLargeStrikeState] = useState(getWarnTqqqLargeStrike())
-  const [warnQqqBreach, setWarnQqqBreachState] = useState(getWarnQqqBreachNoImprove())
-  const [warnTqqqBreach, setWarnTqqqBreachState] = useState(getWarnTqqqBreachNoImprove())
+  // Risk-rule toggle + threshold state, keyed by rule id. Threshold is kept as
+  // a string while editing; committed to localStorage on blur.
+  const [riskEnabled, setRiskEnabled] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(RISK_RULES.map((r) => [r.id, getRuleEnabled(r)]))
+  )
+  const [riskThreshold, setRiskThreshold] = useState<Record<string, string>>(() =>
+    Object.fromEntries(RISK_RULES.map((r) => [r.id, String(getRuleThreshold(r))]))
+  )
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
 
@@ -137,7 +132,7 @@ export default function SettingsPanel({
                 padding: '0 8px'
               }}
             >
-              <label style={{ fontSize: '0.95em', color: '#555', whiteSpace: 'nowrap' }}>
+              <label style={{ fontSize: '0.88em', color: '#555', whiteSpace: 'nowrap' }}>
                 潛在融資上限
               </label>
               <input
@@ -160,7 +155,7 @@ export default function SettingsPanel({
                   padding: '4px 8px',
                   border: '1px solid #ccc',
                   borderRadius: 6,
-                  fontSize: '0.95em',
+                  fontSize: '0.88em',
                   textAlign: 'center'
                 }}
               />
@@ -172,156 +167,60 @@ export default function SettingsPanel({
             expanded={showRiskAlerts}
             onToggle={() => setShowRiskAlerts((v) => !v)}
           />
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnQqqLongRoll}
-                onChange={(e) => {
-                  setWarnQqqLongRollState(e.target.checked)
-                  setWarnQqqLongRoll(e.target.checked)
+          {showRiskAlerts &&
+            RISK_RULES.map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginBottom: 12,
+                  padding: '0 8px',
+                  fontSize: '0.88em',
+                  color: '#555'
                 }}
-              />
-              QQQ 展期天數超過 2 時將有提示
-            </label>
-          )}
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnTqqqLongRoll}
-                onChange={(e) => {
-                  setWarnTqqqLongRollState(e.target.checked)
-                  setWarnTqqqLongRoll(e.target.checked)
-                }}
-              />
-              TQQQ 展期天數超過 5 時將有提示
-            </label>
-          )}
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnQqqLargeStrike}
-                onChange={(e) => {
-                  setWarnQqqLargeStrikeState(e.target.checked)
-                  setWarnQqqLargeStrike(e.target.checked)
-                }}
-              />
-              QQQ 滾動行權價超過 0.5% 將有提示
-            </label>
-          )}
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnTqqqLargeStrike}
-                onChange={(e) => {
-                  setWarnTqqqLargeStrikeState(e.target.checked)
-                  setWarnTqqqLargeStrike(e.target.checked)
-                }}
-              />
-              TQQQ 滾動行權價超過 3% 將有提示
-            </label>
-          )}
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnQqqBreach}
-                onChange={(e) => {
-                  setWarnQqqBreachState(e.target.checked)
-                  setWarnQqqBreachNoImprove(e.target.checked)
-                }}
-              />
-              QQQ 被突破 0.5%，滾動時不改善將提示
-            </label>
-          )}
-          {showRiskAlerts && (
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                padding: '0 8px',
-                fontSize: '0.95em',
-                color: '#555',
-                cursor: 'pointer',
-                userSelect: 'none'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={warnTqqqBreach}
-                onChange={(e) => {
-                  setWarnTqqqBreachState(e.target.checked)
-                  setWarnTqqqBreachNoImprove(e.target.checked)
-                }}
-              />
-              TQQQ 被突破 5%，滾動時不改善將提示
-            </label>
-          )}
+              >
+                <input
+                  type="checkbox"
+                  checked={riskEnabled[r.id]}
+                  onChange={(e) => {
+                    setRiskEnabled((p) => ({ ...p, [r.id]: e.target.checked }))
+                    setRuleEnabled(r, e.target.checked)
+                  }}
+                  style={{ cursor: 'pointer', flexShrink: 0 }}
+                />
+                <span style={{ whiteSpace: 'nowrap' }}>{r.labelBefore}</span>
+                <input
+                  type="number"
+                  step={r.step}
+                  min={0}
+                  value={riskThreshold[r.id]}
+                  onChange={(e) =>
+                    setRiskThreshold((p) => ({ ...p, [r.id]: e.target.value }))
+                  }
+                  onBlur={() => {
+                    const v = parseFloat(riskThreshold[r.id])
+                    if (Number.isFinite(v) && v >= 0) {
+                      setRuleThreshold(r, v)
+                      setRiskThreshold((p) => ({ ...p, [r.id]: String(v) }))
+                    } else {
+                      setRiskThreshold((p) => ({ ...p, [r.id]: String(getRuleThreshold(r)) }))
+                    }
+                  }}
+                  style={{
+                    width: 52,
+                    padding: '2px 4px',
+                    border: '1px solid #ccc',
+                    borderRadius: 5,
+                    fontSize: '0.88em',
+                    textAlign: 'center',
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{ whiteSpace: 'nowrap' }}>{r.labelAfter}</span>
+              </div>
+            ))}
 
           <SectionHeader
             title="可交易標的"
@@ -342,7 +241,7 @@ export default function SettingsPanel({
                     gap: 10
                   }}
                 >
-                  <label style={{ fontSize: '0.95em', color: '#555', minWidth: 50 }}>
+                  <label style={{ fontSize: '0.88em', color: '#555', minWidth: 50 }}>
                     標的{label}
                   </label>
                   <input
@@ -355,7 +254,7 @@ export default function SettingsPanel({
                       padding: '4px 8px',
                       border: '1px solid #ccc',
                       borderRadius: 6,
-                      fontSize: '0.95em',
+                      fontSize: '0.88em',
                       textAlign: 'center',
                       textTransform: 'uppercase',
                       marginLeft: 'auto'
@@ -366,7 +265,7 @@ export default function SettingsPanel({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 3,
-                      fontSize: '0.9em',
+                      fontSize: '0.83em',
                       color: sym ? '#555' : '#bbb',
                       cursor: sym ? 'pointer' : 'default',
                       userSelect: 'none'
@@ -392,11 +291,11 @@ export default function SettingsPanel({
           {showAccounts && (
             <div className="settings-account-list">
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, borderBottom: '1px solid #eee', paddingBottom: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.88em', color: '#555', cursor: 'pointer' }}>
                   <input type="checkbox" checked={showOperationMode} onChange={e => onSetShowOperationMode(e.target.checked)} />
                   顯示交易重點
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.95em', color: '#555', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.88em', color: '#555', cursor: 'pointer' }}>
                   <input type="checkbox" checked={showAccountType} onChange={e => onSetShowAccountType(e.target.checked)} />
                   顯示帳戶類型
                 </label>

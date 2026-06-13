@@ -5,24 +5,8 @@ import type { AccountData, PositionData } from '../hooks/useAccountStore'
 import { useOptionChain, formatExpiry, mergeGreek } from '../hooks/useOptionChain'
 import type { OptionGreek } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
-import { SYMBOL_RISK_RULES } from '../lib/riskPrefs'
-
-// Trading days the expiry is being pushed out by (source expiry → target
-// expiry), weekends excluded — same convention as the app's DTE.
-function rollTradingDays(from?: string, to?: string | null): number | null {
-  if (!from || from.length < 8 || !to || to.length < 8) return null
-  const d1 = new Date(`${from.substring(0, 4)}-${from.substring(4, 6)}-${from.substring(6, 8)}T00:00:00`)
-  const d2 = new Date(`${to.substring(0, 4)}-${to.substring(4, 6)}-${to.substring(6, 8)}T00:00:00`)
-  if (d2.getTime() <= d1.getTime()) return 0
-  let count = 0
-  const cur = new Date(d1)
-  while (cur.getTime() < d2.getTime()) {
-    cur.setDate(cur.getDate() + 1)
-    const dow = cur.getDay() // 0 = Sun, 6 = Sat
-    if (dow !== 0 && dow !== 6) count++
-  }
-  return count
-}
+import { getSymbolRiskRules } from '../lib/riskPrefs'
+import { rollTradingDays } from '../lib/tradingDays'
 
 interface RollOptionDialogProps {
   open: boolean
@@ -34,6 +18,10 @@ interface RollOptionDialogProps {
     target: { expiry: string; strike: number; right: 'C' | 'P' }
   ) => void
   initialTarget?: { expiry: string; strike: number; right: 'C' | 'P' }
+  // Observe mode: instead of placing the roll, picking a target + confirming
+  // just hands the target back (used by 展期觀察).
+  observeMode?: boolean
+  onObserve?: (target: { expiry: string; strike: number; right: 'C' | 'P' }) => void
 }
 
 function midPrice(greek: OptionGreek | undefined): number | null {
@@ -49,7 +37,9 @@ export default function RollOptionDialog({
   selectedPositions,
   accounts,
   onRollComplete,
-  initialTarget
+  initialTarget,
+  observeMode,
+  onObserve
 }: RollOptionDialogProps): React.JSX.Element | null {
   // Snapshot positions on open so parent re-renders don't cause re-fetches.
   // The snapshot is taken synchronously DURING the render where open flips
@@ -116,13 +106,19 @@ export default function RollOptionDialog({
   )
 
   // Keep the source position's strike(s) selected by default, so the
-  // same-strike roll is visible without scrolling the strike list.
+  // same-strike roll is visible without scrolling the strike list. Also pin the
+  // initialTarget strike (from a 展期觀察 GO) so its greek always loads — without
+  // it, a target outside the default display range never gets a quote and the
+  // limit price can't auto-fill.
   const pinnedStrikes = useMemo(
     () =>
       Array.from(
-        new Set(positions.map((p) => p.strike).filter((s): s is number => s != null))
+        new Set([
+          ...positions.map((p) => p.strike).filter((s): s is number => s != null),
+          ...(initialTarget ? [initialTarget.strike] : [])
+        ])
       ),
-    [positions]
+    [positions, initialTarget]
   )
   const chain = useOptionChain({
     symbol,
@@ -368,7 +364,7 @@ export default function RollOptionDialog({
       setTargetRight(right)
       // Per-symbol roll-risk warnings (展期天數 / 行權價變動 %) — shown the moment a
       // breaching target is picked, unless disabled in Settings → 風險提示.
-      const rules = SYMBOL_RISK_RULES[symbol]
+      const rules = getSymbolRiskRules(symbol)
       const targetKey = `${expiry}|${strike}`
       if (rules && lastWarnedExpiryRef.current !== targetKey) {
         const messages: string[] = []
@@ -936,17 +932,30 @@ export default function RollOptionDialog({
               !targetExpiry ||
               targetStrike === null ||
               targetRight === null ||
-              !limitPrice ||
-              !rollQty ||
+              // Observe mode only needs a target; placing a roll also needs limit + qty.
+              (!observeMode && (!limitPrice || !rollQty)) ||
               submitting
             }
-            onClick={() => void performRoll()}
+            onClick={() => {
+              if (observeMode) {
+                if (targetExpiry && targetStrike !== null && targetRight) {
+                  onObserve?.({ expiry: targetExpiry, strike: targetStrike, right: targetRight })
+                  onClose()
+                }
+                return
+              }
+              void performRoll()
+            }}
           >
-            {submitting
-              ? '下單中...'
-              : targetExpiry && targetStrike !== null && targetRight
-                ? `確認展期 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight}`
-                : '確認展期'}
+            {observeMode
+              ? targetExpiry && targetStrike !== null && targetRight
+                ? `儲存觀察 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight}`
+                : '儲存觀察'
+              : submitting
+                ? '下單中...'
+                : targetExpiry && targetStrike !== null && targetRight
+                  ? `確認展期 ${symbol} ${formatExpiry(targetExpiry)} ${Number.isInteger(Number(targetStrike)) ? Number(targetStrike) : Number(targetStrike).toFixed(1)}${targetRight}`
+                  : '確認展期'}
           </button>
         </div>
       </div>
