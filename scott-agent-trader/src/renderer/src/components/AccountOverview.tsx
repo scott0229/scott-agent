@@ -1116,13 +1116,18 @@ export default function AccountOverview({
         'Dec'
       ]
       // expiry format from IB: "20260217"
+      const fullYear = parseInt(pos.expiry.substring(0, 4))
       const yy = pos.expiry.substring(2, 4)
       const month = months[parseInt(pos.expiry.substring(4, 6)) - 1]
       const day = pos.expiry.substring(6, 8)
       const numStrike = Number(pos.strike) || 0
       const strike = Number.isInteger(numStrike) ? numStrike.toString() : numStrike.toFixed(1)
       const right = pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
-      return `${pos.symbol} ${month}${day}'${yy} ${strike}${right}`
+      // Drop the 'YY suffix when the contract expires this year — it's the
+      // common case and the year just adds noise.
+      const exp =
+        fullYear === new Date().getFullYear() ? `${month}${day}` : `${month}${day}'${yy}`
+      return `${pos.symbol} ${exp} ${strike}${right}`
     }
     return pos.symbol
   }

@@ -39,9 +39,13 @@ export function formatExpiry(expiry: string): string {
     'Nov',
     'Dec'
   ]
+  const fullYear = parseInt(expiry.substring(0, 4), 10)
   const year = expiry.substring(2, 4)
   const month = months[parseInt(expiry.substring(4, 6)) - 1]
   const day = parseInt(expiry.substring(6, 8), 10)
+  // Drop the 'YY suffix for contracts expiring this year — common case, the
+  // year is just noise.
+  if (fullYear === new Date().getFullYear()) return `${month}${day}`
   return `${month}${day} '${year}`
 }
 
