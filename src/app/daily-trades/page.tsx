@@ -751,11 +751,11 @@ export default function DailyTradesPage() {
                                         });
 
                                         // 裸賣 CALL warning — injected directly under the
-                                        // 交易日期 line so it's the first thing read on the
+                                        // 日期 line so it's the first thing read on the
                                         // card. Red badge styling makes it unmissable.
                                         // Server-computed per owner, so it renders in
                                         // 全部帳戶 mode as well as single-account mode.
-                                        const showNakedWarning = line.startsWith('交易日期') && cardNakedChecks.length > 0;
+                                        const showNakedWarning = line.startsWith('日期 :') && cardNakedChecks.length > 0;
 
                                         return (
                                             <span key={i}>

@@ -56,12 +56,12 @@ function buildBccExtras(
     if (options.includeDailyOps && dailyTrades) {
         const group = (dailyTrades.data || []).find((g: any) => g.user?.id === user.id);
         if (group) {
-            // Drop the "交易日期 : ..." header (and its trailing dash rule)
-            // because the parent email already shows the date in the subject
-            // and 帳戶報告 body. Keep the call's `date` arg populated so the
-            // DTE calculation inside generateDailyTradesText still works.
+            // Drop the "日期 : ..." header (and any QQQ line + trailing dash
+            // rule) because the parent email already shows the date in the
+            // subject and 帳戶報告 body. Keep the call's `date` arg populated
+            // so the DTE calculation inside generateDailyTradesText still works.
             const txt = generateDailyTradesText(group, dailyTrades.date, dailyTrades.marketData)
-                .replace(/^交易日期 : [^\n]*\n-+\n/, '')
+                .replace(/^日期 : [^\n]*\n(?:QQQ [^\n]*\n)?-+\n/, '')
                 .trim();
             if (txt) {
                 // Sum every 收益 AND 權利金 amount the report renders → day's

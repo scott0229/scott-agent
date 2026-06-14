@@ -74,7 +74,11 @@ export function generateDailyTradesText(
     if (date) {
         const d = new Date(date);
         const dateStr = `${d.getFullYear().toString().slice(-2)}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        text += `交易日期 : ${dateStr}\n`;
+        // Parse parts explicitly for the weekday so it isn't timezone-shifted.
+        const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+        const [wy, wm, wd] = date.split('-').map(Number);
+        const weekday = WEEKDAY_ZH[new Date(Date.UTC(wy, wm - 1, wd)).getUTCDay()];
+        text += `日期 : ${dateStr} (${weekday})\n`;
         if (qqqDay && qqqDay.open != null && qqqDay.close != null) {
             const delta = qqqDay.close - qqqDay.open;
             const sign = delta >= 0 ? '+' : '';
