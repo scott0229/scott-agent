@@ -1159,23 +1159,27 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                 const FONT_SIZE = 12;
                                 if (isTarget) {
                                     const w = label.length * 7 + 10;
+                                    const PILL_H = FONT_SIZE + 6;
                                     return (
                                         <g transform={`translate(${x},${y})`}>
                                             <rect
                                                 x={-w}
-                                                y={-FONT_SIZE / 2 - 2}
+                                                y={-PILL_H / 2}
                                                 width={w}
-                                                height={FONT_SIZE + 4}
+                                                height={PILL_H}
                                                 rx={4}
                                                 fill="var(--muted)"
                                                 stroke="var(--border)"
                                                 strokeWidth={1}
                                             />
+                                            {/* dominantBaseline central centers the glyph
+                                                around y=0, and the rect is symmetric around
+                                                y=0, so top/bottom margins are exactly equal. */}
                                             <text
                                                 x={-5}
                                                 y={0}
-                                                dy={4}
                                                 textAnchor="end"
+                                                dominantBaseline="central"
                                                 fontSize={FONT_SIZE}
                                                 fill="var(--foreground)"
                                             >
