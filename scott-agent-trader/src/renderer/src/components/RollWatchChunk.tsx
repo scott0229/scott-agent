@@ -14,7 +14,9 @@ interface RollWatchChunkProps {
   source: Leg
   target: Leg
   isShort: boolean
-  onClear: () => void
+  // Optional — when omitted (e.g. auto-generated default-rule watches) the
+  // ✕ remove button is hidden since there's nothing saved to remove.
+  onClear?: () => void
   // 用這組觀察直接交易：開啟展期 DIALOG 並預選此標的。
   onGo: () => void
 }
@@ -31,6 +33,8 @@ export default function RollWatchChunk({
   onGo
 }: RollWatchChunkProps): React.JSX.Element {
   const [spread, setSpread] = useState<{ bid: number; ask: number; mid: number } | null>(null)
+  const [targetDelta, setTargetDelta] = useState<number | null>(null)
+  const [targetIv, setTargetIv] = useState<number | null>(null)
   const cancelledRef = useRef(false)
 
   useEffect(() => {
@@ -47,6 +51,9 @@ export default function RollWatchChunk({
         const spreadBid = isShort ? cur.ask - tgt.bid : tgt.ask - cur.bid
         const spreadAsk = isShort ? cur.bid - tgt.ask : tgt.bid - cur.ask
         setSpread({ bid: spreadBid, ask: spreadAsk, mid: (spreadBid + spreadAsk) / 2 })
+        // Target leg's delta = the new position's assignment probability.
+        setTargetDelta(Number.isFinite(tgt.delta) ? tgt.delta : null)
+        setTargetIv(Number.isFinite(tgt.impliedVol) ? tgt.impliedVol : null)
       } catch {
         /* ignore transient quote errors */
       }
@@ -81,6 +88,21 @@ export default function RollWatchChunk({
     <div className="roll-watch-chunk">
       <span className="roll-watch-spec">
         {symbol} {fmtLeg(source)} <span style={{ color: '#956b3a' }}>→</span> {fmtLeg(target)}
+        {targetDelta != null && (
+          <>
+            <span className="roll-watch-sep">·</span>
+            <span style={{ fontWeight: 400 }}>
+              delta {Math.abs(targetDelta).toFixed(2)}
+            </span>
+          </>
+        )}
+        {targetIv != null && (
+          <>
+            <span className="roll-watch-sep">·</span>
+            <span style={{ fontWeight: 400 }}>iv {(targetIv * 100).toFixed(0)}%</span>
+          </>
+        )}
+        <span className="roll-watch-sep">·</span>
         <span className="roll-watch-delta">
           展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>展 {ptsStr} 點
         </span>
@@ -109,9 +131,11 @@ export default function RollWatchChunk({
         >
           ✓
         </button>
-        <button className="roll-watch-clear" title="移除觀察" onClick={onClear}>
-          ✕
-        </button>
+        {onClear && (
+          <button className="roll-watch-clear" title="移除觀察" onClick={onClear}>
+            ✕
+          </button>
+        )}
       </span>
     </div>
   )

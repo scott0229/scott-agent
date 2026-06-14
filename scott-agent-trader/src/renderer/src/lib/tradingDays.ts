@@ -31,3 +31,22 @@ export function rollTradingDays(from?: string, to?: string | null): number | nul
   }
   return count
 }
+
+// Return the YYYYMMDD that is `n` trading days after `from` (weekends + US
+// holidays skipped). n = 0 returns `from` unchanged. Used to turn a relative
+// "展 N 天" observe rule into a concrete target expiry.
+export function addTradingDays(from: string, n: number): string {
+  if (!from || from.length < 8) return from
+  if (n <= 0) return from
+  const cur = new Date(
+    `${from.substring(0, 4)}-${from.substring(4, 6)}-${from.substring(6, 8)}T00:00:00`
+  )
+  let added = 0
+  while (added < n) {
+    cur.setDate(cur.getDate() + 1)
+    const dow = cur.getDay()
+    const ds = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+    if (dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(ds)) added++
+  }
+  return `${cur.getFullYear()}${String(cur.getMonth() + 1).padStart(2, '0')}${String(cur.getDate()).padStart(2, '0')}`
+}

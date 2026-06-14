@@ -187,7 +187,7 @@ export function IndicatorChart(): React.JSX.Element {
     })
     // Give the price pane more room, RSI a compact strip.
     const panes = chart.panes()
-    if (panes[1]) panes[1].setHeight(120)
+    if (panes[1]) panes[1].setHeight(90)
 
     chart.priceScale('right').applyOptions({
       scaleMargins: { top: priceMarginRef.current, bottom: priceMarginRef.current }
@@ -301,7 +301,7 @@ export function IndicatorChart(): React.JSX.Element {
   }, [store])
 
   return (
-    <div className="quantitative-chart-wrapper" style={{ height: 'calc(100vh - 140px)', minHeight: 480 }}>
+    <div className="quantitative-chart-wrapper" style={{ height: 'calc((100vh - 140px) / 2)', minHeight: 240 }}>
       <div className="chart-toolbar">
         <span className="chart-label" style={{ fontWeight: 600 }}>
           QQQ 日線

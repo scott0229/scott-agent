@@ -30,17 +30,19 @@ export default function OptionChainTable({
   const dataReady = displayExpirations.length > 0 && displayStrikes.length > 0
   const callDisabled = allowedRight != null && allowedRight !== 'C'
   const putDisabled = allowedRight != null && allowedRight !== 'P'
+  const fmtIv = (iv: number | undefined): string =>
+    iv != null && Number.isFinite(iv) ? `${Math.round(iv * 100)}%` : '-'
 
   return (
     <div className="roll-chain-multi">
       <table className="roll-chain-table">
         <thead>
           <tr>
-            <th colSpan={4} className="roll-chain-side-header roll-chain-call-header">
+            <th colSpan={5} className="roll-chain-side-header roll-chain-call-header">
               CALL
             </th>
             <th className="roll-chain-desc-header"></th>
-            <th colSpan={4} className="roll-chain-side-header roll-chain-put-header">
+            <th colSpan={5} className="roll-chain-side-header roll-chain-put-header">
               PUT
             </th>
           </tr>
@@ -50,6 +52,7 @@ export default function OptionChainTable({
             <>
               <tr className="roll-chain-expiry-row">
                 <td>DELTA</td>
+                <td>IV</td>
                 <td>買價</td>
                 <td>賣價</td>
                 <td>最後價</td>
@@ -59,10 +62,14 @@ export default function OptionChainTable({
                 <td>買價</td>
                 <td>賣價</td>
                 <td>最後價</td>
+                <td>IV</td>
                 <td>DELTA</td>
               </tr>
               {Array.from({ length: 10 }, (_, i) => (
                 <tr key={`skeleton-${i}`}>
+                  <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
                   <td className="roll-chain-cell roll-chain-call" style={{ opacity: 0.3 }}>
                     -
                   </td>
@@ -96,6 +103,9 @@ export default function OptionChainTable({
                   <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>
                     -
                   </td>
+                  <td className="roll-chain-cell roll-chain-put" style={{ opacity: 0.3 }}>
+                    -
+                  </td>
                 </tr>
               ))}
             </>
@@ -106,6 +116,7 @@ export default function OptionChainTable({
               return [
                 <tr key={`hdr-${expiry}`} className="roll-chain-expiry-row">
                   <td>DELTA</td>
+                  <td>IV</td>
                   <td>買價</td>
                   <td>賣價</td>
                   <td>最後價</td>
@@ -113,6 +124,7 @@ export default function OptionChainTable({
                   <td>買價</td>
                   <td>賣價</td>
                   <td>最後價</td>
+                  <td>IV</td>
                   <td>DELTA</td>
                 </tr>,
                 ...displayStrikes.map((strike) => {
@@ -132,9 +144,12 @@ export default function OptionChainTable({
                     : (): void => onSelect(expiry, strike, 'P')
                   return (
                     <tr key={`${expiry}-${strike}`}>
-                      {/* Call side: Delta | Bid | Ask | Last */}
+                      {/* Call side: Delta | IV | Bid | Ask | Last */}
                       <td className={callCls} onClick={onCall}>
                         {cg ? formatGreekValue(cg.delta) : '-'}
+                      </td>
+                      <td className={callCls} onClick={onCall}>
+                        {cg ? fmtIv(cg.impliedVol) : '-'}
                       </td>
                       <td className={`${callCls} chain-bid`} onClick={onCall}>
                         {cg ? formatPrice(cg.bid) : '-'}
@@ -146,7 +161,7 @@ export default function OptionChainTable({
                         {cg ? formatPrice(cg.last) : '-'}
                       </td>
                       <td className="roll-chain-strike">{strike}</td>
-                      {/* Put side: Bid | Ask | Last | Delta */}
+                      {/* Put side: Bid | Ask | Last | IV | Delta */}
                       <td className={`${putCls} chain-bid`} onClick={onPut}>
                         {pg ? formatPrice(pg.bid) : '-'}
                       </td>
@@ -155,6 +170,9 @@ export default function OptionChainTable({
                       </td>
                       <td className={putCls} onClick={onPut}>
                         {pg ? formatPrice(pg.last) : '-'}
+                      </td>
+                      <td className={putCls} onClick={onPut}>
+                        {pg ? fmtIv(pg.impliedVol) : '-'}
                       </td>
                       <td className={putCls} onClick={onPut}>
                         {pg ? formatGreekValue(pg.delta) : '-'}

@@ -9,7 +9,8 @@ import type {
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
-import { rollTradingDays } from '../lib/tradingDays'
+import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
+import { getEnabledObserveRules } from '../lib/observeRules'
 import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
@@ -688,6 +689,29 @@ export default function AccountOverview({
     })
     return () => cancelAnimationFrame(rafId)
   }, [groupViewMode, masonryKey, masonryBump])
+
+  // Recompute the masonry when rows are added/removed inside any card — e.g.
+  // the default-rule 觀察 rows appearing after the rules are toggled, or async
+  // greek/spread content arriving. A card-level ResizeObserver can't catch
+  // this: overflow:hidden + a fixed grid-row span locks the card's box size,
+  // so its content can grow (and get clipped) without the box ever resizing.
+  // MutationObserver(childList) fires on the DOM node add/remove instead.
+  useEffect(() => {
+    const grid = groupGridRef.current
+    if (!grid || !groupViewMode) return
+    let raf = 0
+    const mo = new MutationObserver(() => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        if (!noteComposingRef.current) bumpMasonry()
+      })
+    })
+    mo.observe(grid, { childList: true, subtree: true })
+    return () => {
+      cancelAnimationFrame(raf)
+      mo.disconnect()
+    }
+  }, [groupViewMode, masonryKey, bumpMasonry])
 
   // Watch positions: when pending roll's new positions appear,
   // update group posKeys using the actual new posKey reported by IB.
@@ -2150,6 +2174,90 @@ export default function AccountOverview({
                         />
                       </div>
                     )}
+                    {/* 預設觀察規則: when the group has no manually-saved watches,
+                        derive observation rows from the enabled default rules,
+                        applied to the group's current short option. */}
+                    {(() => {
+                      const manual = Array.isArray(g.rollWatch)
+                        ? g.rollWatch
+                        : g.rollWatch
+                          ? [g.rollWatch]
+                          : []
+                      if (manual.length > 0) return null
+                      const normRight = (r: string): 'C' | 'P' =>
+                        r === 'C' || r === 'CALL' ? 'C' : 'P'
+                      const optPos = groupPositions.filter(
+                        (p) => p.secType === 'OPT' && !!p.expiry && p.strike != null
+                      )
+                      if (optPos.length === 0) return null
+                      // Single-symbol groups only. The contracts may differ
+                      // across accounts (some already rolled), so derive the
+                      // observations from the soonest-expiring leg — that's the
+                      // most urgent to manage. Tie-break by lowest strike.
+                      const symbols = new Set(optPos.map((p) => p.symbol))
+                      if (symbols.size !== 1) return null
+                      const src = [...optPos].sort((a, b) => {
+                        const ec = (a.expiry || '').localeCompare(b.expiry || '')
+                        if (ec !== 0) return ec
+                        return (a.strike ?? 0) - (b.strike ?? 0)
+                      })[0]
+                      if (!src.expiry || src.strike == null) return null
+                      // These default rules are QQQ-specific — skip other symbols.
+                      if (src.symbol !== 'QQQ') return null
+                      const right = normRight(src.right || '')
+                      // Breached = the short option is ITM: price above a call
+                      // strike, or below a put strike. Picks which rule set to
+                      // use. No quote yet → treat as not-breached.
+                      const px = quotes[src.symbol]
+                      const breached =
+                        px != null && px > 0
+                          ? right === 'C'
+                            ? px > src.strike
+                            : px < src.strike
+                          : false
+                      const rules = getEnabledObserveRules(breached)
+                      if (rules.length === 0) return null
+                      // Each rule only applies when the position's remaining DTE
+                      // satisfies its condition (e.g. DTE > 2 or DTE < 2).
+                      const curDte = tradingDaysUntil(src.expiry) ?? 0
+                      return rules
+                        .filter((rule) => {
+                          if (!rule.hasDte) return true // no DTE gate → always on
+                          return rule.op === '<' ? curDte < rule.dte : curDte > rule.dte
+                        })
+                        .map((rule, ri) => {
+                        // 展 N 點 = signed delta. 追 N 點 = chase the breach
+                        // direction: +N for calls (price above), −N for puts.
+                        const strikeDelta = rule.chase
+                          ? right === 'C'
+                            ? rule.points
+                            : -rule.points
+                          : rule.points
+                        const target = {
+                          expiry: addTradingDays(src.expiry!, rule.days),
+                          strike: src.strike! + strikeDelta,
+                          right
+                        }
+                        return (
+                          <RollWatchChunk
+                            key={`auto-${ri}`}
+                            symbol={src.symbol}
+                            source={{ expiry: src.expiry!, strike: src.strike!, right }}
+                            target={target}
+                            isShort={src.quantity < 0}
+                            onGo={() => {
+                              const optKeys = groupPositions
+                                .filter((p) => p.secType === 'OPT')
+                                .map((p) => posKey(p))
+                              setSelectedPositions(new Set(optKeys))
+                              setObserveGroupId(null)
+                              setRollInitialTarget(target)
+                              setShowRollDialog(true)
+                            }}
+                          />
+                        )
+                      })
+                    })()}
                     {/* 展期觀察: up to 3 saved roll targets → one live A→B row each. */}
                     {onUpdateSymbolGroup &&
                       (() => {

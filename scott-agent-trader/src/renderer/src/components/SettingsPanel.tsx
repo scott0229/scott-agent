@@ -8,6 +8,21 @@ import {
   getRuleThreshold,
   setRuleThreshold
 } from '../lib/riskPrefs'
+import {
+  OBSERVE_RULES,
+  OBSERVE_RULES_BREACHED,
+  getObserveEnabled,
+  setObserveEnabled,
+  getObserveDteOp,
+  setObserveDteOp,
+  getObserveDte,
+  setObserveDte,
+  getObserveDays,
+  setObserveDays,
+  getObservePoints,
+  setObservePoints
+} from '../lib/observeRules'
+import type { DteOp, ObserveRuleDef } from '../lib/observeRules'
 
 const LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
 
@@ -100,8 +115,127 @@ export default function SettingsPanel({
   const [riskThreshold, setRiskThreshold] = useState<Record<string, string>>(() =>
     Object.fromEntries(RISK_RULES.map((r) => [r.id, String(getRuleThreshold(r))]))
   )
+  // Default roll-observation rules: enable toggle + editable days/points.
+  const [showObserve, setShowObserve] = useState(true)
+  const [showObserveBreached, setShowObserveBreached] = useState(true)
+  const ALL_OBSERVE_RULES = [...OBSERVE_RULES, ...OBSERVE_RULES_BREACHED]
+  const [obsEnabled, setObsEnabled] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveEnabled(r)]))
+  )
+  // One free-text field per rule holding the DTE condition, e.g. ">2" / "<2".
+  const [obsDteText, setObsDteText] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      ALL_OBSERVE_RULES.map((r) => [r.id, `${getObserveDteOp(r)}${getObserveDte(r)}`])
+    )
+  )
+  const [obsDays, setObsDays] = useState<Record<string, string>>(() =>
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, String(getObserveDays(r))]))
+  )
+  const [obsPoints, setObsPoints] = useState<Record<string, string>>(() =>
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, String(getObservePoints(r))]))
+  )
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
+
+  // One editable row for an observe rule — shared by the 未被突破 / 已被突破
+  // sections so the markup lives in one place.
+  const renderObserveRow = (r: ObserveRuleDef): React.JSX.Element => {
+    const numStyle: React.CSSProperties = {
+      width: 40,
+      padding: '2px 4px',
+      border: '1px solid #ccc',
+      borderRadius: 5,
+      fontSize: '0.88em',
+      textAlign: 'center',
+      flexShrink: 0
+    }
+    return (
+      <div
+        key={r.id}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 12,
+          padding: '0 8px',
+          fontSize: '0.88em',
+          color: '#555'
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={obsEnabled[r.id]}
+          onChange={(e) => {
+            setObsEnabled((p) => ({ ...p, [r.id]: e.target.checked }))
+            setObserveEnabled(r, e.target.checked)
+          }}
+          style={{ cursor: 'pointer', flexShrink: 0 }}
+        />
+        {r.hasDte && (
+          <>
+            <span style={{ whiteSpace: 'nowrap' }}>DTE</span>
+            <input
+              type="text"
+              value={obsDteText[r.id]}
+              onChange={(e) => setObsDteText((p) => ({ ...p, [r.id]: e.target.value }))}
+              onBlur={() => {
+                const m = obsDteText[r.id].trim().match(/^([<>]?)\s*(-?\d+)$/)
+                if (m) {
+                  const op: DteOp = m[1] === '<' ? '<' : '>'
+                  const v = parseInt(m[2], 10)
+                  setObserveDteOp(r, op)
+                  setObserveDte(r, v)
+                  setObsDteText((p) => ({ ...p, [r.id]: `${op}${v}` }))
+                } else {
+                  setObsDteText((p) => ({
+                    ...p,
+                    [r.id]: `${getObserveDteOp(r)}${getObserveDte(r)}`
+                  }))
+                }
+              }}
+              style={numStyle}
+            />
+            <span style={{ whiteSpace: 'nowrap' }}>，</span>
+          </>
+        )}
+        <span style={{ whiteSpace: 'nowrap' }}>展</span>
+        <input
+          type="number"
+          step={1}
+          value={obsDays[r.id]}
+          onChange={(e) => setObsDays((p) => ({ ...p, [r.id]: e.target.value }))}
+          onBlur={() => {
+            const v = parseInt(obsDays[r.id], 10)
+            if (Number.isFinite(v)) {
+              setObserveDays(r, v)
+              setObsDays((p) => ({ ...p, [r.id]: String(v) }))
+            } else {
+              setObsDays((p) => ({ ...p, [r.id]: String(getObserveDays(r)) }))
+            }
+          }}
+          style={numStyle}
+        />
+        <span style={{ whiteSpace: 'nowrap' }}>天，{r.chase ? '追' : '展'}</span>
+        <input
+          type="number"
+          step={1}
+          value={obsPoints[r.id]}
+          onChange={(e) => setObsPoints((p) => ({ ...p, [r.id]: e.target.value }))}
+          onBlur={() => {
+            const v = parseInt(obsPoints[r.id], 10)
+            if (Number.isFinite(v)) {
+              setObservePoints(r, v)
+              setObsPoints((p) => ({ ...p, [r.id]: String(v) }))
+            } else {
+              setObsPoints((p) => ({ ...p, [r.id]: String(getObservePoints(r)) }))
+            }
+          }}
+          style={numStyle}
+        />
+        <span style={{ whiteSpace: 'nowrap' }}>點</span>
+      </div>
+    )
+  }
 
   if (!open) return null
 
@@ -209,7 +343,7 @@ export default function SettingsPanel({
                     }
                   }}
                   style={{
-                    width: 52,
+                    width: 40,
                     padding: '2px 4px',
                     border: '1px solid #ccc',
                     borderRadius: 5,
@@ -221,6 +355,20 @@ export default function SettingsPanel({
                 <span style={{ whiteSpace: 'nowrap' }}>{r.labelAfter}</span>
               </div>
             ))}
+
+          <SectionHeader
+            title="QQQ 預設觀察規則 (未被突破)"
+            expanded={showObserve}
+            onToggle={() => setShowObserve((v) => !v)}
+          />
+          {showObserve && OBSERVE_RULES.map(renderObserveRow)}
+
+          <SectionHeader
+            title="QQQ 預設觀察規則 (已被突破)"
+            expanded={showObserveBreached}
+            onToggle={() => setShowObserveBreached((v) => !v)}
+          />
+          {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
 
           <SectionHeader
             title="可交易標的"
