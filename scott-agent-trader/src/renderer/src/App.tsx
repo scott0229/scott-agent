@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
+import { IndicatorChart } from './components/IndicatorChart'
 import SettingsPanel from './components/SettingsPanel'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
@@ -59,7 +60,9 @@ function saveHiddenAccounts(set: Set<string>): void {
 function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option' | 'indicators'>(
+    'overview'
+  )
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts())
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
@@ -444,6 +447,26 @@ function App(): React.JSX.Element {
             </svg>
             批次交易
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'indicators' ? 'active' : ''}`}
+            onClick={() => setActiveTab('indicators')}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+              <path d="m19 9-5 5-4-4-3 3" />
+            </svg>
+            指標分析
+          </button>
         </nav>
         <div className="header-actions">
           <EtClock />
@@ -497,6 +520,7 @@ function App(): React.JSX.Element {
           {activeTab === 'option' && (
             <OptionOrderForm connected={connected} accounts={visibleAccounts} />
           )}
+          {activeTab === 'indicators' && <IndicatorChart />}
         </div>
       </main>
       <SettingsPanel
