@@ -180,6 +180,48 @@ function tradingDaysUntil(expiry: string | undefined): number | null {
   return rollTradingDays(todayYmd, expiry)
 }
 
+const SPEC_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+]
+
+// Turn an "Jan18" / "Jun22" leg-expiry (year omitted in combo descriptions)
+// into YYYYMMDD by inferring the year: use the current year, but if the date
+// already passed by more than a month it must belong to next year.
+function inferLegYmd(mon: string, day: string): string | null {
+  const mIdx = SPEC_MONTHS.indexOf(mon)
+  if (mIdx < 0) return null
+  const now = new Date()
+  let y = now.getFullYear()
+  const d = new Date(y, mIdx, parseInt(day, 10))
+  if (d.getTime() < now.getTime() - 31 * 86400000) y += 1
+  return `${y}${String(mIdx + 1).padStart(2, '0')}${day.padStart(2, '0')}`
+}
+
+// Parse a combo description like "+Jun18 716P → -Jun22 716P" into the roll
+// spec shown in 委託單: days extended (trading days, source→target) and the
+// strike change in points. The BUY (+) leg is the position being closed
+// (source); the SELL (-) leg is the new position (target).
+function parseRollSpec(
+  desc: string | undefined
+): { days: number | null; pts: number } | null {
+  if (!desc || !desc.includes('→')) return null
+  const legs = desc.split('→').map((s) => s.trim())
+  if (legs.length !== 2) return null
+  const re = /^([+-])([A-Za-z]{3})(\d+)\s+([\d.]+)([CP])$/
+  const m1 = legs[0].match(re)
+  const m2 = legs[1].match(re)
+  if (!m1 || !m2) return null
+  const buy = m1[1] === '+' ? m1 : m2[1] === '+' ? m2 : null
+  const sell = m1[1] === '-' ? m1 : m2[1] === '-' ? m2 : null
+  if (!buy || !sell) return null
+  const srcYmd = inferLegYmd(buy[2], buy[3])
+  const tgtYmd = inferLegYmd(sell[2], sell[3])
+  const days = srcYmd && tgtYmd ? rollTradingDays(srcYmd, tgtYmd) : null
+  const pts = Number(sell[4]) - Number(buy[4])
+  return { days, pts }
+}
+
 
 export default function AccountOverview({
   connected,
@@ -1322,6 +1364,19 @@ export default function AccountOverview({
           )}
         </td>
         <td className="pos-symbol">{desc}</td>
+        <td style={{ textAlign: 'left', fontSize: '12px', color: '#333', whiteSpace: 'nowrap', fontWeight: 600 }}>
+          {(() => {
+            const spec = parseRollSpec(order.comboDescription)
+            if (!spec) return ''
+            const ptsStr = spec.pts > 0 ? `+${spec.pts}` : `${spec.pts}`
+            return (
+              <>
+                展 {spec.days != null ? spec.days : '-'} 天
+                <span className="roll-watch-sep">·</span>展 {ptsStr} 點
+              </>
+            )
+          })()}
+        </td>
         <td
           style={{
             textAlign: 'center',
@@ -2001,11 +2056,11 @@ export default function AccountOverview({
                                     : g.rollWatch
                                       ? [g.rollWatch]
                                       : []
-                                  if (cur.length >= 3) {
+                                  if (cur.length >= 4) {
                                     setRollWarnMsg({
                                       title: '展期觀察已達上限',
                                       message:
-                                        '每個群組最多只能設定 3 個展期觀察，請先移除其中一個再新增。'
+                                        '每個群組最多只能設定 4 個展期觀察，請先移除其中一個再新增。'
                                     })
                                     return
                                   }
@@ -3049,15 +3104,16 @@ export default function AccountOverview({
                     <tr>
                       <th style={{ width: '8%', textAlign: 'left' }}></th>
                       <th style={{ width: '16%', textAlign: 'left' }}>標的</th>
-                      <th style={{ width: '7%' }}>行動</th>
-                      <th style={{ width: '9%' }}>數量</th>
-                      <th style={{ width: '9%' }}>買價</th>
-                      <th style={{ width: '9%' }}>賣價</th>
-                      <th style={{ width: '8%' }}>限價</th>
-                      <th style={{ width: '9%' }}>成交價</th>
-                      <th style={{ width: '8%' }}>傭金</th>
-                      <th style={{ width: '9%' }}>狀態</th>
-                      <th style={{ width: '8%' }}></th>
+                      <th style={{ width: '11%', textAlign: 'left' }}>說明</th>
+                      <th style={{ width: '6%' }}>行動</th>
+                      <th style={{ width: '8%' }}>數量</th>
+                      <th style={{ width: '8%' }}>買價</th>
+                      <th style={{ width: '8%' }}>賣價</th>
+                      <th style={{ width: '7%' }}>限價</th>
+                      <th style={{ width: '8%' }}>成交價</th>
+                      <th style={{ width: '7%' }}>傭金</th>
+                      <th style={{ width: '8%' }}>狀態</th>
+                      <th style={{ width: '7%' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4382,7 +4438,7 @@ export default function AccountOverview({
               : g.rollWatch
                 ? [g.rollWatch]
                 : []
-            // Drop an exact duplicate, append the new target, keep the last 3.
+            // Drop an exact duplicate, append the new target, keep the last 4.
             const next = [
               ...cur.filter(
                 (w) =>
@@ -4393,7 +4449,7 @@ export default function AccountOverview({
                   )
               ),
               target
-            ].slice(-3)
+            ].slice(-4)
             onUpdateSymbolGroup?.({ ...g, rollWatch: next })
           }
           setObserveGroupId(null)

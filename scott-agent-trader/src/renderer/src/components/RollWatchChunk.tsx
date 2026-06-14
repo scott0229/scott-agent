@@ -82,16 +82,18 @@ export default function RollWatchChunk({
       <span className="roll-watch-spec">
         {symbol} {fmtLeg(source)} <span style={{ color: '#956b3a' }}>→</span> {fmtLeg(target)}
         <span className="roll-watch-delta">
-          展 {days != null ? days : '-'} 天 ｜ 展 {ptsStr} 點
+          展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>展 {ptsStr} 點
         </span>
       </span>
       <span className="roll-watch-prices">
         <span>
           買 <b style={{ color: '#1a6b3a' }}>{fmt(spread?.bid)}</b>
         </span>
+        <span className="roll-watch-sep">·</span>
         <span>
           賣 <b style={{ color: '#c0392b' }}>{fmt(spread?.ask)}</b>
         </span>
+        <span className="roll-watch-sep">·</span>
         <span>
           中間 <b style={{ color: '#1d4ed8' }}>{fmt(spread?.mid)}</b>
         </span>
