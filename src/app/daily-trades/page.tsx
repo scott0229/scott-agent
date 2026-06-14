@@ -931,6 +931,16 @@ function TooltipBridge({
     return null;
 }
 
+// 'YYYY-MM-DD' → 'MM-DD (週幾)' for the chart's single-day readout.
+// Parse the parts explicitly rather than `new Date(str)` so the
+// weekday isn't shifted by the local timezone offset.
+const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+function mmddWithWeekday(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    return `${isoDate.substring(5)} (${WEEKDAY_ZH[dow]})`;
+}
+
 function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dailyTarget, qqqDay }: DailyProfitHistoryChartProps) {
     // Track which data point is currently hovered. The info panel at the
     // top-left renders the hovered point — or the most recent day when no
@@ -1033,7 +1043,7 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                             this header sits at the bright --foreground so the
                             two-tone-white effect goes away; only the realized
                             收益 number breaks out to its sign color. */}
-                        <span className="font-medium">{panelPoint.date.substring(5)}</span>
+                        <span className="font-medium">{mmddWithWeekday(panelPoint.date)}</span>
                         <span> · 收益 </span>
                         <span className={cn("font-semibold", panelProfitColor)}>{panelProfitStr}</span>
                         {dailyTarget != null && dailyTarget > 0 && (
