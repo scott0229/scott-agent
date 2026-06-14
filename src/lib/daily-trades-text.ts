@@ -367,8 +367,9 @@ export function generateDailyTradesText(
 
         if (canCalc) {
             const rollProfit = totalPremiumOpened - totalCostToClose;
-            const sign = rollProfit > 0 ? '+' : '';
-            rollSegments.push(`收益 ${sign}${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
+            // No leading + on positives; toLocaleString already prefixes
+            // negatives with a minus sign.
+            rollSegments.push(`收益 ${rollProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`);
         }
 
         if (itmString) {
@@ -447,7 +448,8 @@ export function generateDailyTradesText(
             if (trade.action_type === 'close' && trade.open_price != null && trade.price != null) {
                 const profit = (trade.price - trade.open_price) * Math.abs(transactionQty);
                 const profitNum = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(profit));
-                const sign = profit > 0 ? '+' : profit < 0 ? '-' : '';
+                // Minus sign only on negatives; positives carry no sign.
+                const sign = profit < 0 ? '-' : '';
                 profitStr = `, 收益 ${sign}${profitNum}`;
             }
 
@@ -534,7 +536,7 @@ export function generateDailyTradesText(
                 operationStr = firstTrade.operation;
             }
 
-            const profitStr = hasProfit && !hideProfit ? `, 收益 ${totalProfit > 0 ? '+' : ''}${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
+            const profitStr = hasProfit && !hideProfit ? `, 收益 ${totalProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}` : '';
             prefixLine = `${operationStr}${profitStr}\n`;
         }
 
