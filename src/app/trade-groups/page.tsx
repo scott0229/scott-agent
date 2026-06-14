@@ -744,7 +744,7 @@ export default function TradeGroupsPage() {
                                             {group.openCostToClose > 0 ? '-' : (group.openCostToClose < 0 ? '+' : '')}{group.openCostToClose === 0 ? '-' : Math.abs(Math.round(group.openCostToClose)).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.stockProfit > 0 ? 'text-status-positive' : group.stockProfit < 0 ? 'text-status-negative' : ''}`}>
-                                            {group.stockProfit === 0 ? '' : (group.stockProfit > 0 ? '+' : '') + Math.round(group.stockProfit).toLocaleString('en-US')}
+                                            {group.stockProfit === 0 ? '' : Math.round(group.stockProfit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-status-positive' : group.profit < 0 ? 'text-status-negative' : ''}`}>
                                             {Math.round(group.profit).toLocaleString('en-US')}
