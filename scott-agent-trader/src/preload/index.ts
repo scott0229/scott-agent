@@ -254,6 +254,17 @@ const ibApi = {
   ): Promise<{ success: boolean; found: number; updated: number; error?: string }> =>
     ipcRenderer.invoke('prices:backfillUnderlyingPrice', symbol, target),
 
+  // Asian market index by Yahoo symbol (^TWII, ^KS11, ...) — last close,
+  // day change, change%. Cached 5min in main; renderer polls every 15min.
+  getIndex: (
+    symbol: string
+  ): Promise<{
+    close: number
+    change: number
+    changePercent: number
+    ts: number
+  } | null> => ipcRenderer.invoke('market:getIndex', symbol),
+
   // Auto-update — checked on startup + hourly. The renderer subscribes via
   // onUpdateAvailable; installUpdate downloads + extracts + launches NSIS.
   checkUpdate: (): Promise<{ version: string; downloadUrl: string; currentVersion: string } | null> =>

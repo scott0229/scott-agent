@@ -795,6 +795,52 @@ function setupIpcHandlers(): void {
     }
   })
 
+  // === Asian market indices ===
+  // The renderer shows "台股大盤 / 韓股大盤 ±X.X%" pills in the header. We
+  // pull the latest close + day change from Yahoo Finance — by the time the
+  // US session opens (≈ 21:30 Taipei) both Taiwan (13:30) and Korea (15:30)
+  // have already settled, so the close-of-day data is always available
+  // during US trading hours. Cache per-symbol for 5 min (renderer polls
+  // every 15 min anyway).
+  type IndexQuote = { close: number; change: number; changePercent: number; ts: number }
+  const indexCache = new Map<string, IndexQuote>()
+  ipcMain.handle('market:getIndex', async (_event, symbol: string) => {
+    const cached = indexCache.get(symbol)
+    if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+      return cached
+    }
+    try {
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`,
+        { headers: { 'User-Agent': 'Mozilla/5.0' } }
+      )
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json()) as {
+        chart?: {
+          result?: Array<{
+            meta?: {
+              regularMarketPrice?: number
+              chartPreviousClose?: number
+              previousClose?: number
+            }
+          }>
+        }
+      }
+      const meta = data?.chart?.result?.[0]?.meta
+      const close = meta?.regularMarketPrice
+      const prev = meta?.chartPreviousClose ?? meta?.previousClose
+      if (close == null || prev == null) throw new Error('No price data')
+      const change = close - prev
+      const changePercent = (change / prev) * 100
+      const quote: IndexQuote = { close, change, changePercent, ts: Date.now() }
+      indexCache.set(symbol, quote)
+      return quote
+    } catch (err) {
+      console.warn(`[market:getIndex ${symbol}] failed:`, err)
+      return indexCache.get(symbol) ?? null // serve stale rather than nothing
+    }
+  })
+
   // Initial check fires immediately on startup; result is cached so the
   // renderer picks it up via getCachedUpdate when it mounts (even if the
   // broadcast races ahead of the BrowserWindow being ready). Then poll

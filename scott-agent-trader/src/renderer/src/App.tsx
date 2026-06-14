@@ -257,6 +257,32 @@ function App(): React.JSX.Element {
     [executions, hiddenAccounts]
   )
 
+  // Asian-market header pills — last close + day change for TAIEX & KOSPI.
+  // Main process handles the fetch (caches 5 min); renderer polls every
+  // 15 min so the pills stay current across long sessions.
+  type IndexQuote = { close: number; change: number; changePercent: number }
+  const [taiwanIndex, setTaiwanIndex] = useState<IndexQuote | null>(null)
+  const [koreaIndex, setKoreaIndex] = useState<IndexQuote | null>(null)
+  useEffect(() => {
+    const refresh = (): void => {
+      window.ibApi
+        .getIndex('^TWII')
+        .then((res) => {
+          if (res) setTaiwanIndex(res)
+        })
+        .catch(() => {})
+      window.ibApi
+        .getIndex('^KS11')
+        .then((res) => {
+          if (res) setKoreaIndex(res)
+        })
+        .catch(() => {})
+    }
+    refresh()
+    const id = setInterval(refresh, 15 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
   // Auto-update: subscribe to the main process's hourly poll and surface a
   // pill in the header when a newer version is available.
   const [updateInfo, setUpdateInfo] = useState<{
@@ -327,7 +353,6 @@ function App(): React.JSX.Element {
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          <EtClock />
           {optionUnderlyings
             .filter((sym) => quotes[sym] > 0)
             .slice(0, 5)
@@ -337,6 +362,36 @@ function App(): React.JSX.Element {
                 {quotes[sym].toFixed(2)}
               </span>
             ))}
+          {taiwanIndex && (
+            <span
+              className={`stock-price-pill twx-pill ${
+                taiwanIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
+              }`}
+              title={`台股加權指數 收盤 ${taiwanIndex.close.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`}
+            >
+              <span className="stock-price-label">台股大盤</span>
+              {taiwanIndex.change >= 0 ? '+' : ''}
+              {taiwanIndex.changePercent.toFixed(2)}%
+            </span>
+          )}
+          {koreaIndex && (
+            <span
+              className={`stock-price-pill twx-pill ${
+                koreaIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
+              }`}
+              title={`韓國綜合股價指數 (KOSPI) 收盤 ${koreaIndex.close.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`}
+            >
+              <span className="stock-price-label">韓股大盤</span>
+              {koreaIndex.change >= 0 ? '+' : ''}
+              {koreaIndex.changePercent.toFixed(2)}%
+            </span>
+          )}
           {updateInfo && (
             <button
               type="button"
@@ -391,6 +446,7 @@ function App(): React.JSX.Element {
           </button>
         </nav>
         <div className="header-actions">
+          <EtClock />
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <ConnectionStatus />
         </div>

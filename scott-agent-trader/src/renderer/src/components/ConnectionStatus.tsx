@@ -97,7 +97,7 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
       <div className="connection-indicator">
         <div className="status-dot" style={{ backgroundColor: statusColors[state.status] }} />
         <span className="status-text">
-          {state.status === 'connected' ? `${state.port} 已連線` : statusLabels[state.status]}
+          {state.status === 'connected' ? `${state.port}` : statusLabels[state.status]}
         </span>
       </div>
 

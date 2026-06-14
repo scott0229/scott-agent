@@ -319,6 +319,14 @@ interface IBApi {
     target?: 'staging' | 'production'
   ) => Promise<{ success: boolean; found: number; updated: number; error?: string }>
 
+  // Asian market index by Yahoo symbol (^TWII, ^KS11, ...)
+  getIndex: (symbol: string) => Promise<{
+    close: number
+    change: number
+    changePercent: number
+    ts: number
+  } | null>
+
   // Auto-update
   checkUpdate: () => Promise<{ version: string; downloadUrl: string; currentVersion: string } | null>
   getCachedUpdate: () => Promise<{ version: string; downloadUrl: string; currentVersion: string } | null>
