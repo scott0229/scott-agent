@@ -645,7 +645,7 @@ export default function DailyTradesPage() {
                                 dayProfit += parseFloat(m[1].replace(/,/g, ''));
                             }
                         }
-                        const profitStr = `${dayProfit > 0 ? '+' : ''}${dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+                        const profitStr = dayProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
                         const profitColor = dayProfit > 0 ? 'text-status-positive' : dayProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
                         const cardUid = userGroup.user?.user_id as string | undefined;
@@ -982,7 +982,7 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
         profitSqrt: sgnSqrt(d.profit),
     }));
     const totalProfit = data.reduce((s, d) => s + d.profit, 0);
-    const totalStr = `${totalProfit > 0 ? '+' : ''}${Math.round(totalProfit).toLocaleString('en-US')}`;
+    const totalStr = Math.round(totalProfit).toLocaleString('en-US');
     const totalColor = totalProfit > 0 ? 'text-status-positive' : totalProfit < 0 ? 'text-status-negative' : 'text-muted-foreground';
 
     // Pick raw $ tick magnitudes that bracket the data, then project into
@@ -1024,7 +1024,7 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
     const selectedPoint = currentDate ? data.find(d => d.date === currentDate) : undefined;
     const panelPoint = hoveredPoint ?? selectedPoint ?? lastPoint;
     const panelProfitStr = panelPoint
-        ? `${panelPoint.profit > 0 ? '+' : ''}${Math.round(panelPoint.profit).toLocaleString('en-US')}`
+        ? Math.round(panelPoint.profit).toLocaleString('en-US')
         : '';
     const panelProfitColor = panelPoint
         ? (panelPoint.profit > 0 ? 'text-status-positive' : panelPoint.profit < 0 ? 'text-status-negative' : 'text-muted-foreground')
