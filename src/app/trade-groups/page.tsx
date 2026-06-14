@@ -738,7 +738,7 @@ export default function TradeGroupsPage() {
                                             ) : '-'}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.netCashInflow > 0 ? 'text-status-positive' : group.netCashInflow < 0 ? 'text-status-negative' : ''}`}>
-                                            {group.netCashInflow > 0 ? '+' : ''}{group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
+                                            {group.netCashInflow === 0 ? '-' : Math.round(group.netCashInflow).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.openCostToClose > 0 ? 'text-status-negative' : group.openCostToClose < 0 ? 'text-status-positive' : ''}`}>
                                             {group.openCostToClose > 0 ? '-' : (group.openCostToClose < 0 ? '+' : '')}{group.openCostToClose === 0 ? '-' : Math.abs(Math.round(group.openCostToClose)).toLocaleString('en-US')}
@@ -747,7 +747,7 @@ export default function TradeGroupsPage() {
                                             {group.stockProfit === 0 ? '' : (group.stockProfit > 0 ? '+' : '') + Math.round(group.stockProfit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell className={`text-center font-medium ${group.profit > 0 ? 'text-status-positive' : group.profit < 0 ? 'text-status-negative' : ''}`}>
-                                            {group.profit > 0 ? '+' : ''}{Math.round(group.profit).toLocaleString('en-US')}
+                                            {Math.round(group.profit).toLocaleString('en-US')}
                                         </TableCell>
                                         <TableCell>
                                             <Select value={group.status} onValueChange={(val) => handleStatusChange(group.ownerId, group.name, val)}>
