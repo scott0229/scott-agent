@@ -396,16 +396,6 @@ function App(): React.JSX.Element {
               {koreaIndex.changePercent.toFixed(2)}%
             </span>
           )}
-          {updateInfo && (
-            <button
-              type="button"
-              className="update-available-pill"
-              onClick={openUpdateDialog}
-              title={`下載並安裝 ${updateInfo.version}`}
-            >
-              安裝新版 {updateInfo.version}
-            </button>
-          )}
         </div>
         <nav className="tab-nav-inline">
           <button
@@ -470,6 +460,16 @@ function App(): React.JSX.Element {
           </button>
         </nav>
         <div className="header-actions">
+          {updateInfo && (
+            <button
+              type="button"
+              className="update-available-pill"
+              onClick={openUpdateDialog}
+              title={`下載並安裝 ${updateInfo.version}`}
+            >
+              安裝新版 {updateInfo.version}
+            </button>
+          )}
           <EtClock />
           {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <ConnectionStatus />
