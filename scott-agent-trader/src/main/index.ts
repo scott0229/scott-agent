@@ -1325,7 +1325,27 @@ function setupIpcHandlers(): void {
 
 // === App Lifecycle ===
 
+// Single-instance lock. Without it a second copy of the app (e.g. the installed
+// build launched while a dev build is running, or a double-click) starts a
+// competing process that shares the same userData directory. Two processes
+// fighting over the Local Storage leveldb means writes never flush cleanly —
+// the symptom is "Unable to move the cache: Access Denied" in the logs and
+// settings silently reverting to old values on restart. Quit the second
+// instance and just focus the existing window instead.
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
+
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return
   electronApp.setAppUserModelId('com.scott-agent.trader')
 
   app.on('browser-window-created', (_, window) => {

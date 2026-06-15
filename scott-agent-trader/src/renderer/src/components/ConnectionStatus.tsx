@@ -54,17 +54,45 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
     }
   }, [])
 
-  // Auto-connect on mount with saved port
+  // Auto-connect on mount: probe a list of common IB ports in order and stop
+  // at the first that connects. Tries the last-working port first, then the
+  // usual TWS (7497 paper / 7496 live) and Gateway (4001) ports.
   useEffect(() => {
-    const savedPort = getSavedPort()
-    const portNum = parseInt(savedPort, 10)
-    if (isNaN(portNum)) return
+    const PROBE_PORTS = [7497, 7496, 4001]
+    const saved = parseInt(getSavedPort(), 10)
+    const candidates = [
+      ...new Set([...(Number.isFinite(saved) ? [saved] : []), ...PROBE_PORTS])
+    ]
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
 
-    // Delay to let the main process initialize
-    const timer = setTimeout(() => {
-      window.ibApi.connect('127.0.0.1', portNum)
-    }, 800)
-    return () => clearTimeout(timer)
+    const attempt = (i: number): void => {
+      if (cancelled || i >= candidates.length) return
+      window.ibApi.connect('127.0.0.1', candidates[i])
+      // Give each port ~1.5s to connect; if it doesn't, move to the next.
+      timer = setTimeout(() => {
+        if (cancelled) return
+        window.ibApi.getConnectionState().then((s) => {
+          if (!cancelled && s.status !== 'connected') attempt(i + 1)
+        })
+      }, 1500)
+    }
+
+    // Stop probing the moment any port connects.
+    const off = window.ibApi.onConnectionStatus((s) => {
+      if (s.status === 'connected') {
+        cancelled = true
+        clearTimeout(timer)
+      }
+    })
+
+    const start = setTimeout(() => attempt(0), 800)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+      clearTimeout(start)
+      off()
+    }
   }, [])
 
   const handleConnect = useCallback(async () => {

@@ -14,6 +14,11 @@ interface RollWatchChunkProps {
   source: Leg
   target: Leg
   isShort: boolean
+  // When true the strike was chased in the breach direction (+N for calls,
+  // −N for puts), so the spec reads "追 N 點" using `points` rather than the
+  // signed target−source strike diff. Omitted/false → plain "展 N 點".
+  chase?: boolean
+  points?: number
   // Optional — when omitted (e.g. auto-generated default-rule watches) the
   // ✕ remove button is hidden since there's nothing saved to remove.
   onClear?: () => void
@@ -29,6 +34,8 @@ export default function RollWatchChunk({
   source,
   target,
   isShort,
+  chase,
+  points,
   onClear,
   onGo
 }: RollWatchChunkProps): React.JSX.Element {
@@ -81,8 +88,9 @@ export default function RollWatchChunk({
     v != null && Number.isFinite(v) ? v.toFixed(2) : '-'
 
   const days = rollTradingDays(source.expiry, target.expiry)
-  const pts = target.strike - source.strike
+  const pts = chase && points != null ? points : target.strike - source.strike
   const ptsStr = Number.isInteger(pts) ? `${pts}` : pts.toFixed(1)
+  const ptsVerb = chase ? '追' : '展'
 
   return (
     <div className="roll-watch-chunk">
@@ -104,7 +112,8 @@ export default function RollWatchChunk({
         )}
         <span className="roll-watch-sep">·</span>
         <span className="roll-watch-delta">
-          展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>展 {ptsStr} 點
+          展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>
+          {ptsVerb} {ptsStr} 點
         </span>
       </span>
       <span className="roll-watch-prices">

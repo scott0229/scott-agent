@@ -21,6 +21,12 @@ function setNum(key: string, v: number): void {
 
 export type DteOp = '>' | '<'
 
+// Lead% threshold that splits the two OTM rule sets. A position leading by
+// more than this is "comfortable"; below it, it's getting close to the strike.
+export const LEAD_THRESHOLD_PCT = 1.5
+
+export type ObserveCategory = 'leadFar' | 'leadNear' | 'breached'
+
 export interface ObserveRuleDef {
   id: string
   enabledKey: string
@@ -42,38 +48,10 @@ export interface ObserveRuleDef {
 
 export const OBSERVE_RULES: ObserveRuleDef[] = [
   {
-    id: 'obs1',
-    enabledKey: 'trader.obs1.enabled',
-    hasDte: true,
-    chase: false,
-    dteOpKey: 'trader.obs1.dteOp',
-    dteKey: 'trader.obs1.dte',
-    daysKey: 'trader.obs1.days',
-    pointsKey: 'trader.obs1.points',
-    defaultDteOp: '>',
-    defaultDte: 2,
-    defaultDays: 0,
-    defaultPoints: -1
-  },
-  {
-    id: 'obs2',
-    enabledKey: 'trader.obs2.enabled',
-    hasDte: true,
-    chase: false,
-    dteOpKey: 'trader.obs2.dteOp',
-    dteKey: 'trader.obs2.dte',
-    daysKey: 'trader.obs2.days',
-    pointsKey: 'trader.obs2.points',
-    defaultDteOp: '>',
-    defaultDte: 2,
-    defaultDays: 1,
-    defaultPoints: -1
-  },
-  {
     id: 'obs3',
     enabledKey: 'trader.obs3.enabled',
     hasDte: false,
-    chase: false,
+    chase: true,
     dteOpKey: 'trader.obs3.dteOp',
     dteKey: 'trader.obs3.dte',
     daysKey: 'trader.obs3.days',
@@ -87,7 +65,7 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     id: 'obs4',
     enabledKey: 'trader.obs4.enabled',
     hasDte: false,
-    chase: false,
+    chase: true,
     dteOpKey: 'trader.obs4.dteOp',
     dteKey: 'trader.obs4.dte',
     daysKey: 'trader.obs4.days',
@@ -101,7 +79,7 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     id: 'obs5',
     enabledKey: 'trader.obs5.enabled',
     hasDte: false,
-    chase: false,
+    chase: true,
     dteOpKey: 'trader.obs5.dteOp',
     dteKey: 'trader.obs5.dte',
     daysKey: 'trader.obs5.days',
@@ -110,6 +88,68 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 1,
     defaultPoints: 2
+  }
+]
+
+// Rules applied when the position is still OTM but leading by LESS than the
+// threshold — getting close to the strike, so lean toward pulling the strike
+// back for cushion.
+export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
+  {
+    id: 'obsN1',
+    enabledKey: 'trader.obsN1.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN1.dteOp',
+    dteKey: 'trader.obsN1.dte',
+    daysKey: 'trader.obsN1.days',
+    pointsKey: 'trader.obsN1.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: -1
+  },
+  {
+    id: 'obsN2',
+    enabledKey: 'trader.obsN2.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN2.dteOp',
+    dteKey: 'trader.obsN2.dte',
+    daysKey: 'trader.obsN2.days',
+    pointsKey: 'trader.obsN2.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: -2
+  },
+  {
+    id: 'obsN3',
+    enabledKey: 'trader.obsN3.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN3.dteOp',
+    dteKey: 'trader.obsN3.dte',
+    daysKey: 'trader.obsN3.days',
+    pointsKey: 'trader.obsN3.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 2,
+    defaultPoints: -2
+  },
+  {
+    id: 'obsN4',
+    enabledKey: 'trader.obsN4.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN4.dteOp',
+    dteKey: 'trader.obsN4.dte',
+    daysKey: 'trader.obsN4.days',
+    pointsKey: 'trader.obsN4.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 2,
+    defaultPoints: -3
   }
 ]
 
@@ -157,6 +197,20 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 5,
     defaultPoints: 3
+  },
+  {
+    id: 'obsB4',
+    enabledKey: 'trader.obsB4.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsB4.dteOp',
+    dteKey: 'trader.obsB4.dte',
+    daysKey: 'trader.obsB4.days',
+    pointsKey: 'trader.obsB4.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 5,
+    defaultPoints: 4
   }
 ]
 
@@ -177,7 +231,7 @@ export const setObservePoints = (r: ObserveRuleDef, v: number): void => setNum(r
 
 // The enabled rules as plain {op, dte, days, points} specs. The rule applies
 // only when the position DTE satisfies `DTE op dte` (e.g. DTE > 2).
-export function getEnabledObserveRules(breached = false): Array<{
+export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): Array<{
   hasDte: boolean
   chase: boolean
   op: DteOp
@@ -185,7 +239,12 @@ export function getEnabledObserveRules(breached = false): Array<{
   days: number
   points: number
 }> {
-  const set = breached ? OBSERVE_RULES_BREACHED : OBSERVE_RULES
+  const set =
+    category === 'breached'
+      ? OBSERVE_RULES_BREACHED
+      : category === 'leadNear'
+        ? OBSERVE_RULES_NEAR
+        : OBSERVE_RULES
   return set.filter(getObserveEnabled).map((r) => ({
     hasDte: r.hasDte,
     chase: r.chase,

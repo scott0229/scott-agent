@@ -10,7 +10,9 @@ import {
 } from '../lib/riskPrefs'
 import {
   OBSERVE_RULES,
+  OBSERVE_RULES_NEAR,
   OBSERVE_RULES_BREACHED,
+  LEAD_THRESHOLD_PCT,
   getObserveEnabled,
   setObserveEnabled,
   getObserveDteOp,
@@ -117,8 +119,9 @@ export default function SettingsPanel({
   )
   // Default roll-observation rules: enable toggle + editable days/points.
   const [showObserve, setShowObserve] = useState(true)
+  const [showObserveNear, setShowObserveNear] = useState(true)
   const [showObserveBreached, setShowObserveBreached] = useState(true)
-  const ALL_OBSERVE_RULES = [...OBSERVE_RULES, ...OBSERVE_RULES_BREACHED]
+  const ALL_OBSERVE_RULES = [...OBSERVE_RULES, ...OBSERVE_RULES_NEAR, ...OBSERVE_RULES_BREACHED]
   const [obsEnabled, setObsEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveEnabled(r)]))
   )
@@ -357,14 +360,21 @@ export default function SettingsPanel({
             ))}
 
           <SectionHeader
-            title="QQQ 預設觀察規則 (未被突破)"
+            title={`QQQ 預設觀察規則 (領先 > ${LEAD_THRESHOLD_PCT}%)`}
             expanded={showObserve}
             onToggle={() => setShowObserve((v) => !v)}
           />
           {showObserve && OBSERVE_RULES.map(renderObserveRow)}
 
           <SectionHeader
-            title="QQQ 預設觀察規則 (已被突破)"
+            title={`QQQ 預設觀察規則 (領先 < ${LEAD_THRESHOLD_PCT}%)`}
+            expanded={showObserveNear}
+            onToggle={() => setShowObserveNear((v) => !v)}
+          />
+          {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
+
+          <SectionHeader
+            title="QQQ 預設觀察規則 (落後)"
             expanded={showObserveBreached}
             onToggle={() => setShowObserveBreached((v) => !v)}
           />

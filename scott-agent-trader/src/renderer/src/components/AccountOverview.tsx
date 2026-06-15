@@ -10,7 +10,7 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
-import { getEnabledObserveRules } from '../lib/observeRules'
+import { getEnabledObserveRules, LEAD_THRESHOLD_PCT } from '../lib/observeRules'
 import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
@@ -2224,17 +2224,22 @@ export default function AccountOverview({
                       // These default rules are QQQ-specific — skip other symbols.
                       if (src.symbol !== 'QQQ') return null
                       const right = normRight(src.right || '')
-                      // Breached = the short option is ITM: price above a call
-                      // strike, or below a put strike. Picks which rule set to
-                      // use. No quote yet → treat as not-breached.
+                      // Pick the rule set by where the price sits vs the strike:
+                      //   落後 (breached/ITM)            → 'breached'
+                      //   領先 < LEAD_THRESHOLD_PCT%      → 'leadNear'
+                      //   領先 ≥ LEAD_THRESHOLD_PCT%      → 'leadFar'
+                      // No quote yet → assume comfortably leading ('leadFar').
                       const px = quotes[src.symbol]
-                      const breached =
-                        px != null && px > 0
-                          ? right === 'C'
-                            ? px > src.strike
-                            : px < src.strike
-                          : false
-                      const rules = getEnabledObserveRules(breached)
+                      let category: 'leadFar' | 'leadNear' | 'breached' = 'leadFar'
+                      if (px != null && px > 0) {
+                        const behind = right === 'C' ? px - src.strike : src.strike - px
+                        if (behind > 0) category = 'breached'
+                        else {
+                          const leadPct = (Math.abs(behind) / px) * 100
+                          category = leadPct < LEAD_THRESHOLD_PCT ? 'leadNear' : 'leadFar'
+                        }
+                      }
+                      const rules = getEnabledObserveRules(category)
                       if (rules.length === 0) return null
                       // Each rule only applies when the position's remaining DTE
                       // satisfies its condition (e.g. DTE > 2 or DTE < 2).
@@ -2264,6 +2269,8 @@ export default function AccountOverview({
                             source={{ expiry: src.expiry!, strike: src.strike!, right }}
                             target={target}
                             isShort={src.quantity < 0}
+                            chase={rule.chase}
+                            points={rule.points}
                             onGo={() => {
                               const optKeys = groupPositions
                                 .filter((p) => p.secType === 'OPT')
