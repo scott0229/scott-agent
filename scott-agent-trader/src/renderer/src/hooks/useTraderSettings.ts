@@ -6,6 +6,11 @@ import {
   onPrefChange
 } from '../lib/prefsSync'
 
+// How long after a local symbol_groups write to ignore refetched values, so a
+// stale D1 read-replica can't overwrite a fresh local edit (e.g. the post-roll
+// posKey swap). Comfortably longer than replication lag.
+const GROUP_WRITE_GUARD_MS = 15000
+
 export interface SymbolGroup {
   id: string
   name: string
@@ -56,6 +61,12 @@ export function useTraderSettings() {
   const fetchedRef = useRef(false)
   const settingsLoadedRef = useRef(false)
   const d1TargetRef = useRef(d1Target)
+  // Timestamp of the last LOCAL symbol_groups write. Used to ignore a refetch
+  // that would otherwise clobber a just-made local edit with stale data (see
+  // applySettings). The window must comfortably exceed D1's read-replica
+  // replication lag so a getSettings firing right after a putSettings can't
+  // read the pre-write value and overwrite the local one.
+  const lastGroupWriteRef = useRef(0)
 
   const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
     if (!data.settings) return
@@ -91,7 +102,17 @@ export function useTraderSettings() {
     // is production-only now; honouring a stored 'staging' value would flip the
     // live target to staging and refetch STALE staging data — overwriting the
     // real production settings (this caused deleted symbol_groups to reappear).
-    if (Array.isArray(data.settings.symbol_groups)) {
+    // Don't clobber a just-edited local symbol_groups with a refetch. Group
+    // edits — especially the post-roll posKey swap — persist to D1, but a
+    // getSettings that fires right after (on reconnect / group re-detection)
+    // can read a STALE D1 replica and overwrite the fix, permanently emptying
+    // the batch ("無匹配持倉") since nothing re-applies it once the roll's
+    // pendingRollUpdate has cleared. Skip the overwrite within a short window
+    // of a local write; genuine remote edits resync once the window elapses.
+    if (
+      Array.isArray(data.settings.symbol_groups) &&
+      Date.now() - lastGroupWriteRef.current > GROUP_WRITE_GUARD_MS
+    ) {
       setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
     }
     if (typeof data.settings.show_operation_mode === 'boolean') {
@@ -223,6 +244,7 @@ export function useTraderSettings() {
   }, [])
 
   const addSymbolGroup = useCallback((group: SymbolGroup) => {
+    lastGroupWriteRef.current = Date.now()
     setSymbolGroupsState((prev) => {
       const next = [...prev, group]
       window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
@@ -231,6 +253,7 @@ export function useTraderSettings() {
   }, [])
 
   const deleteSymbolGroup = useCallback((groupId: string) => {
+    lastGroupWriteRef.current = Date.now()
     setSymbolGroupsState((prev) => {
       const next = prev.filter((g) => g.id !== groupId)
       window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
@@ -239,6 +262,7 @@ export function useTraderSettings() {
   }, [])
 
   const updateSymbolGroup = useCallback((updated: SymbolGroup) => {
+    lastGroupWriteRef.current = Date.now()
     setSymbolGroupsState((prev) => {
       const next = prev.map((g) => (g.id === updated.id ? updated : g))
       window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
@@ -247,6 +271,7 @@ export function useTraderSettings() {
   }, [])
 
   const reorderSymbolGroups = useCallback((reordered: SymbolGroup[]) => {
+    lastGroupWriteRef.current = Date.now()
     setSymbolGroupsState(reordered)
     window.ibApi.putSettings('symbol_groups', reordered, d1TargetRef.current).catch(() => {})
   }, [])

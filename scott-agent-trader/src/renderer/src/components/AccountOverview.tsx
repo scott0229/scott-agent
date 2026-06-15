@@ -800,6 +800,19 @@ export default function AccountOverview({
       }
     }
 
+    // Diagnostic: if legs stay unmatched the group is left pinned to its old
+    // (now-closed) contracts and shows "無匹配持倉". Log exactly which leg's new
+    // contract hasn't shown up in `positions` and what target we're hunting, so
+    // a recurrence is debuggable instead of a silent empty batch.
+    if (stillPending.length > 0) {
+      console.warn('[ROLL] Legs still unmatched — group will show 無匹配持倉 until these resolve', {
+        target,
+        pending: stillPending.map(
+          (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
+        )
+      })
+    }
+
     // Done once every leg resolved; otherwise keep only the laggards pending so
     // they're retried (without reprocessing the resolved ones) on the next
     // position update.
