@@ -12,7 +12,8 @@ import RollWatchChunk from './RollWatchChunk'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
 import {
   getEnabledObserveRules,
-  LEAD_THRESHOLD_PCT,
+  LEAD_HIGH_PCT,
+  LEAD_LOW_PCT,
   BREACH_THRESHOLD_PCT
 } from '../lib/observeRules'
 import TradeGroupDialog from './TradeGroupDialog'
@@ -118,6 +119,14 @@ interface AccountOverviewProps {
   // Bumped when risk/observe prefs hydrate from D1, so the observe-rule chunks
   // (which read getEnabledObserveRules synchronously) re-render with synced values.
   prefsVersion?: number
+}
+
+// Symbol ordering for filter dropdowns: QQQ first, TQQQ second, the rest A→Z.
+const SYMBOL_SORT_RANK: Record<string, number> = { QQQ: 0, TQQQ: 1 }
+const compareSymbols = (a: string, b: string): number => {
+  const ra = SYMBOL_SORT_RANK[a] ?? 99
+  const rb = SYMBOL_SORT_RANK[b] ?? 99
+  return ra !== rb ? ra - rb : a.localeCompare(b)
 }
 
 const posKey = (pos: PositionData): string =>
@@ -1062,10 +1071,7 @@ export default function AccountOverview({
   const uniqueSymbols = useMemo(() => {
     const set = new Set<string>()
     positions.forEach((p) => set.add(p.symbol))
-    const symbolPriority: Record<string, number> = { QQQ: 1, QLD: 2, TQQQ: 3 }
-    return Array.from(set).sort(
-      (a, b) => (symbolPriority[a] ?? 99) - (symbolPriority[b] ?? 99) || a.localeCompare(b)
-    )
+    return Array.from(set).sort(compareSymbols)
   }, [positions])
 
   const uniqueAccounts = useMemo(() => {
@@ -1119,7 +1125,7 @@ export default function AccountOverview({
     const syms = new Set<string>()
     for (const o of visible) if (o.symbol) syms.add(o.symbol)
     const opts = Array.from(syms)
-      .sort()
+      .sort(compareSymbols)
       .map((s) => ({ value: s, label: s }))
     return [{ value: '', label: '全部標的' }, ...opts]
   }, [openOrders, orderFilterAccount, orderFilterType])
@@ -1685,7 +1691,7 @@ export default function AccountOverview({
                 options={[
                   { value: '', label: '全部標的' },
                   ...Array.from(new Set(symbolGroups.map((g) => g.symbol)))
-                    .sort()
+                    .sort(compareSymbols)
                     .map((s) => ({ value: s, label: s }))
                 ]}
               />
@@ -2044,28 +2050,11 @@ export default function AccountOverview({
                         <span className="account-id">{g.name}</span>
                       </div>
                       {(() => {
-                        const totalPnl = groupPositions.reduce((sum, pos) => {
-                          const isOpt = pos.secType === 'OPT'
-                          const key = `${pos.symbol}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
-                          const lp = isOpt ? (optionQuotes[key] ?? 0) : (quotes[pos.symbol] ?? 0)
-                          const ic = initialCosts[`${pos.account}|${pos.symbol}`]
-                          const costBasis = !isOpt && ic != null ? ic : pos.avgCost
-                          const pnl = isOpt
-                            ? (lp - costBasis / 100) * pos.quantity * 100
-                            : (lp - costBasis) * pos.quantity
-                          return sum + pnl
-                        }, 0)
+                        const accountCount = new Set(groupPositions.map((p) => p.account)).size
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', marginRight: '12px' }}>
-                            <span
-                              style={{
-                                fontSize: '14px',
-                                fontWeight: 600,
-                                color: totalPnl >= 0 ? '#1a6b3a' : '#c0392b'
-                              }}
-                            >
-                              {totalPnl >= 0 ? '+' : ''}
-                              {Math.round(totalPnl).toLocaleString()}
+                            <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px' }}>
+                              {accountCount} 個帳戶
                             </span>
                             {g.autoParams && (
                               <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px' }}>
@@ -2260,8 +2249,12 @@ export default function AccountOverview({
                       //   領先 ≥ LEAD_THRESHOLD_PCT%      → 'leadFar'
                       // No quote yet → assume comfortably leading ('leadFar').
                       const px = quotes[src.symbol]
-                      let category: 'leadFar' | 'leadNear' | 'breachedNear' | 'breachedFar' =
-                        'leadFar'
+                      let category:
+                        | 'leadFar'
+                        | 'leadMid'
+                        | 'leadNear'
+                        | 'breachedNear'
+                        | 'breachedFar' = 'leadFar'
                       if (px != null && px > 0) {
                         const behind = right === 'C' ? px - src.strike : src.strike - px
                         if (behind > 0) {
@@ -2270,7 +2263,12 @@ export default function AccountOverview({
                             breachPct < BREACH_THRESHOLD_PCT ? 'breachedNear' : 'breachedFar'
                         } else {
                           const leadPct = (Math.abs(behind) / px) * 100
-                          category = leadPct < LEAD_THRESHOLD_PCT ? 'leadNear' : 'leadFar'
+                          category =
+                            leadPct > LEAD_HIGH_PCT
+                              ? 'leadFar'
+                              : leadPct < LEAD_LOW_PCT
+                                ? 'leadNear'
+                                : 'leadMid'
                         }
                       }
                       const rules = getEnabledObserveRules(category)

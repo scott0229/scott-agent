@@ -25,14 +25,22 @@ function setNum(key: string, v: number): void {
 
 export type DteOp = '>' | '<'
 
-// Lead% threshold that splits the two OTM rule sets. A position leading by
-// more than this is "comfortable"; below it, it's getting close to the strike.
-export const LEAD_THRESHOLD_PCT = 1.5
+// Lead% thresholds that split the three OTM rule sets:
+//   leadPct > HIGH            → leadFar  (comfortable, 領先 > 2%)
+//   LOW ≤ leadPct ≤ HIGH      → leadMid  (領先 1%~2%)
+//   leadPct < LOW             → leadNear (getting close, 領先 < 1%)
+export const LEAD_HIGH_PCT = 2
+export const LEAD_LOW_PCT = 1
 // Breach% threshold that splits the two ITM (落後) rule sets. Breached by less
 // than this is shallow; more than this is deep.
 export const BREACH_THRESHOLD_PCT = 1.0
 
-export type ObserveCategory = 'leadFar' | 'leadNear' | 'breachedNear' | 'breachedFar'
+export type ObserveCategory =
+  | 'leadFar'
+  | 'leadMid'
+  | 'leadNear'
+  | 'breachedNear'
+  | 'breachedFar'
 
 export interface ObserveRuleDef {
   id: string
@@ -109,12 +117,87 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 1,
     defaultPoints: 3
+  },
+  {
+    id: 'obs7',
+    enabledKey: 'trader.obs7.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obs7.dteOp',
+    dteKey: 'trader.obs7.dte',
+    daysKey: 'trader.obs7.days',
+    pointsKey: 'trader.obs7.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 4
+  }
+]
+
+// Rules applied when the position is OTM and leading by a middling amount
+// (領先 1%~2%) — between comfortable and getting close.
+export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
+  {
+    id: 'obsM1',
+    enabledKey: 'trader.obsM1.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM1.dteOp',
+    dteKey: 'trader.obsM1.dte',
+    daysKey: 'trader.obsM1.days',
+    pointsKey: 'trader.obsM1.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: -1
+  },
+  {
+    id: 'obsM2',
+    enabledKey: 'trader.obsM2.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM2.dteOp',
+    dteKey: 'trader.obsM2.dte',
+    daysKey: 'trader.obsM2.days',
+    pointsKey: 'trader.obsM2.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0
+  },
+  {
+    id: 'obsM3',
+    enabledKey: 'trader.obsM3.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM3.dteOp',
+    dteKey: 'trader.obsM3.dte',
+    daysKey: 'trader.obsM3.days',
+    pointsKey: 'trader.obsM3.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 1
+  },
+  {
+    id: 'obsM4',
+    enabledKey: 'trader.obsM4.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM4.dteOp',
+    dteKey: 'trader.obsM4.dte',
+    daysKey: 'trader.obsM4.days',
+    pointsKey: 'trader.obsM4.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 2
   }
 ]
 
 // Rules applied when the position is still OTM but leading by LESS than the
-// threshold — getting close to the strike, so lean toward pulling the strike
-// back for cushion.
+// low threshold — getting close to the strike, so lean toward pulling the
+// strike back for cushion.
 export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
   {
     id: 'obsN1',
@@ -330,7 +413,9 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
         ? OBSERVE_RULES_BREACHED
         : category === 'leadNear'
           ? OBSERVE_RULES_NEAR
-          : OBSERVE_RULES
+          : category === 'leadMid'
+            ? OBSERVE_RULES_MID
+            : OBSERVE_RULES
   return set.filter(getObserveEnabled).map((r) => ({
     hasDte: r.hasDte,
     chase: r.chase,
