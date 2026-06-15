@@ -140,6 +140,12 @@ export default function RollOptionDialog({
   const userEditedPriceRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
   const [rollQty, setRollQty] = useState('')
+  // Per-account roll quantity (multi-account): defaults to each position's full
+  // size, editable down (never up) by double-clicking the 口數 cell.
+  const keyOf = (p: PositionData): string =>
+    `${p.account}|${p.expiry || ''}|${p.strike || ''}|${p.right || ''}`
+  const [rollQtyByKey, setRollQtyByKey] = useState<Record<string, number>>({})
+  const [editingQtyKey, setEditingQtyKey] = useState<string | null>(null)
   // Heads-up when rolling QQQ out more than 2 trading days — shown the moment a
   // long target is picked. Track the last-warned expiry so it pops once per
   // distinct target rather than on every click.
@@ -164,6 +170,10 @@ export default function RollOptionDialog({
     userEditedPriceRef.current = false
     initialExpirySetRef.current = false
     setRollQty(String(snappedPositions.current.reduce((sum, p) => sum + Math.abs(p.quantity), 0)))
+    setRollQtyByKey(
+      Object.fromEntries(snappedPositions.current.map((p) => [keyOf(p), Math.abs(p.quantity)]))
+    )
+    setEditingQtyKey(null)
 
     chain.fetchChain(symbol)
   }, [open, symbol])
@@ -315,14 +325,16 @@ export default function RollOptionDialog({
       return
     setSubmitting(true)
     try {
-      const totalPosQty = positions.reduce((sum, p) => sum + Math.abs(p.quantity), 0)
       const targetTotalQty = parseInt(rollQty, 10) || 0
-      const multiplier = totalPosQty > 0 ? targetTotalQty / totalPosQty : 1
 
       for (const pos of positions) {
         const originalQty = Math.abs(pos.quantity)
+        // Single account → the global 口數 input. Multi → the per-account edited
+        // value, clamped so it can only be ≤ the position's actual size.
         const qty =
-          positions.length === 1 ? targetTotalQty : Math.round(originalQty * multiplier) || 1
+          positions.length === 1
+            ? targetTotalQty
+            : Math.min(originalQty, Math.max(1, rollQtyByKey[keyOf(pos)] ?? originalQty))
         const isShort = pos.quantity < 0
         const closeAction = isShort ? 'BUY' : 'SELL'
         await window.ibApi.placeRollOrder(
@@ -849,9 +861,51 @@ export default function RollOptionDialog({
                             }}
                           >{`${idx + 1}.`}</td>
                           <td>{getAlias(pos.account)}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {Math.abs(pos.quantity)}口
-                          </td>
+                          {(() => {
+                            const k = keyOf(pos)
+                            const original = Math.abs(pos.quantity)
+                            const cur = rollQtyByKey[k] ?? original
+                            const commit = (raw: string): void => {
+                              const n = parseInt(raw, 10)
+                              const clamped = Number.isFinite(n)
+                                ? Math.min(original, Math.max(1, n))
+                                : original
+                              setRollQtyByKey((p) => ({ ...p, [k]: clamped }))
+                              setEditingQtyKey(null)
+                            }
+                            // Single-account size is controlled by the global 口數
+                            // input; only multi-account rows are inline-editable.
+                            const editable = !isSingleAccount
+                            return (
+                              <td
+                                className={editable ? 'roll-qty-cell' : undefined}
+                                style={{ textAlign: 'center', whiteSpace: 'nowrap' }}
+                                title={editable ? '雙擊編輯口數（只能調少）' : undefined}
+                                onDoubleClick={() => editable && setEditingQtyKey(k)}
+                              >
+                                {editingQtyKey === k ? (
+                                  <input
+                                    type="number"
+                                    autoFocus
+                                    min={1}
+                                    max={original}
+                                    defaultValue={cur}
+                                    className="roll-qty-input"
+                                    onBlur={(e) => commit(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') commit((e.target as HTMLInputElement).value)
+                                      else if (e.key === 'Escape') setEditingQtyKey(null)
+                                    }}
+                                  />
+                                ) : (
+                                  <>
+                                    {cur}
+                                    {cur < original ? `/${original}` : ''}口
+                                  </>
+                                )}
+                              </td>
+                            )
+                          })()}
                           <td style={{ whiteSpace: 'nowrap' }}>
                             {currentDesc} → {targetDesc}
                           </td>
