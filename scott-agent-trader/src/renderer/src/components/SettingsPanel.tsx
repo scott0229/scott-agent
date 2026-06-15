@@ -12,7 +12,9 @@ import {
   OBSERVE_RULES,
   OBSERVE_RULES_NEAR,
   OBSERVE_RULES_BREACHED,
+  OBSERVE_RULES_BREACHED_FAR,
   LEAD_THRESHOLD_PCT,
+  BREACH_THRESHOLD_PCT,
   getObserveEnabled,
   setObserveEnabled,
   getObserveDteOp,
@@ -121,7 +123,13 @@ export default function SettingsPanel({
   const [showObserve, setShowObserve] = useState(true)
   const [showObserveNear, setShowObserveNear] = useState(true)
   const [showObserveBreached, setShowObserveBreached] = useState(true)
-  const ALL_OBSERVE_RULES = [...OBSERVE_RULES, ...OBSERVE_RULES_NEAR, ...OBSERVE_RULES_BREACHED]
+  const [showObserveBreachedFar, setShowObserveBreachedFar] = useState(true)
+  const ALL_OBSERVE_RULES = [
+    ...OBSERVE_RULES,
+    ...OBSERVE_RULES_NEAR,
+    ...OBSERVE_RULES_BREACHED,
+    ...OBSERVE_RULES_BREACHED_FAR
+  ]
   const [obsEnabled, setObsEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveEnabled(r)]))
   )
@@ -374,11 +382,18 @@ export default function SettingsPanel({
           {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
 
           <SectionHeader
-            title="QQQ 預設觀察規則 (落後)"
+            title={`QQQ 預設觀察規則 (落後 < ${BREACH_THRESHOLD_PCT}%)`}
             expanded={showObserveBreached}
             onToggle={() => setShowObserveBreached((v) => !v)}
           />
           {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
+
+          <SectionHeader
+            title={`QQQ 預設觀察規則 (落後 > ${BREACH_THRESHOLD_PCT}%)`}
+            expanded={showObserveBreachedFar}
+            onToggle={() => setShowObserveBreachedFar((v) => !v)}
+          />
+          {showObserveBreachedFar && OBSERVE_RULES_BREACHED_FAR.map(renderObserveRow)}
 
           <SectionHeader
             title="可交易標的"

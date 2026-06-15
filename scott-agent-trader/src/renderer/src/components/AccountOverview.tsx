@@ -10,7 +10,11 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
-import { getEnabledObserveRules, LEAD_THRESHOLD_PCT } from '../lib/observeRules'
+import {
+  getEnabledObserveRules,
+  LEAD_THRESHOLD_PCT,
+  BREACH_THRESHOLD_PCT
+} from '../lib/observeRules'
 import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
 import TransferStockDialog from './TransferStockDialog'
@@ -111,6 +115,9 @@ interface AccountOverviewProps {
   showOperationMode?: boolean
   showAccountType?: boolean
   d1Target?: 'staging' | 'production'
+  // Bumped when risk/observe prefs hydrate from D1, so the observe-rule chunks
+  // (which read getEnabledObserveRules synchronously) re-render with synced values.
+  prefsVersion?: number
 }
 
 const posKey = (pos: PositionData): string =>
@@ -245,6 +252,7 @@ export default function AccountOverview({
   onUpdateSymbolGroup,
   onReorderSymbolGroups,
   groupViewMode = false,
+  prefsVersion = 0,
   initialCosts = {},
   optionGroups = {},
   reportNotes = {},
@@ -640,11 +648,12 @@ export default function AccountOverview({
     // re-running the masonry collapse/expand on every toggle is wasted work
     // and (more importantly) caused the page to snap to top because all
     // cards briefly collapsed to 1 row during the recompute.
-    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|fgr:${filterGroupRight}|edit:${noteEditorFor || ''}`
+    return `${groupPart}|uncategorized:${uncategorizedPositions.length}|fgi:${filterGroupIndex}|fgs:${filterGroupSymbol}|fgr:${filterGroupRight}|edit:${noteEditorFor || ''}|pv:${prefsVersion}`
   }, [
     groupViewMode,
     symbolGroups,
     positions,
+    prefsVersion,
     uncategorizedPositions,
     filterGroupIndex,
     filterGroupSymbol,
@@ -2251,11 +2260,15 @@ export default function AccountOverview({
                       //   領先 ≥ LEAD_THRESHOLD_PCT%      → 'leadFar'
                       // No quote yet → assume comfortably leading ('leadFar').
                       const px = quotes[src.symbol]
-                      let category: 'leadFar' | 'leadNear' | 'breached' = 'leadFar'
+                      let category: 'leadFar' | 'leadNear' | 'breachedNear' | 'breachedFar' =
+                        'leadFar'
                       if (px != null && px > 0) {
                         const behind = right === 'C' ? px - src.strike : src.strike - px
-                        if (behind > 0) category = 'breached'
-                        else {
+                        if (behind > 0) {
+                          const breachPct = (behind / px) * 100
+                          category =
+                            breachPct < BREACH_THRESHOLD_PCT ? 'breachedNear' : 'breachedFar'
+                        } else {
                           const leadPct = (Math.abs(behind) / px) * 100
                           category = leadPct < LEAD_THRESHOLD_PCT ? 'leadNear' : 'leadFar'
                         }

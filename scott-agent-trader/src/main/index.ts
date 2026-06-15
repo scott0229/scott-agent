@@ -43,6 +43,7 @@ import {
 } from './ib/quotes'
 import type { OrderQuoteRequest } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
+import { ensureGatewayRunning, minimizeGateway } from './ib/gateway'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
@@ -65,6 +66,9 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    // Open maximized (fills the screen, keeps title bar + taskbar). Maximize
+    // before show so there's no flash of the smaller default size.
+    mainWindow!.maximize()
     mainWindow!.show()
   })
 
@@ -102,6 +106,12 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('ib:getConnectionState', async () => {
     return getConnectionState()
+  })
+
+  // Manually (re)launch IB Gateway — used by the "啟動 Gateway" button when the
+  // app is disconnected. No-op if Gateway/TWS is already up.
+  ipcMain.handle('ib:launchGateway', async () => {
+    return ensureGatewayRunning()
   })
 
   // Prefetch option chain data (conId + expirations/strikes) for tradable symbols
@@ -1358,7 +1368,28 @@ app.whenReady().then(() => {
   })
 
   setupIpcHandlers()
+
+  // Auto-launch IB Gateway if it isn't already running, so the user only opens
+  // ONE app. Guarded inside ensureGatewayRunning() so it never double-spawns.
+  ensureGatewayRunning()
+    .then((r) => console.log('[Gateway] ensureGatewayRunning:', r.reason, r.exe ?? ''))
+    .catch((e) => console.warn('[Gateway] ensureGatewayRunning failed:', e))
+
   createWindow()
+
+  // Once connected, tuck the IB Gateway window away so the user only sees the
+  // trader app. Re-armed on disconnect so a later reconnect minimizes again.
+  let gatewayMinimized = false
+  onConnectionStatusChange((state) => {
+    if (state.status === 'connected') {
+      if (!gatewayMinimized) {
+        gatewayMinimized = true
+        setTimeout(() => minimizeGateway(), 1500)
+      }
+    } else {
+      gatewayMinimized = false
+    }
+  })
 
   // Setup IB event listeners when connected
   onConnectionStatusChange((state) => {

@@ -3,12 +3,15 @@
 // Persisted in localStorage so the Settings panel and the batch-card "套用
 // 預設觀察" action share them without prop-drilling.
 
+import { notifyPrefChange } from './prefsSync'
+
 function getBool(key: string, def = true): boolean {
   const raw = localStorage.getItem(key)
   return raw == null ? def : raw === 'true'
 }
 function setBool(key: string, enabled: boolean): void {
   localStorage.setItem(key, enabled ? 'true' : 'false')
+  notifyPrefChange()
 }
 function getNum(key: string, def: number): number {
   const raw = localStorage.getItem(key)
@@ -17,6 +20,7 @@ function getNum(key: string, def: number): number {
 }
 function setNum(key: string, v: number): void {
   localStorage.setItem(key, String(v))
+  notifyPrefChange()
 }
 
 export type DteOp = '>' | '<'
@@ -24,8 +28,11 @@ export type DteOp = '>' | '<'
 // Lead% threshold that splits the two OTM rule sets. A position leading by
 // more than this is "comfortable"; below it, it's getting close to the strike.
 export const LEAD_THRESHOLD_PCT = 1.5
+// Breach% threshold that splits the two ITM (落後) rule sets. Breached by less
+// than this is shallow; more than this is deep.
+export const BREACH_THRESHOLD_PCT = 1.0
 
-export type ObserveCategory = 'leadFar' | 'leadNear' | 'breached'
+export type ObserveCategory = 'leadFar' | 'leadNear' | 'breachedNear' | 'breachedFar'
 
 export interface ObserveRuleDef {
   id: string
@@ -88,6 +95,20 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 1,
     defaultPoints: 2
+  },
+  {
+    id: 'obs6',
+    enabledKey: 'trader.obs6.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obs6.dteOp',
+    dteKey: 'trader.obs6.dte',
+    daysKey: 'trader.obs6.days',
+    pointsKey: 'trader.obs6.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 3
   }
 ]
 
@@ -153,8 +174,8 @@ export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
   }
 ]
 
-// Rules applied when the short option has been breached (現價已穿過履約價,
-// i.e. ITM). Defaults lean to rolling further out / further away.
+// Rules applied when the short option has been breached SHALLOWLY (落後 < 1% —
+// price just past the strike). Defaults lean to rolling further out / away.
 export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
   {
     id: 'obsB1',
@@ -214,14 +235,77 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
   }
 ]
 
+// Rules applied when the short option has been breached DEEPLY (落後 > 1% —
+// price well past the strike). Defaults lean to rolling further still.
+export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
+  {
+    id: 'obsBF1',
+    enabledKey: 'trader.obsBF1.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF1.dteOp',
+    dteKey: 'trader.obsBF1.dte',
+    daysKey: 'trader.obsBF1.days',
+    pointsKey: 'trader.obsBF1.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 2,
+    defaultPoints: 2
+  },
+  {
+    id: 'obsBF2',
+    enabledKey: 'trader.obsBF2.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF2.dteOp',
+    dteKey: 'trader.obsBF2.dte',
+    daysKey: 'trader.obsBF2.days',
+    pointsKey: 'trader.obsBF2.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 5,
+    defaultPoints: 3
+  },
+  {
+    id: 'obsBF3',
+    enabledKey: 'trader.obsBF3.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF3.dteOp',
+    dteKey: 'trader.obsBF3.dte',
+    daysKey: 'trader.obsBF3.days',
+    pointsKey: 'trader.obsBF3.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 5,
+    defaultPoints: 5
+  },
+  {
+    id: 'obsBF4',
+    enabledKey: 'trader.obsBF4.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF4.dteOp',
+    dteKey: 'trader.obsBF4.dte',
+    daysKey: 'trader.obsBF4.days',
+    pointsKey: 'trader.obsBF4.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 10,
+    defaultPoints: 7
+  }
+]
+
 export const getObserveEnabled = (r: ObserveRuleDef): boolean => getBool(r.enabledKey)
 export const setObserveEnabled = (r: ObserveRuleDef, v: boolean): void => setBool(r.enabledKey, v)
 export const getObserveDteOp = (r: ObserveRuleDef): DteOp => {
   const raw = localStorage.getItem(r.dteOpKey)
   return raw === '<' || raw === '>' ? raw : r.defaultDteOp
 }
-export const setObserveDteOp = (r: ObserveRuleDef, v: DteOp): void =>
+export const setObserveDteOp = (r: ObserveRuleDef, v: DteOp): void => {
   localStorage.setItem(r.dteOpKey, v)
+  notifyPrefChange()
+}
 export const getObserveDte = (r: ObserveRuleDef): number => getNum(r.dteKey, r.defaultDte)
 export const setObserveDte = (r: ObserveRuleDef, v: number): void => setNum(r.dteKey, v)
 export const getObserveDays = (r: ObserveRuleDef): number => getNum(r.daysKey, r.defaultDays)
@@ -240,11 +324,13 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
   points: number
 }> {
   const set =
-    category === 'breached'
-      ? OBSERVE_RULES_BREACHED
-      : category === 'leadNear'
-        ? OBSERVE_RULES_NEAR
-        : OBSERVE_RULES
+    category === 'breachedFar'
+      ? OBSERVE_RULES_BREACHED_FAR
+      : category === 'breachedNear'
+        ? OBSERVE_RULES_BREACHED
+        : category === 'leadNear'
+          ? OBSERVE_RULES_NEAR
+          : OBSERVE_RULES
   return set.filter(getObserveEnabled).map((r) => ({
     hasDte: r.hasDte,
     chase: r.chase,

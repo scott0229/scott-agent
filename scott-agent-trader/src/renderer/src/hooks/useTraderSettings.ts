@@ -1,4 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  collectTraderPrefs,
+  hydrateTraderPrefs,
+  hasUserPrefs,
+  onPrefChange
+} from '../lib/prefsSync'
 
 export interface SymbolGroup {
   id: string
@@ -44,6 +50,9 @@ export function useTraderSettings() {
   const [symbolGroups, setSymbolGroupsState] = useState<SymbolGroup[]>([])
   const [showOperationMode, setShowOperationModeState] = useState<boolean>(true)
   const [showAccountType, setShowAccountTypeState] = useState<boolean>(true)
+  // Bumped when risk/observe prefs are hydrated from D1, so synchronous
+  // consumers (e.g. the observe-rule chunks) re-read the freshly-synced values.
+  const [prefsVersion, setPrefsVersion] = useState(0)
   const fetchedRef = useRef(false)
   const settingsLoadedRef = useRef(false)
   const d1TargetRef = useRef(d1Target)
@@ -91,6 +100,20 @@ export function useTraderSettings() {
     if (typeof data.settings.show_account_type === 'boolean') {
       setShowAccountTypeState(data.settings.show_account_type)
     }
+    // Risk thresholds + observe rules: D1 is the source of truth. If present,
+    // hydrate localStorage from it and force consumers to re-read. If absent
+    // but THIS device has user-tuned values, seed D1 from them (one-time
+    // migration; guarded so a fresh/empty device never wipes the synced blob).
+    const tp = data.settings.trader_prefs
+    if (tp && typeof tp === 'object' && !Array.isArray(tp)) {
+      if (hydrateTraderPrefs(tp as Record<string, unknown>)) {
+        setPrefsVersion((v) => v + 1)
+      }
+    } else if (hasUserPrefs()) {
+      window.ibApi
+        .putSettings('trader_prefs', collectTraderPrefs(), d1TargetRef.current)
+        .catch(() => {})
+    }
   }, [])
 
   // On mount: fetch settings via IPC (proxied through main process to bypass CORS)
@@ -104,6 +127,26 @@ export function useTraderSettings() {
         /* offline — use defaults */
       })
   }, [applySettings, d1Target])
+
+  // Push risk/observe prefs to D1 whenever a setter fires, debounced so rapid
+  // edits coalesce. Guarded by settingsLoadedRef so we never overwrite real D1
+  // data with empty defaults before the initial load completes.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const off = onPrefChange(() => {
+      if (!settingsLoadedRef.current) return
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        window.ibApi
+          .putSettings('trader_prefs', collectTraderPrefs(), d1TargetRef.current)
+          .catch(() => {})
+      }, 800)
+    })
+    return () => {
+      if (timer) clearTimeout(timer)
+      off()
+    }
+  }, [])
 
   // Re-fetch settings (called after group detection so we load the correct group's settings)
   const refetchSettings = useCallback(() => {
@@ -233,6 +276,7 @@ export function useTraderSettings() {
     setShowOperationMode,
     showAccountType,
     setShowAccountType,
+    prefsVersion,
 
     refetchSettings,
     saveAllSettings

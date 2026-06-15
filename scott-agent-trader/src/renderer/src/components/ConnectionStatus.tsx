@@ -54,44 +54,42 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
     }
   }, [])
 
-  // Auto-connect on mount: probe a list of common IB ports in order and stop
-  // at the first that connects. Tries the last-working port first, then the
-  // usual TWS (7497 paper / 7496 live) and Gateway (4001) ports.
+  // Auto-connect: keep cycling through the common IB ports until one connects.
+  // Unlike a one-shot probe, this never gives up — so once IB Gateway finishes
+  // launching and the user logs in (which can take a while), the next cycle
+  // picks up the now-open port automatically. Idles once connected, and resumes
+  // probing if the connection later drops.
   useEffect(() => {
-    const PROBE_PORTS = [7497, 7496, 4001]
+    const PROBE_PORTS = [4001, 7496, 7497, 7498]
     const saved = parseInt(getSavedPort(), 10)
     const candidates = [
       ...new Set([...(Number.isFinite(saved) ? [saved] : []), ...PROBE_PORTS])
     ]
     let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
+    const sleep = (ms: number): Promise<void> =>
+      new Promise((r) => setTimeout(r, ms))
+    const isConnected = async (): Promise<boolean> =>
+      (await window.ibApi.getConnectionState()).status === 'connected'
 
-    const attempt = (i: number): void => {
-      if (cancelled || i >= candidates.length) return
-      window.ibApi.connect('127.0.0.1', candidates[i])
-      // Give each port ~1.5s to connect; if it doesn't, move to the next.
-      timer = setTimeout(() => {
-        if (cancelled) return
-        window.ibApi.getConnectionState().then((s) => {
-          if (!cancelled && s.status !== 'connected') attempt(i + 1)
-        })
-      }, 1500)
-    }
-
-    // Stop probing the moment any port connects.
-    const off = window.ibApi.onConnectionStatus((s) => {
-      if (s.status === 'connected') {
-        cancelled = true
-        clearTimeout(timer)
+    const loop = async (): Promise<void> => {
+      await sleep(800) // let the window settle before the first attempt
+      while (!cancelled) {
+        if (await isConnected()) {
+          await sleep(2500) // already good — idle, but keep watching for drops
+          continue
+        }
+        for (const port of candidates) {
+          if (cancelled) return
+          if (await isConnected()) break
+          window.ibApi.connect('127.0.0.1', port)
+          await sleep(1500) // give this port time to handshake before the next
+        }
+        if (!cancelled && !(await isConnected())) await sleep(1500) // pause between cycles
       }
-    })
-
-    const start = setTimeout(() => attempt(0), 800)
+    }
+    void loop()
     return () => {
       cancelled = true
-      clearTimeout(timer)
-      clearTimeout(start)
-      off()
     }
   }, [])
 
@@ -104,6 +102,14 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
 
   const handleDisconnect = useCallback(async () => {
     await window.ibApi.disconnect()
+  }, [])
+
+  const handleLaunchGateway = useCallback(async () => {
+    try {
+      await window.ibApi.launchGateway()
+    } catch (err) {
+      console.warn('launchGateway failed:', err)
+    }
   }, [])
 
   const statusColors: Record<string, string> = {
@@ -144,6 +150,9 @@ export default function ConnectionStatus(_props: ConnectionStatusProps): React.J
             />
             <button onClick={handleConnect} className="btn btn-connect">
               連線
+            </button>
+            <button onClick={handleLaunchGateway} className="btn btn-connect" title="開啟 IB Gateway 登入視窗">
+              啟動 Gateway
             </button>
           </>
         )}

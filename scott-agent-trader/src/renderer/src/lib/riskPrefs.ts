@@ -1,12 +1,15 @@
-// Local (per-device) risk-warning preferences. Each rule has an on/off toggle
-// and an editable threshold, both persisted in localStorage so the Settings
-// panel and the roll dialog share them without prop-drilling.
+// Risk-warning preferences. Each rule has an on/off toggle and an editable
+// threshold. localStorage is the synchronous cache; changes are mirrored to D1
+// (via notifyPrefChange → the settings hook) so they sync across builds/devices.
+
+import { notifyPrefChange } from './prefsSync'
 
 function getBool(key: string): boolean {
   return localStorage.getItem(key) !== 'false' // default on
 }
 function setBool(key: string, enabled: boolean): void {
   localStorage.setItem(key, enabled ? 'true' : 'false')
+  notifyPrefChange()
 }
 function getNum(key: string, def: number): number {
   const raw = localStorage.getItem(key)
@@ -15,6 +18,7 @@ function getNum(key: string, def: number): number {
 }
 function setNum(key: string, v: number): void {
   localStorage.setItem(key, String(v))
+  notifyPrefChange()
 }
 
 export type RiskKind = 'rollDays' | 'strikePct' | 'breach'

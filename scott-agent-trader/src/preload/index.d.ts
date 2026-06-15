@@ -104,6 +104,7 @@ interface IBApi {
     errorMessage?: string
   }>
   onConnectionStatus: (callback: (state: any) => void) => () => void
+  launchGateway: () => Promise<{ launched: boolean; reason: string; exe?: string }>
   getManagedAccounts: () => Promise<string[]>
   getAccountSummary: () => Promise<
     Array<{

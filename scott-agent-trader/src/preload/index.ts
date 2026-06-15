@@ -72,6 +72,8 @@ const ibApi = {
     ipcRenderer.invoke('ib:connect', host, port),
   disconnect: (): Promise<void> => ipcRenderer.invoke('ib:disconnect'),
   getConnectionState: (): Promise<any> => ipcRenderer.invoke('ib:getConnectionState'),
+  launchGateway: (): Promise<{ launched: boolean; reason: string; exe?: string }> =>
+    ipcRenderer.invoke('ib:launchGateway'),
   onConnectionStatus: (callback: (state: any) => void): (() => void) => {
     const handler = (_event: any, state: any): void => callback(state)
     ipcRenderer.on('ib:connectionStatus', handler)

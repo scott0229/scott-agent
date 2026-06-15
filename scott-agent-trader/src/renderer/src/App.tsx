@@ -90,6 +90,7 @@ function App(): React.JSX.Element {
     setShowOperationMode,
     showAccountType,
     setShowAccountType,
+    prefsVersion,
     refetchSettings,
     saveAllSettings
   } = useTraderSettings()
@@ -512,6 +513,7 @@ function App(): React.JSX.Element {
               onUpdateSymbolGroup={updateSymbolGroup}
               onReorderSymbolGroups={reorderSymbolGroups}
               groupViewMode={activeTab === 'groups'}
+              prefsVersion={prefsVersion}
               showOperationMode={showOperationMode}
               showAccountType={showAccountType}
               d1Target={d1Target}
