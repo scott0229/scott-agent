@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   createChart,
   IChartApi,
@@ -114,6 +114,7 @@ export function IndicatorChart(): React.JSX.Element {
       height: containerRef.current.clientHeight,
       layout: { background: { color: '#ffffff' }, textColor: '#1a1a1a' },
       grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
+      rightPriceScale: { borderColor: '#e0e0e0' },
       timeScale: { borderColor: '#e0e0e0', timeVisible: false }
     })
     chartRef.current = chart
@@ -161,7 +162,7 @@ export function IndicatorChart(): React.JSX.Element {
     // Hide the RSI scale's regular numeric ticks (80.00 / 40.00 / 20.00…) by
     // blending their text into the white background — the 80/20 price-line tags
     // keep their own coloured labels, so only those two remain on the axis.
-    rsiRef.current.priceScale().applyOptions({ textColor: '#ffffff' })
+    rsiRef.current.priceScale().applyOptions({ textColor: '#ffffff', borderColor: '#e0e0e0' })
     rsiRef.current.createPriceLine({
       price: 80,
       color: '#ef5350',
@@ -296,27 +297,27 @@ export function IndicatorChart(): React.JSX.Element {
     chartRef.current?.timeScale().fitContent()
   }, [store.data])
 
-  const handleReload = useCallback((): void => {
-    store.fetchData(SYMBOL, DURATION, BAR_SIZE)
-  }, [store])
+  // Auto-refresh once a minute (replaces the manual reload button).
+  useEffect(() => {
+    const id = setInterval(() => {
+      store.fetchData(SYMBOL, DURATION, BAR_SIZE)
+    }, 60_000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.fetchData])
 
   return (
     <div className="quantitative-chart-wrapper" style={{ height: 'calc((100vh - 140px) / 2)', minHeight: 240 }}>
       <div className="chart-toolbar">
-        <span className="chart-label" style={{ fontWeight: 600 }}>
+        <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
           QQQ 日線
         </span>
-        <span className="chart-label">
-          布林通道 (
-          <b style={{ color: BASIS_COLOR }}>{BB_LENGTH}</b>,{' '}
-          <b style={{ color: BAND_COLOR }}>{BB_STDDEV}σ</b>)
+        <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
+          布林通道 ({BB_LENGTH}, {BB_STDDEV}σ)
         </span>
-        <span className="chart-label">
-          <b style={{ color: RSI_COLOR }}>RSI {RSI_PERIOD}</b>
+        <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
+          RSI {RSI_PERIOD}
         </span>
-        <button className="chart-reload-btn" onClick={handleReload} disabled={store.loading}>
-          {store.loading ? '載入中…' : '重新載入'}
-        </button>
         {store.error && <span className="chart-error">{store.error}</span>}
       </div>
 
