@@ -9,11 +9,22 @@ export interface BarData {
   volume?: number
 }
 
+interface FetchOpts {
+  secType?: string // e.g. 'IND' for an index like VIX
+  exchange?: string // e.g. 'CBOE' for VIX
+  whatToShow?: string
+}
+
 interface HistoricalDataStore {
   data: BarData[]
   loading: boolean
   error: string | null
-  fetchData: (symbol: string, duration?: string, barSize?: string) => Promise<void>
+  fetchData: (
+    symbol: string,
+    duration?: string,
+    barSize?: string,
+    opts?: FetchOpts
+  ) => Promise<void>
 }
 
 export function useHistoricalData(): HistoricalDataStore {
@@ -22,32 +33,37 @@ export function useHistoricalData(): HistoricalDataStore {
   const [error, setError] = useState<string | null>(null)
   const fetchingRef = useRef(false)
 
-  const fetchData = useCallback(async (symbol: string, duration = '1 Y', barSize = '1 day') => {
-    if (fetchingRef.current) return
-    fetchingRef.current = true
+  const fetchData = useCallback(
+    async (symbol: string, duration = '1 Y', barSize = '1 day', opts: FetchOpts = {}) => {
+      if (fetchingRef.current) return
+      fetchingRef.current = true
 
-    setLoading(true)
-    setError(null)
+      setLoading(true)
+      setError(null)
 
-    try {
-      const response = await window.ibApi.getHistoricalData({
-        symbol,
-        durationString: duration,
-        barSizeSetting: barSize,
-        useRTH: 1, // Regular trading hours
-        whatToShow: 'TRADES'
-      })
+      try {
+        const response = await window.ibApi.getHistoricalData({
+          symbol,
+          durationString: duration,
+          barSizeSetting: barSize,
+          useRTH: 1, // Regular trading hours
+          whatToShow: opts.whatToShow || 'TRADES',
+          secType: opts.secType,
+          exchange: opts.exchange
+        })
 
-      setData(response)
-    } catch (err: any) {
-      console.error('Failed to fetch historical data:', err)
-      setError(err.message || 'Failed to fetch data')
-      setData([])
-    } finally {
-      setLoading(false)
-      fetchingRef.current = false
-    }
-  }, [])
+        setData(response)
+      } catch (err: any) {
+        console.error('Failed to fetch historical data:', err)
+        setError(err.message || 'Failed to fetch data')
+        setData([])
+      } finally {
+        setLoading(false)
+        fetchingRef.current = false
+      }
+    },
+    []
+  )
 
   return { data, loading, error, fetchData }
 }

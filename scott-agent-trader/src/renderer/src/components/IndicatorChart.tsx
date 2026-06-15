@@ -20,6 +20,7 @@ const BASIS_COLOR = '#f59e0b' // 中軌 (SMA) — 橘
 const BAND_COLOR = '#888888' // 上/下軌 — 灰實線
 const RSI_PERIOD = 5
 const RSI_COLOR = '#7c3aed' // 紫
+const VIX_COLOR = '#2563eb' // 藍
 
 function parseTimeVal(bar: BarData): number {
   const t = bar.time
@@ -99,6 +100,7 @@ export function IndicatorChart(): React.JSX.Element {
   const middleRef = useRef<ISeriesApi<'Line'> | null>(null)
   const lowerRef = useRef<ISeriesApi<'Line'> | null>(null)
   const rsiRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const vixRef = useRef<ISeriesApi<'Line'> | null>(null)
   // Symmetric top/bottom margin of the right price scale — wheeling over the
   // price axis grows/shrinks it, which compresses/expands the 股價 band
   // (lightweight-charts binds the wheel to the time axis and has no price-range
@@ -186,9 +188,42 @@ export function IndicatorChart(): React.JSX.Element {
       lineStyle: 3,
       axisLabelVisible: false
     })
-    // Give the price pane more room, RSI a compact strip.
+    // VIX trend in its own pane (index 2) below RSI.
+    vixRef.current = chart.addSeries(
+      LineSeries,
+      {
+        color: VIX_COLOR,
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false
+      },
+      2
+    ) as ISeriesApi<'Line'>
+    vixRef.current.priceScale().applyOptions({ borderColor: '#e0e0e0' })
+    // VIX regime lines: 25 = 恐慌/高波動, 15 = 自滿/低波動.
+    vixRef.current.createPriceLine({
+      price: 25,
+      color: '#ef5350',
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: ''
+    })
+    vixRef.current.createPriceLine({
+      price: 15,
+      color: '#26a69a',
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: ''
+    })
+
+    // Proportional sizing so RSI + VIX are equal height. Price gets 3 shares,
+    // RSI and VIX 1 each → price 60%, RSI 20%, VIX 20%.
     const panes = chart.panes()
-    if (panes[1]) panes[1].setHeight(90)
+    if (panes[0]) panes[0].setStretchFactor(3)
+    if (panes[1]) panes[1].setStretchFactor(1)
+    if (panes[2]) panes[2].setStretchFactor(1)
 
     chart.priceScale('right').applyOptions({
       scaleMargins: { top: priceMarginRef.current, bottom: priceMarginRef.current }
@@ -236,16 +271,45 @@ export function IndicatorChart(): React.JSX.Element {
       middleRef.current = null
       lowerRef.current = null
       rsiRef.current = null
+      vixRef.current = null
     }
   }, [])
 
   const store = useHistoricalData()
+  const vixStore = useHistoricalData()
+  // VIX is an index — pull it from CBOE rather than the default STK/SMART.
+  const VIX_OPTS = { secType: 'IND', exchange: 'CBOE' }
 
-  // ── Fetch QQQ on mount ───────────────────────────────
+  // ── Fetch QQQ + VIX on mount ─────────────────────────
   useEffect(() => {
     store.fetchData(SYMBOL, DURATION, BAR_SIZE)
+    vixStore.fetchData('VIX', DURATION, BAR_SIZE, VIX_OPTS)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Keep RSI + VIX equal height. Re-applied on data updates so it survives HMR
+  // (the one-time chart-init effect doesn't re-run).
+  useEffect(() => {
+    const panes = chartRef.current?.panes()
+    if (panes?.[0]) panes[0].setStretchFactor(3)
+    if (panes?.[1]) panes[1].setStretchFactor(1)
+    if (panes?.[2]) panes[2].setStretchFactor(1)
+  }, [store.data, vixStore.data])
+
+  // ── Draw VIX ─────────────────────────────────────────
+  useEffect(() => {
+    if (vixStore.data.length === 0 || !vixRef.current) return
+    const seen = new Set<number>()
+    const sorted = vixStore.data
+      .map((b) => ({ b, t: parseTimeVal(b) }))
+      .filter(({ t }) => {
+        if (seen.has(t)) return false
+        seen.add(t)
+        return true
+      })
+      .sort((a, b) => a.t - b.t)
+    vixRef.current.setData(sorted.map((s) => ({ time: s.t as Time, value: s.b.close })))
+  }, [vixStore.data])
 
   // ── Draw candles + Bollinger Bands ───────────────────
   useEffect(() => {
@@ -301,13 +365,14 @@ export function IndicatorChart(): React.JSX.Element {
   useEffect(() => {
     const id = setInterval(() => {
       store.fetchData(SYMBOL, DURATION, BAR_SIZE)
+      vixStore.fetchData('VIX', DURATION, BAR_SIZE, VIX_OPTS)
     }, 60_000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.fetchData])
+  }, [store.fetchData, vixStore.fetchData])
 
   return (
-    <div className="quantitative-chart-wrapper" style={{ height: 'calc((100vh - 140px) / 2)', minHeight: 240 }}>
+    <div className="quantitative-chart-wrapper" style={{ height: 'calc(100vh - 240px)', minHeight: 480 }}>
       <div className="chart-toolbar">
         <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
           QQQ 日線
@@ -318,7 +383,12 @@ export function IndicatorChart(): React.JSX.Element {
         <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
           RSI {RSI_PERIOD}
         </span>
-        {store.error && <span className="chart-error">{store.error}</span>}
+        <span className="chart-label" style={{ fontWeight: 700, color: '#1a1a1a' }}>
+          VIX
+        </span>
+        {(store.error || vixStore.error) && (
+          <span className="chart-error">{store.error || vixStore.error}</span>
+        )}
       </div>
 
       <div ref={containerRef} className="quantitative-chart-container" />

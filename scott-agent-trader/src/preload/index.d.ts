@@ -141,6 +141,7 @@ interface IBApi {
   getHistoricalData: (req: {
     symbol: string
     secType?: string
+    exchange?: string
     endDateTime?: string
     durationString?: string
     barSizeSetting?: string

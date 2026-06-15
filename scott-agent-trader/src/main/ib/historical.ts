@@ -9,7 +9,8 @@ function getNextReqId(): number {
 
 export interface HistoricalDataRequest {
   symbol: string
-  secType?: string // Default 'STK'
+  secType?: string // Default 'STK'. Use 'IND' for indices like VIX.
+  exchange?: string // Default 'SMART'. Use 'CBOE' for VIX.
   endDateTime?: string // e.g., '20231001 23:59:59', default '' (until now)
   durationString?: string // e.g., '1 M', '1 Y', default '1 Y'
   barSizeSetting?: string // e.g., '1 day', '1 hour', default '1 day'
@@ -36,7 +37,7 @@ export async function getHistoricalData(req: HistoricalDataRequest): Promise<Bar
   const contract: Contract = {
     symbol: req.symbol.toUpperCase(),
     secType: (req.secType as SecType) || SecType.STK,
-    exchange: 'SMART',
+    exchange: req.exchange || 'SMART',
     currency: 'USD'
   }
 
