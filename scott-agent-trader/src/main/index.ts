@@ -1332,7 +1332,12 @@ function setupIpcHandlers(): void {
 // the symptom is "Unable to move the cache: Access Denied" in the logs and
 // settings silently reverting to old values on restart. Quit the second
 // instance and just focus the existing window instead.
-const gotSingleInstanceLock = app.requestSingleInstanceLock()
+//
+// Only enforced in the packaged build. In dev, electron-vite owns the process
+// lifecycle and restarts electron on file changes; a relaunch can fire while
+// the previous instance is still mid-shutdown holding the lock, so the new one
+// would fail to acquire it and quit to a blank screen.
+const gotSingleInstanceLock = is.dev ? true : app.requestSingleInstanceLock()
 if (!gotSingleInstanceLock) {
   app.quit()
 }

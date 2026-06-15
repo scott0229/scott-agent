@@ -662,6 +662,24 @@ export default function AccountOverview({
       const rowHeight = 10
       const rowGap = 6
       const spanFor = (h: number): number => Math.ceil((h + rowGap) / (rowHeight + rowGap))
+      // Preserve scroll across the reflow. Resetting every card's gridRowEnd
+      // below momentarily collapses the grid; the forced reflow then makes the
+      // browser clamp the page scroll to the now-shorter document, so when a
+      // live position/price update retriggers this effect the page jumps to the
+      // top. Capture the active scroller now, restore it after the final spans.
+      let scrollAncestor: HTMLElement | null = grid.parentElement
+      while (scrollAncestor) {
+        const oy = getComputedStyle(scrollAncestor).overflowY
+        if (
+          (oy === 'auto' || oy === 'scroll') &&
+          scrollAncestor.scrollHeight > scrollAncestor.clientHeight
+        )
+          break
+        scrollAncestor = scrollAncestor.parentElement
+      }
+      const scroller: Element =
+        scrollAncestor ?? document.scrollingElement ?? document.documentElement
+      const savedScrollTop = scroller.scrollTop
       // The card that currently holds the focused note editor must NOT be
       // collapsed/reflowed — doing so mid-IME-composition drops the candidate
       // window. We only grow it; it settles fully on edit end.
@@ -686,6 +704,9 @@ export default function AccountOverview({
         }
         card.style.gridRowEnd = `span ${spanFor(card.scrollHeight)}`
       })
+      // Final layout is back to full height — pin the scroll back so the reflow
+      // is invisible to the user (all of this runs in one frame before paint).
+      if (scroller.scrollTop !== savedScrollTop) scroller.scrollTop = savedScrollTop
     })
     return () => cancelAnimationFrame(rafId)
   }, [groupViewMode, masonryKey, masonryBump])
