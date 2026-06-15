@@ -1197,6 +1197,25 @@ export default function AccountOverview({
     }
     return pos.symbol
   }
+
+  // Strike-distance suffix for a short option — only shown in the batch-trade
+  // group cards. ITM (breached) → "落後 N" red; OTM (winning) → "領先 N" green.
+  const strikeDistanceLabel = (pos: PositionData): { text: string; color: string } | null => {
+    if (pos.secType !== 'OPT' || pos.strike == null || !pos.right) return null
+    const px = quotes[pos.symbol]
+    if (px == null || px <= 0) return null
+    const right = pos.right === 'C' || pos.right === 'CALL' ? 'C' : 'P'
+    const strike = Number(pos.strike) || 0
+    // behind > 0 = how far ITM (price past strike); behind < 0 = how far OTM.
+    const behind = right === 'C' ? px - strike : strike - px
+    if (behind === 0) return null
+    const mag = Math.abs(behind)
+    const n = Number.isInteger(mag) ? `${mag}` : mag.toFixed(1)
+    const pct = ((mag / px) * 100).toFixed(1)
+    return behind > 0
+      ? { text: ` (落後 ${n}, ${pct}%)`, color: '#c0392b' }
+      : { text: ` (領先 ${n}, ${pct}%)`, color: '#1a6b3a' }
+  }
   if (!connected) {
     return (
       <div>
@@ -2673,7 +2692,17 @@ export default function AccountOverview({
                                   pos.account
                                 )}
                               </td>
-                              <td className="pos-symbol">{formatPositionSymbol(pos)}</td>
+                              <td className="pos-symbol">
+                                {formatPositionSymbol(pos)}
+                                {(() => {
+                                  const d = strikeDistanceLabel(pos)
+                                  return d ? (
+                                    <span style={{ color: d.color, fontWeight: 500 }}>
+                                      {d.text}
+                                    </span>
+                                  ) : null
+                                })()}
+                              </td>
                               {showDays && (
                                 <td
                                   style={{
@@ -2769,11 +2798,11 @@ export default function AccountOverview({
                                         )}
                                       </th>
                                       <th style={{ width: '12%', textAlign: 'left' }}></th>
-                                      <th style={{ width: '22%', textAlign: 'left' }}>股票</th>
-                                      <th style={{ width: '11%' }}>持倉</th>
+                                      <th style={{ width: '26%', textAlign: 'left' }}>股票</th>
+                                      <th style={{ width: '9%' }}>持倉</th>
                                       <th style={{ width: '12%' }}>成本</th>
                                       <th style={{ width: '13%' }}>現價</th>
-                                      <th style={{ width: '13%' }}>盈虧</th>
+                                      <th style={{ width: '11%' }}>盈虧</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -2818,12 +2847,12 @@ export default function AccountOverview({
                                         )}
                                       </th>
                                       <th style={{ width: '12%', textAlign: 'left' }}></th>
-                                      <th style={{ width: '22%', textAlign: 'left' }}>期權</th>
-                                      <th style={{ width: '11%' }}>持倉</th>
+                                      <th style={{ width: '26%', textAlign: 'left' }}>期權</th>
+                                      <th style={{ width: '9%' }}>持倉</th>
                                       <th style={{ width: '8%' }}>到期</th>
                                       <th style={{ width: '8%' }}>均價</th>
                                       <th style={{ width: '9%' }}>現價</th>
-                                      <th style={{ width: '13%' }}>盈虧</th>
+                                      <th style={{ width: '11%' }}>盈虧</th>
                                     </tr>
                                   </thead>
                                   <tbody>

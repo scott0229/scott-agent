@@ -282,7 +282,7 @@ function App(): React.JSX.Element {
         .catch(() => {})
     }
     refresh()
-    const id = setInterval(refresh, 15 * 60 * 1000)
+    const id = setInterval(refresh, 2 * 60 * 1000)
     return () => clearInterval(id)
   }, [])
 

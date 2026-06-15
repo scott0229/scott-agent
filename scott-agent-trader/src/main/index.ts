@@ -806,7 +806,7 @@ function setupIpcHandlers(): void {
   const indexCache = new Map<string, IndexQuote>()
   ipcMain.handle('market:getIndex', async (_event, symbol: string) => {
     const cached = indexCache.get(symbol)
-    if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+    if (cached && Date.now() - cached.ts < 60 * 1000) {
       return cached
     }
     try {
