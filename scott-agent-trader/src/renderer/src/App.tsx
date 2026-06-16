@@ -4,6 +4,7 @@ import ConnectionStatus from './components/ConnectionStatus'
 import AccountOverview from './components/AccountOverview'
 import OptionOrderForm from './components/OptionOrderForm'
 import { IndicatorChart } from './components/IndicatorChart'
+import TradeHistory from './components/TradeHistory'
 import SettingsPanel from './components/SettingsPanel'
 import { useAccountStore } from './hooks/useAccountStore'
 import { useTraderSettings } from './hooks/useTraderSettings'
@@ -60,9 +61,9 @@ function saveHiddenAccounts(set: Set<string>): void {
 function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'option' | 'indicators'>(
-    'overview'
-  )
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'groups' | 'option' | 'indicators' | 'trades'
+  >('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [hiddenAccounts, setHiddenAccounts] = useState<Set<string>>(() => loadHiddenAccounts())
   const [accountGroupLabel, setAccountGroupLabel] = useState<string | null>(null)
@@ -458,6 +459,30 @@ function App(): React.JSX.Element {
             </svg>
             指標分析
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'trades' ? 'active' : ''}`}
+            onClick={() => setActiveTab('trades')}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 6h13" />
+              <path d="M8 12h13" />
+              <path d="M8 18h13" />
+              <path d="M3 6h.01" />
+              <path d="M3 12h.01" />
+              <path d="M3 18h.01" />
+            </svg>
+            交易記錄
+          </button>
         </nav>
         <div className="header-actions">
           {updateInfo && (
@@ -523,6 +548,14 @@ function App(): React.JSX.Element {
             <OptionOrderForm connected={connected} accounts={visibleAccounts} />
           )}
           {activeTab === 'indicators' && <IndicatorChart />}
+          {activeTab === 'trades' && (
+            <TradeHistory
+              d1Target={d1Target}
+              accountAliases={Object.fromEntries(
+                accounts.map((a) => [a.accountId, a.alias || a.accountId])
+              )}
+            />
+          )}
         </div>
       </main>
       <SettingsPanel

@@ -74,6 +74,11 @@ const ibApi = {
   getConnectionState: (): Promise<any> => ipcRenderer.invoke('ib:getConnectionState'),
   launchGateway: (): Promise<{ launched: boolean; reason: string; exe?: string }> =>
     ipcRenderer.invoke('ib:launchGateway'),
+  // IB Flex Web Service (historical trades). Plaintext token is encrypted in
+  // main; only the ciphertext crosses back (stored in D1 by the renderer).
+  flexEncrypt: (token: string): Promise<string> => ipcRenderer.invoke('flex:encrypt', token),
+  flexFetchTrades: (tokenEnc: string, queryId: string): Promise<any[]> =>
+    ipcRenderer.invoke('flex:fetchTrades', tokenEnc, queryId),
   onConnectionStatus: (callback: (state: any) => void): (() => void) => {
     const handler = (_event: any, state: any): void => callback(state)
     ipcRenderer.on('ib:connectionStatus', handler)

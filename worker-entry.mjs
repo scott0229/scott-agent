@@ -37,5 +37,18 @@ export default {
         } catch (err) {
             console.error('[Cron] auto-update failed:', err);
         }
+
+        // IB Flex historical trades — pull once/day into D1 so the desktop app
+        // just reads it (no need to open the app). The route gates to once/day
+        // and runs the long IB poll in the background via ctx.waitUntil.
+        try {
+            const flexReq = new Request('https://scott-agent.com/api/flex/sync?group=advisor', {
+                headers: { 'x-triggered-by': 'cloudflare-cron' },
+            });
+            const flexRes = await handler.fetch(flexReq, env, ctx);
+            console.log(`[Cron] flex sync responded ${flexRes.status}`);
+        } catch (err) {
+            console.error('[Cron] flex sync failed:', err);
+        }
     },
 };

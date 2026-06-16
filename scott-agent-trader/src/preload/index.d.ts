@@ -105,6 +105,30 @@ interface IBApi {
   }>
   onConnectionStatus: (callback: (state: any) => void) => () => void
   launchGateway: () => Promise<{ launched: boolean; reason: string; exe?: string }>
+  flexEncrypt: (token: string) => Promise<string>
+  flexFetchTrades: (
+    tokenEnc: string,
+    queryId: string
+  ) => Promise<
+    Array<{
+      account: string
+      symbol: string
+      underlying: string
+      assetCategory: string
+      tradeDate: string
+      dateTime: string
+      buySell: string
+      quantity: number
+      price: number
+      proceeds: number
+      commission: number
+      realizedPnl: number
+      expiry: string
+      strike: string
+      putCall: string
+      tradeID: string
+    }>
+  >
   getManagedAccounts: () => Promise<string[]>
   getAccountSummary: () => Promise<
     Array<{

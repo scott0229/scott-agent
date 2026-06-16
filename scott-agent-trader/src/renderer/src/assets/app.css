@@ -2187,6 +2187,151 @@ input[type='number']::-webkit-outer-spin-button {
   white-space: nowrap;
 }
 
+/* === 交易記錄 (IB Flex) === */
+.trade-history {
+  background: #fff;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+}
+
+.th-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-color, #e0dbd4);
+  background: var(--bg-card, #f3f0eb);
+  flex-wrap: wrap;
+}
+
+.th-title {
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.th-meta {
+  font-size: 12px;
+  color: #666;
+}
+
+.th-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border-color, #d0d0d0);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.th-btn:hover {
+  background: #f3f4f6;
+}
+
+.th-btn-link {
+  border-color: transparent;
+  background: transparent;
+  color: #2563eb;
+}
+
+.th-error {
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.th-table-wrap {
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.th-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.th-table th {
+  position: sticky;
+  top: 0;
+  background: #faf8f4;
+  text-align: left;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-color, #e0dbd4);
+  color: #555;
+  white-space: nowrap;
+}
+
+.th-table td {
+  padding: 5px 12px;
+  border-bottom: 1px solid #f1efe9;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.th-table tbody tr:hover {
+  background: #f8f7f3;
+}
+
+/* Setup form */
+.trade-history-setup {
+  max-width: 460px;
+  margin: 40px auto;
+  background: #fff;
+  border: 1px solid var(--border-color, #e0dbd4);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.trade-history-setup h3 {
+  margin: 0 0 8px;
+}
+
+.th-hint {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.th-field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.th-field span {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.th-field input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.th-btn-primary {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.th-btn-primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
 /* Inline-editable 口數 cell: double-click to edit (reduce-only). */
 .roll-qty-cell {
   cursor: pointer;

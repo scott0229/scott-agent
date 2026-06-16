@@ -44,6 +44,7 @@ import {
 import type { OrderQuoteRequest } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
 import { ensureGatewayRunning, minimizeGateway } from './ib/gateway'
+import { encryptToken, fetchFlexTrades } from './flex'
 import { getCachedAliases, setCachedAliases } from './aliasCache'
 import { getFedFundsRate } from './rates'
 import { getAiAdvice } from './ai/advisor'
@@ -113,6 +114,14 @@ function setupIpcHandlers(): void {
   ipcMain.handle('ib:launchGateway', async () => {
     return ensureGatewayRunning()
   })
+
+  // IB Flex Web Service (historical trades). The token is encrypted here (key
+  // never leaves main); the ciphertext + queryId are persisted to D1 by the
+  // renderer, and passed back in to fetch.
+  ipcMain.handle('flex:encrypt', async (_e, token: string) => encryptToken(token))
+  ipcMain.handle('flex:fetchTrades', async (_e, tokenEnc: string, queryId: string) =>
+    fetchFlexTrades(tokenEnc, queryId)
+  )
 
   // Prefetch option chain data (conId + expirations/strikes) for tradable symbols
   let prefetchDone = false
