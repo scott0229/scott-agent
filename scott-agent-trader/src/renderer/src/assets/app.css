@@ -1261,6 +1261,20 @@ input[type='number']::-webkit-outer-spin-button {
    with the other top-row controls. */
 .custom-select.account-filter-active {
   background: #fffbeb;
+  border-radius: var(--radius);
+}
+
+/* Non-stepper account filter (e.g. 交易記錄 tab): the trigger has an opaque
+   bg of its own, so the container colour above is hidden — tint the trigger
+   too, matching the symbol filter's active cream. */
+.custom-select.account-filter-active .custom-select-trigger {
+  background: #fffbeb;
+}
+
+/* 交易記錄 date filter: show ~10 dates (plus the 全部日期 row) before scrolling,
+   instead of the default 200px (~5 dates). Rows are ~33px tall. */
+.custom-select.date-filter-select .custom-select-dropdown {
+  max-height: 380px;
 }
 
 /* === Allocation Table === */
@@ -2190,49 +2204,24 @@ input[type='number']::-webkit-outer-spin-button {
 /* === 交易記錄 (IB Flex) === */
 .trade-history {
   background: #fff;
-  border-radius: var(--radius-lg, 12px);
-  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
   overflow: hidden;
 }
 
-.th-toolbar {
+.th-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border-color, #e0dbd4);
-  background: var(--bg-card, #f3f0eb);
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-}
-
-.th-title {
-  font-weight: 700;
-  color: #1a1a1a;
 }
 
 .th-meta {
   font-size: 12px;
   color: #666;
-}
-
-.th-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--border-color, #d0d0d0);
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: inherit;
-}
-
-.th-btn:hover {
-  background: #f3f4f6;
-}
-
-.th-btn-link {
-  border-color: transparent;
-  background: transparent;
-  color: #2563eb;
 }
 
 .th-error {
@@ -2248,7 +2237,7 @@ input[type='number']::-webkit-outer-spin-button {
 .th-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .th-table th {

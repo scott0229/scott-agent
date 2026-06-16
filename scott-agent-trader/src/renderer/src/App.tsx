@@ -440,26 +440,6 @@ function App(): React.JSX.Element {
             批次交易
           </button>
           <button
-            className={`tab-btn ${activeTab === 'indicators' ? 'active' : ''}`}
-            onClick={() => setActiveTab('indicators')}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-              <path d="m19 9-5 5-4-4-3 3" />
-            </svg>
-            指標分析
-          </button>
-          <button
             className={`tab-btn ${activeTab === 'trades' ? 'active' : ''}`}
             onClick={() => setActiveTab('trades')}
           >
@@ -482,6 +462,26 @@ function App(): React.JSX.Element {
               <path d="M3 18h.01" />
             </svg>
             交易記錄
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'indicators' ? 'active' : ''}`}
+            onClick={() => setActiveTab('indicators')}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+              <path d="m19 9-5 5-4-4-3 3" />
+            </svg>
+            指標分析
           </button>
         </nav>
         <div className="header-actions">

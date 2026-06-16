@@ -10,6 +10,7 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
+import { compareSymbols } from '../lib/symbols'
 import {
   getEnabledObserveRules,
   LEAD_HIGH_PCT,
@@ -103,14 +104,6 @@ interface AccountOverviewProps {
   // Bumped when risk/observe prefs hydrate from D1, so the observe-rule chunks
   // (which read getEnabledObserveRules synchronously) re-render with synced values.
   prefsVersion?: number
-}
-
-// Symbol ordering for filter dropdowns: QQQ first, TQQQ second, the rest A→Z.
-const SYMBOL_SORT_RANK: Record<string, number> = { QQQ: 0, TQQQ: 1 }
-const compareSymbols = (a: string, b: string): number => {
-  const ra = SYMBOL_SORT_RANK[a] ?? 99
-  const rb = SYMBOL_SORT_RANK[b] ?? 99
-  return ra !== rb ? ra - rb : a.localeCompare(b)
 }
 
 const posKey = (pos: PositionData): string =>
@@ -1122,6 +1115,14 @@ export default function AccountOverview({
       .sort((a, b) => a.label.localeCompare(b.label))
     return [{ value: '', label: '全部帳戶' }, ...opts]
   }, [openOrders, accounts, orderFilterSymbol, orderFilterType])
+
+  // Single-account mode: when the positions view is pinned to one account (the
+  // ‹ › stepper at the top), the 委託單 card defaults to that same account so
+  // both views line up. Only reacts to the top filter changing, so a manual
+  // orders-filter pick afterwards is preserved.
+  useEffect(() => {
+    setOrderFilterAccount(filterAccount)
+  }, [filterAccount])
 
   const orderSymbolOptions = useMemo(() => {
     const visible = openOrders.filter((o) => {
@@ -3182,7 +3183,7 @@ export default function AccountOverview({
                     value={orderFilterAccount}
                     onChange={setOrderFilterAccount}
                     options={orderAccountOptions}
-                    className={`order-filter-select${orderFilterAccount ? ' active' : ''}`}
+                    className={`order-filter-select dropdown-no-scroll${orderFilterAccount ? ' active' : ''}`}
                   />
                   <CustomSelect
                     value={orderFilterSymbol}

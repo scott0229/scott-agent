@@ -1,6 +1,8 @@
 import React from 'react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { formatExpiry } from '../hooks/useOptionChain'
+import CustomSelect from './CustomSelect'
+import { compareSymbols } from '../lib/symbols'
 
 interface FlexTrade {
   account: string
@@ -61,6 +63,10 @@ function writeCache(qid: string, rows: FlexTrade[]): void {
   }
 }
 
+// The 標的 (underlying) a trade belongs to — options carry an underlyingSymbol;
+// stock trades fall back to their own symbol.
+const underlyingOf = (t: FlexTrade): string => t.underlying || t.symbol
+
 function instrument(t: FlexTrade): string {
   if (t.assetCategory === 'OPT' || t.putCall) {
     const strike = t.strike ? (Number.isInteger(+t.strike) ? t.strike : (+t.strike).toFixed(1)) : ''
@@ -83,6 +89,43 @@ export default function TradeHistory({
   const [trades, setTrades] = useState<FlexTrade[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [filterAccount, setFilterAccount] = useState('')
+  const [filterSymbol, setFilterSymbol] = useState('')
+  const [filterRight, setFilterRight] = useState<'' | 'P' | 'C'>('')
+  const [filterDate, setFilterDate] = useState('')
+
+  // Account filter: only the accounts that actually appear in the loaded trades,
+  // labelled with their alias and sorted — same shape as the 部位 tab's filter.
+  const accountOptions = useMemo(() => {
+    const ids = Array.from(new Set(trades.map((t) => t.account).filter(Boolean)))
+    return ids
+      .map((id) => ({ value: id, label: accountAliases[id] || id }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [trades, accountAliases])
+
+  // 標的 filter: distinct underlyings present in the loaded trades, sorted.
+  const symbolOptions = useMemo(() => {
+    const syms = Array.from(new Set(trades.map(underlyingOf).filter(Boolean)))
+    return syms.sort(compareSymbols).map((s) => ({ value: s, label: s }))
+  }, [trades])
+
+  // 日期 filter: distinct trade dates, newest first.
+  const dateOptions = useMemo(() => {
+    const ds = Array.from(new Set(trades.map((t) => t.tradeDate).filter(Boolean)))
+    return ds.sort((a, b) => b.localeCompare(a)).map((d) => ({ value: d, label: fmtDate(d) }))
+  }, [trades])
+
+  const visibleTrades = useMemo(
+    () =>
+      trades.filter(
+        (t) =>
+          (!filterAccount || t.account === filterAccount) &&
+          (!filterSymbol || underlyingOf(t) === filterSymbol) &&
+          (!filterRight || t.putCall === filterRight) &&
+          (!filterDate || t.tradeDate === filterDate)
+      ),
+    [trades, filterAccount, filterSymbol, filterRight, filterDate]
+  )
 
   const load = useCallback(
     async (enc: string, qid: string) => {
@@ -199,21 +242,55 @@ export default function TradeHistory({
 
   // ── Trades table ─────────────────────────────────────
   return (
-    <div className="trade-history">
-      <div className="th-toolbar">
-        <span className="th-title">交易記錄</span>
-        <span className="th-meta">
-          Query {queryId} · {trades.length} 筆
-        </span>
-        <button className="th-btn" onClick={() => load(tokenEnc, queryId)} disabled={loading}>
-          {loading ? '報表產生中…(首次較久)' : '重新整理'}
-        </button>
-        <button className="th-btn th-btn-link" onClick={changeConfig}>
+    <>
+      <div className="th-actions">
+        {loading && <span className="th-meta">載入中…</span>}
+        {error && <span className="th-error">{error}</span>}
+        {accountOptions.length > 0 && (
+          <CustomSelect
+            className={`dropdown-no-scroll${filterAccount ? ' account-filter-active' : ''}`}
+            value={filterAccount}
+            onChange={setFilterAccount}
+            options={[
+              { value: '', label: `全部 ${accountOptions.length} 個帳戶` },
+              ...accountOptions
+            ]}
+          />
+        )}
+        {dateOptions.length > 0 && (
+          <CustomSelect
+            className={`date-filter-select${filterDate ? ' account-filter-active' : ''}`}
+            value={filterDate}
+            onChange={setFilterDate}
+            options={[{ value: '', label: '全部日期' }, ...dateOptions]}
+          />
+        )}
+        {symbolOptions.length > 0 && (
+          <CustomSelect
+            className={`dropdown-no-scroll${filterSymbol ? ' account-filter-active' : ''}`}
+            value={filterSymbol}
+            onChange={setFilterSymbol}
+            options={[{ value: '', label: '全部標的' }, ...symbolOptions]}
+          />
+        )}
+        {trades.length > 0 && (
+          <CustomSelect
+            className={`dropdown-no-scroll${filterRight ? ' account-filter-active' : ''}`}
+            value={filterRight}
+            onChange={(v) => setFilterRight(v as '' | 'P' | 'C')}
+            options={[
+              { value: '', label: 'All Options' },
+              { value: 'P', label: 'PUT' },
+              { value: 'C', label: 'CALL' }
+            ]}
+          />
+        )}
+        <button className="select-toggle-btn" onClick={changeConfig}>
           變更設定
         </button>
-        {error && <span className="th-error">{error}</span>}
       </div>
-      <div className="th-table-wrap">
+      <div className="trade-history">
+        <div className="th-table-wrap">
         <table className="th-table">
           <thead>
             <tr>
@@ -229,7 +306,7 @@ export default function TradeHistory({
             </tr>
           </thead>
           <tbody>
-            {trades.map((t) => (
+            {visibleTrades.map((t) => (
               <tr key={t.tradeID || `${t.account}-${t.dateTime}-${t.symbol}-${t.price}`}>
                 <td>{fmtDate(t.tradeDate)}</td>
                 <td>{accountAliases[t.account] || t.account}</td>
@@ -249,7 +326,7 @@ export default function TradeHistory({
                 </td>
               </tr>
             ))}
-            {trades.length === 0 && !loading && (
+            {visibleTrades.length === 0 && !loading && (
               <tr>
                 <td colSpan={9} style={{ textAlign: 'center', color: '#888', padding: 20 }}>
                   {error ? '載入失敗' : '沒有交易記錄'}
@@ -258,7 +335,8 @@ export default function TradeHistory({
             )}
           </tbody>
         </table>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
