@@ -328,6 +328,16 @@ export default function AccountOverview({
   const [rollWarnMsg, setRollWarnMsg] = useState<{ title: string; message: string } | null>(
     null
   )
+  // 潛在融資 calculation breakdown — populated on right-click of the metric.
+  const [marginExplain, setMarginExplain] = useState<{
+    name: string
+    cash: number
+    netLiq: number
+    currency: string
+    puts: { label: string; notional: number }[]
+    putTotal: number
+    pct: number | null
+  } | null>(null)
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<{ id: string; name: string } | null>(
     null
   )
@@ -3618,36 +3628,57 @@ export default function AccountOverview({
                       </span>
                     </div>
                     {(() => {
-                      const potentialMargin =
+                      const shortPuts = positions.filter(
+                        (p) =>
+                          p.account === account.accountId &&
+                          p.secType === 'OPT' &&
+                          (p.right === 'P' || p.right === 'PUT') &&
+                          p.quantity < 0
+                      )
+                      const putTotal = shortPuts.reduce(
+                        (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                        0
+                      )
+                      const cash = account.totalCashValue
+                      // 潛在融資 = (賣方總承接金額 − 現金) ÷ 淨值: if every short PUT were
+                      // assigned, the cash you'd still need to borrow as a % of equity.
+                      // Spare cash lowers it; an existing margin loan (negative cash)
+                      // raises it. marginLimit is a leverage ratio so the threshold is −1.
+                      const potentialPct =
                         account.netLiquidation > 0
-                          ? (account.grossPositionValue +
-                              positions
-                                .filter(
-                                  (p) =>
-                                    p.account === account.accountId &&
-                                    p.secType === 'OPT' &&
-                                    (p.right === 'P' || p.right === 'PUT') &&
-                                    p.quantity < 0
-                                )
-                                .reduce(
-                                  (sum, p) => sum + (p.strike || 0) * 100 * Math.abs(p.quantity),
-                                  0
-                                )) /
-                            account.netLiquidation
+                          ? (putTotal - cash) / account.netLiquidation
                           : null
                       return (
                         <div
                           className="metric"
-                          style={
-                            potentialMargin !== null && potentialMargin > marginLimit
+                          title="計算說明"
+                          style={{
+                            cursor: 'pointer',
+                            ...(potentialPct !== null && potentialPct > marginLimit - 1
                               ? { backgroundColor: '#ffe4e6', borderRadius: '4px' }
-                              : undefined
-                          }
+                              : undefined)
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const puts = shortPuts.map((p) => ({
+                              label: `${p.symbol} ${p.strike}P × ${Math.abs(p.quantity)}口`,
+                              notional: (p.strike || 0) * 100 * Math.abs(p.quantity)
+                            }))
+                            setMarginExplain({
+                              name: formatAccountName(account.alias || account.accountId),
+                              cash,
+                              netLiq: account.netLiquidation,
+                              currency: account.currency,
+                              puts,
+                              putTotal,
+                              pct: potentialPct !== null ? potentialPct * 100 : null
+                            })
+                          }}
                         >
                           <span className="metric-label">潛在融資</span>
                           <span className="metric-value">
-                            {potentialMargin !== null
-                              ? `${((potentialMargin - 1) * 100).toFixed(0)}%`
+                            {potentialPct !== null
+                              ? `${(potentialPct * 100).toFixed(0)}%`
                               : '-'}
                           </span>
                         </div>
@@ -4648,6 +4679,117 @@ export default function AccountOverview({
           setPendingRollUpdate({ rolledPositions, target })
         }}
       />
+      {marginExplain &&
+        (() => {
+          const money = (v: number): string => formatCurrency(v, marginExplain.currency)
+          // 現金 is signed: a negative balance (existing margin loan) increases what
+          // you'd still need to borrow, so render it as "+ |cash|" in the equation.
+          const cashTerm =
+            marginExplain.cash < 0
+              ? `+ ${money(-marginExplain.cash)}`
+              : `− ${money(marginExplain.cash)}`
+          const row = (label: string, value: string, bold = false): React.JSX.Element => (
+            <div
+              style={{
+                display: 'flex',
+                gap: 2,
+                padding: '3px 0',
+                fontWeight: bold ? 700 : 400
+              }}
+            >
+              <span>{label}：</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+            </div>
+          )
+          return (
+            <div className="roll-dialog-overlay" onClick={() => setMarginExplain(null)}>
+              <div
+                className="roll-dialog"
+                style={{ width: 460, maxWidth: '92vw' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="roll-dialog-header">
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>📊</span>
+                  <h3>潛在融資 計算說明 — {marginExplain.name}</h3>
+                  <button className="roll-dialog-close" onClick={() => setMarginExplain(null)}>
+                    ✕
+                  </button>
+                </div>
+                <div
+                  className="roll-dialog-body"
+                  style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}
+                >
+                  <p style={{ marginTop: 0 }}>
+                    假設<b>賣出的所有 PUT 全被指派</b>(以履約價買進標的)，承接金額先扣掉手上現金,
+                    剩下需要動用的融資佔淨值多少,就是「潛在融資」。
+                  </p>
+                  <div
+                    style={{
+                      background: '#f8f6f2',
+                      borderRadius: 6,
+                      padding: '10px 12px',
+                      marginTop: 14,
+                      marginBottom: 12
+                    }}
+                  >
+                    潛在融資 ＝ (賣方總承接金額 − 現金) ÷ 淨值
+                  </div>
+                  {row('淨值', money(marginExplain.netLiq))}
+                  {row('現金', money(marginExplain.cash))}
+                  <div style={{ marginTop: 6 }}>
+                    期權賣方總承接金額：{money(marginExplain.putTotal)}
+                  </div>
+                  {marginExplain.puts.length === 0 ? (
+                    <div style={{ padding: '3px 0' }}>（此帳戶目前無賣出 PUT）</div>
+                  ) : (
+                    marginExplain.puts.map((p, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          gap: 2,
+                          padding: '2px 0 2px 12px',
+                          fontSize: 13
+                        }}
+                      >
+                        <span>{p.label}：</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {money(p.notional)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                  <div style={{ borderTop: '1px solid #e5e7eb', margin: '8px 0' }} />
+                  {row(
+                    '潛在融資',
+                    marginExplain.pct === null
+                      ? '-'
+                      : marginExplain.netLiq > 0
+                        ? `(${money(marginExplain.putTotal)} ${cashTerm}) ÷ ${money(marginExplain.netLiq)} = ${marginExplain.pct.toFixed(0)}%`
+                        : `${marginExplain.pct.toFixed(0)}%`,
+                    true
+                  )}
+                </div>
+                <div
+                  style={{
+                    padding: '12px 20px',
+                    borderTop: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                  }}
+                >
+                  <button
+                    className="select-toggle-btn active"
+                    style={{ minWidth: 80 }}
+                    onClick={() => setMarginExplain(null)}
+                  >
+                    確定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       {rollWarnMsg && (
         <div className="roll-dialog-overlay" onClick={() => setRollWarnMsg(null)}>
           <div
