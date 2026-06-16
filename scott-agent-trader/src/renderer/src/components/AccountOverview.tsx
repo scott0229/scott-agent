@@ -67,22 +67,6 @@ function formatAccountName(name: string): string {
   return name.replace(/\s*\(.*?\)/, '').trim()
 }
 
-/** Returns current "trading date" (YYYY-MM-DD) with day boundary at 4:00 AM ET */
-function getTradingDate(): { dateStr: string; month: number; day: number } {
-  const now = new Date()
-  const etStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' })
-  const et = new Date(etStr)
-  et.setHours(et.getHours() - 4)
-  const y = et.getFullYear()
-  const m = et.getMonth() + 1
-  const d = et.getDate()
-  return {
-    dateStr: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-    month: m,
-    day: d
-  }
-}
-
 interface AccountOverviewProps {
   connected: boolean
   accounts: AccountData[]
@@ -1987,6 +1971,15 @@ export default function AccountOverview({
                 const groupPositions = filterGroupRight
                   ? groupPositionsAll.filter((p) => p.secType !== 'OPT' || matchesGroupRight(p))
                   : groupPositionsAll
+                // 「今日已完成操作」is derived from IB executions (no manual checkbox):
+                // if any of today's fills are on this group's symbol(s) in one of its
+                // accounts, the roll/trade counts as done today. `executions` is
+                // already fetched since today's ET open, so no extra date filter.
+                const groupAccounts = new Set(groupPositions.map((p) => p.account))
+                const groupSymbols = new Set(groupPositions.map((p) => p.symbol))
+                const completedToday = executions.some(
+                  (e) => groupAccounts.has(e.account) && groupSymbols.has(e.symbol)
+                )
                 return (
                   <div
                     key={g.id}
@@ -2623,43 +2616,6 @@ export default function AccountOverview({
                           </svg>
                         </button>
                       )}
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          fontSize: '12px',
-                          color: '#333',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          marginLeft: 'auto',
-                          backgroundColor: (() => {
-                            const td = getTradingDate()
-                            return g.completedDate === td.dateStr ? '#dcfce7' : undefined
-                          })(),
-                          padding: '2px 6px',
-                          borderRadius: '4px'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={g.completedDate === getTradingDate().dateStr}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            const td = getTradingDate()
-                            const isChecked = g.completedDate === td.dateStr
-                            onUpdateSymbolGroup?.({
-                              ...g,
-                              completedDate: isChecked ? undefined : td.dateStr
-                            })
-                          }}
-                          style={{ accentColor: '#22c55e', cursor: 'pointer' }}
-                        />
-                        {(() => {
-                          const td = getTradingDate()
-                          return `今日 (${td.month}/${td.day}) 已完成操作`
-                        })()}
-                      </label>
                     </div>
                     {groupPositions.length === 0 ? (
                       <div style={{ padding: '12px', fontSize: '12px', color: '#999' }}>
@@ -2826,7 +2782,12 @@ export default function AccountOverview({
                           <>
                             {stkPos.length > 0 && (
                               <div className="positions-section">
-                                <table className="positions-table">
+                                <table
+                                  className="positions-table"
+                                  style={{
+                                    borderLeftColor: completedToday ? '#2563eb' : undefined
+                                  }}
+                                >
                                   <thead>
                                     <tr>
                                       <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>
@@ -2875,7 +2836,12 @@ export default function AccountOverview({
                             )}
                             {optPos.length > 0 && (
                               <div className="positions-section">
-                                <table className="positions-table">
+                                <table
+                                  className="positions-table"
+                                  style={{
+                                    borderLeftColor: completedToday ? '#2563eb' : undefined
+                                  }}
+                                >
                                   <thead>
                                     <tr>
                                       <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>
