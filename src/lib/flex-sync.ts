@@ -144,15 +144,38 @@ export async function syncFlexTrades(db: any, force = false): Promise<FlexSyncRe
   }
   if (!config?.queryId || !config?.tokenEnc) return { status: 'skipped', reason: 'no-config' }
 
-  const today = new Date().toISOString().slice(0, 10) // UTC day
-  if (!force && syncedAt === today) return { status: 'skipped', reason: 'already-today' }
+  // Fire once per trading day, at the first cron tick ≥ 1 hour after the US
+  // close (17:00 ET). Gate on the ET calendar day so the stamp matches the
+  // trading day regardless of UTC rollover.
+  const now = new Date()
+  let etDate: string
+  let etHour: number
+  try {
+    etDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now)
+    etHour = Number(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        hourCycle: 'h23'
+      }).format(now)
+    )
+  } catch {
+    // Fallback if Intl tz is unavailable: approximate ET as UTC-5.
+    const t = new Date(now.getTime() - 5 * 3600 * 1000)
+    etDate = t.toISOString().slice(0, 10)
+    etHour = t.getUTCHours()
+  }
+  if (!force) {
+    if (syncedAt === etDate) return { status: 'skipped', reason: 'already-today' }
+    if (etHour < 17) return { status: 'skipped', reason: 'before-1700-et' }
+  }
 
   const token = await decryptToken(config.tokenEnc)
   let rows = await fetchFlexTrades(token, config.queryId)
   rows.sort((a, b) => (b.dateTime || b.tradeDate).localeCompare(a.dateTime || a.tradeDate))
   if (rows.length > MAX_ROWS) rows = rows.slice(0, MAX_ROWS)
 
-  await putSetting(db, 'flex_trades', { date: today, rows })
-  await putSetting(db, 'flex_synced_at', today)
+  await putSetting(db, 'flex_trades', { date: etDate, rows })
+  await putSetting(db, 'flex_synced_at', etDate)
   return { status: 'synced', count: rows.length }
 }
