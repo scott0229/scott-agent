@@ -9,6 +9,7 @@ import type {
 import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
+import ObserveRulesDialog from './ObserveRulesDialog'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
 import { compareSymbols } from '../lib/symbols'
 import {
@@ -116,7 +117,7 @@ const posKey = (pos: PositionData): string =>
 interface GroupFilters {
   index: string
   symbol: string
-  right: '' | 'C' | 'P'
+  right: '' | 'C' | 'P' | 'STK'
 }
 const groupFiltersMemory: GroupFilters = { index: '', symbol: '', right: '' }
 
@@ -198,7 +199,7 @@ function inferLegYmd(mon: string, day: string): string | null {
 // (source); the SELL (-) leg is the new position (target).
 function parseRollSpec(
   desc: string | undefined
-): { days: number | null; pts: number } | null {
+): { days: number | null; pts: number; right: string } | null {
   if (!desc || !desc.includes('→')) return null
   const legs = desc.split('→').map((s) => s.trim())
   if (legs.length !== 2) return null
@@ -213,7 +214,7 @@ function parseRollSpec(
   const tgtYmd = inferLegYmd(sell[2], sell[3])
   const days = srcYmd && tgtYmd ? rollTradingDays(srcYmd, tgtYmd) : null
   const pts = Number(sell[4]) - Number(buy[4])
-  return { days, pts }
+  return { days, pts, right: sell[5] }
 }
 
 
@@ -359,11 +360,14 @@ export default function AccountOverview({
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
+  const [showObserveRules, setShowObserveRules] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [filterGroupIndex, setFilterGroupIndex] = useState(groupFiltersMemory.index)
   const [filterGroupSymbol, setFilterGroupSymbol] = useState(groupFiltersMemory.symbol)
   // Group-view option-right filter: '' = all, 'C' = calls only, 'P' = puts only
-  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P'>(groupFiltersMemory.right)
+  const [filterGroupRight, setFilterGroupRight] = useState<'' | 'C' | 'P' | 'STK'>(
+    groupFiltersMemory.right
+  )
 
   // Per-group checkbox state: groupId -> Set of checked posKeys
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
@@ -1521,11 +1525,16 @@ export default function AccountOverview({
           {(() => {
             const spec = parseRollSpec(order.comboDescription)
             if (!spec) return ''
-            const ptsStr = spec.pts > 0 ? `+${spec.pts}` : `${spec.pts}`
+            // These rolls come from the 展期觀察 chase rules (all observe rules
+            // are chase), so match the watch's 追 convention: chase points =
+            // strike delta for calls, negated for puts. The day part stays 展.
+            const chasePts = spec.right === 'C' ? spec.pts : -spec.pts
+            // Match the 展期觀察 chunk: no "+" prefix for positives (e.g. 追 2 點).
+            const ptsStr = `${chasePts}`
             return (
               <>
                 展 {spec.days != null ? spec.days : '-'} 天
-                <span className="roll-watch-sep">·</span>展 {ptsStr} 點
+                <span className="roll-watch-sep">·</span>追 {ptsStr} 點
               </>
             )
           })()}
@@ -1588,12 +1597,23 @@ export default function AccountOverview({
         </td>
         {(() => {
           const oq = orderQuotes[`${order.account}|${order.permId}`]
+          // IB returns 0 for a combo with no live quote (e.g. market closed) —
+          // show "-" instead of a misleading 0.00.
           const fmt = (v: number | undefined): string =>
-            v != null && Number.isFinite(v) ? v.toFixed(2) : '-'
+            v != null && Number.isFinite(v) && v !== 0 ? v.toFixed(2) : '-'
+          // 中間 = (買+賣)/2, only when BOTH sides have a real quote.
+          const hasBoth =
+            !!oq &&
+            Number.isFinite(oq.bid) &&
+            oq.bid !== 0 &&
+            Number.isFinite(oq.ask) &&
+            oq.ask !== 0
+          const mid = hasBoth ? (oq!.bid + oq!.ask) / 2 : null
           return (
             <>
               <td style={{ color: '#1a6b3a' }}>{fmt(oq?.bid)}</td>
               <td style={{ color: '#c0392b' }}>{fmt(oq?.ask)}</td>
+              <td style={{ color: '#1d4ed8' }}>{mid != null ? mid.toFixed(2) : '-'}</td>
             </>
           )
         })()}
@@ -1772,18 +1792,22 @@ export default function AccountOverview({
               <CustomSelect
                 className={`group-filter-select${filterGroupRight ? ' active' : ''}`}
                 value={filterGroupRight}
-                onChange={(v) => setFilterGroupRight(v as '' | 'C' | 'P')}
+                onChange={(v) => setFilterGroupRight(v as '' | 'C' | 'P' | 'STK')}
                 options={[
-                  { value: '', label: 'All Options' },
+                  { value: '', label: 'All Positions' },
                   { value: 'P', label: 'PUT' },
-                  { value: 'C', label: 'CALL' }
+                  { value: 'C', label: 'CALL' },
+                  { value: 'STK', label: '股票' }
                 ]}
               />
               <button
                 className="select-toggle-btn"
                 style={{ marginLeft: 'auto' }}
-                onClick={() => setShowAddGroup(true)}
+                onClick={() => setShowObserveRules(true)}
               >
+                觀察規則
+              </button>
+              <button className="select-toggle-btn" onClick={() => setShowAddGroup(true)}>
                 ＋ 新增
               </button>
             </div>
@@ -2030,14 +2054,23 @@ export default function AccountOverview({
                 const matchesGroupRight = (p: PositionData): boolean =>
                   p.right === filterGroupRight ||
                   p.right === (filterGroupRight === 'C' ? 'CALL' : 'PUT')
-                if (
+                // 股票: keep only groups that hold a stock leg, and show just the
+                // stock rows. Otherwise (PUT/CALL) hide groups with no option of
+                // that right and drop the other right's options.
+                if (filterGroupRight === 'STK') {
+                  if (!groupPositionsAll.some((p) => p.secType === 'STK')) return null
+                } else if (
                   filterGroupRight &&
                   !groupPositionsAll.some((p) => p.secType === 'OPT' && matchesGroupRight(p))
-                )
+                ) {
                   return null
-                const groupPositions = filterGroupRight
-                  ? groupPositionsAll.filter((p) => p.secType !== 'OPT' || matchesGroupRight(p))
-                  : groupPositionsAll
+                }
+                const groupPositions =
+                  filterGroupRight === 'STK'
+                    ? groupPositionsAll.filter((p) => p.secType === 'STK')
+                    : filterGroupRight
+                      ? groupPositionsAll.filter((p) => p.secType !== 'OPT' || matchesGroupRight(p))
+                      : groupPositionsAll
                 // Per-position "traded today" marker: a single position row turns
                 // its left border blue when today's IB executions include a fill on
                 // that EXACT contract (account+symbol+secType+expiry+strike+right) —
@@ -3343,6 +3376,7 @@ export default function AccountOverview({
                       <th style={{ width: '8%' }}>數量</th>
                       <th style={{ width: '8%' }}>買價</th>
                       <th style={{ width: '8%' }}>賣價</th>
+                      <th style={{ width: '7%' }}>中間</th>
                       <th style={{ width: '7%' }}>限價</th>
                       <th style={{ width: '8%' }}>成交價</th>
                       <th style={{ width: '7%' }}>傭金</th>
@@ -4805,22 +4839,6 @@ export default function AccountOverview({
                     true
                   )}
                 </div>
-                <div
-                  style={{
-                    padding: '12px 20px',
-                    borderTop: '1px solid var(--border-color)',
-                    display: 'flex',
-                    justifyContent: 'flex-end'
-                  }}
-                >
-                  <button
-                    className="select-toggle-btn active"
-                    style={{ minWidth: 80 }}
-                    onClick={() => setMarginExplain(null)}
-                  >
-                    確定
-                  </button>
-                </div>
               </div>
             </div>
           )
@@ -5179,6 +5197,7 @@ export default function AccountOverview({
         editGroup={editingGroup}
         onUpdateGroup={onUpdateSymbolGroup}
       />
+      <ObserveRulesDialog open={showObserveRules} onClose={() => setShowObserveRules(false)} />
     </>
   )
 }

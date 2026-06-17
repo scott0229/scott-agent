@@ -91,7 +91,7 @@ export default function TradeHistory({
   const [error, setError] = useState<string | null>(null)
   const [filterAccount, setFilterAccount] = useState('')
   const [filterSymbol, setFilterSymbol] = useState('')
-  const [filterRight, setFilterRight] = useState<'' | 'P' | 'C'>('')
+  const [filterRight, setFilterRight] = useState<'' | 'P' | 'C' | 'STK'>('')
   const [filterDate, setFilterDate] = useState('')
 
   // Account filter: only the accounts that actually appear in the loaded trades,
@@ -121,7 +121,8 @@ export default function TradeHistory({
         (t) =>
           (!filterAccount || t.account === filterAccount) &&
           (!filterSymbol || underlyingOf(t) === filterSymbol) &&
-          (!filterRight || t.putCall === filterRight) &&
+          (!filterRight ||
+            (filterRight === 'STK' ? t.assetCategory === 'STK' : t.putCall === filterRight)) &&
           (!filterDate || t.tradeDate === filterDate)
       ),
     [trades, filterAccount, filterSymbol, filterRight, filterDate]
@@ -277,11 +278,12 @@ export default function TradeHistory({
           <CustomSelect
             className={`dropdown-no-scroll${filterRight ? ' account-filter-active' : ''}`}
             value={filterRight}
-            onChange={(v) => setFilterRight(v as '' | 'P' | 'C')}
+            onChange={(v) => setFilterRight(v as '' | 'P' | 'C' | 'STK')}
             options={[
-              { value: '', label: 'All Options' },
+              { value: '', label: 'All Positions' },
               { value: 'P', label: 'PUT' },
-              { value: 'C', label: 'CALL' }
+              { value: 'C', label: 'CALL' },
+              { value: 'STK', label: '股票' }
             ]}
           />
         )}

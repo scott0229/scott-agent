@@ -946,10 +946,14 @@ export default function RollOptionDialog({
                           {(() => {
                             const rd = rollTradingDays(pos.expiry, targetExpiry)
                             const srcStrike = Number(pos.strike)
-                            const pd =
+                            const strikeDelta =
                               targetStrike !== null && Number.isFinite(srcStrike)
                                 ? targetStrike - srcStrike
                                 : null
+                            // 追 (chase) convention, matching 展期觀察 / 委託單:
+                            // calls = +strikeΔ, puts = −strikeΔ.
+                            const isCall = pos.right === 'C' || pos.right === 'CALL'
+                            const pd = strikeDelta === null ? null : isCall ? strikeDelta : -strikeDelta
                             const pdStr =
                               pd === null ? '-' : Number.isInteger(pd) ? `${pd}` : pd.toFixed(1)
                             return (
@@ -958,7 +962,7 @@ export default function RollOptionDialog({
                                   {rd !== null ? `展 ${rd} 天` : '-'}
                                 </td>
                                 <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                  {pd !== null ? `展 ${pdStr} 點` : '-'}
+                                  {pd !== null ? `追 ${pdStr} 點` : '-'}
                                 </td>
                               </>
                             )
