@@ -138,6 +138,20 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
 // (領先 1%~2%) — between comfortable and getting close.
 export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
   {
+    id: 'obsM0',
+    enabledKey: 'trader.obsM0.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM0.dteOp',
+    dteKey: 'trader.obsM0.dte',
+    daysKey: 'trader.obsM0.days',
+    pointsKey: 'trader.obsM0.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 0,
+    defaultPoints: -2
+  },
+  {
     id: 'obsM1',
     enabledKey: 'trader.obsM1.enabled',
     hasDte: false,

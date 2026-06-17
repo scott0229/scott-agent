@@ -219,6 +219,21 @@ export default function ObserveRulesDialog({
               expanded={showObserve}
               onToggle={() => setShowObserve((v) => !v)}
             />
+            {showObserve && (
+              <div
+                style={{
+                  fontSize: '0.88em',
+                  color: '#333',
+                  padding: '0 8px',
+                  marginBottom: 10,
+                  lineHeight: 1.6
+                }}
+              >
+                大幅領先可以優先考慮降 DTE，
+                <br />
+                若 DTE 正常就退後幾點放大收益
+              </div>
+            )}
             {showObserve && OBSERVE_RULES.map(renderObserveRow)}
           </div>
 
@@ -228,6 +243,23 @@ export default function ObserveRulesDialog({
               expanded={showObserveMid}
               onToggle={() => setShowObserveMid((v) => !v)}
             />
+            {showObserveMid && (
+              <div
+                style={{
+                  fontSize: '0.88em',
+                  color: '#333',
+                  padding: '0 8px',
+                  marginBottom: 10,
+                  lineHeight: 1.6
+                }}
+              >
+                安全範圍可以考慮降 DTE，
+                <br />
+                或收益為正時微幅的追一點，
+                <br />
+                或微幅退後放大收益
+              </div>
+            )}
             {showObserveMid && OBSERVE_RULES_MID.map(renderObserveRow)}
           </div>
 
@@ -237,6 +269,23 @@ export default function ObserveRulesDialog({
               expanded={showObserveNear}
               onToggle={() => setShowObserveNear((v) => !v)}
             />
+            {showObserveNear && (
+              <div
+                style={{
+                  fontSize: '0.88em',
+                  color: '#333',
+                  padding: '0 8px',
+                  marginBottom: 10,
+                  lineHeight: 1.6
+                }}
+              >
+                領先不夠多不適合再退後點位，
+                <br />
+                可以同點位展期賺權利金，
+                <br />
+                也可以微幅的追來保持優勢
+              </div>
+            )}
             {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
           </div>
 
@@ -246,6 +295,23 @@ export default function ObserveRulesDialog({
               expanded={showObserveBreached}
               onToggle={() => setShowObserveBreached((v) => !v)}
             />
+            {showObserveBreached && (
+              <div
+                style={{
+                  fontSize: '0.88em',
+                  color: '#333',
+                  padding: '0 8px',
+                  marginBottom: 10,
+                  lineHeight: 1.6
+                }}
+              >
+                只要有落後就要追，
+                <br />
+                適度的虧損也可以接受，
+                <br />
+                且最多用兩天來換提價
+              </div>
+            )}
             {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
           </div>
 
@@ -255,6 +321,23 @@ export default function ObserveRulesDialog({
               expanded={showObserveBreachedFar}
               onToggle={() => setShowObserveBreachedFar((v) => !v)}
             />
+            {showObserveBreachedFar && (
+              <div
+                style={{
+                  fontSize: '0.88em',
+                  color: '#333',
+                  padding: '0 8px',
+                  marginBottom: 10,
+                  lineHeight: 1.6
+                }}
+              >
+                落後太多故虧損提價難以避免，
+                <br />
+                如果 DTE 過高可以暫停不操作，
+                <br />
+                最多用兩天來換提價
+              </div>
+            )}
             {showObserveBreachedFar && OBSERVE_RULES_BREACHED_FAR.map(renderObserveRow)}
           </div>
         </div>
