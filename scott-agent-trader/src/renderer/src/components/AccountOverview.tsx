@@ -835,6 +835,47 @@ export default function AccountOverview({
     }
   }, [positions, pendingRollUpdate, symbolGroups, onUpdateSymbolGroup])
 
+  // Diagnostic: a non-auto batch card that resolves to ZERO matching positions is
+  // the visible "展期後卡牌被清空 / 認不出新交易" symptom — its stored posKeys still
+  // point at the old (now-closed) contract while the new leg sits under a posKey
+  // the group never picked up. The [ROLL] effect above only logs while a
+  // pendingRollUpdate is active; this catches the empty state however it arose
+  // (settings revert, a post-roll position refresh, a never-matched leg). Logged
+  // once per (group, posKeys) so it doesn't spam every render; re-armed when the
+  // card fills again or its posKeys change.
+  const emptyCardLogged = useRef<Map<string, string>>(new Map())
+  useEffect(() => {
+    if (!positions.length) return
+    const stillEmpty = new Set<string>()
+    for (const g of symbolGroups) {
+      if (g.autoParams || !g.posKeys.length) continue
+      const matched = positions.filter((p) => g.posKeys.includes(posKey(p)))
+      if (matched.length > 0) {
+        emptyCardLogged.current.delete(g.id)
+        continue
+      }
+      stillEmpty.add(g.id)
+      const sig = g.posKeys.join(',')
+      if (emptyCardLogged.current.get(g.id) === sig) continue
+      emptyCardLogged.current.set(g.id, sig)
+      // What IB actually reports for the account+symbol(s) this card points at —
+      // compare to posKeys to see which contract the stored key still references.
+      const wantAcctSym = new Set(g.posKeys.map((k) => k.split('|').slice(0, 2).join('|')))
+      const candidates = positions
+        .filter((p) => wantAcctSym.has(`${p.account}|${p.symbol}`))
+        .map(
+          (p) =>
+            `${p.account}|${p.symbol}|${p.secType}|${p.expiry || ''}|${p.strike || ''}|${p.right || ''}|q${p.quantity}`
+        )
+      const diag = { group: g.name, id: g.id, posKeys: g.posKeys, candidates }
+      console.warn('[CARD] emptied — 0 matching positions', diag)
+      window.ibApi.debugLog('[CARD] emptied ' + JSON.stringify(diag))
+    }
+    for (const id of Array.from(emptyCardLogged.current.keys())) {
+      if (!stillEmpty.has(id)) emptyCardLogged.current.delete(id)
+    }
+  }, [positions, symbolGroups])
+
   // Watch positions: when pending transfer changes are confirmed, update group posKeys
   useEffect(() => {
     if (!pendingTransferUpdate) return

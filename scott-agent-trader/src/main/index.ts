@@ -1,6 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { appendFile } from 'fs'
+import { copyFile } from 'fs/promises'
+import { initLogger, getLogPath, appendLog } from './logger'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { connect, disconnect, getConnectionState, onConnectionStatusChange } from './ib/connection'
@@ -102,13 +103,35 @@ function setupIpcHandlers(): void {
   // intermittent issue (e.g. a roll leaving a batch empty) is captured during
   // real trading without anyone watching the console.
   ipcMain.on('debug:log', (_event, line: string) => {
-    try {
-      const logPath = join(app.getPath('userData'), 'roll-debug.log')
-      appendFile(logPath, `${new Date().toISOString()} ${line}\n`, () => {})
-    } catch {
-      /* best-effort logging */
-    }
+    appendLog(`[renderer] ${line}`)
     console.log(`[debug:log] ${line}`)
+  })
+
+  // Return the on-disk path of the debug log (for display / open-in-folder).
+  ipcMain.handle('debug:getLogPath', () => getLogPath())
+
+  // Download the debug log: native Save dialog, then copy the file there.
+  ipcMain.handle('debug:saveLog', async () => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+    const stampName = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    const opts = {
+      title: '下載 debug.log',
+      defaultPath: `scott-agent-trader-debug-${stampName}.log`,
+      filters: [
+        { name: 'Log files', extensions: ['log'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    }
+    const { canceled, filePath } = win
+      ? await dialog.showSaveDialog(win, opts)
+      : await dialog.showSaveDialog(opts)
+    if (canceled || !filePath) return { ok: false, canceled: true }
+    try {
+      await copyFile(getLogPath(), filePath)
+      return { ok: true, path: filePath }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
   })
 
   // Connection
@@ -354,14 +377,7 @@ function setupIpcHandlers(): void {
 
   ipcMain.on('renderer-log', (_event, ...args) => {
     console.log('[RENDERER]', ...args)
-    const fs = require('fs')
-    const path = require('path')
-    try {
-      fs.appendFileSync(
-        path.join(process.cwd(), 'debugroll.log'),
-        '[RENDERER] ' + args.join(' ') + '\n'
-      )
-    } catch (e) {}
+    appendLog(`[renderer] ${args.join(' ')}`)
   })
 
   // Options
@@ -1393,6 +1409,9 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return
+  // Start the debug logger first so everything below (and all subsequent
+  // console output) is teed to userData/debug.log.
+  initLogger()
   electronApp.setAppUserModelId('com.scott-agent.trader')
 
   app.on('browser-window-created', (_, window) => {

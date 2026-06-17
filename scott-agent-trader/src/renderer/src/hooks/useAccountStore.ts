@@ -75,6 +75,32 @@ interface AccountStore {
 const POLL_INTERVAL = 2000
 const HISTORY_POLL_INTERVAL = 10000
 
+// Merge incoming order bid/ask into the store, keeping the last good value per
+// side. The main process emits NaN for a leg whose quote hasn't arrived yet;
+// blindly merging that would flicker a previously-good 買價/賣價 to "-". Combo
+// (roll) order quotes can be negative (net debit), so a value is "good" when it
+// is finite — NOT when it's > 0.
+type OrderBidAsk = { bid: number; ask: number }
+function mergeOrderQuotes(
+  prev: Record<string, OrderBidAsk>,
+  incoming: Record<string, OrderBidAsk>
+): Record<string, OrderBidAsk> {
+  const merged = { ...prev }
+  for (const [key, q] of Object.entries(incoming)) {
+    const prevQ = merged[key]
+    const bid = Number.isFinite(q?.bid) ? q.bid : prevQ?.bid
+    const ask = Number.isFinite(q?.ask) ? q.ask : prevQ?.ask
+    // Don't create an entry until at least one side has ever had real data.
+    if (Number.isFinite(bid) || Number.isFinite(ask)) {
+      merged[key] = {
+        bid: Number.isFinite(bid) ? (bid as number) : NaN,
+        ask: Number.isFinite(ask) ? (ask as number) : NaN
+      }
+    }
+  }
+  return merged
+}
+
 export function useAccountStore(
   connected: boolean,
   port: number,
@@ -321,7 +347,7 @@ export function useAccountStore(
             })
           }
           if (data.orderQuotes && Object.keys(data.orderQuotes).length > 0) {
-            setOrderQuotes((prev) => ({ ...prev, ...data.orderQuotes }))
+            setOrderQuotes((prev) => mergeOrderQuotes(prev, data.orderQuotes))
           }
         })
         quoteCleanupRef.current = removeListener
@@ -330,7 +356,7 @@ export function useAccountStore(
           .subscribeQuotes(stockSymbols, optionContracts, orderReqs)
           .then((initial) => {
             if (initial.orderQuotes && Object.keys(initial.orderQuotes).length > 0) {
-              setOrderQuotes((prev) => ({ ...prev, ...initial.orderQuotes }))
+              setOrderQuotes((prev) => mergeOrderQuotes(prev, initial.orderQuotes))
             }
             if (initial.quotes && Object.keys(initial.quotes).length > 0) {
               setQuotes((prev) => {

@@ -63,6 +63,13 @@ export default function RollOptionDialog({
   // Derive common properties
   const symbol = positions[0]?.symbol || ''
 
+  // 用觀察倉做展期: the dialog was opened from a saved 展期觀察 target (a fixed
+  // expiry/strike handed in via initialTarget, and NOT the observe-setup flow).
+  // The target is already decided, so hide the option-chain UI (expiry/strike
+  // pickers + 顯示期權鏈 toggle + the chain panel) so it can't be changed/opened.
+  // Pricing still loads in the background for the target's bid/ask/mid.
+  const lockChain = !!initialTarget && !observeMode
+
   // Unique current expiry/strike combos - stable via ref
   const currentCombosKey = positions
     .map((p) => `${p.expiry}_${p.strike}`)
@@ -126,6 +133,15 @@ export default function RollOptionDialog({
     cancelSubscriptionsOnCleanup: true,
     pinnedStrikes
   })
+
+  // Manual / observe-setup roll (clicked the 展期 button): default the option
+  // chain to OPEN every time the dialog opens. This component stays mounted while
+  // `open` toggles, so chainHidden persists — a prior 隱藏 would otherwise stick.
+  // For a 觀察倉 roll the chain is hidden outright, so this is skipped.
+  useEffect(() => {
+    if (open && !lockChain) chain.setChainHidden(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lockChain])
 
   // ── Roll-specific state ─────────────────────────────────────────────────
   const [targetExpiry, setTargetExpiry] = useState('')
@@ -565,9 +581,9 @@ export default function RollOptionDialog({
         <div className="roll-dialog-body">
           {chain.errorMsg && <div className="roll-dialog-error">{chain.errorMsg}</div>}
 
-          {/* Selectors row */}
-          {chain.dataReady &&
-          (chain.availableExpirations.length > 0 || chain.availableStrikes.length > 0) ? (
+          {/* Selectors row — hidden entirely for a 觀察倉 roll (locked target). */}
+          {lockChain ? null : chain.dataReady &&
+            (chain.availableExpirations.length > 0 || chain.availableStrikes.length > 0) ? (
             <div className="roll-selectors-row">
               {/* Expiry date selector */}
               {chain.availableExpirations.length > 0 && (
@@ -662,7 +678,7 @@ export default function RollOptionDialog({
           )}
 
           {/* Multi-expiry option chain */}
-          {!chain.chainHidden && (
+          {!lockChain && !chain.chainHidden && (
             <OptionChainTable
               loading={!chain.dataReady}
               displayExpirations={chain.displayExpirations}

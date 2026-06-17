@@ -30,7 +30,7 @@ import {
 } from '../lib/observeRules'
 import type { DteOp, ObserveRuleDef } from '../lib/observeRules'
 
-const LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+const LABELS = ['一', '二', '三', '四', '五', '六']
 
 interface SettingsPanelProps {
   open: boolean
@@ -151,6 +151,23 @@ export default function SettingsPanel({
   )
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
+  const [showDebug, setShowDebug] = useState(false)
+  const [savingLog, setSavingLog] = useState(false)
+  const [logMsg, setLogMsg] = useState<string | null>(null)
+
+  const downloadDebugLog = async (): Promise<void> => {
+    setSavingLog(true)
+    setLogMsg(null)
+    try {
+      const res = await window.ibApi.debugSaveLog()
+      // Success / cancel: stay silent. Only surface an actual failure.
+      if (!res?.ok && !res?.canceled) setLogMsg(`儲存失敗：${res?.error || '未知錯誤'}`)
+    } catch (e) {
+      setLogMsg(`儲存失敗：${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setSavingLog(false)
+    }
+  }
 
   // One editable row for an observe rule — shared by the 未被突破 / 已被突破
   // sections so the markup lives in one place.
@@ -438,7 +455,7 @@ export default function SettingsPanel({
                       padding: '4px 8px',
                       border: '1px solid #ccc',
                       borderRadius: 6,
-                      fontSize: '0.88em',
+                      fontSize: '0.8em',
                       textAlign: 'center',
                       textTransform: 'uppercase',
                       marginLeft: 'auto'
@@ -497,6 +514,42 @@ export default function SettingsPanel({
                   </label>
                 )
               })}
+            </div>
+          )}
+
+          <SectionHeader
+            title="診斷"
+            expanded={showDebug}
+            onToggle={() => setShowDebug((v) => !v)}
+          />
+          {showDebug && (
+            <div style={{ padding: '0 8px', marginBottom: 12 }}>
+              <button
+                className="settings-btn"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 8,
+                  background: '#fff',
+                  cursor: savingLog ? 'default' : 'pointer',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  fontFamily: 'inherit',
+                  fontSize: '0.88em',
+                  color: '#555'
+                }}
+                onClick={downloadDebugLog}
+                disabled={savingLog}
+              >
+                {savingLog ? '儲存中…' : '下載 debug.log'}
+              </button>
+              {logMsg && (
+                <div style={{ fontSize: '0.8em', color: '#555', marginTop: 8, wordBreak: 'break-all' }}>
+                  {logMsg}
+                </div>
+              )}
             </div>
           )}
 

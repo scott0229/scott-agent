@@ -130,6 +130,8 @@ interface IBApi {
     }>
   >
   debugLog: (line: string) => void
+  debugSaveLog: () => Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }>
+  debugGetLogPath: () => Promise<string>
   getManagedAccounts: () => Promise<string[]>
   getAccountSummary: () => Promise<
     Array<{

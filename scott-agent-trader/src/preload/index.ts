@@ -82,6 +82,10 @@ const ibApi = {
   // Append a diagnostic line to userData/roll-debug.log so an intermittent bug
   // is captured during real trading even if no one is watching the console.
   debugLog: (line: string): void => ipcRenderer.send('debug:log', line),
+  // Download the unified debug log (userData/debug.log) via a native Save dialog.
+  debugSaveLog: (): Promise<{ ok: boolean; canceled?: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke('debug:saveLog'),
+  debugGetLogPath: (): Promise<string> => ipcRenderer.invoke('debug:getLogPath'),
   onConnectionStatus: (callback: (state: any) => void): (() => void) => {
     const handler = (_event: any, state: any): void => callback(state)
     ipcRenderer.on('ib:connectionStatus', handler)
