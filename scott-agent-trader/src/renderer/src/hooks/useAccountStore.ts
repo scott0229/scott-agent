@@ -393,7 +393,18 @@ export function useAccountStore(
 
         return Array.from(mergedMap.values()).sort((a, b) => b.permId - a.permId)
       })
-      setExecutions(execData)
+      // Merge, don't replace. getExecutions() can come back empty (a slow/timed-
+      // out reqExecutions on a multi-account FA login returns []). Replacing
+      // would wipe live-streamed fills (onExecutionUpdate) — exactly what the
+      // batch card's blue "今日完成" bar reads — so a roll's fill would flash on
+      // then vanish on the next poll. Keep prior executions when empty; union by
+      // execId otherwise.
+      setExecutions((prev) => {
+        if (execData.length === 0) return prev
+        const map = new Map(prev.map((e) => [e.execId, e]))
+        for (const e of execData) map.set(e.execId, e)
+        return Array.from(map.values())
+      })
     } catch (err) {
       console.error('Failed to fetch history:', err)
     } finally {

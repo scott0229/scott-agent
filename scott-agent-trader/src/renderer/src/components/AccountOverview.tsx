@@ -772,7 +772,9 @@ export default function AccountOverview({
     }
 
     if (replacements.size > 0) {
-      console.log('[ROLL] Applying posKey replacements', Object.fromEntries(replacements))
+      const repl = Object.fromEntries(replacements)
+      console.log('[ROLL] Applying posKey replacements', repl)
+      window.ibApi.debugLog('[ROLL] applying ' + JSON.stringify(repl))
       for (const g of symbolGroups) {
         if (g.autoParams) continue
         if (!g.posKeys.some((k) => replacements.has(k))) continue
@@ -792,12 +794,35 @@ export default function AccountOverview({
     // contract hasn't shown up in `positions` and what target we're hunting, so
     // a recurrence is debuggable instead of a silent empty batch.
     if (stillPending.length > 0) {
-      console.warn('[ROLL] Legs still unmatched — group will show 無匹配持倉 until these resolve', {
+      const diag = {
         target,
         pending: stillPending.map(
           (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
-        )
-      })
+        ),
+        // What IB actually reports right now for those account+symbol OPT
+        // positions — compare to `target` to see which field (expiry / strike /
+        // right) doesn't line up so the new leg is never matched.
+        candidates: stillPending.flatMap((op) =>
+          positions
+            .filter(
+              (p) => p.account === op.account && p.symbol === op.symbol && p.secType === 'OPT'
+            )
+            .map(
+              (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}|q${p.quantity}`
+            )
+        ),
+        // The affected group(s)' currently-stored posKeys, to confirm whether
+        // they still point at the old (closed) contract.
+        affectedGroups: symbolGroups
+          .filter(
+            (g) =>
+              !g.autoParams &&
+              g.posKeys.some((k) => stillPending.some((op) => posKey(op) === k))
+          )
+          .map((g) => ({ name: g.name, posKeys: g.posKeys }))
+      }
+      console.warn('[ROLL] Legs still unmatched — 無匹配持倉 until resolved', diag)
+      window.ibApi.debugLog('[ROLL] unmatched ' + JSON.stringify(diag))
     }
 
     // Done once every leg resolved; otherwise keep only the laggards pending so
@@ -1972,15 +1997,23 @@ export default function AccountOverview({
                 const groupPositions = filterGroupRight
                   ? groupPositionsAll.filter((p) => p.secType !== 'OPT' || matchesGroupRight(p))
                   : groupPositionsAll
-                // 「今日已完成操作」is derived from IB executions (no manual checkbox):
-                // if any of today's fills are on this group's symbol(s) in one of its
-                // accounts, the roll/trade counts as done today. `executions` is
-                // already fetched since today's ET open, so no extra date filter.
-                const groupAccounts = new Set(groupPositions.map((p) => p.account))
-                const groupSymbols = new Set(groupPositions.map((p) => p.symbol))
-                const completedToday = executions.some(
-                  (e) => groupAccounts.has(e.account) && groupSymbols.has(e.symbol)
+                // Per-position "traded today" marker: a single position row turns
+                // its left border blue when today's IB executions include a fill on
+                // that EXACT contract (account+symbol+secType+expiry+strike+right) —
+                // e.g. the new leg just opened by a roll. `executions` is already
+                // today-only; normR folds C/CALL and P/PUT.
+                const normR = (r?: string): string =>
+                  r === 'C' || r === 'CALL' ? 'C' : r === 'P' || r === 'PUT' ? 'P' : ''
+                const rolledTodayKeys = new Set(
+                  executions.map(
+                    (e) =>
+                      `${e.account}|${e.symbol}|${e.secType}|${e.expiry || ''}|${e.strike || ''}|${normR(e.right)}`
+                  )
                 )
+                const isRolledToday = (p: PositionData): boolean =>
+                  rolledTodayKeys.has(
+                    `${p.account}|${p.symbol}|${p.secType}|${p.expiry || ''}|${p.strike || ''}|${normR(p.right)}`
+                  )
                 return (
                   <div
                     key={g.id}
@@ -2680,7 +2713,11 @@ export default function AccountOverview({
                                   color: '#888',
                                   fontSize: '12px',
                                   whiteSpace: 'nowrap',
-                                  paddingLeft: '8px'
+                                  paddingLeft: '8px',
+                                  // Cell border wins over the table's gray border via
+                                  // border-collapse, so this turns ONLY this row's left
+                                  // edge blue when the contract traded today.
+                                  borderLeft: isRolledToday(pos) ? '3px solid #2563eb' : undefined
                                 }}
                               >
                                 {checkModeGroups.has(g.id) && (
@@ -2783,12 +2820,7 @@ export default function AccountOverview({
                           <>
                             {stkPos.length > 0 && (
                               <div className="positions-section">
-                                <table
-                                  className="positions-table"
-                                  style={{
-                                    borderLeftColor: completedToday ? '#2563eb' : undefined
-                                  }}
-                                >
+                                <table className="positions-table">
                                   <thead>
                                     <tr>
                                       <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>
@@ -2837,12 +2869,7 @@ export default function AccountOverview({
                             )}
                             {optPos.length > 0 && (
                               <div className="positions-section">
-                                <table
-                                  className="positions-table"
-                                  style={{
-                                    borderLeftColor: completedToday ? '#2563eb' : undefined
-                                  }}
-                                >
+                                <table className="positions-table">
                                   <thead>
                                     <tr>
                                       <th style={{ width: '5%', textAlign: 'left', paddingLeft: '8px' }}>

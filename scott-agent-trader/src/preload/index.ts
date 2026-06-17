@@ -79,6 +79,9 @@ const ibApi = {
   flexEncrypt: (token: string): Promise<string> => ipcRenderer.invoke('flex:encrypt', token),
   flexFetchTrades: (tokenEnc: string, queryId: string): Promise<any[]> =>
     ipcRenderer.invoke('flex:fetchTrades', tokenEnc, queryId),
+  // Append a diagnostic line to userData/roll-debug.log so an intermittent bug
+  // is captured during real trading even if no one is watching the console.
+  debugLog: (line: string): void => ipcRenderer.send('debug:log', line),
   onConnectionStatus: (callback: (state: any) => void): (() => void) => {
     const handler = (_event: any, state: any): void => callback(state)
     ipcRenderer.on('ib:connectionStatus', handler)

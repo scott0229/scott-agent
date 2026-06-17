@@ -922,9 +922,14 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
     api.on(EventName.execDetails, onExecDetails)
     api.on(EventName.execDetailsEnd, onExecDetailsEnd)
 
-    // Use US Eastern time for today's date (explicit timezone so IB doesn't misinterpret as UTC)
+    // Today's date in US Eastern. IB REJECTS an IANA "America/New_York" suffix
+    // on the filter time (error 10314 — invalid date/time/timezone), which made
+    // reqExecutions error out → no execDetailsEnd → 10s timeout → 0 executions.
+    // Use the bare "yyyymmdd HH:mm:ss" form (no timezone); IB accepts it and
+    // interprets it in the TWS session timezone.
     const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const todayStr = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')} 00:00:00 America/New_York`
+    const yyyymmdd = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')}`
+    const todayStr = `${yyyymmdd} 00:00:00`
     const filter: ExecutionFilter = { time: todayStr }
     api.reqExecutions(reqId, filter)
     console.log(`[IB] Requesting executions since ${todayStr}`)

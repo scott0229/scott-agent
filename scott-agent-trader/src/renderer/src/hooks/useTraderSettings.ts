@@ -109,11 +109,21 @@ export function useTraderSettings() {
     // the batch ("無匹配持倉") since nothing re-applies it once the roll's
     // pendingRollUpdate has cleared. Skip the overwrite within a short window
     // of a local write; genuine remote edits resync once the window elapses.
-    if (
-      Array.isArray(data.settings.symbol_groups) &&
-      Date.now() - lastGroupWriteRef.current > GROUP_WRITE_GUARD_MS
-    ) {
-      setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
+    if (Array.isArray(data.settings.symbol_groups)) {
+      const sinceWrite = Date.now() - lastGroupWriteRef.current
+      if (sinceWrite > GROUP_WRITE_GUARD_MS) {
+        const msg = {
+          sinceLastLocalWriteMs: sinceWrite,
+          count: (data.settings.symbol_groups as SymbolGroup[]).length
+        }
+        console.log('[settings] applying refetched symbol_groups', msg)
+        window.ibApi.debugLog('[settings] applying symbol_groups ' + JSON.stringify(msg))
+        setSymbolGroupsState(data.settings.symbol_groups as SymbolGroup[])
+      } else {
+        const msg = { sinceLastLocalWriteMs: sinceWrite }
+        console.log('[settings] SKIPPED refetched symbol_groups (recent local write)', msg)
+        window.ibApi.debugLog('[settings] skipped symbol_groups ' + JSON.stringify(msg))
+      }
     }
     if (typeof data.settings.show_operation_mode === 'boolean') {
       setShowOperationModeState(data.settings.show_operation_mode)

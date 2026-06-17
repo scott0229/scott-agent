@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { appendFile } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { connect, disconnect, getConnectionState, onConnectionStatusChange } from './ib/connection'
@@ -78,6 +79,15 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Allow F12 to toggle DevTools even in the packaged build (optimizer's
+  // watchWindowShortcuts disables devtools shortcuts in production). Needed so
+  // the installed app's renderer console can be opened for field debugging.
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') {
+      mainWindow?.webContents.toggleDevTools()
+    }
+  })
+
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -88,6 +98,19 @@ function createWindow(): void {
 // === IPC Handlers ===
 
 function setupIpcHandlers(): void {
+  // Diagnostic logging: renderer appends a line to userData/roll-debug.log so an
+  // intermittent issue (e.g. a roll leaving a batch empty) is captured during
+  // real trading without anyone watching the console.
+  ipcMain.on('debug:log', (_event, line: string) => {
+    try {
+      const logPath = join(app.getPath('userData'), 'roll-debug.log')
+      appendFile(logPath, `${new Date().toISOString()} ${line}\n`, () => {})
+    } catch {
+      /* best-effort logging */
+    }
+    console.log(`[debug:log] ${line}`)
+  })
+
   // Connection
   ipcMain.handle('ib:connect', async (_event, host: string, port: number) => {
     // Connect as the MASTER client (clientId 0) so we can manage ALL orders —

@@ -129,6 +129,7 @@ interface IBApi {
       tradeID: string
     }>
   >
+  debugLog: (line: string) => void
   getManagedAccounts: () => Promise<string[]>
   getAccountSummary: () => Promise<
     Array<{
