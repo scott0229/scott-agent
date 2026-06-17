@@ -377,7 +377,7 @@ function App(): React.JSX.Element {
                 maximumFractionDigits: 2
               })}`}
             >
-              <span className="stock-price-label">台股大盤</span>
+              <span className="stock-price-label">台股</span>
               {taiwanIndex.change >= 0 ? '+' : ''}
               {taiwanIndex.changePercent.toFixed(2)}%
             </span>
@@ -392,7 +392,7 @@ function App(): React.JSX.Element {
                 maximumFractionDigits: 2
               })}`}
             >
-              <span className="stock-price-label">韓股大盤</span>
+              <span className="stock-price-label">韓股</span>
               {koreaIndex.change >= 0 ? '+' : ''}
               {koreaIndex.changePercent.toFixed(2)}%
             </span>

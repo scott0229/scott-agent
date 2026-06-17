@@ -2336,16 +2336,14 @@ export default function AccountOverview({
                         />
                       </div>
                     )}
-                    {/* 預設觀察規則: when the group has no manually-saved watches,
-                        derive observation rows from the enabled default rules,
-                        applied to the group's current short option. */}
+                    {/* 觀察列: manual watches on top (order 1), default rules below
+                        (order 2), via a flex column so they don't need reordering. */}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ order: 2 }}>
+                    {/* 預設觀察規則: derive observation rows from the enabled default
+                        rules, applied to the group's current short option. Shown
+                        ALONGSIDE any manually-saved watches (not replaced by them). */}
                     {(() => {
-                      const manual = Array.isArray(g.rollWatch)
-                        ? g.rollWatch
-                        : g.rollWatch
-                          ? [g.rollWatch]
-                          : []
-                      if (manual.length > 0) return null
                       const normRight = (r: string): 'C' | 'P' =>
                         r === 'C' || r === 'CALL' ? 'C' : 'P'
                       const optPos = groupPositions.filter(
@@ -2440,6 +2438,8 @@ export default function AccountOverview({
                         )
                       })
                     })()}
+                    </div>
+                    <div style={{ order: 1 }}>
                     {/* 展期觀察: up to 3 saved roll targets → one live A→B row each. */}
                     {onUpdateSymbolGroup &&
                       (() => {
@@ -2537,6 +2537,8 @@ export default function AccountOverview({
                           )
                         })
                       })()}
+                    </div>
+                    </div>
                     <div
                       style={{
                         display: 'flex',

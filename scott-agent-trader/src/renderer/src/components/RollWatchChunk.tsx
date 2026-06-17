@@ -88,9 +88,13 @@ export default function RollWatchChunk({
     v != null && Number.isFinite(v) ? v.toFixed(2) : '-'
 
   const days = rollTradingDays(source.expiry, target.expiry)
-  const pts = chase && points != null ? points : target.strike - source.strike
+  // 追 (chase) convention everywhere: chase points = strike delta for calls,
+  // negated for puts. Auto rules pass an explicit `points`; manual watches derive
+  // it from the strike difference.
+  const rawDelta = target.strike - source.strike
+  const pts = chase && points != null ? points : source.right === 'C' ? rawDelta : -rawDelta
   const ptsStr = Number.isInteger(pts) ? `${pts}` : pts.toFixed(1)
-  const ptsVerb = chase ? '追' : '展'
+  const ptsVerb = '追'
 
   return (
     <div className="roll-watch-chunk">
