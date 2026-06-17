@@ -254,20 +254,6 @@ export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 2,
     defaultPoints: -2
-  },
-  {
-    id: 'obsN4',
-    enabledKey: 'trader.obsN4.enabled',
-    hasDte: false,
-    chase: true,
-    dteOpKey: 'trader.obsN4.dteOp',
-    dteKey: 'trader.obsN4.dte',
-    daysKey: 'trader.obsN4.days',
-    pointsKey: 'trader.obsN4.points',
-    defaultDteOp: '>',
-    defaultDte: 2,
-    defaultDays: 2,
-    defaultPoints: -3
   }
 ]
 

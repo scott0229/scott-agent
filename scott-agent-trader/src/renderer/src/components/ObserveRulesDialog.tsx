@@ -164,12 +164,15 @@ export default function ObserveRulesDialog({
         )}
         <span style={{ whiteSpace: 'nowrap' }}>展</span>
         <input
-          type="number"
-          step={1}
+          type="text"
+          inputMode="numeric"
           value={obsDays[r.id]}
           onChange={(e) => setObsDays((p) => ({ ...p, [r.id]: e.target.value }))}
           onBlur={() => {
-            const v = parseInt(obsDays[r.id], 10)
+            const raw = obsDays[r.id].trim()
+            // Empty → 0 so a cleared field sticks instead of snapping back to the
+            // old value; non-numeric junk → revert to the saved value.
+            const v = raw === '' ? 0 : parseInt(raw, 10)
             if (Number.isFinite(v)) {
               setObserveDays(r, v)
               setObsDays((p) => ({ ...p, [r.id]: String(v) }))
@@ -181,12 +184,13 @@ export default function ObserveRulesDialog({
         />
         <span style={{ whiteSpace: 'nowrap' }}>天，{r.chase ? '追' : '展'}</span>
         <input
-          type="number"
-          step={1}
+          type="text"
+          inputMode="numeric"
           value={obsPoints[r.id]}
           onChange={(e) => setObsPoints((p) => ({ ...p, [r.id]: e.target.value }))}
           onBlur={() => {
-            const v = parseInt(obsPoints[r.id], 10)
+            const raw = obsPoints[r.id].trim()
+            const v = raw === '' ? 0 : parseInt(raw, 10)
             if (Number.isFinite(v)) {
               setObservePoints(r, v)
               setObsPoints((p) => ({ ...p, [r.id]: String(v) }))
@@ -255,9 +259,9 @@ export default function ObserveRulesDialog({
               >
                 安全範圍可以考慮降 DTE，
                 <br />
-                或收益為正時微幅的追一點，
+                或收益為正時可微幅的追價，
                 <br />
-                或微幅退後放大收益
+                或微幅後退來放大收益
               </div>
             )}
             {showObserveMid && OBSERVE_RULES_MID.map(renderObserveRow)}
