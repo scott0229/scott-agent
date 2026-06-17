@@ -845,12 +845,12 @@ export default function RollOptionDialog({
           {/* Positions table */}
           {positions.length > 0 && (
             <>
-              <div className="roll-dialog-table-wrapper">
+              <div className="roll-dialog-table-wrapper roll-accounts-scroll">
                 <table className="roll-dialog-table roll-positions-table">
                   <tbody>
                     {[...positions]
                       .sort((a, b) => getAlias(a.account).localeCompare(getAlias(b.account)))
-                      .map((pos, idx) => {
+                      .map((pos, idx, arr) => {
                       const curGreek = findCurrentGreek(pos)
                       const curMid = midPrice(curGreek)
                       const liveSpread =
@@ -875,55 +875,10 @@ export default function RollOptionDialog({
                               width: '1px',
                               whiteSpace: 'nowrap'
                             }}
-                          >{`${idx + 1}.`}</td>
+                          >{`${arr.length - idx}.`}</td>
                           <td>{getAlias(pos.account)}</td>
-                          {(() => {
-                            const k = keyOf(pos)
-                            const original = Math.abs(pos.quantity)
-                            const cur = rollQtyByKey[k] ?? original
-                            const commit = (raw: string): void => {
-                              const n = parseInt(raw, 10)
-                              const clamped = Number.isFinite(n)
-                                ? Math.min(original, Math.max(1, n))
-                                : original
-                              setRollQtyByKey((p) => ({ ...p, [k]: clamped }))
-                              setEditingQtyKey(null)
-                            }
-                            // Single-account size is controlled by the global 口數
-                            // input; only multi-account rows are inline-editable.
-                            const editable = !isSingleAccount
-                            return (
-                              <td
-                                className={editable ? 'roll-qty-cell' : undefined}
-                                style={{ textAlign: 'center', whiteSpace: 'nowrap' }}
-                                title={editable ? '雙擊編輯口數（只能調少）' : undefined}
-                                onDoubleClick={() => editable && setEditingQtyKey(k)}
-                              >
-                                {editingQtyKey === k ? (
-                                  <input
-                                    type="number"
-                                    autoFocus
-                                    min={1}
-                                    max={original}
-                                    defaultValue={cur}
-                                    className="roll-qty-input"
-                                    onBlur={(e) => commit(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') commit((e.target as HTMLInputElement).value)
-                                      else if (e.key === 'Escape') setEditingQtyKey(null)
-                                    }}
-                                  />
-                                ) : (
-                                  <>
-                                    {cur}
-                                    {cur < original ? `/${original}` : ''}口
-                                  </>
-                                )}
-                              </td>
-                            )
-                          })()}
                           <td style={{ whiteSpace: 'nowrap' }}>
-                            {currentDesc} → {targetDesc}
+                            {currentDesc} <span style={{ color: '#956b3a' }}>→</span> {targetDesc}
                           </td>
                           <td
                             style={{
@@ -986,6 +941,51 @@ export default function RollOptionDialog({
                               '-'
                             )}
                           </td>
+                          {(() => {
+                            const k = keyOf(pos)
+                            const original = Math.abs(pos.quantity)
+                            const cur = rollQtyByKey[k] ?? original
+                            const commit = (raw: string): void => {
+                              const n = parseInt(raw, 10)
+                              const clamped = Number.isFinite(n)
+                                ? Math.min(original, Math.max(1, n))
+                                : original
+                              setRollQtyByKey((p) => ({ ...p, [k]: clamped }))
+                              setEditingQtyKey(null)
+                            }
+                            // Single-account size is controlled by the global 口數
+                            // input; only multi-account rows are inline-editable.
+                            const editable = !isSingleAccount
+                            return (
+                              <td
+                                className={editable ? 'roll-qty-cell' : undefined}
+                                style={{ textAlign: 'center', whiteSpace: 'nowrap' }}
+                                title={editable ? '雙擊編輯口數（只能調少）' : undefined}
+                                onDoubleClick={() => editable && setEditingQtyKey(k)}
+                              >
+                                {editingQtyKey === k ? (
+                                  <input
+                                    type="number"
+                                    autoFocus
+                                    min={1}
+                                    max={original}
+                                    defaultValue={cur}
+                                    className="roll-qty-input"
+                                    onBlur={(e) => commit(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') commit((e.target as HTMLInputElement).value)
+                                      else if (e.key === 'Escape') setEditingQtyKey(null)
+                                    }}
+                                  />
+                                ) : (
+                                  <span className={editable ? 'roll-qty-pill' : undefined}>
+                                    {cur}
+                                    {cur < original ? `/${original}` : ''}口
+                                  </span>
+                                )}
+                              </td>
+                            )
+                          })()}
                         </tr>
                       )
                     })}

@@ -2135,6 +2135,35 @@ input[type='number']::-webkit-outer-spin-button {
   overflow-x: auto;
 }
 
+/* 展期 dialog account list: scroll internally (like the option chain) so a long
+   account list doesn't push the 限價 input + footer off-screen / make the whole
+   dialog body scroll. */
+.roll-accounts-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* Thin, light scrollbar — keep it slim like the default but avoid the black
+   hover state of the OS bar. */
+.roll-chain-multi::-webkit-scrollbar,
+.roll-accounts-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.roll-chain-multi::-webkit-scrollbar-track,
+.roll-accounts-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.roll-chain-multi::-webkit-scrollbar-thumb,
+.roll-accounts-scroll::-webkit-scrollbar-thumb {
+  background: #cbc4b6;
+  border-radius: 3px;
+}
+.roll-chain-multi::-webkit-scrollbar-thumb:hover,
+.roll-accounts-scroll::-webkit-scrollbar-thumb:hover {
+  background: #bcb3a2;
+}
+
 .roll-dialog-table {
   width: 100%;
   border-collapse: collapse;
@@ -2329,12 +2358,20 @@ input[type='number']::-webkit-outer-spin-button {
 /* Inline-editable 口數 cell: double-click to edit (reduce-only). */
 .roll-qty-cell {
   cursor: pointer;
-  border-radius: 4px;
+}
+
+/* Small pill that hugs the 口數 value — always shown so it's clear it's editable. */
+.roll-qty-pill {
+  display: inline-block;
+  padding: 0 9px;
+  line-height: 1.45;
+  border-radius: 10px;
+  background: #eef2ff;
   transition: background 0.12s ease;
 }
 
-.roll-qty-cell:hover {
-  background: #eef2ff;
+.roll-qty-cell:hover .roll-qty-pill {
+  background: #dde3ff;
 }
 
 .roll-qty-input {
@@ -2559,8 +2596,9 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 .roll-order-input {
-  background: #ffffff;
-  border: 1px solid #ccc;
+  /* Subtle cue that this is the key field to fill in (限價). */
+  background: #fffdf5;
+  border: 1px solid #e6c878;
   border-radius: 2px;
   padding: 4px 14px;
   font-size: 13px;
@@ -2824,6 +2862,21 @@ input[type='number']::-webkit-outer-spin-button {
   z-index: 1000;
   display: flex;
   justify-content: flex-start;
+}
+
+/* 觀察規則 dialog: wider panel + two-column layout so it isn't one tall list. */
+.settings-panel.observe-rules-panel {
+  width: 680px;
+}
+.observe-rules-grid {
+  columns: 2;
+  column-gap: 28px;
+}
+.observe-rules-grid .observe-section {
+  break-inside: avoid;
+  /* Space sections with a BOTTOM margin (not top) — a top margin gets suppressed
+     at a column break, which misaligned the two columns' first headers. */
+  margin-bottom: 18px;
 }
 
 .settings-panel {

@@ -37,7 +37,7 @@ function SectionHeader({
       style={{
         cursor: 'pointer',
         userSelect: 'none',
-        marginTop: 16,
+        marginTop: 0,
         marginBottom: 8,
         display: 'flex',
         alignItems: 'center',
@@ -205,48 +205,58 @@ export default function ObserveRulesDialog({
 
   return (
     <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="settings-panel observe-rules-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
           <h2>觀察規則</h2>
           <button className="settings-close-btn" onClick={onClose}>
             ✕
           </button>
         </div>
-        <div className="settings-body">
-          <SectionHeader
-            title={`QQQ 預設觀察規則 (領先 > ${LEAD_HIGH_PCT}%)`}
-            expanded={showObserve}
-            onToggle={() => setShowObserve((v) => !v)}
-          />
-          {showObserve && OBSERVE_RULES.map(renderObserveRow)}
+        <div className="settings-body observe-rules-grid">
+          <div className="observe-section">
+            <SectionHeader
+              title={`QQQ 預設觀察規則 (領先 > ${LEAD_HIGH_PCT}%)`}
+              expanded={showObserve}
+              onToggle={() => setShowObserve((v) => !v)}
+            />
+            {showObserve && OBSERVE_RULES.map(renderObserveRow)}
+          </div>
 
-          <SectionHeader
-            title={`QQQ 預設觀察規則 (領先 ${LEAD_LOW_PCT}%~${LEAD_HIGH_PCT}%)`}
-            expanded={showObserveMid}
-            onToggle={() => setShowObserveMid((v) => !v)}
-          />
-          {showObserveMid && OBSERVE_RULES_MID.map(renderObserveRow)}
+          <div className="observe-section">
+            <SectionHeader
+              title={`QQQ 預設觀察規則 (領先 ${LEAD_LOW_PCT}%~${LEAD_HIGH_PCT}%)`}
+              expanded={showObserveMid}
+              onToggle={() => setShowObserveMid((v) => !v)}
+            />
+            {showObserveMid && OBSERVE_RULES_MID.map(renderObserveRow)}
+          </div>
 
-          <SectionHeader
-            title={`QQQ 預設觀察規則 (領先 < ${LEAD_LOW_PCT}%)`}
-            expanded={showObserveNear}
-            onToggle={() => setShowObserveNear((v) => !v)}
-          />
-          {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
+          <div className="observe-section">
+            <SectionHeader
+              title={`QQQ 預設觀察規則 (領先 < ${LEAD_LOW_PCT}%)`}
+              expanded={showObserveNear}
+              onToggle={() => setShowObserveNear((v) => !v)}
+            />
+            {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
+          </div>
 
-          <SectionHeader
-            title={`QQQ 預設觀察規則 (落後 < ${BREACH_THRESHOLD_PCT}%)`}
-            expanded={showObserveBreached}
-            onToggle={() => setShowObserveBreached((v) => !v)}
-          />
-          {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
+          <div className="observe-section">
+            <SectionHeader
+              title={`QQQ 預設觀察規則 (落後 < ${BREACH_THRESHOLD_PCT}%)`}
+              expanded={showObserveBreached}
+              onToggle={() => setShowObserveBreached((v) => !v)}
+            />
+            {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
+          </div>
 
-          <SectionHeader
-            title={`QQQ 預設觀察規則 (落後 > ${BREACH_THRESHOLD_PCT}%)`}
-            expanded={showObserveBreachedFar}
-            onToggle={() => setShowObserveBreachedFar((v) => !v)}
-          />
-          {showObserveBreachedFar && OBSERVE_RULES_BREACHED_FAR.map(renderObserveRow)}
+          <div className="observe-section">
+            <SectionHeader
+              title={`QQQ 預設觀察規則 (落後 > ${BREACH_THRESHOLD_PCT}%)`}
+              expanded={showObserveBreachedFar}
+              onToggle={() => setShowObserveBreachedFar((v) => !v)}
+            />
+            {showObserveBreachedFar && OBSERVE_RULES_BREACHED_FAR.map(renderObserveRow)}
+          </div>
         </div>
       </div>
     </div>
