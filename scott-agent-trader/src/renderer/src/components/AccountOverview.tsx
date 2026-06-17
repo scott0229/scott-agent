@@ -110,6 +110,11 @@ interface AccountOverviewProps {
 const posKey = (pos: PositionData): string =>
   `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
 
+// The account card no longer renders its own 今日成交 table — the 委託單 (open
+// orders) section already surfaces today's fills. Typed `boolean` (not a `false`
+// literal) so the gated block keeps type-checking instead of becoming dead code.
+const SHOW_CARD_FILLS: boolean = false
+
 // Toolbar filters are kept in MODULE-level memory (not localStorage) so they
 // survive tab switches — which unmount/remount this component — but reset when
 // the app is closed and reopened (a fresh renderer reloads the module). The
@@ -374,10 +379,17 @@ export default function AccountOverview({
   // Which groups have check mode active (checkboxes visible)
   const [checkModeGroups, setCheckModeGroups] = useState<Set<string>>(new Set())
   // Pending roll update: wait for IB to confirm fill before updating group posKeys
-  const [pendingRollUpdate, setPendingRollUpdate] = useState<{
-    rolledPositions: PositionData[]
-    target: { expiry: string; strike: number; right: 'C' | 'P' }
-  } | null>(null)
+  // Queue of in-flight rolls (one entry per 展期 placed). MUST be a list, not a
+  // single value: rolling several groups in quick succession previously
+  // overwrote a single pendingRollUpdate, so every roll but the last never had
+  // its group posKeys swapped to the new leg — those groups emptied
+  // ("無匹配持倉") the instant their old leg closed.
+  const [pendingRolls, setPendingRolls] = useState<
+    Array<{
+      rolledPositions: PositionData[]
+      target: { expiry: string; strike: number; right: 'C' | 'P' }
+    }>
+  >([])
   // Pending transfer update: wait for IB to confirm fill before updating group posKeys
   const [pendingTransferUpdate, setPendingTransferUpdate] = useState<{
     ops: {
@@ -749,30 +761,45 @@ export default function AccountOverview({
   // partial fills the old posKey stays present (reduced qty) since posKey
   // doesn't include quantity.
   useEffect(() => {
-    if (!pendingRollUpdate) return
-    const { rolledPositions, target } = pendingRollUpdate
+    if (pendingRolls.length === 0) return
 
-    // Resolve whatever new positions have appeared so far and apply each
-    // old→new replacement INCREMENTALLY. The old code bailed ("return") if ANY
-    // leg's new position hadn't arrived yet — so when a multi-account roll
-    // filled at staggered times, the already-closed legs left their group
-    // matching nothing ("無匹配持倉"), and a single never-matching leg stranded
-    // the whole group permanently. Now each leg updates the moment it fills and
-    // laggards no longer hold up the rest.
+    // Process EVERY queued roll independently. For each, resolve whatever new
+    // legs have appeared and collect the rest as still-pending. Replacements are
+    // applied incrementally (a multi-account roll that fills at staggered times
+    // updates each leg the moment it fills). The queue means simultaneous rolls
+    // across different groups no longer clobber one another.
     const replacements = new Map<string, string>()
-    const stillPending: PositionData[] = []
-    for (const oldPos of rolledPositions) {
-      const newPos = positions.find(
-        (p) =>
-          p.account === oldPos.account &&
-          p.symbol === oldPos.symbol &&
-          p.secType === 'OPT' &&
-          p.expiry === target.expiry &&
-          p.strike === target.strike &&
-          (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
-      )
-      if (newPos) replacements.set(posKey(oldPos), posKey(newPos))
-      else stillPending.push(oldPos)
+    const nextPending: typeof pendingRolls = []
+    const unresolved: Array<{
+      target: { expiry: string; strike: number; right: 'C' | 'P' }
+      pending: PositionData[]
+    }> = []
+    let resolvedAny = false
+
+    for (const roll of pendingRolls) {
+      const { rolledPositions, target } = roll
+      const stillPending: PositionData[] = []
+      for (const oldPos of rolledPositions) {
+        const newPos = positions.find(
+          (p) =>
+            p.account === oldPos.account &&
+            p.symbol === oldPos.symbol &&
+            p.secType === 'OPT' &&
+            p.expiry === target.expiry &&
+            p.strike === target.strike &&
+            (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
+        )
+        if (newPos) {
+          replacements.set(posKey(oldPos), posKey(newPos))
+          resolvedAny = true
+        } else {
+          stillPending.push(oldPos)
+        }
+      }
+      if (stillPending.length > 0) {
+        nextPending.push({ rolledPositions: stillPending, target })
+        unresolved.push({ target, pending: stillPending })
+      }
     }
 
     if (replacements.size > 0) {
@@ -793,20 +820,17 @@ export default function AccountOverview({
       }
     }
 
-    // Diagnostic: if legs stay unmatched the group is left pinned to its old
-    // (now-closed) contracts and shows "無匹配持倉". Log exactly which leg's new
-    // contract hasn't shown up in `positions` and what target we're hunting, so
-    // a recurrence is debuggable instead of a silent empty batch.
-    if (stillPending.length > 0) {
+    // Diagnostic: legs still unmatched across any queued roll. Compare each
+    // target against the candidates (what IB actually reports) to see why a new
+    // leg isn't matched, plus the affected groups' stored posKeys.
+    if (unresolved.length > 0) {
+      const allPending = unresolved.flatMap((u) => u.pending)
       const diag = {
-        target,
-        pending: stillPending.map(
+        targets: unresolved.map((u) => u.target),
+        pending: allPending.map(
           (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
         ),
-        // What IB actually reports right now for those account+symbol OPT
-        // positions — compare to `target` to see which field (expiry / strike /
-        // right) doesn't line up so the new leg is never matched.
-        candidates: stillPending.flatMap((op) =>
+        candidates: allPending.flatMap((op) =>
           positions
             .filter(
               (p) => p.account === op.account && p.symbol === op.symbol && p.secType === 'OPT'
@@ -815,13 +839,11 @@ export default function AccountOverview({
               (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}|q${p.quantity}`
             )
         ),
-        // The affected group(s)' currently-stored posKeys, to confirm whether
-        // they still point at the old (closed) contract.
         affectedGroups: symbolGroups
           .filter(
             (g) =>
               !g.autoParams &&
-              g.posKeys.some((k) => stillPending.some((op) => posKey(op) === k))
+              g.posKeys.some((k) => allPending.some((op) => posKey(op) === k))
           )
           .map((g) => ({ name: g.name, posKeys: g.posKeys }))
       }
@@ -829,15 +851,10 @@ export default function AccountOverview({
       window.ibApi.debugLog('[ROLL] unmatched ' + JSON.stringify(diag))
     }
 
-    // Done once every leg resolved; otherwise keep only the laggards pending so
-    // they're retried (without reprocessing the resolved ones) on the next
-    // position update.
-    if (stillPending.length === 0) {
-      setPendingRollUpdate(null)
-    } else if (stillPending.length !== rolledPositions.length) {
-      setPendingRollUpdate({ rolledPositions: stillPending, target })
-    }
-  }, [positions, pendingRollUpdate, symbolGroups, onUpdateSymbolGroup])
+    // Only rewrite the queue when at least one leg resolved — otherwise this
+    // would loop on every positions tick while waiting for fills.
+    if (resolvedAny) setPendingRolls(nextPending)
+  }, [positions, pendingRolls, symbolGroups, onUpdateSymbolGroup])
 
   // Diagnostic: a non-auto batch card that resolves to ZERO matching positions is
   // the visible "展期後卡牌被清空 / 認不出新交易" symptom — its stored posKeys still
@@ -4329,8 +4346,9 @@ export default function AccountOverview({
                     return elements
                   })()}
 
-                {/* Today's Filled Orders */}
-                {!selectMode &&
+                {/* Today's Filled Orders — hidden on the account card (gated by
+                    SHOW_CARD_FILLS); the 委託單 section already shows today's fills. */}
+                {SHOW_CARD_FILLS &&
                   executions.filter((e) => e.account === account.accountId).length > 0 && (
                     <div
                       className="positions-section"
@@ -4746,8 +4764,10 @@ export default function AccountOverview({
           setObserveGroupId(null)
         }}
         onRollComplete={(rolledPositions, target) => {
-          // Store intent: will be applied once IB confirms the fill via position updates
-          setPendingRollUpdate({ rolledPositions, target })
+          // Queue the intent (append, don't overwrite) — applied once IB confirms
+          // each leg's fill via position updates. Appending lets several rolls
+          // placed back-to-back all resolve independently.
+          setPendingRolls((prev) => [...prev, { rolledPositions, target }])
         }}
       />
       {marginExplain &&
