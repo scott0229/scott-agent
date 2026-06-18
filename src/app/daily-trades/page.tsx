@@ -1363,7 +1363,24 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
         );
     }
 
-    const chartData = data.map(d => ({ ...d, label: d.date.substring(5) }));
+    // Signed-sqrt Y scale (same as the profit chart): compress the extremes
+    // so the mostly-flat middle days don't collapse onto the zero line when
+    // there's a big -130k→+130k swing. Plot cashSqrt; axis labels invert
+    // back to real $ (k units).
+    const sgnSqrt = (x: number) => Math.sign(x) * Math.sqrt(Math.abs(x));
+    const chartData = data.map(d => ({ ...d, label: d.date.substring(5), cashSqrt: sgnSqrt(d.cash) }));
+
+    // Tick magnitudes in raw $ that bracket the data, projected into sqrt space.
+    const CASH_MAGS = [5000, 10000, 25000, 50000, 100000, 200000, 400000];
+    const cashMaxAbs = Math.max(1, ...data.map(d => Math.abs(d.cash)));
+    const usefulMags = CASH_MAGS.filter(m => m <= cashMaxAbs * 1.5);
+    const tickPoolRaw = usefulMags.length > 0
+        ? [...usefulMags.map(m => -m).reverse(), 0, ...usefulMags]
+        : [-10000, 0, 10000];
+    const cashTicksSqrt = tickPoolRaw.map(sgnSqrt);
+    const cashPad = Math.max(Math.abs(cashTicksSqrt[0]), Math.abs(cashTicksSqrt[cashTicksSqrt.length - 1])) * 0.15;
+    const cashDomain: [number, number] = [cashTicksSqrt[0] - cashPad, cashTicksSqrt[cashTicksSqrt.length - 1] + cashPad];
+
     const latest = data[data.length - 1];
     const selected = currentDate ? data.find(d => d.date === currentDate) : undefined;
     // Hover wins, then the selected (card) date, then the latest day.
@@ -1384,7 +1401,7 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                 {panel && (
                     <div className="text-sm whitespace-nowrap ml-[50px]">
                         <span className="font-medium">{mmddWithWeekday(panel.date)}</span>
-                        <span className="text-muted-foreground"> · 現金 </span>
+                        <span className="text-foreground"> · 現金 </span>
                         <span className={cn('font-semibold', panelColor)}>{panelStr}</span>
                     </div>
                 )}
@@ -1405,7 +1422,13 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                         />
                         <YAxis
                             tick={{ fontSize: 12, fill: 'var(--foreground)' }}
-                            tickFormatter={(v, i) => i === 0 ? '' : `${Math.round(v / 1000)}k`}
+                            ticks={cashTicksSqrt}
+                            domain={cashDomain}
+                            tickFormatter={(v, i) => {
+                                if (i === 0) return ''; // hide the bottom-most label
+                                const raw = Math.sign(v) * v * v; // invert sgnSqrt
+                                return `${Math.round(raw / 1000)}k`;
+                            }}
                             width={48}
                             axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
                         />
@@ -1420,7 +1443,7 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                         />
                         <Line
                             type="monotone"
-                            dataKey="cash"
+                            dataKey="cashSqrt"
                             stroke="var(--chart-blue, #60a5fa)"
                             strokeWidth={2}
                             dot={(props: { cx?: number; cy?: number; payload?: { cash: number } }) => {
