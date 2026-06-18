@@ -1375,13 +1375,12 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
         );
     }
 
-    // Signed-log Y scale: the strongest practical compression of the extremes
-    // so the mostly-flat middle days don't get dwarfed by a big ±50k+ swing.
-    // ln(1+|x|) is ~linear near 0 and logarithmic for large values, so 50k vs
-    // 200k land close together while small daily moves still read. Axis labels
-    // invert back to real $ (k units).
-    const sgnSqrt = (x: number) => Math.sign(x) * Math.log1p(Math.abs(x));
-    const invSqrt = (v: number) => Math.sign(v) * Math.expm1(Math.abs(v));
+    // Signed-power Y scale. Exponent 0.28 sits between sqrt (0.5, too spread)
+    // and signed-log (too flat) — compresses the extremes hard while still
+    // letting the middle days separate. Axis labels invert back to real $.
+    const CASH_POW = 0.28;
+    const sgnSqrt = (x: number) => Math.sign(x) * Math.pow(Math.abs(x), CASH_POW);
+    const invSqrt = (v: number) => Math.sign(v) * Math.pow(Math.abs(v), 1 / CASH_POW);
     const chartData = data.map(d => ({ ...d, label: d.date.substring(5), cashSqrt: sgnSqrt(d.cash) }));
 
     // Tick magnitudes in raw $ that bracket the data, projected into sqrt space.
@@ -1425,7 +1424,18 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
             </div>
             <div className="relative flex-1 min-h-0 [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                    <LineChart
+                        data={chartData}
+                        margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                        onClick={(state: { activePayload?: { payload?: { date?: string } }[] }) => {
+                            // Chart-level click is more reliable than per-dot
+                            // onClick (the active dot / tooltip overlay can eat
+                            // the dot's own click). Snaps both charts' orange
+                            // line to the clicked day.
+                            const d = state?.activePayload?.[0]?.payload?.date;
+                            if (d && onSelectDate) onSelectDate(d);
+                        }}
+                    >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                         <XAxis
                             dataKey="label"
