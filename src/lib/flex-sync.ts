@@ -144,9 +144,11 @@ export async function syncFlexTrades(db: any, force = false): Promise<FlexSyncRe
   }
   if (!config?.queryId || !config?.tokenEnc) return { status: 'skipped', reason: 'no-config' }
 
-  // Fire once per trading day, at the first cron tick ≥ 1 hour after the US
-  // close (17:00 ET). Gate on the ET calendar day so the stamp matches the
-  // trading day regardless of UTC rollover.
+  // Fire once per ET day, at the first cron tick ≥ 01:00 ET. We sync in the
+  // early morning (not right after the 16:00 close) because IB's Flex Activity
+  // statement often doesn't have the same day's fills finalized until overnight
+  // batch processing — fetching at close+1h left the data a day behind. Gate on
+  // the ET calendar day so the stamp matches regardless of UTC rollover.
   const now = new Date()
   let etDate: string
   let etHour: number
@@ -167,7 +169,7 @@ export async function syncFlexTrades(db: any, force = false): Promise<FlexSyncRe
   }
   if (!force) {
     if (syncedAt === etDate) return { status: 'skipped', reason: 'already-today' }
-    if (etHour < 17) return { status: 'skipped', reason: 'before-1700-et' }
+    if (etHour < 1) return { status: 'skipped', reason: 'before-0100-et' }
   }
 
   const token = await decryptToken(config.tokenEnc)
