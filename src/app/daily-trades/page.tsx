@@ -1322,7 +1322,30 @@ interface CashHistoryChartProps {
 
 // 帳上現金 trend over the same 30-trading-day window as the profit chart.
 // One point per DAILY_NET_EQUITY row (already the trading-day calendar).
+// Zero-render bridge that relays the hovered cash point up to the chart's
+// readout state — same pattern as TooltipBridge for the profit chart.
+function CashTooltipBridge({
+    active,
+    payload,
+    onChange,
+}: {
+    active?: boolean;
+    payload?: { payload?: { date: string; cash: number } }[];
+    onChange: (p: { date: string; cash: number } | null) => void;
+}) {
+    const point = active && payload?.[0]?.payload ? payload[0].payload : null;
+    const key = point ? `${point.date}|${point.cash}` : '';
+    useEffect(() => {
+        onChange(point);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+    return null;
+}
+
 function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps) {
+    // Hover state fed by CashTooltipBridge so the readout tracks the cursor.
+    const [hovered, setHovered] = useState<{ date: string; cash: number } | null>(null);
+
     if (loading) {
         return (
             <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
@@ -1343,18 +1366,22 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
     const chartData = data.map(d => ({ ...d, label: d.date.substring(5) }));
     const latest = data[data.length - 1];
     const selected = currentDate ? data.find(d => d.date === currentDate) : undefined;
-    const panel = selected ?? latest;
+    // Hover wins, then the selected (card) date, then the latest day.
+    const panel = hovered ?? selected ?? latest;
     const panelStr = panel
         ? `${panel.cash < 0 ? '' : ''}${Math.round(panel.cash).toLocaleString('en-US')}`
         : '';
     const panelColor = panel && panel.cash < 0 ? 'text-status-negative' : 'text-foreground';
 
     return (
-        <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
+        // h-full + no fixed 360px → the grid row's height is set by the holdings
+        // card next to it, and the chart stretches to match instead of forcing
+        // its own taller box.
+        <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col h-full min-h-[200px]">
             <div className="relative mb-2 min-h-[20px] flex items-center">
                 {panel && (
                     <div className="text-sm whitespace-nowrap ml-[50px]">
-                        <span className="font-medium">{panel.date.substring(5)}</span>
+                        <span className="font-medium">{mmddWithWeekday(panel.date)}</span>
                         <span className="text-muted-foreground"> · 現金 </span>
                         <span className={cn('font-semibold', panelColor)}>{panelStr}</span>
                     </div>
@@ -1363,7 +1390,7 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                     過去 30 個交易日帳上現金
                 </div>
             </div>
-            <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
+            <div className="relative flex-1 min-h-0 [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
@@ -1372,11 +1399,13 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
                             interval="preserveStartEnd"
                             minTickGap={20}
+                            axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
                         />
                         <YAxis
                             tick={{ fontSize: 11, fill: 'var(--foreground)' }}
-                            tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                            tickFormatter={(v, i) => i === 0 ? '' : `${Math.round(v / 1000)}k`}
                             width={48}
+                            axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
                         />
                         <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
                         {currentDate && data.some(d => d.date === currentDate) && (
@@ -1384,7 +1413,8 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                         )}
                         <Tooltip
                             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            content={() => null}
+                            content={<CashTooltipBridge onChange={setHovered} />}
+                            isAnimationActive={false}
                         />
                         <Line
                             type="monotone"

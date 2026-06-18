@@ -33,15 +33,28 @@ export async function GET(req: NextRequest) {
         }
 
         const days = Math.min(parseInt(daysStr || '30', 10) || 30, 90);
-        const calendarDays = Math.ceil(days * 1.6);
-
-        const endDate = new Date(endDateStr + 'T00:00:00Z');
-        const startDate = new Date(endDate);
-        startDate.setUTCDate(startDate.getUTCDate() - calendarDays);
-        const startDateStr = startDate.toISOString().substring(0, 10);
 
         const group = await getGroupFromRequest(req);
         const db = await getDb(group);
+
+        // Window = the last `days` ACTUAL trading days (QQQ market_prices is
+        // the authoritative open-day calendar) ending on endDate. Both the
+        // profit and cash series are bounded to this same window so the two
+        // charts always span identical dates. The profit series still only
+        // plots days that had trades — but never reaches outside this window.
+        const { results: tdRows } = await db.prepare(`
+            SELECT date(datetime(date, 'unixepoch')) AS d
+            FROM market_prices
+            WHERE symbol = 'QQQ' AND date(datetime(date, 'unixepoch')) <= ?
+            ORDER BY date DESC
+            LIMIT ?
+        `).bind(endDateStr, days).all<{ d: string }>();
+        const tradingDays = (tdRows || []).map(r => r.d).filter(Boolean).reverse();
+        // Oldest trading day in the window; fall back to a calendar estimate
+        // if market_prices is somehow empty.
+        const startDateStr = tradingDays.length > 0
+            ? tradingDays[0]
+            : new Date(new Date(endDateStr + 'T00:00:00Z').getTime() - days * 1.6 * 86400000).toISOString().substring(0, 10);
 
         // Resolve user_id (string alias) → numeric id
         let userQuery = `SELECT id, user_id, name, ib_account FROM USERS WHERE user_id = ? AND email != 'admin'`;
@@ -158,47 +171,59 @@ export async function GET(req: NextRequest) {
         };
 
         const PROFIT_RE = /(?:收益|權利金)\s*([+-]?[\d,]+(?:\.\d+)?)/g;
-        const history = Object.keys(tradesByDate)
-            .sort()
-            .map(d => {
-                const text = generateDailyTradesText(
-                    { user: userMeta, trades: tradesByDate[d] },
-                    d,
-                    marketDataMap,
-                );
-                let profit = 0;
-                for (const line of text.split('\n')) {
-                    if (/^(買|賣)/.test(line) && line.includes(' 股 ')) continue;
-                    for (const m of line.matchAll(PROFIT_RE)) {
-                        profit += parseFloat(m[1].replace(/,/g, ''));
-                    }
+        // Per-day option profit for the days that actually had trades.
+        const profitByDate: Record<string, number> = {};
+        for (const d of Object.keys(tradesByDate)) {
+            const text = generateDailyTradesText({ user: userMeta, trades: tradesByDate[d] }, d, marketDataMap);
+            let profit = 0;
+            for (const line of text.split('\n')) {
+                if (/^(買|賣)/.test(line) && line.includes(' 股 ')) continue;
+                for (const m of line.matchAll(PROFIT_RE)) {
+                    profit += parseFloat(m[1].replace(/,/g, ''));
                 }
-                const qqq = qqqByDate[d];
-                return {
-                    date: d,
-                    profit,
-                    qqqOpen: qqq?.open ?? null,
-                    qqqClose: qqq?.close ?? null,
-                };
-            });
+            }
+            profitByDate[d] = profit;
+        }
+        // One point per ACTUAL trading day in the window; no-trade days → 0.
+        const history = tradingDays.map(d => {
+            const qqq = qqqByDate[d];
+            return {
+                date: d,
+                profit: profitByDate[d] ?? 0,
+                qqqOpen: qqq?.open ?? null,
+                qqqClose: qqq?.close ?? null,
+            };
+        });
 
-        // Most-recent `days` entries only; older history is noise on a 30-day chart.
-        const trimmed = history.slice(-days);
+        // Trades already query from startDateStr (the window's first trading
+        // day), so `history` is exactly the trade-days inside the window —
+        // no slice needed. This is what aligns the profit chart's left edge
+        // with the cash chart's.
+        const trimmed = history;
 
-        // Cash-balance trend over the same window — one row per trading day
-        // from DAILY_NET_EQUITY (the net-equity import writes a row per day,
-        // so this IS the trading-day calendar, no zero-fill needed). Drives
-        // the 帳上現金 chart next to the holdings card.
+        // Cash-balance trend over the SAME 30 trading days. Pull DAILY_NET_EQUITY
+        // (incl. a little history before the window so the first day can
+        // carry-forward a prior balance), then map onto every trading day —
+        // a day without its own row inherits the most recent prior balance.
         const { results: cashRows } = await db.prepare(`
             SELECT date(datetime(date, 'unixepoch')) AS d, cash_balance
             FROM DAILY_NET_EQUITY
             WHERE user_id = ? AND date(datetime(date, 'unixepoch')) <= ?
-            ORDER BY date DESC
-            LIMIT ?
-        `).bind(user.id, endDateStr, days).all<{ d: string; cash_balance: number | null }>();
-        const cashHistory = (cashRows || [])
-            .map(r => ({ date: r.d, cash: r.cash_balance ?? 0 }))
-            .reverse(); // oldest → newest for the chart
+            ORDER BY date ASC
+        `).bind(user.id, endDateStr).all<{ d: string; cash_balance: number | null }>();
+        const cashByDate: Record<string, number> = {};
+        for (const r of cashRows || []) {
+            if (r.cash_balance != null) cashByDate[r.d] = r.cash_balance;
+        }
+        let carried: number | null = null;
+        // Seed carry-forward with the latest balance on/before the window start.
+        for (const r of cashRows || []) {
+            if (r.d <= startDateStr && r.cash_balance != null) carried = r.cash_balance;
+        }
+        const cashHistory = tradingDays.map(d => {
+            if (cashByDate[d] != null) carried = cashByDate[d];
+            return { date: d, cash: carried ?? 0 };
+        });
 
         return NextResponse.json({ history: trimmed, cashHistory });
     } catch (error: unknown) {
