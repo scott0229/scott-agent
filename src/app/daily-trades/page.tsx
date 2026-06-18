@@ -1361,7 +1361,7 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
     if (loading) {
         return (
             <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
-                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日帳上現金</div>
+                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日 · 帳上現金</div>
                 <Skeleton className="flex-1 h-[280px]" />
             </div>
         );
@@ -1369,19 +1369,19 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
     if (!data || data.length === 0) {
         return (
             <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
-                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日帳上現金</div>
+                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日 · 帳上現金</div>
                 <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-12">沒有現金資料</div>
             </div>
         );
     }
 
-    // Signed-power Y scale: compress the extremes so the mostly-flat middle
-    // days don't collapse onto the zero line when there's a big -130k→+130k
-    // swing. Exponent 0.35 (< the profit chart's 0.5 sqrt) squashes the
-    // extremes harder. Plot cashSqrt; axis labels invert back to real $.
-    const CASH_POW = 0.35;
-    const sgnSqrt = (x: number) => Math.sign(x) * Math.pow(Math.abs(x), CASH_POW);
-    const invSqrt = (v: number) => Math.sign(v) * Math.pow(Math.abs(v), 1 / CASH_POW);
+    // Signed-log Y scale: the strongest practical compression of the extremes
+    // so the mostly-flat middle days don't get dwarfed by a big ±50k+ swing.
+    // ln(1+|x|) is ~linear near 0 and logarithmic for large values, so 50k vs
+    // 200k land close together while small daily moves still read. Axis labels
+    // invert back to real $ (k units).
+    const sgnSqrt = (x: number) => Math.sign(x) * Math.log1p(Math.abs(x));
+    const invSqrt = (v: number) => Math.sign(v) * Math.expm1(Math.abs(v));
     const chartData = data.map(d => ({ ...d, label: d.date.substring(5), cashSqrt: sgnSqrt(d.cash) }));
 
     // Tick magnitudes in raw $ that bracket the data, projected into sqrt space.
@@ -1420,7 +1420,7 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
                     </div>
                 )}
                 <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
-                    過去 30 個交易日帳上現金
+                    過去 30 個交易日 · 帳上現金
                 </div>
             </div>
             <div className="relative flex-1 min-h-0 [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
