@@ -124,7 +124,7 @@ export function generateDailyTradesText(
         // getUTCHours/Minutes already matches the ET-keyed price map.
         const minuteMap = intradayPrices?.[trade.symbol];
         const spot = hhmm && minuteMap ? minuteMap[hhmm] : undefined;
-        const spotStr = spot != null ? ` @${spot.toFixed(2)}` : '';
+        const spotStr = spot != null ? ` @${spot.toFixed(1)}` : '';
         return `${timeLead}${qtyStr}口 ${symbolStr}${spotStr}`;
     };
 
