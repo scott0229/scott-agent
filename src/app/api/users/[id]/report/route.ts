@@ -413,6 +413,14 @@ export async function GET(
         // (QQQ market_prices = the authoritative open-day list); days with no
         // fills count as 0. Uses the shared helper so the per-day numbers
         // match the daily-trades chart exactly.
+        //
+        // Cached in daily_premium_cache keyed by (user, window-end) because the
+        // ~25 generateDailyTradesText renders are CPU-heavy and were nudging
+        // the worker toward Cloudflare's per-request CPU ceiling (Error 1102),
+        // especially under admin/users batch generation. A past window-end is
+        // immutable → cached forever; today's is re-validated against a short
+        // freshness window since intraday trades can still move it.
+        const CACHE_FRESH_SECONDS = 10 * 60; // re-compute today's value at most every 10 min
         let last25TradingDaysPremium: number | null = null;
         try {
             const { results: tdRows } = await db.prepare(`
@@ -426,14 +434,40 @@ export async function GET(
             if (tradingDays.length > 0) {
                 const windowStart = tradingDays[tradingDays.length - 1]; // oldest of the 25
                 const windowEnd = tradingDays[0];                        // newest of the 25
-                const profitByDate = await computeDailyOptionProfits(
-                    db,
-                    { id: userId, user_id: user.user_id, name: (user as { name?: string | null }).name },
-                    windowStart,
-                    windowEnd,
-                );
-                // Sum over the trading-day calendar; missing day → 0.
-                last25TradingDaysPremium = tradingDays.reduce((s, d) => s + (profitByDate[d] || 0), 0);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const todayStr = new Date().toISOString().substring(0, 10);
+
+                // Cache lookup.
+                let cached: { value: number; computed_at: number } | null = null;
+                try {
+                    cached = await db.prepare(
+                        `SELECT value, computed_at FROM daily_premium_cache WHERE user_id = ? AND end_date = ?`,
+                    ).bind(userId, windowEnd).first<{ value: number; computed_at: number }>();
+                } catch { /* table may not exist pre-migration — fall through to compute */ }
+
+                const isStale = !cached
+                    || (windowEnd >= todayStr && (nowSec - cached.computed_at) > CACHE_FRESH_SECONDS);
+
+                if (cached && !isStale) {
+                    last25TradingDaysPremium = cached.value;
+                } else {
+                    const profitByDate = await computeDailyOptionProfits(
+                        db,
+                        { id: userId, user_id: user.user_id, name: (user as { name?: string | null }).name },
+                        windowStart,
+                        windowEnd,
+                    );
+                    // Sum over the trading-day calendar; missing day → 0.
+                    last25TradingDaysPremium = tradingDays.reduce((s, d) => s + (profitByDate[d] || 0), 0);
+                    // Write-through (best-effort).
+                    try {
+                        await db.prepare(
+                            `INSERT INTO daily_premium_cache (user_id, end_date, value, computed_at)
+                             VALUES (?, ?, ?, ?)
+                             ON CONFLICT(user_id, end_date) DO UPDATE SET value = excluded.value, computed_at = excluded.computed_at`,
+                        ).bind(userId, windowEnd, last25TradingDaysPremium, nowSec).run();
+                    } catch { /* non-fatal */ }
+                }
             }
         } catch (err) {
             console.warn('25-trading-day premium calc failed (non-fatal):', err);
