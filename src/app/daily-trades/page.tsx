@@ -810,7 +810,18 @@ export default function DailyTradesPage() {
                     {/* 帳上現金 30-day trend — fills the right cell of row 2,
                         next to the holdings card. */}
                     {selectedAccount !== 'all' && filteredData.length === 1 && (
-                        <CashHistoryChart data={cashHistory} loading={historyLoading} currentDate={date} />
+                        <CashHistoryChart
+                            data={cashHistory}
+                            loading={historyLoading}
+                            currentDate={date}
+                            onSelectDate={(d) => {
+                                // Same as the profit chart: pin the window, skip
+                                // the skeleton, just move the orange line + card.
+                                chartClickRef.current = true;
+                                silentDateRef.current = true;
+                                setDate(d);
+                            }}
+                        />
                     )}
                 </div>
             )}
@@ -1318,6 +1329,7 @@ interface CashHistoryChartProps {
     data: { date: string; cash: number }[];
     loading: boolean;
     currentDate: string;
+    onSelectDate?: (date: string) => void;
 }
 
 // 帳上現金 trend over the same 30-trading-day window as the profit chart.
@@ -1342,7 +1354,7 @@ function CashTooltipBridge({
     return null;
 }
 
-function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps) {
+function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHistoryChartProps) {
     // Hover state fed by CashTooltipBridge so the readout tracks the cursor.
     const [hovered, setHovered] = useState<{ date: string; cash: number } | null>(null);
 
@@ -1363,11 +1375,13 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
         );
     }
 
-    // Signed-sqrt Y scale (same as the profit chart): compress the extremes
-    // so the mostly-flat middle days don't collapse onto the zero line when
-    // there's a big -130k→+130k swing. Plot cashSqrt; axis labels invert
-    // back to real $ (k units).
-    const sgnSqrt = (x: number) => Math.sign(x) * Math.sqrt(Math.abs(x));
+    // Signed-power Y scale: compress the extremes so the mostly-flat middle
+    // days don't collapse onto the zero line when there's a big -130k→+130k
+    // swing. Exponent 0.35 (< the profit chart's 0.5 sqrt) squashes the
+    // extremes harder. Plot cashSqrt; axis labels invert back to real $.
+    const CASH_POW = 0.35;
+    const sgnSqrt = (x: number) => Math.sign(x) * Math.pow(Math.abs(x), CASH_POW);
+    const invSqrt = (v: number) => Math.sign(v) * Math.pow(Math.abs(v), 1 / CASH_POW);
     const chartData = data.map(d => ({ ...d, label: d.date.substring(5), cashSqrt: sgnSqrt(d.cash) }));
 
     // Tick magnitudes in raw $ that bracket the data, projected into sqrt space.
@@ -1426,7 +1440,7 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                             domain={cashDomain}
                             tickFormatter={(v, i) => {
                                 if (i === 0) return ''; // hide the bottom-most label
-                                const raw = Math.sign(v) * v * v; // invert sgnSqrt
+                                const raw = invSqrt(v); // invert the signed-power scale
                                 return `${Math.round(raw / 1000)}k`;
                             }}
                             width={48}
@@ -1446,7 +1460,7 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                             dataKey="cashSqrt"
                             stroke="var(--chart-blue, #60a5fa)"
                             strokeWidth={2}
-                            dot={(props: { cx?: number; cy?: number; payload?: { cash: number } }) => {
+                            dot={(props: { cx?: number; cy?: number; payload?: { cash: number; date: string } }) => {
                                 const { cx, cy, payload } = props;
                                 if (cx == null || cy == null || !payload) return <g />;
                                 const fill = payload.cash > 0
@@ -1454,7 +1468,19 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                                     : payload.cash < 0
                                         ? 'var(--status-negative)'
                                         : 'var(--muted-foreground)';
-                                return <circle cx={cx} cy={cy} r={4} fill={fill} />;
+                                return (
+                                    <circle
+                                        cx={cx}
+                                        cy={cy}
+                                        r={4}
+                                        fill={fill}
+                                        style={{ cursor: onSelectDate ? 'pointer' : 'default' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onSelectDate) onSelectDate(payload.date);
+                                        }}
+                                    />
+                                );
                             }}
                             activeDot={{ r: 5 }}
                             isAnimationActive={false}
