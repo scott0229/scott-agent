@@ -7,12 +7,9 @@ compatibility_flags = ["nodejs_compat"]
 main = "worker-entry.mjs"
 minify = true
 account_id = "9946dede036802fcd2a0b9cef8e13574"
-
-# Raise the per-request CPU ceiling from the Paid-plan 30s default to 60s.
-# Free on the Paid plan; only a backstop against CPU-heavy report renders
-# tripping Error 1102. Does NOT affect the separate ~400ms cold-start limit.
-[limits]
-cpu_ms = 60000
+# NOTE: [limits] cpu_ms requires the Workers Paid plan ($5/mo). This account
+# is on Free, where the deploy rejects it. Re-add cpu_ms = 60000 here AND
+# under [env.production.limits] once upgraded to Paid.
 
 # Cron Triggers for scheduled tasks
 [triggers]
@@ -99,10 +96,6 @@ routes = [
   { pattern = "scott-agent.com", custom_domain = true },
   { pattern = "www.scott-agent.com", custom_domain = true }
 ]
-
-# Named envs don't inherit the top-level [limits], so repeat it here.
-[env.production.limits]
-cpu_ms = 60000
 
 [env.production.vars]
 RESEND_API_KEY = "re_3e8UHBP1_4ecHGufTVorDB4GKKkTYDJjP"
