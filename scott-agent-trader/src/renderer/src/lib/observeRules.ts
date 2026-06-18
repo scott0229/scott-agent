@@ -285,6 +285,23 @@ export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
 // price just past the strike). Defaults lean to rolling further out / away.
 export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
   {
+    id: 'obsB0',
+    enabledKey: 'trader.obsB0.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsB0.dteOp',
+    dteKey: 'trader.obsB0.dte',
+    daysKey: 'trader.obsB0.days',
+    pointsKey: 'trader.obsB0.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB0.dteMode',
+    defaultDteMode: 'any'
+  },
+  {
     id: 'obsB1',
     enabledKey: 'trader.obsB1.enabled',
     hasDte: false,
