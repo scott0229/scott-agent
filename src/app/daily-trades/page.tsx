@@ -1422,24 +1422,19 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
                     過去 30 個交易日 · 帳上現金
                 </div>
             </div>
-            <div className="relative flex-1 min-h-0 [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
+            <div
+                className="relative flex-1 min-h-0 [&_*:focus]:outline-none [&_*:focus-visible]:outline-none"
+                // Recharts' own onClick proved unreliable here (tooltip overlay
+                // eats it). Hover tracking DOES work — the dashed crosshair and
+                // readout follow the cursor via CashTooltipBridge — so capture
+                // the click at the container level and use whatever day is
+                // currently hovered. Snaps both charts' orange line to it.
+                onClick={() => { if (hovered?.date && onSelectDate) onSelectDate(hovered.date); }}
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={chartData}
                         margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-                        onClick={(state: { activeTooltipIndex?: number; activePayload?: { payload?: { date?: string } }[] }) => {
-                            // Same dual-fallback as the profit chart: Recharts
-                            // populates activePayload OR activeTooltipIndex
-                            // depending on whether the click hit a dot vs the
-                            // line. Snaps both charts' orange line to the day.
-                            const fromPayload = state?.activePayload?.[0]?.payload?.date;
-                            const idx = state?.activeTooltipIndex;
-                            const fromIndex = typeof idx === 'number' && idx >= 0 && idx < chartData.length
-                                ? chartData[idx].date
-                                : undefined;
-                            const d = fromPayload ?? fromIndex;
-                            if (d && onSelectDate) onSelectDate(d);
-                        }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                         <XAxis
