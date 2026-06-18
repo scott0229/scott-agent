@@ -549,9 +549,6 @@ export default function AdminUsersPage() {
             const v = Math.round(data.last25TradingDaysPremium);
             report += `近25交易日現金流 : $${formatMoney(v)}\n`;
         }
-        report += `每日期權收益 : $${formatMoney(dailyPremium)}\n`;
-        report += `整年累積收益 : $${formatMoney(annualPremium)}\n`;
-        report += `整年${settings.premiumTargetPercent}%目標 : $${formatMoney(data.annualTarget)}\n`;
         report += `----------------------------------------\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
 
