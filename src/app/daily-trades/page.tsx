@@ -1371,7 +1371,9 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
     const panelStr = panel
         ? `${panel.cash < 0 ? '' : ''}${Math.round(panel.cash).toLocaleString('en-US')}`
         : '';
-    const panelColor = panel && panel.cash < 0 ? 'text-status-negative' : 'text-foreground';
+    const panelColor = panel
+        ? (panel.cash > 0 ? 'text-status-positive' : panel.cash < 0 ? 'text-status-negative' : 'text-muted-foreground')
+        : 'text-foreground';
 
     return (
         // h-full + no fixed 360px → the grid row's height is set by the holdings
@@ -1396,13 +1398,13 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                         <XAxis
                             dataKey="label"
-                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            tick={{ fontSize: 12, fill: 'var(--foreground)' }}
                             interval="preserveStartEnd"
                             minTickGap={20}
                             axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
                         />
                         <YAxis
-                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            tick={{ fontSize: 12, fill: 'var(--foreground)' }}
                             tickFormatter={(v, i) => i === 0 ? '' : `${Math.round(v / 1000)}k`}
                             width={48}
                             axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
@@ -1421,8 +1423,17 @@ function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps)
                             dataKey="cash"
                             stroke="var(--chart-blue, #60a5fa)"
                             strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 4 }}
+                            dot={(props: { cx?: number; cy?: number; payload?: { cash: number } }) => {
+                                const { cx, cy, payload } = props;
+                                if (cx == null || cy == null || !payload) return <g />;
+                                const fill = payload.cash > 0
+                                    ? 'var(--status-positive)'
+                                    : payload.cash < 0
+                                        ? 'var(--status-negative)'
+                                        : 'var(--muted-foreground)';
+                                return <circle cx={cx} cy={cy} r={4} fill={fill} />;
+                            }}
+                            activeDot={{ r: 5 }}
                             isAnimationActive={false}
                         />
                     </LineChart>
