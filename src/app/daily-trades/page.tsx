@@ -1427,12 +1427,17 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
                     <LineChart
                         data={chartData}
                         margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-                        onClick={(state: { activePayload?: { payload?: { date?: string } }[] }) => {
-                            // Chart-level click is more reliable than per-dot
-                            // onClick (the active dot / tooltip overlay can eat
-                            // the dot's own click). Snaps both charts' orange
-                            // line to the clicked day.
-                            const d = state?.activePayload?.[0]?.payload?.date;
+                        onClick={(state: { activeTooltipIndex?: number; activePayload?: { payload?: { date?: string } }[] }) => {
+                            // Same dual-fallback as the profit chart: Recharts
+                            // populates activePayload OR activeTooltipIndex
+                            // depending on whether the click hit a dot vs the
+                            // line. Snaps both charts' orange line to the day.
+                            const fromPayload = state?.activePayload?.[0]?.payload?.date;
+                            const idx = state?.activeTooltipIndex;
+                            const fromIndex = typeof idx === 'number' && idx >= 0 && idx < chartData.length
+                                ? chartData[idx].date
+                                : undefined;
+                            const d = fromPayload ?? fromIndex;
                             if (d && onSelectDate) onSelectDate(d);
                         }}
                     >
