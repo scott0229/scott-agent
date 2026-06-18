@@ -185,7 +185,22 @@ export async function GET(req: NextRequest) {
         // Most-recent `days` entries only; older history is noise on a 30-day chart.
         const trimmed = history.slice(-days);
 
-        return NextResponse.json({ history: trimmed });
+        // Cash-balance trend over the same window — one row per trading day
+        // from DAILY_NET_EQUITY (the net-equity import writes a row per day,
+        // so this IS the trading-day calendar, no zero-fill needed). Drives
+        // the 帳上現金 chart next to the holdings card.
+        const { results: cashRows } = await db.prepare(`
+            SELECT date(datetime(date, 'unixepoch')) AS d, cash_balance
+            FROM DAILY_NET_EQUITY
+            WHERE user_id = ? AND date(datetime(date, 'unixepoch')) <= ?
+            ORDER BY date DESC
+            LIMIT ?
+        `).bind(user.id, endDateStr, days).all<{ d: string; cash_balance: number | null }>();
+        const cashHistory = (cashRows || [])
+            .map(r => ({ date: r.d, cash: r.cash_balance ?? 0 }))
+            .reverse(); // oldest → newest for the chart
+
+        return NextResponse.json({ history: trimmed, cashHistory });
     } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : 'Failed';
         console.error('Failed to fetch daily-trades history:', error);

@@ -49,6 +49,7 @@ export default function DailyTradesPage() {
     const [selectedType, setSelectedType] = useState<string>('all');
     const [allAccounts, setAllAccounts] = useState<any[]>([]);
     const [historyData, setHistoryData] = useState<{ date: string; profit: number; qqqOpen: number | null; qqqClose: number | null }[]>([]);
+    const [cashHistory, setCashHistory] = useState<{ date: string; cash: number }[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     // historyEndDate drives the 30-day chart's right edge. It tracks `date`
     // EXCEPT when the user clicked a point on the chart itself — in that case
@@ -175,6 +176,7 @@ export default function DailyTradesPage() {
     useEffect(() => {
         if (selectedAccount === 'all' || !historyEndDate) {
             setHistoryData([]);
+            setCashHistory([]);
             return;
         }
         let cancelled = false;
@@ -187,12 +189,14 @@ export default function DailyTradesPage() {
                 if (res.ok) {
                     const json = await res.json();
                     setHistoryData(json.history || []);
+                    setCashHistory(json.cashHistory || []);
                 } else {
                     setHistoryData([]);
+                    setCashHistory([]);
                 }
             } catch (err) {
                 console.error('Failed to fetch history', err);
-                if (!cancelled) setHistoryData([]);
+                if (!cancelled) { setHistoryData([]); setCashHistory([]); }
             } finally {
                 if (!cancelled) setHistoryLoading(false);
             }
@@ -803,6 +807,11 @@ export default function DailyTradesPage() {
                     {selectedAccount !== 'all' && filteredData.length === 1 && (
                         <HoldingsCard holdings={holdings} />
                     )}
+                    {/* 帳上現金 30-day trend — fills the right cell of row 2,
+                        next to the holdings card. */}
+                    {selectedAccount !== 'all' && filteredData.length === 1 && (
+                        <CashHistoryChart data={cashHistory} loading={historyLoading} currentDate={date} />
+                    )}
                 </div>
             )}
         </div>
@@ -1296,6 +1305,94 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                     />
                                 );
                             }}
+                            isAnimationActive={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
+
+interface CashHistoryChartProps {
+    data: { date: string; cash: number }[];
+    loading: boolean;
+    currentDate: string;
+}
+
+// 帳上現金 trend over the same 30-trading-day window as the profit chart.
+// One point per DAILY_NET_EQUITY row (already the trading-day calendar).
+function CashHistoryChart({ data, loading, currentDate }: CashHistoryChartProps) {
+    if (loading) {
+        return (
+            <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
+                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日帳上現金</div>
+                <Skeleton className="flex-1 h-[280px]" />
+            </div>
+        );
+    }
+    if (!data || data.length === 0) {
+        return (
+            <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
+                <div className="text-sm font-semibold mb-2 text-center">過去 30 個交易日帳上現金</div>
+                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-12">沒有現金資料</div>
+            </div>
+        );
+    }
+
+    const chartData = data.map(d => ({ ...d, label: d.date.substring(5) }));
+    const latest = data[data.length - 1];
+    const selected = currentDate ? data.find(d => d.date === currentDate) : undefined;
+    const panel = selected ?? latest;
+    const panelStr = panel
+        ? `${panel.cash < 0 ? '' : ''}${Math.round(panel.cash).toLocaleString('en-US')}`
+        : '';
+    const panelColor = panel && panel.cash < 0 ? 'text-status-negative' : 'text-foreground';
+
+    return (
+        <div className="bg-card rounded-lg border shadow-sm p-4 pb-2 flex flex-col min-h-[360px]">
+            <div className="relative mb-2 min-h-[20px] flex items-center">
+                {panel && (
+                    <div className="text-sm whitespace-nowrap ml-[50px]">
+                        <span className="font-medium">{panel.date.substring(5)}</span>
+                        <span className="text-muted-foreground"> · 現金 </span>
+                        <span className={cn('font-semibold', panelColor)}>{panelStr}</span>
+                    </div>
+                )}
+                <div className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold whitespace-nowrap">
+                    過去 30 個交易日帳上現金
+                </div>
+            </div>
+            <div className="relative flex-1 min-h-[300px] [&_*:focus]:outline-none [&_*:focus-visible]:outline-none">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                        <XAxis
+                            dataKey="label"
+                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            interval="preserveStartEnd"
+                            minTickGap={20}
+                        />
+                        <YAxis
+                            tick={{ fontSize: 11, fill: 'var(--foreground)' }}
+                            tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                            width={48}
+                        />
+                        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {currentDate && data.some(d => d.date === currentDate) && (
+                            <ReferenceLine x={currentDate.substring(5)} stroke="var(--chart-orange)" strokeWidth={2} strokeDasharray="3 3" />
+                        )}
+                        <Tooltip
+                            cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                            content={() => null}
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="cash"
+                            stroke="var(--chart-blue, #60a5fa)"
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
                             isAnimationActive={false}
                         />
                     </LineChart>
