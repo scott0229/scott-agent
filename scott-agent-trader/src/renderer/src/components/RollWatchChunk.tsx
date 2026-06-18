@@ -24,6 +24,11 @@ interface RollWatchChunkProps {
   onClear?: () => void
   // 用這組觀察直接交易：開啟展期 DIALOG 並預選此標的。
   onGo: () => void
+  // Only meaningful in 暫停一天 mode (展 0 天 + 追 0 點): clicking the 暫停一天
+  // label calls onPauseToggle to mark/unmark the group's positions as handled
+  // today (blue left-edge). `paused` reflects the current marked state.
+  paused?: boolean
+  onPauseToggle?: () => void
 }
 
 // A persistent "展期觀察" row on a batch card: source → target with the live
@@ -37,7 +42,9 @@ export default function RollWatchChunk({
   chase,
   points,
   onClear,
-  onGo
+  onGo,
+  paused,
+  onPauseToggle
 }: RollWatchChunkProps): React.JSX.Element {
   const [spread, setSpread] = useState<{ bid: number; ask: number; mid: number } | null>(null)
   const [targetDelta, setTargetDelta] = useState<number | null>(null)
@@ -95,12 +102,43 @@ export default function RollWatchChunk({
   const pts = chase && points != null ? points : source.right === 'C' ? rawDelta : -rawDelta
   const ptsStr = Number.isInteger(pts) ? `${pts}` : pts.toFixed(1)
   const ptsVerb = '追'
+  // 展 0 天 + 追 0 點 ⇒ the target leg equals the source: not a roll, just a
+  // "hold and re-check tomorrow". Show it as A → 暫停一天 and drop the roll
+  // metrics, quote, and ✓ (there's no trade to place).
+  const isPause = days === 0 && pts === 0
+
+  // In 暫停一天 mode the whole row toggles the handled-today mark.
+  const pauseClickable = isPause && !!onPauseToggle
 
   return (
-    <div className="roll-watch-chunk">
+    <div
+      className="roll-watch-chunk"
+      onClick={
+        pauseClickable
+          ? (e) => {
+              e.stopPropagation()
+              onPauseToggle?.()
+            }
+          : undefined
+      }
+      style={pauseClickable ? { cursor: 'pointer' } : undefined}
+      title={pauseClickable ? '標記／取消今日已處理（成交）' : undefined}
+    >
       <span className="roll-watch-spec">
-        {symbol} {fmtLeg(source)} <span style={{ color: '#956b3a' }}>→</span> {fmtLeg(target)}
-        {targetDelta != null && (
+        {symbol} {fmtLeg(source)} <span style={{ color: '#956b3a' }}>→</span>{' '}
+        {isPause ? (
+          <span
+            style={{
+              color: paused ? '#2563eb' : undefined,
+              fontWeight: paused ? 600 : undefined
+            }}
+          >
+            暫停一天
+          </span>
+        ) : (
+          fmtLeg(target)
+        )}
+        {!isPause && targetDelta != null && (
           <>
             <span className="roll-watch-sep">·</span>
             <span style={{ fontWeight: 400 }}>
@@ -108,42 +146,50 @@ export default function RollWatchChunk({
             </span>
           </>
         )}
-        {targetIv != null && (
+        {!isPause && targetIv != null && (
           <>
             <span className="roll-watch-sep">·</span>
             <span style={{ fontWeight: 400 }}>iv {(targetIv * 100).toFixed(0)}%</span>
           </>
         )}
-        <span className="roll-watch-sep">·</span>
-        <span className="roll-watch-delta">
-          展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>
-          {ptsVerb} {ptsStr} 點
-        </span>
+        {!isPause && (
+          <>
+            <span className="roll-watch-sep">·</span>
+            <span className="roll-watch-delta">
+              展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>
+              {ptsVerb} {ptsStr} 點
+            </span>
+          </>
+        )}
       </span>
-      <span className="roll-watch-prices">
-        <span>
-          買 <b style={{ color: '#1a6b3a' }}>{fmt(spread?.bid)}</b>
+      {!isPause && (
+        <span className="roll-watch-prices">
+          <span>
+            買 <b style={{ color: '#1a6b3a' }}>{fmt(spread?.bid)}</b>
+          </span>
+          <span className="roll-watch-sep">·</span>
+          <span>
+            賣 <b style={{ color: '#c0392b' }}>{fmt(spread?.ask)}</b>
+          </span>
+          <span className="roll-watch-sep">·</span>
+          <span>
+            中間 <b style={{ color: '#1d4ed8' }}>{fmt(spread?.mid)}</b>
+          </span>
         </span>
-        <span className="roll-watch-sep">·</span>
-        <span>
-          賣 <b style={{ color: '#c0392b' }}>{fmt(spread?.ask)}</b>
-        </span>
-        <span className="roll-watch-sep">·</span>
-        <span>
-          中間 <b style={{ color: '#1d4ed8' }}>{fmt(spread?.mid)}</b>
-        </span>
-      </span>
+      )}
       <span className="roll-watch-actions">
-        <button
-          className="roll-watch-go"
-          title="用這組觀察展期"
-          onClick={(e) => {
-            e.stopPropagation()
-            onGo()
-          }}
-        >
-          ✓
-        </button>
+        {!isPause && (
+          <button
+            className="roll-watch-go"
+            title="用這組觀察展期"
+            onClick={(e) => {
+              e.stopPropagation()
+              onGo()
+            }}
+          >
+            ✓
+          </button>
+        )}
         {onClear && (
           <button className="roll-watch-clear" title="移除觀察" onClick={onClear}>
             ✕

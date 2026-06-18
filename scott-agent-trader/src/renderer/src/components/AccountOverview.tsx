@@ -16,7 +16,8 @@ import {
   getEnabledObserveRules,
   LEAD_HIGH_PCT,
   LEAD_LOW_PCT,
-  BREACH_THRESHOLD_PCT
+  BREACH_THRESHOLD_PCT,
+  DTE_HIGH_THRESHOLD
 } from '../lib/observeRules'
 import TradeGroupDialog from './TradeGroupDialog'
 import BatchOrderForm from './BatchOrderForm'
@@ -378,6 +379,10 @@ export default function AccountOverview({
   const [groupChecked, setGroupChecked] = useState<Record<string, Set<string>>>({})
   // Which groups have check mode active (checkboxes visible)
   const [checkModeGroups, setCheckModeGroups] = useState<Set<string>>(new Set())
+  // Manually "暫停一天 (成交)" positions: clicking a 暫停一天 watch row paints the
+  // same blue left-edge as a real same-day roll, as a self-managed "handled today"
+  // marker. Session-scoped (a toggle), keyed by posKey.
+  const [pausedKeys, setPausedKeys] = useState<Set<string>>(new Set())
   // Pending roll update: wait for IB to confirm fill before updating group posKeys
   // Queue of in-flight rolls (one entry per 展期 placed). MUST be a list, not a
   // single value: rolling several groups in quick succession previously
@@ -2415,10 +2420,18 @@ export default function AccountOverview({
                       // Each rule only applies when the position's remaining DTE
                       // satisfies its condition (e.g. DTE > 2 or DTE < 2).
                       const curDte = tradingDaysUntil(src.expiry) ?? 0
+                      // The group's option positions a 暫停一天 click marks as
+                      // handled-today (blue left-edge), toggled together.
+                      const groupOptKeys = groupPositions
+                        .filter((p) => p.secType === 'OPT')
+                        .map((p) => posKey(p))
                       return rules
                         .filter((rule) => {
-                          if (!rule.hasDte) return true // no DTE gate → always on
-                          return rule.op === '<' ? curDte < rule.dte : curDte > rule.dte
+                          // DTE 高/低/無關 gate: 高 = DTE ≥ threshold, 低 = below it,
+                          // 無關 (or no mode) = always on.
+                          if (rule.dteMode === 'high') return curDte >= DTE_HIGH_THRESHOLD
+                          if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
+                          return true
                         })
                         .map((rule, ri) => {
                         // 展 N 點 = signed delta. 追 N 點 = chase the breach
@@ -2442,6 +2455,20 @@ export default function AccountOverview({
                             isShort={src.quantity < 0}
                             chase={rule.chase}
                             points={rule.points}
+                            paused={
+                              groupOptKeys.length > 0 &&
+                              groupOptKeys.every((k) => pausedKeys.has(k))
+                            }
+                            onPauseToggle={() => {
+                              setPausedKeys((prev) => {
+                                const next = new Set(prev)
+                                const allOn = groupOptKeys.every((k) => next.has(k))
+                                groupOptKeys.forEach((k) =>
+                                  allOn ? next.delete(k) : next.add(k)
+                                )
+                                return next
+                              })
+                            }}
                             onGo={() => {
                               const optKeys = groupPositions
                                 .filter((p) => p.secType === 'OPT')
@@ -2468,6 +2495,22 @@ export default function AccountOverview({
                         if (watches.length === 0) return null
                         const normRight = (r: string): 'C' | 'P' =>
                           r === 'C' || r === 'CALL' ? 'C' : 'P'
+                        // Option positions a 暫停一天 click marks handled-today.
+                        const groupOptKeys = groupPositions
+                          .filter((p) => p.secType === 'OPT')
+                          .map((p) => posKey(p))
+                        const togglePaused = (): void =>
+                          setPausedKeys((prev) => {
+                            const next = new Set(prev)
+                            const allOn = groupOptKeys.every((k) => next.has(k))
+                            groupOptKeys.forEach((k) =>
+                              allOn ? next.delete(k) : next.add(k)
+                            )
+                            return next
+                          })
+                        const groupPaused =
+                          groupOptKeys.length > 0 &&
+                          groupOptKeys.every((k) => pausedKeys.has(k))
                         return watches.map((watch, wi) => {
                           const src = groupPositions.find(
                             (p) =>
@@ -2524,6 +2567,8 @@ export default function AccountOverview({
                                 }}
                                 target={watch}
                                 isShort={src.quantity < 0}
+                                paused={groupPaused}
+                                onPauseToggle={togglePaused}
                                 onGo={() => {
                                   const optKeys = groupPositions
                                     .filter((p) => p.secType === 'OPT')
@@ -2809,8 +2854,12 @@ export default function AccountOverview({
                                   paddingLeft: '8px',
                                   // Cell border wins over the table's gray border via
                                   // border-collapse, so this turns ONLY this row's left
-                                  // edge blue when the contract traded today.
-                                  borderLeft: isRolledToday(pos) ? '3px solid #2563eb' : undefined
+                                  // edge blue when the contract traded today — or when
+                                  // manually marked handled via a 暫停一天 click.
+                                  borderLeft:
+                                    isRolledToday(pos) || pausedKeys.has(pk)
+                                      ? '3px solid #2563eb'
+                                      : undefined
                                 }}
                               >
                                 {checkModeGroups.has(g.id) && (

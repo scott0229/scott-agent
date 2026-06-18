@@ -18,9 +18,12 @@ import {
   getObserveDays,
   setObserveDays,
   getObservePoints,
-  setObservePoints
+  setObservePoints,
+  getObserveDteMode,
+  setObserveDteMode
 } from '../lib/observeRules'
-import type { DteOp, ObserveRuleDef } from '../lib/observeRules'
+import type { DteOp, DteMode, ObserveRuleDef } from '../lib/observeRules'
+import CustomSelect from './CustomSelect'
 
 function SectionHeader({
   title,
@@ -101,12 +104,18 @@ export default function ObserveRulesDialog({
   const [obsPoints, setObsPoints] = useState<Record<string, string>>(() =>
     Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, String(getObservePoints(r))]))
   )
+  // Per-rule DTE 高/低/無關 selector — every rule has one.
+  const [obsDteMode, setObsDteMode] = useState<Record<string, DteMode>>(() =>
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveDteMode(r)]))
+  )
 
   // One editable row for an observe rule — shared by every section.
   const renderObserveRow = (r: ObserveRuleDef): React.JSX.Element => {
     const numStyle: React.CSSProperties = {
-      width: 40,
-      padding: '2px 4px',
+      width: 30,
+      height: 24,
+      boxSizing: 'border-box',
+      padding: '0 4px',
       border: '1px solid #ccc',
       borderRadius: 5,
       fontSize: '0.88em',
@@ -201,6 +210,21 @@ export default function ObserveRulesDialog({
           style={numStyle}
         />
         <span style={{ whiteSpace: 'nowrap' }}>點</span>
+        <span style={{ whiteSpace: 'nowrap' }}>，DTE</span>
+        <CustomSelect
+          className="dte-mode-select"
+          value={obsDteMode[r.id]}
+          onChange={(v) => {
+            const m = v as DteMode
+            setObsDteMode((p) => ({ ...p, [r.id]: m }))
+            setObserveDteMode(r, m)
+          }}
+          options={[
+            { value: 'high', label: '高' },
+            { value: 'low', label: '低' },
+            { value: 'any', label: '無關' }
+          ]}
+        />
       </div>
     )
   }
@@ -217,6 +241,7 @@ export default function ObserveRulesDialog({
           </button>
         </div>
         <div className="settings-body observe-rules-grid">
+          <div className="observe-col">
           <div className="observe-section">
             <SectionHeader
               title={`QQQ 預設觀察規則 (領先 > ${LEAD_HIGH_PCT}%)`}
@@ -292,7 +317,9 @@ export default function ObserveRulesDialog({
             )}
             {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
           </div>
+          </div>
 
+          <div className="observe-col">
           <div className="observe-section">
             <SectionHeader
               title={`QQQ 預設觀察規則 (落後 < ${BREACH_THRESHOLD_PCT}%)`}
@@ -343,6 +370,7 @@ export default function ObserveRulesDialog({
               </div>
             )}
             {showObserveBreachedFar && OBSERVE_RULES_BREACHED_FAR.map(renderObserveRow)}
+          </div>
           </div>
         </div>
       </div>

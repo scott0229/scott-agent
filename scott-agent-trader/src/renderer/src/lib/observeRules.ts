@@ -24,6 +24,9 @@ function setNum(key: string, v: number): void {
 }
 
 export type DteOp = '>' | '<'
+// Per-rule DTE gate shown as a 高/低/無關 selector: 'high' = remaining DTE ≥
+// DTE_HIGH_THRESHOLD, 'low' = below it, 'any' = no DTE gate.
+export type DteMode = 'high' | 'low' | 'any'
 
 // Lead% thresholds that split the three OTM rule sets:
 //   leadPct > HIGH            → leadFar  (comfortable, 領先 > 2%)
@@ -34,6 +37,8 @@ export const LEAD_LOW_PCT = 1
 // Breach% threshold that splits the two ITM (落後) rule sets. Breached by less
 // than this is shallow; more than this is deep.
 export const BREACH_THRESHOLD_PCT = 1.0
+// A position's remaining DTE at/above this counts as "high" for the 高/低 gate.
+export const DTE_HIGH_THRESHOLD = 3
 
 export type ObserveCategory =
   | 'leadFar'
@@ -59,6 +64,11 @@ export interface ObserveRuleDef {
   defaultDte: number
   defaultDays: number
   defaultPoints: number
+  // Optional: when set, the row shows a DTE 高/低/無關 selector that gates the
+  // rule on the position's remaining DTE (高 = DTE ≥ DTE_HIGH_THRESHOLD).
+  showDteMode?: boolean
+  dteModeKey?: string
+  defaultDteMode?: DteMode
 }
 
 export const OBSERVE_RULES: ObserveRuleDef[] = [
@@ -214,6 +224,20 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
 // strike back for cushion.
 export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
   {
+    id: 'obsN0',
+    enabledKey: 'trader.obsN0.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN0.dteOp',
+    dteKey: 'trader.obsN0.dte',
+    daysKey: 'trader.obsN0.days',
+    pointsKey: 'trader.obsN0.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0
+  },
+  {
     id: 'obsN1',
     enabledKey: 'trader.obsN1.enabled',
     hasDte: false,
@@ -272,7 +296,10 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 1
+    defaultPoints: 1,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB1.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsB2',
@@ -286,7 +313,10 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 2,
-    defaultPoints: 2
+    defaultPoints: 2,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB2.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsB3',
@@ -300,7 +330,10 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 5,
-    defaultPoints: 3
+    defaultPoints: 3,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB3.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsB4',
@@ -314,13 +347,33 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 5,
-    defaultPoints: 4
+    defaultPoints: 4,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB4.dteMode',
+    defaultDteMode: 'any'
   }
 ]
 
 // Rules applied when the short option has been breached DEEPLY (落後 > 1% —
 // price well past the strike). Defaults lean to rolling further still.
 export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
+  {
+    id: 'obsBF0',
+    enabledKey: 'trader.obsBF0.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF0.dteOp',
+    dteKey: 'trader.obsBF0.dte',
+    daysKey: 'trader.obsBF0.days',
+    pointsKey: 'trader.obsBF0.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 1,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF0.dteMode',
+    defaultDteMode: 'any'
+  },
   {
     id: 'obsBF1',
     enabledKey: 'trader.obsBF1.enabled',
@@ -333,7 +386,10 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 2,
-    defaultPoints: 2
+    defaultPoints: 2,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF1.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsBF2',
@@ -347,7 +403,10 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 5,
-    defaultPoints: 3
+    defaultPoints: 3,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF2.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsBF3',
@@ -361,7 +420,10 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 5,
-    defaultPoints: 5
+    defaultPoints: 5,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF3.dteMode',
+    defaultDteMode: 'any'
   },
   {
     id: 'obsBF4',
@@ -375,7 +437,10 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 10,
-    defaultPoints: 7
+    defaultPoints: 7,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF4.dteMode',
+    defaultDteMode: 'any'
   }
 ]
 
@@ -395,6 +460,18 @@ export const getObserveDays = (r: ObserveRuleDef): number => getNum(r.daysKey, r
 export const setObserveDays = (r: ObserveRuleDef, v: number): void => setNum(r.daysKey, v)
 export const getObservePoints = (r: ObserveRuleDef): number => getNum(r.pointsKey, r.defaultPoints)
 export const setObservePoints = (r: ObserveRuleDef, v: number): void => setNum(r.pointsKey, v)
+// Every rule carries a DTE 高/低/無關 gate. The storage key derives from the rule
+// id, so the explicit dteModeKeys still declared on the 落後 rules and the derived
+// keys for every other rule resolve to the SAME `trader.<id>.dteMode` slot.
+const dteModeKeyOf = (r: ObserveRuleDef): string => r.dteModeKey ?? `trader.${r.id}.dteMode`
+export const getObserveDteMode = (r: ObserveRuleDef): DteMode => {
+  const raw = localStorage.getItem(dteModeKeyOf(r))
+  return raw === 'high' || raw === 'low' || raw === 'any' ? raw : r.defaultDteMode ?? 'any'
+}
+export const setObserveDteMode = (r: ObserveRuleDef, v: DteMode): void => {
+  localStorage.setItem(dteModeKeyOf(r), v)
+  notifyPrefChange()
+}
 
 // The enabled rules as plain {op, dte, days, points} specs. The rule applies
 // only when the position DTE satisfies `DTE op dte` (e.g. DTE > 2).
@@ -405,6 +482,7 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
   dte: number
   days: number
   points: number
+  dteMode: DteMode
 }> {
   const set =
     category === 'breachedFar'
@@ -422,6 +500,7 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
     op: getObserveDteOp(r),
     dte: getObserveDte(r),
     days: getObserveDays(r),
-    points: getObservePoints(r)
+    points: getObservePoints(r),
+    dteMode: getObserveDteMode(r)
   }))
 }
