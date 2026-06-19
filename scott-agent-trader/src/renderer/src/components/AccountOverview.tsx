@@ -2843,6 +2843,18 @@ export default function AccountOverview({
                             <tr
                               key={idx}
                               onClick={inCheckMode ? () => toggleCheck(pk) : undefined}
+                              onContextMenu={(e) => {
+                                // Right-click a single batch leg → act on just it.
+                                // Option → 展期/平倉 menu, stock → 賣期權/平倉 menu.
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setSelectedPositions(new Set([pk]))
+                                if (isOption) {
+                                  setOptContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                } else {
+                                  setStkContextMenu({ x: e.clientX, y: e.clientY, pos })
+                                }
+                              }}
                               style={inCheckMode ? { cursor: 'pointer' } : undefined}
                             >
                               <td
