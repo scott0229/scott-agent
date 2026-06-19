@@ -79,6 +79,9 @@ interface AccountOverviewProps {
   openOrders: OpenOrderData[]
   orderQuotes: Record<string, { bid: number; ask: number }>
   executions: ExecutionDataItem[]
+  // Yesterday's fills, loaded from D1 (recent_fills) — shown in a collapsible
+  // 昨日成交 section under the 委託單 card.
+  yesterdayFills?: ExecutionDataItem[]
   loading: boolean
   refresh?: () => void
   accountTypes?: Record<string, string>
@@ -233,6 +236,7 @@ export default function AccountOverview({
   openOrders,
   orderQuotes,
   executions,
+  yesterdayFills = [],
   loading,
   refresh,
   accountTypes,
@@ -395,6 +399,34 @@ export default function AccountOverview({
       target: { expiry: string; strike: number; right: 'C' | 'P' }
     }>
   >([])
+  // 昨日成交: collapsed by default. Aggregate partial fills (and hide a combo's
+  // OPT legs) like the 今日成交 table, but consolidated across all accounts.
+  // MUST stay in the top hook cluster (before any early return) — React's
+  // hook-order rule.
+  const [showYesterdayFills, setShowYesterdayFills] = useState(false)
+  const yesterdayFillRows = useMemo(() => {
+    const filtered = yesterdayFills.filter((e) => {
+      if (e.secType === 'OPT') {
+        const hasCombo = yesterdayFills.some(
+          (b) => b.account === e.account && b.orderId === e.orderId && b.secType === 'BAG'
+        )
+        if (hasCombo) return false
+      }
+      return true
+    })
+    const grouped = new Map<string, (typeof filtered)[0]>()
+    for (const e of filtered) {
+      const key = `${e.account}|${e.orderId}|${e.secType}`
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.quantity += e.quantity
+        if (e.time > existing.time) existing.time = e.time
+      } else {
+        grouped.set(key, { ...e })
+      }
+    }
+    return Array.from(grouped.values()).sort((a, b) => b.time.localeCompare(a.time))
+  }, [yesterdayFills])
   // Pending transfer update: wait for IB to confirm fill before updating group posKeys
   const [pendingTransferUpdate, setPendingTransferUpdate] = useState<{
     ops: {
@@ -3539,6 +3571,182 @@ export default function AccountOverview({
                   </tbody>
                 </table>
               </div>
+              )}
+            </div>
+          )}
+          {/* 昨日成交 — consolidated across accounts, collapsible (default
+              collapsed), sourced from D1 recent_fills (immediate, no Flex lag). */}
+          {!selectMode && yesterdayFillRows.length > 0 && (
+            <div className="account-card" style={{ marginBottom: 16 }}>
+              <div
+                className="account-header"
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => setShowYesterdayFills((v) => !v)}
+              >
+                <span className="account-id">
+                  昨日成交 ({yesterdayFillRows.length}) {showYesterdayFills ? '−' : '+'}
+                </span>
+              </div>
+              {showYesterdayFills && (
+                <div
+                  className="positions-section"
+                  style={{ background: '#f5f5f5', borderRadius: 6, padding: 8 }}
+                >
+                  <table className="positions-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
+                        <th style={{ width: '33%', textAlign: 'left' }}>標的</th>
+                        <th style={{ width: '11%' }}>方向</th>
+                        <th style={{ width: '11%' }}>數量</th>
+                        <th style={{ width: '16%' }}>成交價</th>
+                        <th style={{ width: '15%' }}>時間</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {yesterdayFillRows.map((exec) => {
+                        const acctExecs = yesterdayFills.filter((e) => e.account === exec.account)
+                        let desc: React.ReactNode
+                        if (exec.secType === 'OPT') {
+                          desc = formatOptionLabel(exec.symbol, exec.expiry, exec.strike, exec.right)
+                        } else if (exec.secType === 'BAG') {
+                          const legs = acctExecs.filter(
+                            (e) =>
+                              e.orderId === exec.orderId &&
+                              e.secType === 'OPT' &&
+                              e.symbol === exec.symbol
+                          )
+                          if (legs.length > 0) {
+                            const seen = new Set<string>()
+                            const legDescs: string[] = []
+                            for (const l of legs) {
+                              const exp = l.expiry
+                                ? (() => {
+                                    const yy = l.expiry.slice(2, 4)
+                                    const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
+                                    const dd = l.expiry.slice(6, 8).replace(/^0/, '')
+                                    return `${MONTHS[mm]}${dd}'${yy}`
+                                  })()
+                                : ''
+                              const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
+                              const sign = l.side === 'BOT' ? '+' : '-'
+                              const k = `${sign}${exp} ${l.strike}${r}`
+                              if (!seen.has(k)) {
+                                seen.add(k)
+                                legDescs.push(k)
+                              }
+                            }
+                            legDescs.sort((a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1))
+                            const arrow = (
+                              <span style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}>
+                                →
+                              </span>
+                            )
+                            desc = (
+                              <>
+                                {exec.symbol}{' '}
+                                {legDescs.map((l, i) => (
+                                  <React.Fragment key={i}>
+                                    {i > 0 && arrow}
+                                    {l}
+                                  </React.Fragment>
+                                ))}
+                              </>
+                            )
+                          } else {
+                            desc = `${exec.symbol} COMBO`
+                          }
+                        } else {
+                          desc = exec.symbol
+                        }
+                        const isOptionExpiry =
+                          exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
+                        const isAssigned =
+                          isOptionExpiry &&
+                          acctExecs.some(
+                            (e) =>
+                              e.secType === 'STK' &&
+                              e.symbol === exec.symbol &&
+                              Math.abs(e.avgPrice - (exec.strike || 0)) < 0.01
+                          )
+                        const fmtTime = (() => {
+                          const m = exec.time.match(
+                            /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(.+)$/
+                          )
+                          if (!m)
+                            return exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
+                          const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
+                          const d = new Date(
+                            new Date(iso).toLocaleString('en-US', { timeZone: m[7] })
+                          )
+                          return d.toLocaleTimeString('en-US', {
+                            timeZone: 'America/New_York',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          })
+                        })()
+                        return (
+                          <tr key={exec.execId}>
+                            <td
+                              style={{ textAlign: 'left', fontSize: '13px', whiteSpace: 'nowrap' }}
+                            >
+                              {formatAccountName(
+                                accounts.find((a) => a.accountId === exec.account)?.alias ||
+                                  exec.account
+                              )}
+                            </td>
+                            <td className="pos-symbol">
+                              {desc}
+                              {isOptionExpiry && (
+                                <span
+                                  style={
+                                    isAssigned
+                                      ? {
+                                          color: '#fff',
+                                          backgroundColor: '#d35400',
+                                          fontWeight: 600,
+                                          marginLeft: 6,
+                                          padding: '4px 6px',
+                                          margin: '-4px 0 -4px 6px'
+                                        }
+                                      : {
+                                          color: '#1a6baa',
+                                          fontWeight: 600,
+                                          marginLeft: 6,
+                                          fontSize: '0.92em'
+                                        }
+                                  }
+                                >
+                                  {isAssigned ? '被行權' : '(到期)'}
+                                </span>
+                              )}
+                            </td>
+                            <td
+                              style={{
+                                color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a',
+                                fontWeight: 600
+                              }}
+                            >
+                              {exec.side === 'BOT' ? '買' : '賣'}
+                            </td>
+                            <td
+                              style={{
+                                color: '#fff',
+                                fontWeight: 500,
+                                backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626'
+                              }}
+                            >
+                              {exec.quantity}
+                            </td>
+                            <td>{exec.avgPrice.toFixed(2)}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

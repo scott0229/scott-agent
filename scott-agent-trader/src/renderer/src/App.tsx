@@ -58,6 +58,33 @@ function saveHiddenAccounts(set: Set<string>): void {
   }
 }
 
+// Trader fills are persisted in D1 under a single `recent_fills` key — a map of
+// { 'YYYY-MM-DD': fills } trimmed to today + the previous day so the settings
+// blob never grows. 「昨日成交」reads the most recent date before today (handles
+// weekends naturally: Monday's "yesterday" is Friday's entry).
+function etDateStr(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+}
+function trimFillsMap<T>(map: Record<string, T>): Record<string, T> {
+  const today = etDateStr()
+  const out: Record<string, T> = {}
+  if (map[today] !== undefined) out[today] = map[today]
+  const prev = Object.keys(map)
+    .filter((d) => d < today)
+    .sort()
+    .pop()
+  if (prev && map[prev] !== undefined) out[prev] = map[prev]
+  return out
+}
+function pickYesterdayFills<T>(map: Record<string, T[]>): T[] {
+  const today = etDateStr()
+  const prev = Object.keys(map)
+    .filter((d) => d < today)
+    .sort()
+    .pop()
+  return prev ? map[prev] || [] : []
+}
+
 function App(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
   const [connectedPort, setConnectedPort] = useState(7497)
@@ -129,6 +156,31 @@ function App(): React.JSX.Element {
     loading,
     refresh
   } = useAccountStore(connected, connectedPort, mergeAccountAliases)
+
+  // 昨日成交: persist today's fills to D1 (recent_fills) so they survive an app
+  // restart, and read yesterday's immediately (no Flex T+1 lag).
+  const [yesterdayFills, setYesterdayFills] = useState<typeof executions>([])
+  const recentFillsRef = useRef<Record<string, typeof executions>>({})
+  useEffect(() => {
+    window.ibApi
+      .getSettings(d1Target)
+      .then((data) => {
+        const rf = (data.settings?.recent_fills as Record<string, typeof executions>) || {}
+        recentFillsRef.current = rf
+        setYesterdayFills(pickYesterdayFills(rf))
+      })
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (!connected || executions.length === 0) return
+    // `executions` is already today-only and IB-reconciled → source of truth.
+    const next = trimFillsMap({ ...recentFillsRef.current, [etDateStr()]: executions })
+    recentFillsRef.current = next
+    const t = setTimeout(() => {
+      window.ibApi.putSettings('recent_fills', next, d1Target).catch(() => {})
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [executions, connected])
 
   // Stable key that only changes when the set of account IDs changes (not on every poll)
   const accountIdsKey = useMemo(
@@ -513,6 +565,7 @@ function App(): React.JSX.Element {
               openOrders={visibleOpenOrders}
               orderQuotes={orderQuotes}
               executions={visibleExecutions}
+              yesterdayFills={yesterdayFills}
               loading={loading}
               refresh={refresh}
               accountTypes={accountTypes}
