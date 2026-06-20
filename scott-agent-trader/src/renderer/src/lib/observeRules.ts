@@ -289,13 +289,42 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDays: 1,
     defaultPoints: 2,
     showProfitMode: true
+  },
+  {
+    id: 'obsM5',
+    enabledKey: 'trader.obsM5.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsM5.dteOp',
+    dteKey: 'trader.obsM5.dte',
+    daysKey: 'trader.obsM5.days',
+    pointsKey: 'trader.obsM5.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showProfitMode: true
   }
 ]
 
 // Rules applied when the position is still OTM but leading by LESS than the
 // low threshold — getting close to the strike, so lean toward pulling the
 // strike back for cushion.
-export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
+const OBSERVE_RULES_NEAR_BASE: ObserveRuleDef[] = [
+  {
+    id: 'obsN5',
+    enabledKey: 'trader.obsN5.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN5.dteOp',
+    dteKey: 'trader.obsN5.dte',
+    daysKey: 'trader.obsN5.days',
+    pointsKey: 'trader.obsN5.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0
+  },
   {
     id: 'obsN0',
     enabledKey: 'trader.obsN0.enabled',
@@ -351,12 +380,46 @@ export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 2,
     defaultPoints: -2
+  },
+  {
+    id: 'obsN6',
+    enabledKey: 'trader.obsN6.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN6.dteOp',
+    dteKey: 'trader.obsN6.dte',
+    daysKey: 'trader.obsN6.days',
+    pointsKey: 'trader.obsN6.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0
+  },
+  {
+    id: 'obsN7',
+    enabledKey: 'trader.obsN7.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsN7.dteOp',
+    dteKey: 'trader.obsN7.dte',
+    daysKey: 'trader.obsN7.days',
+    pointsKey: 'trader.obsN7.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0
   }
 ]
 
+// 領先 < 1% rules all carry a 收益 selector (defaults to 無關 via id-derived key).
+export const OBSERVE_RULES_NEAR: ObserveRuleDef[] = OBSERVE_RULES_NEAR_BASE.map((r) => ({
+  ...r,
+  showProfitMode: true
+}))
+
 // Rules applied when the short option has been breached SHALLOWLY (落後 < 1% —
 // price just past the strike). Defaults lean to rolling further out / away.
-export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
+const OBSERVE_RULES_BREACHED_BASE: ObserveRuleDef[] = [
   {
     id: 'obsB0',
     enabledKey: 'trader.obsB0.enabled',
@@ -444,9 +507,15 @@ export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = [
   }
 ]
 
+// 落後 < 1% rules all carry a 收益 selector too (defaults to 無關 via id-derived key).
+export const OBSERVE_RULES_BREACHED: ObserveRuleDef[] = OBSERVE_RULES_BREACHED_BASE.map((r) => ({
+  ...r,
+  showProfitMode: true
+}))
+
 // Rules applied when the short option has been breached DEEPLY (落後 > 1% —
 // price well past the strike). Defaults lean to rolling further still.
-export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
+const OBSERVE_RULES_BREACHED_FAR_BASE: ObserveRuleDef[] = [
   {
     id: 'obsBF0',
     enabledKey: 'trader.obsBF0.enabled',
@@ -479,6 +548,23 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultPoints: 2,
     showDteMode: true,
     dteModeKey: 'trader.obsBF1.dteMode',
+    defaultDteMode: 'any'
+  },
+  {
+    id: 'obsBF5',
+    enabledKey: 'trader.obsBF5.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF5.dteOp',
+    dteKey: 'trader.obsBF5.dte',
+    daysKey: 'trader.obsBF5.days',
+    pointsKey: 'trader.obsBF5.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF5.dteMode',
     defaultDteMode: 'any'
   },
   {
@@ -533,6 +619,11 @@ export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = [
     defaultDteMode: 'any'
   }
 ]
+
+// 落後 > 1% rules all carry a 收益 selector too (defaults to 無關 via id-derived key).
+export const OBSERVE_RULES_BREACHED_FAR: ObserveRuleDef[] = OBSERVE_RULES_BREACHED_FAR_BASE.map(
+  (r) => ({ ...r, showProfitMode: true })
+)
 
 export const getObserveEnabled = (r: ObserveRuleDef): boolean => getBool(r.enabledKey)
 export const setObserveEnabled = (r: ObserveRuleDef, v: boolean): void => setBool(r.enabledKey, v)

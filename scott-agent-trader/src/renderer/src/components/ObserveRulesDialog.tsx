@@ -38,9 +38,7 @@ function SectionHeader({
 }): React.JSX.Element {
   return (
     <div
-      onClick={onToggle}
       style={{
-        cursor: 'pointer',
         userSelect: 'none',
         marginTop: 0,
         marginBottom: 8,
@@ -50,10 +48,13 @@ function SectionHeader({
       }}
     >
       <span
+        onClick={onToggle}
         style={{
           display: 'inline-block',
           fontSize: '0.75em',
           color: '#888',
+          cursor: 'pointer',
+          padding: '2px 4px',
           transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
           transition: 'transform 0.15s ease'
         }}
@@ -66,6 +67,9 @@ function SectionHeader({
     </div>
   )
 }
+
+// Per-section explanatory text is hidden for now (set true to show again).
+const SHOW_OBSERVE_DESC: boolean = false
 
 const ALL_OBSERVE_RULES = [
   ...OBSERVE_RULES,
@@ -291,7 +295,8 @@ export default function ObserveRulesDialog({
                   color: '#333',
                   padding: '0 8px',
                   marginBottom: 10,
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  display: SHOW_OBSERVE_DESC ? undefined : 'none'
                 }}
               >
                 大幅領先可以優先考慮降 DTE，
@@ -315,7 +320,8 @@ export default function ObserveRulesDialog({
                   color: '#333',
                   padding: '0 8px',
                   marginBottom: 10,
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  display: SHOW_OBSERVE_DESC ? undefined : 'none'
                 }}
               >
                 安全範圍可以考慮降 DTE，
@@ -344,7 +350,8 @@ export default function ObserveRulesDialog({
                   color: '#333',
                   padding: '0 8px',
                   marginBottom: 10,
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  display: SHOW_OBSERVE_DESC ? undefined : 'none'
                 }}
               >
                 領先不夠多不適合再退後點位，
@@ -369,14 +376,11 @@ export default function ObserveRulesDialog({
                   color: '#333',
                   padding: '0 8px',
                   marginBottom: 10,
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  display: SHOW_OBSERVE_DESC ? undefined : 'none'
                 }}
               >
-                只要有落後就要追，
-                <br />
-                適度的虧損也可以接受，
-                <br />
-                且最多用兩天來換提價
+                有落後就要追，追點數、或者追天數。
               </div>
             )}
             {showObserveBreached && OBSERVE_RULES_BREACHED.map(renderObserveRow)}
@@ -395,7 +399,8 @@ export default function ObserveRulesDialog({
                   color: '#333',
                   padding: '0 8px',
                   marginBottom: 10,
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  display: SHOW_OBSERVE_DESC ? undefined : 'none'
                 }}
               >
                 落後太多故虧損提價難以避免，
