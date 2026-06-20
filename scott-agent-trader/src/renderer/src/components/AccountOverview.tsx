@@ -1859,12 +1859,12 @@ export default function AccountOverview({
               <button
                 className="select-toggle-btn"
                 style={{ marginLeft: 'auto' }}
-                onClick={() => setShowRiskAlerts(true)}
+                onClick={() => setShowObserveRules(true)}
               >
-                風險提示
-              </button>
-              <button className="select-toggle-btn" onClick={() => setShowObserveRules(true)}>
                 觀察規則
+              </button>
+              <button className="select-toggle-btn" onClick={() => setShowRiskAlerts(true)}>
+                風險提示
               </button>
               <button className="select-toggle-btn" onClick={() => setShowAddGroup(true)}>
                 ＋ 新增
