@@ -2904,6 +2904,11 @@ input[type='number']::-webkit-outer-spin-button {
 .settings-panel.observe-rules-panel {
   width: 900px;
 }
+/* 風險提示 dialog: single column of threshold rules, opened from the 批次交易
+   toolbar like 觀察規則. */
+.settings-panel.risk-alerts-panel {
+  width: 440px;
+}
 /* Explicit two-column flex (NOT CSS multicol). Multicol fragments the rows, and
    Chromium re-balances the fragments / mis-places an absolutely-positioned child
    whenever the DTE dropdown opens — which made the rule layout jump. Two real

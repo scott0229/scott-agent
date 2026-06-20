@@ -1,13 +1,6 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import type { AccountData } from '../hooks/useAccountStore'
-import {
-  RISK_RULES,
-  getRuleEnabled,
-  setRuleEnabled,
-  getRuleThreshold,
-  setRuleThreshold
-} from '../lib/riskPrefs'
 
 const LABELS = ['一', '二', '三', '四', '五', '六']
 
@@ -91,15 +84,6 @@ export default function SettingsPanel({
     setLimitInput(String(marginLimit))
   }, [marginLimit])
   const [showRisk, setShowRisk] = useState(true)
-  const [showRiskAlerts, setShowRiskAlerts] = useState(true)
-  // Risk-rule toggle + threshold state, keyed by rule id. Threshold is kept as
-  // a string while editing; committed to localStorage on blur.
-  const [riskEnabled, setRiskEnabled] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(RISK_RULES.map((r) => [r.id, getRuleEnabled(r)]))
-  )
-  const [riskThreshold, setRiskThreshold] = useState<Record<string, string>>(() =>
-    Object.fromEntries(RISK_RULES.map((r) => [r.id, String(getRuleThreshold(r))]))
-  )
   const [showSymbols, setShowSymbols] = useState(true)
   const [showAccounts, setShowAccounts] = useState(true)
   const [showDebug, setShowDebug] = useState(true)
@@ -178,66 +162,6 @@ export default function SettingsPanel({
               />
             </div>
           )}
-
-          <SectionHeader
-            title="風險提示"
-            expanded={showRiskAlerts}
-            onToggle={() => setShowRiskAlerts((v) => !v)}
-          />
-          {showRiskAlerts &&
-            RISK_RULES.map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginBottom: 12,
-                  padding: '0 8px',
-                  fontSize: '0.88em',
-                  color: '#555'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={riskEnabled[r.id]}
-                  onChange={(e) => {
-                    setRiskEnabled((p) => ({ ...p, [r.id]: e.target.checked }))
-                    setRuleEnabled(r, e.target.checked)
-                  }}
-                  style={{ cursor: 'pointer', flexShrink: 0 }}
-                />
-                <span style={{ whiteSpace: 'nowrap' }}>{r.labelBefore}</span>
-                <input
-                  type="number"
-                  step={r.step}
-                  min={0}
-                  value={riskThreshold[r.id]}
-                  onChange={(e) =>
-                    setRiskThreshold((p) => ({ ...p, [r.id]: e.target.value }))
-                  }
-                  onBlur={() => {
-                    const v = parseFloat(riskThreshold[r.id])
-                    if (Number.isFinite(v) && v >= 0) {
-                      setRuleThreshold(r, v)
-                      setRiskThreshold((p) => ({ ...p, [r.id]: String(v) }))
-                    } else {
-                      setRiskThreshold((p) => ({ ...p, [r.id]: String(getRuleThreshold(r)) }))
-                    }
-                  }}
-                  style={{
-                    width: 40,
-                    padding: '2px 4px',
-                    border: '1px solid #ccc',
-                    borderRadius: 5,
-                    fontSize: '0.88em',
-                    textAlign: 'center',
-                    flexShrink: 0
-                  }}
-                />
-                <span style={{ whiteSpace: 'nowrap' }}>{r.labelAfter}</span>
-              </div>
-            ))}
 
           <SectionHeader
             title="可交易標的"

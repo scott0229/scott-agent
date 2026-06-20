@@ -10,6 +10,7 @@ import CustomSelect from './CustomSelect'
 import RollOptionDialog from './RollOptionDialog'
 import RollWatchChunk from './RollWatchChunk'
 import ObserveRulesDialog from './ObserveRulesDialog'
+import RiskAlertsDialog from './RiskAlertsDialog'
 import { rollTradingDays, addTradingDays } from '../lib/tradingDays'
 import { compareSymbols } from '../lib/symbols'
 import {
@@ -371,6 +372,7 @@ export default function AccountOverview({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [showAddGroup, setShowAddGroup] = useState(false)
   const [showObserveRules, setShowObserveRules] = useState(false)
+  const [showRiskAlerts, setShowRiskAlerts] = useState(false)
   const [editingGroup, setEditingGroup] = useState<SymbolGroup | null>(null)
   const [filterGroupIndex, setFilterGroupIndex] = useState(groupFiltersMemory.index)
   const [filterGroupSymbol, setFilterGroupSymbol] = useState(groupFiltersMemory.symbol)
@@ -1857,8 +1859,11 @@ export default function AccountOverview({
               <button
                 className="select-toggle-btn"
                 style={{ marginLeft: 'auto' }}
-                onClick={() => setShowObserveRules(true)}
+                onClick={() => setShowRiskAlerts(true)}
               >
+                風險提示
+              </button>
+              <button className="select-toggle-btn" onClick={() => setShowObserveRules(true)}>
                 觀察規則
               </button>
               <button className="select-toggle-btn" onClick={() => setShowAddGroup(true)}>
@@ -5502,6 +5507,7 @@ export default function AccountOverview({
         onUpdateGroup={onUpdateSymbolGroup}
       />
       <ObserveRulesDialog open={showObserveRules} onClose={() => setShowObserveRules(false)} />
+      <RiskAlertsDialog open={showRiskAlerts} onClose={() => setShowRiskAlerts(false)} />
     </>
   )
 }
