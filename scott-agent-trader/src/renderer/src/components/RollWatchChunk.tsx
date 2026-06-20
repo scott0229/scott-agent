@@ -66,12 +66,26 @@ export default function RollWatchChunk({
         const cur = srcGreeks.find((g) => g.strike === source.strike && g.right === source.right)
         const tgt = tgtGreeks.find((g) => g.strike === target.strike && g.right === target.right)
         if (cancelledRef.current || !cur || !tgt) return
-        const spreadBid = isShort ? cur.ask - tgt.bid : tgt.ask - cur.bid
-        const spreadAsk = isShort ? cur.bid - tgt.ask : tgt.bid - cur.ask
-        setSpread({ bid: spreadBid, ask: spreadAsk, mid: (spreadBid + spreadAsk) / 2 })
         // Target leg's delta = the new position's assignment probability.
         setTargetDelta(Number.isFinite(tgt.delta) ? tgt.delta : null)
         setTargetIv(Number.isFinite(tgt.impliedVol) ? tgt.impliedVol : null)
+        // Use each leg's live bid/ask; fall back to last trade when a side has no
+        // quote (e.g. market closed at weekends). Without this, subtracting a 0
+        // leg yields a garbage spread (~the other leg's full price). If even last
+        // is missing, show "-" rather than a wrong number.
+        const side = (q: number, last: number): number | null =>
+          Number.isFinite(q) && q > 0 ? q : Number.isFinite(last) && last > 0 ? last : null
+        const cb = side(cur.bid, cur.last)
+        const ca = side(cur.ask, cur.last)
+        const tb = side(tgt.bid, tgt.last)
+        const ta = side(tgt.ask, tgt.last)
+        if (cb == null || ca == null || tb == null || ta == null) {
+          setSpread(null)
+          return
+        }
+        const spreadBid = isShort ? ca - tb : ta - cb
+        const spreadAsk = isShort ? cb - ta : tb - ca
+        setSpread({ bid: spreadBid, ask: spreadAsk, mid: (spreadBid + spreadAsk) / 2 })
       } catch {
         /* ignore transient quote errors */
       }

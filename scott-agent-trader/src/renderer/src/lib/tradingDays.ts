@@ -11,7 +11,9 @@ export const US_MARKET_HOLIDAYS = new Set([
 ])
 
 // Trading days between two YYYYMMDD dates — weekends AND US market holidays
-// excluded. Returns null if either date is missing/short, 0 if to <= from.
+// excluded. Returns null if either date is missing/short, 0 if to == from, and a
+// NEGATIVE count when `to` is before `from` (a backward roll to a nearer expiry,
+// e.g. a 展 -1 天 rule).
 export function rollTradingDays(from?: string, to?: string | null): number | null {
   if (!from || from.length < 8 || !to || to.length < 8) return null
   const d1 = new Date(
@@ -20,33 +22,37 @@ export function rollTradingDays(from?: string, to?: string | null): number | nul
   const d2 = new Date(
     `${to.substring(0, 4)}-${to.substring(4, 6)}-${to.substring(6, 8)}T00:00:00`
   )
-  if (d2.getTime() <= d1.getTime()) return 0
+  if (d2.getTime() === d1.getTime()) return 0
+  const forward = d2.getTime() > d1.getTime()
+  const cur = new Date(forward ? d1 : d2)
+  const endTime = (forward ? d2 : d1).getTime()
   let count = 0
-  const cur = new Date(d1)
-  while (cur.getTime() < d2.getTime()) {
+  while (cur.getTime() < endTime) {
     cur.setDate(cur.getDate() + 1)
     const dow = cur.getDay() // 0 = Sun, 6 = Sat
     const ds = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
     if (dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(ds)) count++
   }
-  return count
+  return forward ? count : -count
 }
 
-// Return the YYYYMMDD that is `n` trading days after `from` (weekends + US
-// holidays skipped). n = 0 returns `from` unchanged. Used to turn a relative
-// "展 N 天" observe rule into a concrete target expiry.
+// Return the YYYYMMDD that is `n` trading days from `from` (weekends + US
+// holidays skipped). n = 0 returns `from` unchanged; NEGATIVE n steps BACKWARD
+// to a nearer expiry (e.g. 展 -1 天). Used to turn a relative "展 N 天" observe
+// rule into a concrete target expiry.
 export function addTradingDays(from: string, n: number): string {
-  if (!from || from.length < 8) return from
-  if (n <= 0) return from
+  if (!from || from.length < 8 || n === 0) return from
   const cur = new Date(
     `${from.substring(0, 4)}-${from.substring(4, 6)}-${from.substring(6, 8)}T00:00:00`
   )
-  let added = 0
-  while (added < n) {
-    cur.setDate(cur.getDate() + 1)
+  const step = n > 0 ? 1 : -1
+  const target = Math.abs(n)
+  let moved = 0
+  while (moved < target) {
+    cur.setDate(cur.getDate() + step)
     const dow = cur.getDay()
     const ds = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
-    if (dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(ds)) added++
+    if (dow !== 0 && dow !== 6 && !US_MARKET_HOLIDAYS.has(ds)) moved++
   }
   return `${cur.getFullYear()}${String(cur.getMonth() + 1).padStart(2, '0')}${String(cur.getDate()).padStart(2, '0')}`
 }

@@ -24,13 +24,22 @@ function setNum(key: string, v: number): void {
 }
 
 export type DteOp = '>' | '<'
-// Per-rule DTE gate shown as a 高/低/無關 selector: 'high' = remaining DTE ≥
-// DTE_HIGH_THRESHOLD, 'low' = below it, 'any' = no DTE gate.
-export type DteMode = 'high' | 'low' | 'any'
-// Per-rule 收益 gate shown as a 無關 / > 0 / > 0.1 / > 0.3 / > 0.5 selector, gating
-// on the roll's credit (= −中間): 'positive' = > 0, 'pos01' = > 0.1, 'pos03' =
-// > 0.3, 'pos05' = > 0.5, 'any' = no gate.
-export type ProfitMode = 'any' | 'positive' | 'pos01' | 'pos03' | 'pos05'
+// Per-rule DTE gate shown as a ≥3 / 1,2 / 2 / 2,3 / 1 / 無關 selector: 'high' =
+// remaining DTE ≥ DTE_HIGH_THRESHOLD, 'low' = below it (1 or 2), 'eq2' = exactly
+// 2, 'eq23' = 2 or 3, 'eq1' = exactly 1, 'any' = no DTE gate.
+export type DteMode = 'high' | 'low' | 'eq2' | 'eq23' | 'eq1' | 'any'
+// Per-rule 收益 gate shown as a 無關 / > 0 / > 0.1 / > 0.3 / > 0.5 / > 0.7 / > 1
+// selector, gating on the roll's credit (= −中間): 'positive' = > 0, 'pos01' =
+// > 0.1, 'pos03' = > 0.3, 'pos05' = > 0.5, 'pos07' = > 0.7, 'pos1' = > 1,
+// 'any' = no gate.
+export type ProfitMode =
+  | 'any'
+  | 'positive'
+  | 'pos01'
+  | 'pos03'
+  | 'pos05'
+  | 'pos07'
+  | 'pos1'
 
 // Lead% thresholds that split the three OTM rule sets:
 //   leadPct > HIGH            → leadFar  (comfortable, 領先 > 2%)
@@ -142,6 +151,36 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     showProfitMode: true
   },
   {
+    id: 'obs9',
+    enabledKey: 'trader.obs9.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obs9.dteOp',
+    dteKey: 'trader.obs9.dte',
+    daysKey: 'trader.obs9.days',
+    pointsKey: 'trader.obs9.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showProfitMode: true
+  },
+  {
+    id: 'obs10',
+    enabledKey: 'trader.obs10.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obs10.dteOp',
+    dteKey: 'trader.obs10.dte',
+    daysKey: 'trader.obs10.days',
+    pointsKey: 'trader.obs10.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showProfitMode: true
+  },
+  {
     id: 'obs7',
     enabledKey: 'trader.obs7.enabled',
     hasDte: false,
@@ -154,6 +193,21 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDte: 2,
     defaultDays: 1,
     defaultPoints: 4,
+    showProfitMode: true
+  },
+  {
+    id: 'obs8',
+    enabledKey: 'trader.obs8.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obs8.dteOp',
+    dteKey: 'trader.obs8.dte',
+    daysKey: 'trader.obs8.days',
+    pointsKey: 'trader.obs8.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
     showProfitMode: true
   }
 ]
@@ -502,7 +556,14 @@ export const setObservePoints = (r: ObserveRuleDef, v: number): void => setNum(r
 const dteModeKeyOf = (r: ObserveRuleDef): string => r.dteModeKey ?? `trader.${r.id}.dteMode`
 export const getObserveDteMode = (r: ObserveRuleDef): DteMode => {
   const raw = localStorage.getItem(dteModeKeyOf(r))
-  return raw === 'high' || raw === 'low' || raw === 'any' ? raw : r.defaultDteMode ?? 'any'
+  return raw === 'high' ||
+    raw === 'low' ||
+    raw === 'eq2' ||
+    raw === 'eq23' ||
+    raw === 'eq1' ||
+    raw === 'any'
+    ? raw
+    : r.defaultDteMode ?? 'any'
 }
 export const setObserveDteMode = (r: ObserveRuleDef, v: DteMode): void => {
   localStorage.setItem(dteModeKeyOf(r), v)
@@ -518,6 +579,8 @@ export const getObserveProfitMode = (r: ObserveRuleDef): ProfitMode => {
     raw === 'pos01' ||
     raw === 'pos03' ||
     raw === 'pos05' ||
+    raw === 'pos07' ||
+    raw === 'pos1' ||
     raw === 'any'
     ? raw
     : r.defaultProfitMode ?? 'any'

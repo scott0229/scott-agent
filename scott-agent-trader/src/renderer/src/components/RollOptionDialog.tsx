@@ -507,10 +507,19 @@ export default function RollOptionDialog({
     const curGreek = findCurrentGreek(pos0)
     if (!curGreek) return null
     const isShort = pos0.quantity < 0
-    const spreadBid = isShort ? curGreek.ask - targetGreek.bid : targetGreek.ask - curGreek.bid
-    const spreadAsk = isShort ? curGreek.bid - targetGreek.ask : targetGreek.bid - curGreek.ask
-    const spreadMid = (spreadBid + spreadAsk) / 2
-    return { bid: spreadBid, ask: spreadAsk, mid: spreadMid }
+    // bid/ask, falling back to last when a side has no live quote (e.g. market
+    // closed at weekends); null when even last is missing → spread shows "-".
+    // Without this, subtracting a 0 leg yields a garbage spread.
+    const side = (q: number, last: number): number | null =>
+      Number.isFinite(q) && q > 0 ? q : Number.isFinite(last) && last > 0 ? last : null
+    const cb = side(curGreek.bid, curGreek.last)
+    const ca = side(curGreek.ask, curGreek.last)
+    const tb = side(targetGreek.bid, targetGreek.last)
+    const ta = side(targetGreek.ask, targetGreek.last)
+    if (cb == null || ca == null || tb == null || ta == null) return null
+    const spreadBid = isShort ? ca - tb : ta - cb
+    const spreadAsk = isShort ? cb - ta : tb - ca
+    return { bid: spreadBid, ask: spreadAsk, mid: (spreadBid + spreadAsk) / 2 }
   }, [targetGreek, positions, findCurrentGreek])
 
   // Auto-populate limit price with mid price whenever target selection changes

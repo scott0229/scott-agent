@@ -126,7 +126,8 @@ export default function ObserveRulesDialog({
       borderRadius: 5,
       fontSize: '0.88em',
       textAlign: 'center',
-      flexShrink: 0
+      flexShrink: 0,
+      margin: '0 5px'
     }
     return (
       <div
@@ -134,7 +135,9 @@ export default function ObserveRulesDialog({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          // No flex gap — spacing comes from the boxes' own margins so the 「，」
+          // separators sit tight against the boxes/labels (like normal text).
+          gap: 0,
           marginBottom: 12,
           padding: '0 8px',
           fontSize: '0.88em',
@@ -148,8 +151,27 @@ export default function ObserveRulesDialog({
             setObsEnabled((p) => ({ ...p, [r.id]: e.target.checked }))
             setObserveEnabled(r, e.target.checked)
           }}
-          style={{ cursor: 'pointer', flexShrink: 0 }}
+          style={{ cursor: 'pointer', flexShrink: 0, marginRight: 6 }}
         />
+        <span style={{ whiteSpace: 'nowrap' }}>DTE</span>
+        <CustomSelect
+          className="dte-mode-select"
+          value={obsDteMode[r.id]}
+          onChange={(v) => {
+            const m = v as DteMode
+            setObsDteMode((p) => ({ ...p, [r.id]: m }))
+            setObserveDteMode(r, m)
+          }}
+          options={[
+            { value: 'any', label: '無關' },
+            { value: 'high', label: '≥ 3' },
+            { value: 'eq23', label: '2, 3' },
+            { value: 'eq2', label: '2' },
+            { value: 'low', label: '1, 2' },
+            { value: 'eq1', label: '1' }
+          ]}
+        />
+        <span style={{ whiteSpace: 'nowrap' }}>，</span>
         {r.hasDte && (
           <>
             <span style={{ whiteSpace: 'nowrap' }}>DTE</span>
@@ -216,21 +238,6 @@ export default function ObserveRulesDialog({
           style={numStyle}
         />
         <span style={{ whiteSpace: 'nowrap' }}>點</span>
-        <span style={{ whiteSpace: 'nowrap' }}>，DTE</span>
-        <CustomSelect
-          className="dte-mode-select"
-          value={obsDteMode[r.id]}
-          onChange={(v) => {
-            const m = v as DteMode
-            setObsDteMode((p) => ({ ...p, [r.id]: m }))
-            setObserveDteMode(r, m)
-          }}
-          options={[
-            { value: 'high', label: '高' },
-            { value: 'low', label: '低' },
-            { value: 'any', label: '無關' }
-          ]}
-        />
         {r.showProfitMode && (
           <>
             <span style={{ whiteSpace: 'nowrap' }}>，收益</span>
@@ -247,7 +254,9 @@ export default function ObserveRulesDialog({
                 { value: 'positive', label: '> 0' },
                 { value: 'pos01', label: '> 0.1' },
                 { value: 'pos03', label: '> 0.3' },
-                { value: 'pos05', label: '> 0.5' }
+                { value: 'pos05', label: '> 0.5' },
+                { value: 'pos07', label: '> 0.7' },
+                { value: 'pos1', label: '> 1' }
               ]}
             />
           </>
@@ -319,6 +328,9 @@ export default function ObserveRulesDialog({
             {showObserveMid && OBSERVE_RULES_MID.map(renderObserveRow)}
           </div>
 
+          </div>
+
+          <div className="observe-col">
           <div className="observe-section">
             <SectionHeader
               title={`QQQ 預設觀察規則 (領先 < ${LEAD_LOW_PCT}%)`}
@@ -344,9 +356,6 @@ export default function ObserveRulesDialog({
             )}
             {showObserveNear && OBSERVE_RULES_NEAR.map(renderObserveRow)}
           </div>
-          </div>
-
-          <div className="observe-col">
           <div className="observe-section">
             <SectionHeader
               title={`QQQ 預設觀察規則 (落後 < ${BREACH_THRESHOLD_PCT}%)`}

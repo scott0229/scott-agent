@@ -2470,6 +2470,9 @@ export default function AccountOverview({
                           // computed per-row inside RollWatchChunk (via minCredit).
                           if (rule.dteMode === 'high') return curDte >= DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
+                          if (rule.dteMode === 'eq2') return curDte === 2
+                          if (rule.dteMode === 'eq23') return curDte === 2 || curDte === 3
+                          if (rule.dteMode === 'eq1') return curDte === 1
                           return true
                         })
                         .map((rule, ri) => {
@@ -2495,15 +2498,19 @@ export default function AccountOverview({
                             chase={rule.chase}
                             points={rule.points}
                             minCredit={
-                              rule.profitMode === 'pos05'
-                                ? 0.5
-                                : rule.profitMode === 'pos03'
-                                  ? 0.3
-                                  : rule.profitMode === 'pos01'
-                                    ? 0.1
-                                    : rule.profitMode === 'positive'
-                                      ? 0
-                                      : undefined
+                              rule.profitMode === 'pos1'
+                                ? 1
+                                : rule.profitMode === 'pos07'
+                                  ? 0.7
+                                  : rule.profitMode === 'pos05'
+                                    ? 0.5
+                                    : rule.profitMode === 'pos03'
+                                      ? 0.3
+                                      : rule.profitMode === 'pos01'
+                                        ? 0.1
+                                        : rule.profitMode === 'positive'
+                                          ? 0
+                                          : undefined
                             }
                             paused={
                               groupOptKeys.length > 0 &&

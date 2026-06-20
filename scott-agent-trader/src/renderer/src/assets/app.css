@@ -2876,6 +2876,9 @@ input[type='number']::-webkit-outer-spin-button {
   /* Hug the label instead of the shared 120px min-width. */
   min-width: 0;
   width: auto;
+  /* Left gap only (the row has no flex gap); the right edge stays tight so the
+     following 「，」 separator sits flush against the box. */
+  margin-left: 5px;
 }
 .custom-select.dte-mode-select .custom-select-trigger {
   /* Match the 點數 number input's height exactly. */
@@ -2896,6 +2899,11 @@ input[type='number']::-webkit-outer-spin-button {
 /* Drop the ▾ — it just padded the box wider; the label alone is enough. */
 .custom-select.dte-mode-select .custom-select-arrow {
   display: none;
+}
+/* Show every option at once (no scrollbar) — the lists are short. */
+.custom-select.dte-mode-select .custom-select-dropdown {
+  max-height: none;
+  overflow-y: visible;
 }
 
 /* 觀察規則 dialog: wider panel + two-column layout so it isn't one tall list.
