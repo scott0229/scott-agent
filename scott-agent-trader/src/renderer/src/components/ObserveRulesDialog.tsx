@@ -20,9 +20,11 @@ import {
   getObservePoints,
   setObservePoints,
   getObserveDteMode,
-  setObserveDteMode
+  setObserveDteMode,
+  getObserveProfitMode,
+  setObserveProfitMode
 } from '../lib/observeRules'
-import type { DteOp, DteMode, ObserveRuleDef } from '../lib/observeRules'
+import type { DteOp, DteMode, ProfitMode, ObserveRuleDef } from '../lib/observeRules'
 import CustomSelect from './CustomSelect'
 
 function SectionHeader({
@@ -107,6 +109,10 @@ export default function ObserveRulesDialog({
   // Per-rule DTE 高/低/無關 selector — every rule has one.
   const [obsDteMode, setObsDteMode] = useState<Record<string, DteMode>>(() =>
     Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveDteMode(r)]))
+  )
+  // Per-rule 收益 無關/正 selector — only 領先 > 2% rules (showProfitMode) use it.
+  const [obsProfitMode, setObsProfitMode] = useState<Record<string, ProfitMode>>(() =>
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, getObserveProfitMode(r)]))
   )
 
   // One editable row for an observe rule — shared by every section.
@@ -225,6 +231,27 @@ export default function ObserveRulesDialog({
             { value: 'any', label: '無關' }
           ]}
         />
+        {r.showProfitMode && (
+          <>
+            <span style={{ whiteSpace: 'nowrap' }}>，收益</span>
+            <CustomSelect
+              className="dte-mode-select"
+              value={obsProfitMode[r.id]}
+              onChange={(v) => {
+                const m = v as ProfitMode
+                setObsProfitMode((p) => ({ ...p, [r.id]: m }))
+                setObserveProfitMode(r, m)
+              }}
+              options={[
+                { value: 'any', label: '無關' },
+                { value: 'positive', label: '> 0' },
+                { value: 'pos01', label: '> 0.1' },
+                { value: 'pos03', label: '> 0.3' },
+                { value: 'pos05', label: '> 0.5' }
+              ]}
+            />
+          </>
+        )}
       </div>
     )
   }

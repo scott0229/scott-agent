@@ -27,6 +27,10 @@ export type DteOp = '>' | '<'
 // Per-rule DTE gate shown as a 高/低/無關 selector: 'high' = remaining DTE ≥
 // DTE_HIGH_THRESHOLD, 'low' = below it, 'any' = no DTE gate.
 export type DteMode = 'high' | 'low' | 'any'
+// Per-rule 收益 gate shown as a 無關 / > 0 / > 0.1 / > 0.3 / > 0.5 selector, gating
+// on the roll's credit (= −中間): 'positive' = > 0, 'pos01' = > 0.1, 'pos03' =
+// > 0.3, 'pos05' = > 0.5, 'any' = no gate.
+export type ProfitMode = 'any' | 'positive' | 'pos01' | 'pos03' | 'pos05'
 
 // Lead% thresholds that split the three OTM rule sets:
 //   leadPct > HIGH            → leadFar  (comfortable, 領先 > 2%)
@@ -69,6 +73,11 @@ export interface ObserveRuleDef {
   showDteMode?: boolean
   dteModeKey?: string
   defaultDteMode?: DteMode
+  // Optional: when set, the row shows a 收益 無關/正 selector that gates the rule
+  // on the position being in profit. Only the 領先 > 2% rules use it.
+  showProfitMode?: boolean
+  profitModeKey?: string
+  defaultProfitMode?: ProfitMode
 }
 
 export const OBSERVE_RULES: ObserveRuleDef[] = [
@@ -84,7 +93,8 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 0
+    defaultPoints: 0,
+    showProfitMode: true
   },
   {
     id: 'obs4',
@@ -98,7 +108,8 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 1
+    defaultPoints: 1,
+    showProfitMode: true
   },
   {
     id: 'obs5',
@@ -112,7 +123,8 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 2
+    defaultPoints: 2,
+    showProfitMode: true
   },
   {
     id: 'obs6',
@@ -126,7 +138,8 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 3
+    defaultPoints: 3,
+    showProfitMode: true
   },
   {
     id: 'obs7',
@@ -140,7 +153,8 @@ export const OBSERVE_RULES: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 4
+    defaultPoints: 4,
+    showProfitMode: true
   }
 ]
 
@@ -159,7 +173,8 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 0,
-    defaultPoints: -2
+    defaultPoints: -2,
+    showProfitMode: true
   },
   {
     id: 'obsM1',
@@ -173,7 +188,8 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: -1
+    defaultPoints: -1,
+    showProfitMode: true
   },
   {
     id: 'obsM2',
@@ -187,7 +203,8 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 0
+    defaultPoints: 0,
+    showProfitMode: true
   },
   {
     id: 'obsM3',
@@ -201,7 +218,8 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 1
+    defaultPoints: 1,
+    showProfitMode: true
   },
   {
     id: 'obsM4',
@@ -215,7 +233,8 @@ export const OBSERVE_RULES_MID: ObserveRuleDef[] = [
     defaultDteOp: '>',
     defaultDte: 2,
     defaultDays: 1,
-    defaultPoints: 2
+    defaultPoints: 2,
+    showProfitMode: true
   }
 ]
 
@@ -489,6 +508,24 @@ export const setObserveDteMode = (r: ObserveRuleDef, v: DteMode): void => {
   localStorage.setItem(dteModeKeyOf(r), v)
   notifyPrefChange()
 }
+// 收益 無關/正 gate — only the 領先 > 2% rules surface it; same id-derived key
+// scheme as the DTE gate.
+const profitModeKeyOf = (r: ObserveRuleDef): string =>
+  r.profitModeKey ?? `trader.${r.id}.profitMode`
+export const getObserveProfitMode = (r: ObserveRuleDef): ProfitMode => {
+  const raw = localStorage.getItem(profitModeKeyOf(r))
+  return raw === 'positive' ||
+    raw === 'pos01' ||
+    raw === 'pos03' ||
+    raw === 'pos05' ||
+    raw === 'any'
+    ? raw
+    : r.defaultProfitMode ?? 'any'
+}
+export const setObserveProfitMode = (r: ObserveRuleDef, v: ProfitMode): void => {
+  localStorage.setItem(profitModeKeyOf(r), v)
+  notifyPrefChange()
+}
 
 // The enabled rules as plain {op, dte, days, points} specs. The rule applies
 // only when the position DTE satisfies `DTE op dte` (e.g. DTE > 2).
@@ -500,6 +537,7 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
   days: number
   points: number
   dteMode: DteMode
+  profitMode: ProfitMode
 }> {
   const set =
     category === 'breachedFar'
@@ -518,6 +556,7 @@ export function getEnabledObserveRules(category: ObserveCategory = 'leadFar'): A
     dte: getObserveDte(r),
     days: getObserveDays(r),
     points: getObservePoints(r),
-    dteMode: getObserveDteMode(r)
+    dteMode: getObserveDteMode(r),
+    profitMode: getObserveProfitMode(r)
   }))
 }

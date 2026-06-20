@@ -2407,8 +2407,12 @@ input[type='number']::-webkit-outer-spin-button {
 .roll-watch-chunk {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  /* Flow spec → prices together (連在一起); the ✓/✕ actions get pushed to the
+     right via margin-left:auto instead of space-between centring the prices.
+     column-gap:0 so the spec→prices spacing comes solely from the leading ·
+     (matching the 買·賣·中間 separators); row-gap kept for wrapped lines. */
+  justify-content: flex-start;
+  gap: 8px 0;
   flex-wrap: wrap;
   margin: 6px 0 2px;
   padding: 5px 9px;
@@ -2451,6 +2455,8 @@ input[type='number']::-webkit-outer-spin-button {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Push ✓/✕ to the right edge now that the row is left-flowing. */
+  margin-left: auto;
 }
 
 .roll-watch-go {
@@ -2874,8 +2880,10 @@ input[type='number']::-webkit-outer-spin-button {
 .custom-select.dte-mode-select .custom-select-trigger {
   /* Match the 點數 number input's height exactly. */
   height: 24px;
-  width: auto;
-  padding: 0 8px;
+  /* Fixed width sized for the widest label (無關), centred — so 高/低/無關/正
+     all render at the same width instead of hugging each label. */
+  width: 42px;
+  padding: 0 3px;
   gap: 0;
   justify-content: center;
   /* Match the row's "點 / 天" label size + colour. */
@@ -2890,9 +2898,11 @@ input[type='number']::-webkit-outer-spin-button {
   display: none;
 }
 
-/* 觀察規則 dialog: wider panel + two-column layout so it isn't one tall list. */
+/* 觀察規則 dialog: wider panel + two-column layout so it isn't one tall list.
+   Wide enough that the 領先>2% rows (which carry the extra 收益 selector) fit
+   inside their column instead of overflowing into the other one. */
 .settings-panel.observe-rules-panel {
-  width: 780px;
+  width: 900px;
 }
 /* Explicit two-column flex (NOT CSS multicol). Multicol fragments the rows, and
    Chromium re-balances the fragments / mis-places an absolutely-positioned child
@@ -2901,7 +2911,7 @@ input[type='number']::-webkit-outer-spin-button {
 .observe-rules-grid {
   display: flex;
   align-items: flex-start;
-  gap: 28px;
+  gap: 40px;
 }
 .observe-rules-grid .observe-col {
   flex: 1;

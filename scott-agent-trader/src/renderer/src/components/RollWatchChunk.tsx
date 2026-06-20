@@ -29,6 +29,9 @@ interface RollWatchChunkProps {
   // today (blue left-edge). `paused` reflects the current marked state.
   paused?: boolean
   onPauseToggle?: () => void
+  // 收益 gate: when set, hide this row unless the live roll credit (= −中間) is
+  // greater than minCredit (0 ⇒ any credit, 0.3 ⇒ ≥ 0.3). Undefined ⇒ no gate.
+  minCredit?: number
 }
 
 // A persistent "展期觀察" row on a batch card: source → target with the live
@@ -44,7 +47,8 @@ export default function RollWatchChunk({
   onClear,
   onGo,
   paused,
-  onPauseToggle
+  onPauseToggle,
+  minCredit
 }: RollWatchChunkProps): React.JSX.Element {
   const [spread, setSpread] = useState<{ bid: number; ask: number; mid: number } | null>(null)
   const [targetDelta, setTargetDelta] = useState<number | null>(null)
@@ -110,6 +114,12 @@ export default function RollWatchChunk({
   // In 暫停一天 mode the whole row toggles the handled-today mark.
   const pauseClickable = isPause && !!onPauseToggle
 
+  // 收益 gate: when the roll credit (= −中間) doesn't clear minCredit, keep the
+  // row but flag it 收益過低 (just left of the ✓) rather than hiding it. 暫停 rows
+  // and not-yet-loaded spreads are never flagged.
+  const creditTooLow =
+    !isPause && minCredit != null && spread != null && -spread.mid <= minCredit
+
   return (
     <div
       className="roll-watch-chunk"
@@ -164,6 +174,7 @@ export default function RollWatchChunk({
       </span>
       {!isPause && (
         <span className="roll-watch-prices">
+          <span className="roll-watch-sep">·</span>
           <span>
             買 <b style={{ color: '#1a6b3a' }}>{fmt(spread?.bid)}</b>
           </span>
@@ -173,11 +184,25 @@ export default function RollWatchChunk({
           </span>
           <span className="roll-watch-sep">·</span>
           <span>
-            中間 <b style={{ color: '#1d4ed8' }}>{fmt(spread?.mid)}</b>
+            中 <b style={{ color: '#1d4ed8' }}>{fmt(spread?.mid)}</b>
           </span>
         </span>
       )}
       <span className="roll-watch-actions">
+        {creditTooLow && (
+          <span
+            title="此展期的收益低於規則門檻"
+            style={{
+              color: '#c0392b',
+              fontSize: '1.02em',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              marginRight: 2
+            }}
+          >
+            低收益
+          </span>
+        )}
         {!isPause && (
           <button
             className="roll-watch-go"

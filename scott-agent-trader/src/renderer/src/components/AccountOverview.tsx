@@ -2460,7 +2460,9 @@ export default function AccountOverview({
                       return rules
                         .filter((rule) => {
                           // DTE 高/低/無關 gate: 高 = DTE ≥ threshold, 低 = below it,
-                          // 無關 (or no mode) = always on.
+                          // 無關 (or no mode) = always on. The 收益 gate can't run
+                          // here — it needs the live roll credit (中間), which is
+                          // computed per-row inside RollWatchChunk (via minCredit).
                           if (rule.dteMode === 'high') return curDte >= DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
                           return true
@@ -2487,6 +2489,17 @@ export default function AccountOverview({
                             isShort={src.quantity < 0}
                             chase={rule.chase}
                             points={rule.points}
+                            minCredit={
+                              rule.profitMode === 'pos05'
+                                ? 0.5
+                                : rule.profitMode === 'pos03'
+                                  ? 0.3
+                                  : rule.profitMode === 'pos01'
+                                    ? 0.1
+                                    : rule.profitMode === 'positive'
+                                      ? 0
+                                      : undefined
+                            }
                             paused={
                               groupOptKeys.length > 0 &&
                               groupOptKeys.every((k) => pausedKeys.has(k))
