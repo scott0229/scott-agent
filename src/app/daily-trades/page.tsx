@@ -1194,22 +1194,19 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                                 height={PILL_H}
                                                 rx={4}
                                                 fill="var(--muted)"
-                                                stroke={TARGET_LINE_COLOR}
+                                                stroke="var(--border)"
                                                 strokeWidth={1}
-                                                strokeOpacity={0.6}
                                             />
                                             {/* dominantBaseline central centers the glyph
                                                 around y=0, and the rect is symmetric around
-                                                y=0, so top/bottom margins are exactly equal.
-                                                Text tinted to the target line colour so the
-                                                pill reads as that line's value. */}
+                                                y=0, so top/bottom margins are exactly equal. */}
                                             <text
                                                 x={-5}
                                                 y={0}
                                                 textAnchor="end"
                                                 dominantBaseline="central"
                                                 fontSize={FONT_SIZE}
-                                                fill={TARGET_LINE_COLOR}
+                                                fill="var(--foreground)"
                                             >
                                                 {label}
                                             </text>
