@@ -208,8 +208,13 @@ export default function BlogListPage() {
                                                 value={editValue}
                                                 autoFocus
                                                 // autoFocus lands the caret at the end; move it to
-                                                // the start so editing begins from the front.
-                                                onFocus={(e) => e.currentTarget.setSelectionRange(0, 0)}
+                                                // the start AND reset the horizontal scroll so the
+                                                // beginning of a long title is actually visible.
+                                                onFocus={(e) => {
+                                                    const el = e.currentTarget;
+                                                    el.setSelectionRange(0, 0);
+                                                    el.scrollLeft = 0;
+                                                }}
                                                 // Stop the Link navigation while editing.
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                 onChange={(e) => setEditValue(e.target.value)}
