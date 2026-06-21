@@ -951,6 +951,11 @@ function TooltipBridge({
     return null;
 }
 
+// Colour for the 權利金目標 reference line + its y-axis pill. Amber/violet
+// blend distinct from the blue data line, orange date-crosshair, and
+// green/red dots.
+const TARGET_LINE_COLOR = '#c084fc'; // violet-400
+
 // 'YYYY-MM-DD' → 'MM-DD (週幾)' for the chart's single-day readout.
 // Parse the parts explicitly rather than `new Date(str)` so the
 // weekday isn't shifted by the local timezone offset.
@@ -1189,19 +1194,22 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                                                 height={PILL_H}
                                                 rx={4}
                                                 fill="var(--muted)"
-                                                stroke="var(--border)"
+                                                stroke={TARGET_LINE_COLOR}
                                                 strokeWidth={1}
+                                                strokeOpacity={0.6}
                                             />
                                             {/* dominantBaseline central centers the glyph
                                                 around y=0, and the rect is symmetric around
-                                                y=0, so top/bottom margins are exactly equal. */}
+                                                y=0, so top/bottom margins are exactly equal.
+                                                Text tinted to the target line colour so the
+                                                pill reads as that line's value. */}
                                             <text
                                                 x={-5}
                                                 y={0}
                                                 textAnchor="end"
                                                 dominantBaseline="central"
                                                 fontSize={FONT_SIZE}
-                                                fill="var(--foreground)"
+                                                fill={TARGET_LINE_COLOR}
                                             >
                                                 {label}
                                             </text>
@@ -1225,19 +1233,22 @@ function DailyProfitHistoryChart({ data, loading, onSelectDate, currentDate, dai
                             }}
                             width={48}
                         />
-                        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {/* 0 baseline — the primary visual anchor, so render it
+                            bright and solid-ish (foreground stroke, heavier weight)
+                            to read clearly against the dark canvas. */}
+                        <ReferenceLine y={0} stroke="var(--foreground)" strokeDasharray="5 4" strokeWidth={1.25} strokeOpacity={0.55} />
                         {/* 權利金目標 reference line — daily-target ÷ 252 trading
                             days, projected into the same signed-sqrt y-axis as
-                            the data line. Muted-foreground stroke so it reads
-                            as a passive reference. The target value is shown
-                            in the header readout, so no on-chart label. */}
+                            the data line. Amber + low opacity so it's a quiet,
+                            distinctly-coloured target marker (the 0 line stays
+                            the dominant neutral reference). */}
                         {dailyTarget != null && dailyTarget > 0 && (
                             <ReferenceLine
                                 y={sgnSqrt(dailyTarget)}
-                                stroke="var(--muted-foreground)"
+                                stroke={TARGET_LINE_COLOR}
                                 strokeDasharray="6 4"
-                                strokeWidth={1.5}
-                                strokeOpacity={0.7}
+                                strokeWidth={1}
+                                strokeOpacity={0.4}
                             />
                         )}
                         {/* Persistent crosshair at the currently-shown date so
