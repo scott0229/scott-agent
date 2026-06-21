@@ -207,6 +207,9 @@ export default function BlogListPage() {
                                                 type="text"
                                                 value={editValue}
                                                 autoFocus
+                                                // autoFocus lands the caret at the end; move it to
+                                                // the start so editing begins from the front.
+                                                onFocus={(e) => e.currentTarget.setSelectionRange(0, 0)}
                                                 // Stop the Link navigation while editing.
                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                 onChange={(e) => setEditValue(e.target.value)}
