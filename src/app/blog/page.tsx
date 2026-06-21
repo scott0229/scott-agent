@@ -81,6 +81,32 @@ export default function BlogListPage() {
         }
     };
 
+    // Cycle the difficulty tag (基礎/進階) on a post: none → 基礎 → 進階 → none.
+    // Difficulty lives in the tags array; we strip any existing one and add the
+    // next, then PATCH the full tag list.
+    const cycleDifficulty = async (id: number) => {
+        const post = posts.find(p => p.id === id);
+        if (!post) return;
+        const order = [null, '基礎', '進階'] as const;
+        const current = post.tags.find(t => t === '基礎' || t === '進階') ?? null;
+        const next = order[(order.indexOf(current as typeof order[number]) + 1) % order.length];
+        const baseTags = post.tags.filter(t => t !== '基礎' && t !== '進階');
+        const newTags = next ? [...baseTags, next] : baseTags;
+        const prevTags = post.tags;
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, tags: newTags } : p));
+        try {
+            const res = await fetch(`/api/blog/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tags: newTags }),
+            });
+            if (!res.ok) throw new Error('save failed');
+        } catch {
+            setPosts(prev => prev.map(p => p.id === id ? { ...p, tags: prevTags } : p));
+            toast({ variant: 'destructive', title: '更新失敗', description: '無法儲存難度' });
+        }
+    };
+
     const fetchPosts = async () => {
         setLoading(true);
         try {
@@ -221,17 +247,32 @@ export default function BlogListPage() {
                                         )}
                                     </div>
                                     {(() => {
-                                        // Only surface the 影片 tag and a difficulty
-                                        // tag (基礎/進階) on the card — the rest are
-                                        // hidden to keep the fixed-height card tidy.
-                                        const shown = post.tags.filter(t => t === '影片' || t === '基礎' || t === '進階');
-                                        if (shown.length === 0) return null;
+                                        // Show the 影片 tag and a clickable difficulty
+                                        // chip (基礎/進階/設難度). Other tags are hidden
+                                        // to keep the fixed-height card tidy.
+                                        const contentTags = post.tags.filter(t => t === '影片');
+                                        const difficulty = post.tags.find(t => t === '基礎' || t === '進階') ?? null;
+                                        // Color the difficulty chip: 基礎 green, 進階 amber,
+                                        // unset muted. Click cycles it.
+                                        const diffClass = difficulty === '基礎'
+                                            ? 'bg-status-positive-soft text-status-positive border-status-positive-border'
+                                            : difficulty === '進階'
+                                                ? 'bg-note-badge text-note-badge-fg border-transparent'
+                                                : 'bg-muted text-muted-foreground border-transparent';
                                         return (
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                                            {shown.map(t => (
+                                            {contentTags.map(t => (
                                                 <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
                                             ))}
+                                            <button
+                                                type="button"
+                                                title="點擊切換難度"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); cycleDifficulty(post.id); }}
+                                                className={`text-xs px-2 py-0.5 rounded-full border font-medium ${diffClass}`}
+                                            >
+                                                {difficulty ?? '＋難度'}
+                                            </button>
                                         </div>
                                         );
                                     })()}
