@@ -1459,7 +1459,8 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
                             tickFormatter={(v, i) => {
                                 if (i === 0) return ''; // hide the bottom-most label
                                 const raw = invSqrt(v); // invert the signed-power scale
-                                return `${Math.round(raw / 1000)}k`;
+                                const k = Math.round(raw / 1000);
+                                return k === 0 ? '0' : `${k}k`; // bare 0, not "0k"
                             }}
                             width={48}
                             axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
