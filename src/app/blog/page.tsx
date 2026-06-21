@@ -187,8 +187,12 @@ export default function BlogListPage() {
                                             <h2
                                                 className="font-semibold text-lg leading-snug line-clamp-2"
                                                 title="雙擊以修改標題"
+                                                // Block single-click navigation on the title itself —
+                                                // otherwise the first click of a double-click opens the
+                                                // post before the dblclick can register. Click the date/
+                                                // tag area to open the post; double-click here to rename.
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                 onDoubleClick={(e) => {
-                                                    // Don't navigate; switch the title into an editable field.
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     setEditValue(post.title);
@@ -219,10 +223,13 @@ export default function BlogListPage() {
                                 </Link>
                                 {post.video_url && (
                                     <video
-                                        controls
                                         preload="metadata"
                                         src={post.video_url}
-                                        className="w-40 shrink-0 self-center rounded-md bg-black aspect-video object-cover"
+                                        // Controls only on hover (kept while playing) so the
+                                        // resting card shows a clean thumbnail.
+                                        onMouseEnter={(e) => { e.currentTarget.controls = true; }}
+                                        onMouseLeave={(e) => { if (e.currentTarget.paused) e.currentTarget.controls = false; }}
+                                        className="w-72 shrink-0 self-center rounded-md bg-black aspect-video object-cover"
                                     />
                                 )}
                             </div>
