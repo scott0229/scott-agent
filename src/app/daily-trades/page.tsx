@@ -1465,7 +1465,8 @@ function CashHistoryChart({ data, loading, currentDate, onSelectDate }: CashHist
                             width={48}
                             axisLine={{ stroke: 'var(--foreground)', strokeWidth: 2 }}
                         />
-                        <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 2" strokeOpacity={0.5} />
+                        {/* Match the profit chart's 0 baseline styling exactly. */}
+                        <ReferenceLine y={0} stroke="var(--foreground)" strokeDasharray="5 4" strokeWidth={1.25} strokeOpacity={0.55} />
                         {currentDate && data.some(d => d.date === currentDate) && (
                             <ReferenceLine x={currentDate.substring(5)} stroke="var(--chart-orange)" strokeWidth={2} strokeDasharray="3 3" />
                         )}
