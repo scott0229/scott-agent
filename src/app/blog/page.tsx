@@ -20,6 +20,7 @@ interface BlogPostSummary {
     published_at: string;
     created_at: number;
     updated_at: number;
+    video_url: string | null;
 }
 
 // Per-category card tint. Subtle dark-mode-friendly background + border
@@ -46,6 +47,31 @@ export default function BlogListPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState<string>('All');
+    // Inline title edit: double-click a card title to rename without opening it.
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editValue, setEditValue] = useState('');
+
+    const saveTitle = async (id: number) => {
+        const title = editValue.trim();
+        const original = posts.find(p => p.id === id)?.title;
+        setEditingId(null);
+        if (!title || title === original) return;
+        // Optimistic update.
+        setPosts(prev => prev.map(p => p.id === id ? { ...p, title } : p));
+        try {
+            const res = await fetch(`/api/blog/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title }),
+            });
+            if (!res.ok) throw new Error('save failed');
+            toast({ title: '已更新標題' });
+        } catch {
+            // Revert on failure.
+            setPosts(prev => prev.map(p => p.id === id ? { ...p, title: original ?? p.title } : p));
+            toast({ variant: 'destructive', title: '更新失敗', description: '無法儲存標題' });
+        }
+    };
 
     const fetchPosts = async () => {
         setLoading(true);
@@ -136,10 +162,42 @@ export default function BlogListPage() {
                     {filtered.map(post => {
                         const categoryStyle = getCategoryCardStyle(post.category);
                         return (
-                            <Link key={post.id} href={`/blog/${post.id}`}>
-                                <div className={`rounded-md border shadow-sm p-5 h-full flex flex-col gap-3 hover:shadow-md transition-all cursor-pointer text-card-foreground ${categoryStyle}`}>
+                            // Card is a flex row: Link-wrapped text on the left, an
+                            // inline video preview on the right (outside the Link so
+                            // pressing play never navigates to the post).
+                            <div key={post.id} className={`rounded-md border shadow-sm p-5 h-full flex flex-row gap-4 hover:shadow-md transition-all text-card-foreground ${categoryStyle}`}>
+                                <Link href={`/blog/${post.id}`} className="flex-1 min-w-0 flex flex-col gap-3 cursor-pointer">
                                     <div className="flex items-start justify-between gap-2">
-                                        <h2 className="font-semibold text-lg leading-snug line-clamp-2">{post.title}</h2>
+                                        {editingId === post.id ? (
+                                            <input
+                                                type="text"
+                                                value={editValue}
+                                                autoFocus
+                                                // Stop the Link navigation while editing.
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onBlur={() => saveTitle(post.id)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') { e.preventDefault(); saveTitle(post.id); }
+                                                    else if (e.key === 'Escape') { e.preventDefault(); setEditingId(null); }
+                                                }}
+                                                className="w-full bg-transparent border-b border-primary/60 font-semibold text-lg leading-snug focus:outline-none"
+                                            />
+                                        ) : (
+                                            <h2
+                                                className="font-semibold text-lg leading-snug line-clamp-2"
+                                                title="雙擊以修改標題"
+                                                onDoubleClick={(e) => {
+                                                    // Don't navigate; switch the title into an editable field.
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setEditValue(post.title);
+                                                    setEditingId(post.id);
+                                                }}
+                                            >
+                                                {post.title}
+                                            </h2>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                         <span className="inline-flex items-center gap-1">
@@ -158,8 +216,16 @@ export default function BlogListPage() {
                                             ))}
                                         </div>
                                     )}
-                                </div>
-                            </Link>
+                                </Link>
+                                {post.video_url && (
+                                    <video
+                                        controls
+                                        preload="metadata"
+                                        src={post.video_url}
+                                        className="w-40 shrink-0 self-center rounded-md bg-black aspect-video object-cover"
+                                    />
+                                )}
+                            </div>
                         );
                     })}
                 </div>

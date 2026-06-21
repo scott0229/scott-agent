@@ -36,17 +36,29 @@ export async function GET(request: NextRequest) {
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
+        // Pull content too so we can extract a video URL for the list card's
+        // inline preview; it's stripped from the response below to keep the
+        // payload lean.
         const results = await db.prepare(`
-            SELECT id, title, category, tags, published_at, author_id, created_at, updated_at
+            SELECT id, title, category, tags, published_at, author_id, created_at, updated_at, content
             FROM blog_posts
             ${whereClause}
             ORDER BY created_at DESC
         `).bind(...params).all();
 
-        const posts = (results.results || []).map((p: any) => ({
-            ...p,
-            tags: safeJsonParse(p.tags, []),
-        }));
+        const posts = (results.results || []).map((p: any) => {
+            const { content, ...rest } = p;
+            // First <source src> or <video src> in the post body — used by the
+            // list card to show a small inline player for 影片 posts.
+            const m = typeof content === 'string'
+                ? content.match(/<(?:source|video)[^>]*\ssrc=["']([^"']+)["']/i)
+                : null;
+            return {
+                ...rest,
+                tags: safeJsonParse(p.tags, []),
+                video_url: m ? m[1] : null,
+            };
+        });
 
         return NextResponse.json({ posts });
     } catch (error: any) {
