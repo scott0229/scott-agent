@@ -355,8 +355,9 @@ export default function NetEquityPage() {
                                                         return <StatBadge value={marginRate} format={(v) => `${Math.round(v * 100)}%`} />;
                                                     })()}
                                                 </td>
-                                                <td className="h-7 py-1 px-2 text-center">-</td>
-                                                <td className="h-7 py-1 px-2 text-center">-</td>
+                                                {/* Benchmarks hold no margin — show 0 (matches 帳戶現金 below). */}
+                                                <td className="h-7 py-1 px-2 text-center">0</td>
+                                                <td className="h-7 py-1 px-2 text-center">0</td>
                                             </tr>
                                             <tr className="border-t hover:bg-table-row-hover bg-muted/30">
                                                 <td className="h-7 py-1 px-2">帳戶現金</td>
