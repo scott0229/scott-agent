@@ -226,10 +226,11 @@ export default function BlogListPage() {
                                         preload="metadata"
                                         src={post.video_url}
                                         // Controls only on hover (kept while playing) so the
-                                        // resting card shows a clean thumbnail.
+                                        // resting card shows a clean thumbnail. self-end keeps
+                                        // it low-right so it never pushes the title row.
                                         onMouseEnter={(e) => { e.currentTarget.controls = true; }}
                                         onMouseLeave={(e) => { if (e.currentTarget.paused) e.currentTarget.controls = false; }}
-                                        className="w-72 shrink-0 self-center rounded-md bg-black aspect-video object-cover"
+                                        className="w-48 shrink-0 self-end rounded-md bg-black aspect-video object-cover"
                                     />
                                 )}
                             </div>
