@@ -77,18 +77,6 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
                         </Link>
                         <span>{post.title}</span>
                     </h1>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-                        <span className="inline-flex items-center gap-1">
-                            <CalendarDays className="h-4 w-4" />
-                            {post.published_at}
-                        </span>
-                        {post.category && (
-                            <Badge variant="secondary">{post.category}</Badge>
-                        )}
-                        {post.tags.map(t => (
-                            <Badge key={t} variant="outline">{t}</Badge>
-                        ))}
-                    </div>
                 </header>
 
                 <div
