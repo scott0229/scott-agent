@@ -173,7 +173,7 @@ export default function BlogListPage() {
                             // Card is a flex row: Link-wrapped text on the left, an
                             // inline video preview on the right (outside the Link so
                             // pressing play never navigates to the post).
-                            <div key={post.id} className={`rounded-md border shadow-sm p-5 h-[196px] flex flex-row gap-4 hover:shadow-md transition-all text-card-foreground ${categoryStyle}`}>
+                            <div key={post.id} className={`rounded-md border shadow-sm p-5 h-[150px] flex flex-row gap-4 hover:shadow-md transition-all text-card-foreground ${categoryStyle}`}>
                                 <Link href={`/blog/${post.id}`} className="flex-1 min-w-0 flex flex-col gap-3 cursor-pointer">
                                     <div className="flex items-start justify-between gap-2">
                                         {editingId === post.id ? (
@@ -227,7 +227,7 @@ export default function BlogListPage() {
                                         const shown = post.tags.filter(t => t === '影片' || t === '基礎' || t === '進階');
                                         if (shown.length === 0) return null;
                                         return (
-                                        <div className="flex items-center gap-1.5 flex-wrap mt-auto">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                             <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                                             {shown.map(t => (
                                                 <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
