@@ -247,10 +247,9 @@ export default function BlogListPage() {
                                         )}
                                     </div>
                                     {(() => {
-                                        // Show the 影片 tag and a clickable difficulty
-                                        // chip (基礎/進階/設難度). Other tags are hidden
-                                        // to keep the fixed-height card tidy.
-                                        const contentTags = post.tags.filter(t => t === '影片');
+                                        // Only a clickable difficulty chip here — the 影片
+                                        // category is already shown as a badge in the date
+                                        // row, so we don't repeat it. Other tags stay hidden.
                                         const difficulty = post.tags.find(t => t === '基礎' || t === '進階') ?? null;
                                         // Color the difficulty chip: 基礎 green, 進階 amber,
                                         // unset muted. Click cycles it.
@@ -262,9 +261,6 @@ export default function BlogListPage() {
                                         return (
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                                            {contentTags.map(t => (
-                                                <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                                            ))}
                                             <button
                                                 type="button"
                                                 title="點擊切換難度"
