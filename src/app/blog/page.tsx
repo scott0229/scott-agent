@@ -46,7 +46,15 @@ export default function BlogListPage() {
     const [posts, setPosts] = useState<BlogPostSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [category, setCategory] = useState<string>('All');
+    // Persist the category filter across navigation (click into a post → back)
+    // via sessionStorage so it doesn't reset to 'All' on remount.
+    const [category, setCategory] = useState<string>(() => {
+        if (typeof window === 'undefined') return 'All';
+        return sessionStorage.getItem('blog-category-filter') || 'All';
+    });
+    useEffect(() => {
+        if (typeof window !== 'undefined') sessionStorage.setItem('blog-category-filter', category);
+    }, [category]);
     // Inline title edit: double-click a card title to rename without opening it.
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -226,11 +234,12 @@ export default function BlogListPage() {
                                         preload="metadata"
                                         src={post.video_url}
                                         // Controls only on hover (kept while playing) so the
-                                        // resting card shows a clean thumbnail. self-end keeps
-                                        // it low-right so it never pushes the title row.
+                                        // resting card shows a clean thumbnail. self-start
+                                        // anchors it top-right so it stays put regardless of
+                                        // title length (fixed width keeps the title unsqueezed).
                                         onMouseEnter={(e) => { e.currentTarget.controls = true; }}
                                         onMouseLeave={(e) => { if (e.currentTarget.paused) e.currentTarget.controls = false; }}
-                                        className="w-48 shrink-0 self-end rounded-md bg-black aspect-video object-cover"
+                                        className="w-48 shrink-0 self-start rounded-md bg-black aspect-video object-cover"
                                     />
                                 )}
                             </div>
