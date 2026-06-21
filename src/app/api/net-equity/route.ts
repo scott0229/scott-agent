@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
         if (isBulkFetch) {
             // Bulk Logic - Wrap in cache to avoid expensive TWR calculations
-            const cacheKey = `net-equity-bulk-${group}-${year}-v4`;
+            const cacheKey = `net-equity-bulk-${group}-${year}-v5`;
             const userSummaries = await cacheResponse(cacheKey, async () => {
                 const equityRecords = await db.prepare(`SELECT * FROM DAILY_NET_EQUITY WHERE year = ? ORDER BY user_id, date ASC`).bind(year).all();
 
@@ -173,8 +173,14 @@ export async function GET(request: NextRequest) {
 
                     const topHoldings = sortedHoldings;
 
-                    // Determine Benchmark Start Date (Previous Year Dec 31 if year selected)
-                    const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : (uEq.length > 0 ? uEq[0].date : undefined);
+                    // Benchmark window starts on the account's first equity day
+                    // (not year-start) so QQQ/QLD stats — return %, max drawdown,
+                    // Sharpe, and 新高頻率 — span the SAME number of days as the
+                    // account and are directly comparable. A mid-year account
+                    // like adair.600 (first equity 2026-03-19) otherwise had its
+                    // 26/65 = 40% new-high freq compared against QQQ's 24/114 =
+                    // 21% measured from year-start — apples to oranges.
+                    const benchStartDate = uEq.length > 0 ? uEq[0].date : prevYearDec31;
 
                     // Use Shared Helper
                     const processed = calculateUserTwr(uEq, uDep, (u as any).initial_cost, benchStartDate || 0, qqqData, qldData);
@@ -258,8 +264,9 @@ export async function GET(request: NextRequest) {
             let prevEquity = (u as any).initial_cost || 0;
             let peakNavRatio = 1.0;
 
-            // Start Price for Benchmarks
-            const benchStartDate = (year && !isNaN(year)) ? prevYearDec31 : uEq[0].date;
+            // Start Price for Benchmarks — account's first equity day so the
+            // benchmark window matches the account's (see bulk path above).
+            const benchStartDate = uEq.length > 0 ? uEq[0].date : prevYearDec31;
 
             // Start Price for Benchmarks
             let startQQQ = 0;
