@@ -53,6 +53,11 @@ import { getAiAdvice } from './ai/advisor'
 
 let mainWindow: BrowserWindow | null = null
 
+// Assigned by the auto-update setup (in setupIpcHandlers, which runs before the
+// window exists). createWindow's 'focus' handler calls it so returning to the
+// app re-checks for a new release. Debounce lives inside the assigned fn.
+let triggerUpdateCheckOnFocus: (() => void) | null = null
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -74,6 +79,11 @@ function createWindow(): void {
     mainWindow!.maximize()
     mainWindow!.show()
   })
+
+  // Re-check for a new release whenever the user returns to the app, so the
+  // "安裝新版" pill appears within seconds instead of waiting for the next
+  // background poll. Debounced inside the handler (≤ once a minute).
+  mainWindow.on('focus', () => triggerUpdateCheckOnFocus?.())
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -901,15 +911,20 @@ function setupIpcHandlers(): void {
 
   // Initial check fires immediately on startup; result is cached so the
   // renderer picks it up via getCachedUpdate when it mounts (even if the
-  // broadcast races ahead of the BrowserWindow being ready). Then poll
-  // hourly thereafter.
-  fetchLatestVersion().then(broadcastUpdate)
-  setInterval(
-    () => {
-      fetchLatestVersion().then(broadcastUpdate)
-    },
-    60 * 60 * 1000
-  )
+  // broadcast races ahead of the BrowserWindow being ready). Then poll every
+  // 15 min, plus an on-focus re-check (debounced to ≤ once a minute) so a user
+  // returning to the app sees a fresh release within seconds rather than
+  // waiting for the next interval tick.
+  let lastUpdateCheckAt = 0
+  const runUpdateCheck = (): void => {
+    lastUpdateCheckAt = Date.now()
+    fetchLatestVersion().then(broadcastUpdate)
+  }
+  runUpdateCheck()
+  setInterval(runUpdateCheck, 15 * 60 * 1000)
+  triggerUpdateCheckOnFocus = (): void => {
+    if (Date.now() - lastUpdateCheckAt > 60 * 1000) runUpdateCheck()
+  }
 
   // Upload 1-year daily closing prices for ONE symbol to D1 (both staging & production)
   const UPLOAD_TARGETS = [
