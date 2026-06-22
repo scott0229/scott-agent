@@ -922,17 +922,38 @@ export async function requestExecutions(): Promise<ExecutionData[]> {
     api.on(EventName.execDetails, onExecDetails)
     api.on(EventName.execDetailsEnd, onExecDetailsEnd)
 
-    // Today's date in US Eastern. IB REJECTS an IANA "America/New_York" suffix
-    // on the filter time (error 10314 — invalid date/time/timezone), which made
-    // reqExecutions error out → no execDetailsEnd → 10s timeout → 0 executions.
-    // Use the bare "yyyymmdd HH:mm:ss" form (no timezone); IB accepts it and
-    // interprets it in the TWS session timezone.
-    const etNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const yyyymmdd = `${etNow.getFullYear()}${String(etNow.getMonth() + 1).padStart(2, '0')}${String(etNow.getDate()).padStart(2, '0')}`
-    const todayStr = `${yyyymmdd} 00:00:00`
+    // IB rejects timezone NAMES on the filter time — both IANA "America/New_York"
+    // and "US/Eastern" come back as error 10314 on this TWS build — and warns
+    // (2174) that omitting the tz is deprecated. The version-safe form IB itself
+    // endorses is UTC dash-notation "yyyymmdd-hh:mm:ss". So compute the UTC
+    // instant of 00:00 US/Eastern today and emit it in that notation.
+    const now = new Date()
+    const etParts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+        .formatToParts(now)
+        .map((part) => [part.type, Number(part.value)])
+    ) as Record<string, number>
+    // ET wall-clock of "now" read as if it were UTC, minus the real UTC instant,
+    // gives the ET→UTC offset (a whole number of hours, negative since ET < UTC).
+    const offsetMs =
+      Date.UTC(etParts.year, etParts.month - 1, etParts.day, etParts.hour, etParts.minute, etParts.second) -
+      now.getTime()
+    // UTC instant of 00:00 ET today = (ET-midnight wall read as UTC) − offset.
+    const u = new Date(Date.UTC(etParts.year, etParts.month - 1, etParts.day, 0, 0, 0) - offsetMs)
+    const p2 = (n: number): string => String(n).padStart(2, '0')
+    const todayStr = `${u.getUTCFullYear()}${p2(u.getUTCMonth() + 1)}${p2(u.getUTCDate())}-${p2(u.getUTCHours())}:${p2(u.getUTCMinutes())}:${p2(u.getUTCSeconds())}`
     const filter: ExecutionFilter = { time: todayStr }
     api.reqExecutions(reqId, filter)
-    console.log(`[IB] Requesting executions since ${todayStr}`)
+    console.log(`[IB] Requesting executions since ${todayStr} (UTC)`)
   })
 }
 

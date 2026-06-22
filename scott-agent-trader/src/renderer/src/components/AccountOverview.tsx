@@ -1043,11 +1043,21 @@ export default function AccountOverview({
     }
   }, [stkContextMenu])
 
-  // Auto-focus input when entering edit mode
+  // Auto-focus input when entering edit mode. Place the caret at the end (right)
+  // instead of selecting all, so the existing value stays and typing appends.
   useEffect(() => {
     if (editingCell && editInputRef.current) {
-      editInputRef.current.focus()
-      editInputRef.current.select()
+      const el = editInputRef.current
+      el.focus()
+      // setSelectionRange throws on <input type="number"> ("does not support
+      // selection"). For those, focus alone already leaves the caret at the end
+      // without selecting, so swallow the error.
+      try {
+        const end = el.value.length
+        el.setSelectionRange(end, end)
+      } catch {
+        /* type doesn't support setSelectionRange — focus is enough */
+      }
     }
   }, [editingCell])
 
@@ -1682,7 +1692,11 @@ export default function AccountOverview({
                 : '雙擊修改價格'
               : undefined
           }
-          style={{ cursor: order.orderType === 'LMT' ? 'pointer' : 'default' }}
+          style={{
+            cursor: order.orderType === 'LMT' ? 'pointer' : 'default',
+            // Slightly deepen the limit-price cell so it reads as its own field.
+            background: 'rgba(0, 0, 0, 0.05)'
+          }}
           onDoubleClick={(e) => {
             if (order.orderType === 'LMT') {
               e.stopPropagation()
@@ -3378,6 +3392,34 @@ export default function AccountOverview({
                     alignItems: 'center'
                   }}
                 >
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#c2410c',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                    中間價在買、賣價差過大時並不可信，請小心調價。
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
