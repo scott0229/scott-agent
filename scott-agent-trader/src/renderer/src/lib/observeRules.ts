@@ -519,6 +519,23 @@ const OBSERVE_RULES_BREACHED_BASE: ObserveRuleDef[] = [
     showDteMode: true,
     dteModeKey: 'trader.obsB4.dteMode',
     defaultDteMode: 'any'
+  },
+  {
+    id: 'obsB5',
+    enabledKey: 'trader.obsB5.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsB5.dteOp',
+    dteKey: 'trader.obsB5.dte',
+    daysKey: 'trader.obsB5.days',
+    pointsKey: 'trader.obsB5.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showDteMode: true,
+    dteModeKey: 'trader.obsB5.dteMode',
+    defaultDteMode: 'any'
   }
 ]
 
@@ -631,6 +648,23 @@ const OBSERVE_RULES_BREACHED_FAR_BASE: ObserveRuleDef[] = [
     defaultPoints: 7,
     showDteMode: true,
     dteModeKey: 'trader.obsBF4.dteMode',
+    defaultDteMode: 'any'
+  },
+  {
+    id: 'obsBF6',
+    enabledKey: 'trader.obsBF6.enabled',
+    hasDte: false,
+    chase: true,
+    dteOpKey: 'trader.obsBF6.dteOp',
+    dteKey: 'trader.obsBF6.dte',
+    daysKey: 'trader.obsBF6.days',
+    pointsKey: 'trader.obsBF6.points',
+    defaultDteOp: '>',
+    defaultDte: 2,
+    defaultDays: 1,
+    defaultPoints: 0,
+    showDteMode: true,
+    dteModeKey: 'trader.obsBF6.dteMode',
     defaultDteMode: 'any'
   }
 ]
