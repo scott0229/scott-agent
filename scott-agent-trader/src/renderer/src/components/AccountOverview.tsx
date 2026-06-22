@@ -2487,6 +2487,7 @@ export default function AccountOverview({
                           if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'eq2') return curDte === 2
                           if (rule.dteMode === 'eq23') return curDte === 2 || curDte === 3
+                          if (rule.dteMode === 'eq123') return curDte >= 1 && curDte <= 3
                           if (rule.dteMode === 'eq1') return curDte === 1
                           return true
                         })

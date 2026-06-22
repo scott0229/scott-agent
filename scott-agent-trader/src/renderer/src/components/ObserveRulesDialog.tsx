@@ -142,9 +142,12 @@ export default function ObserveRulesDialog({
       flexShrink: 0,
       margin: '0 5px'
     }
+    // 展 0 天 (DTE -1) + 追 0 點 ⇒ target == source ⇒ 當天不操作: tint the row.
+    const isNoAction = getObserveDays(r) === 0 && getObservePoints(r) === 0
     return (
       <div
         key={r.id}
+        title={isNoAction ? '當天不操作' : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -152,9 +155,12 @@ export default function ObserveRulesDialog({
           // separators sit tight against the boxes/labels (like normal text).
           gap: 0,
           marginBottom: 12,
-          padding: '0 8px',
+          padding: '3px 8px',
+          borderRadius: 5,
           fontSize: '0.88em',
-          color: '#555'
+          color: '#555',
+          // 當天不操作 rows get a faint yellow band.
+          background: isNoAction ? '#ffeeba' : undefined
         }}
       >
         <input
@@ -179,6 +185,7 @@ export default function ObserveRulesDialog({
             { value: 'gt3', label: '> 3' },
             { value: 'high', label: '≥ 3' },
             { value: 'eq23', label: '2, 3' },
+            { value: 'eq123', label: '1, 2, 3' },
             { value: 'eq2', label: '2' },
             { value: 'low', label: '1, 2' },
             { value: 'eq1', label: '1' }

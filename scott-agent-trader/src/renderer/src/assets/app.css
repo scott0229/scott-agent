@@ -2883,10 +2883,11 @@ input[type='number']::-webkit-outer-spin-button {
 .custom-select.dte-mode-select .custom-select-trigger {
   /* Match the 點數 number input's height exactly. */
   height: 24px;
-  /* Fixed width sized for the widest label (無關), centred — so 高/低/無關/正
-     all render at the same width instead of hugging each label. */
-  width: 42px;
+  /* Fixed width sized for the widest label (1, 2, 3), centred + single-line — so
+     every option renders at the same width instead of hugging each label. */
+  width: 56px;
   padding: 0 3px;
+  white-space: nowrap;
   gap: 0;
   justify-content: center;
   /* Match the row's "點 / 天" label size + colour. */
