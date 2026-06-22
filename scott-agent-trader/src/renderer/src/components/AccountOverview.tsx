@@ -2482,6 +2482,7 @@ export default function AccountOverview({
                           // 無關 (or no mode) = always on. The 收益 gate can't run
                           // here — it needs the live roll credit (中間), which is
                           // computed per-row inside RollWatchChunk (via minCredit).
+                          if (rule.dteMode === 'gt3') return curDte > 3
                           if (rule.dteMode === 'high') return curDte >= DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'eq2') return curDte === 2

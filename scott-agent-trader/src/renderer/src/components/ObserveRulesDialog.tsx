@@ -79,6 +79,14 @@ const ALL_OBSERVE_RULES = [
   ...OBSERVE_RULES_BREACHED_FAR
 ]
 
+// The 展 N 天 field is shown as the roll's DTE effect (= N − 1, since acting on
+// the next session already costs 1 DTE): 維持 / +1 / -2 …, matching the batch-card
+// rows. Internally the rule still stores 展天數 N, so N = delta + 1.
+const fmtDteDelta = (delta: number): string =>
+  delta === 0 ? '維持' : delta > 0 ? `+${delta}` : `${delta}`
+const parseDteDelta = (raw: string): number =>
+  raw === '' || raw === '維持' ? 0 : parseInt(raw, 10)
+
 interface ObserveRulesDialogProps {
   open: boolean
   onClose: () => void
@@ -104,8 +112,9 @@ export default function ObserveRulesDialog({
       ALL_OBSERVE_RULES.map((r) => [r.id, `${getObserveDteOp(r)}${getObserveDte(r)}`])
     )
   )
+  // Holds the DTE-delta display string (維持 / +1 / -2), not the raw 展天數.
   const [obsDays, setObsDays] = useState<Record<string, string>>(() =>
-    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, String(getObserveDays(r))]))
+    Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, fmtDteDelta(getObserveDays(r) - 1)]))
   )
   const [obsPoints, setObsPoints] = useState<Record<string, string>>(() =>
     Object.fromEntries(ALL_OBSERVE_RULES.map((r) => [r.id, String(getObservePoints(r))]))
@@ -167,7 +176,7 @@ export default function ObserveRulesDialog({
             setObserveDteMode(r, m)
           }}
           options={[
-            { value: 'any', label: '無關' },
+            { value: 'gt3', label: '> 3' },
             { value: 'high', label: '≥ 3' },
             { value: 'eq23', label: '2, 3' },
             { value: 'eq2', label: '2' },
@@ -203,27 +212,25 @@ export default function ObserveRulesDialog({
             <span style={{ whiteSpace: 'nowrap' }}>，</span>
           </>
         )}
-        <span style={{ whiteSpace: 'nowrap' }}>展</span>
+        <span style={{ whiteSpace: 'nowrap' }}>DTE</span>
         <input
           type="text"
-          inputMode="numeric"
           value={obsDays[r.id]}
           onChange={(e) => setObsDays((p) => ({ ...p, [r.id]: e.target.value }))}
           onBlur={() => {
-            const raw = obsDays[r.id].trim()
-            // Empty → 0 so a cleared field sticks instead of snapping back to the
-            // old value; non-numeric junk → revert to the saved value.
-            const v = raw === '' ? 0 : parseInt(raw, 10)
-            if (Number.isFinite(v)) {
-              setObserveDays(r, v)
-              setObsDays((p) => ({ ...p, [r.id]: String(v) }))
+            // Field holds the DTE delta (維持 / +1 / -2); empty or 維持 ⇒ 0. Store
+            // back as 展天數 N = delta + 1; non-numeric junk reverts.
+            const delta = parseDteDelta(obsDays[r.id].trim())
+            if (Number.isFinite(delta)) {
+              setObserveDays(r, delta + 1)
+              setObsDays((p) => ({ ...p, [r.id]: fmtDteDelta(delta) }))
             } else {
-              setObsDays((p) => ({ ...p, [r.id]: String(getObserveDays(r)) }))
+              setObsDays((p) => ({ ...p, [r.id]: fmtDteDelta(getObserveDays(r) - 1) }))
             }
           }}
-          style={numStyle}
+          style={{ ...numStyle, width: 46 }}
         />
-        <span style={{ whiteSpace: 'nowrap' }}>天，{r.chase ? '追' : '展'}</span>
+        <span style={{ whiteSpace: 'nowrap' }}>，{r.chase ? '追' : '展'}</span>
         <input
           type="text"
           inputMode="numeric"

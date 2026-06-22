@@ -120,6 +120,18 @@ export default function RollWatchChunk({
   const pts = chase && points != null ? points : source.right === 'C' ? rawDelta : -rawDelta
   const ptsStr = Number.isInteger(pts) ? `${pts}` : pts.toFixed(1)
   const ptsVerb = '追'
+  // Show the roll's effect on remaining DTE instead of the raw 展 N 天. Rolling
+  // out N trading days, assuming you act on the next session (−1 DTE), nets N−1:
+  // 展 1 天 = 維持, 展 0 天 = −1, 展 -1 天 = −2, 展 2 天 = +1, …
+  const dteDelta = days != null ? days - 1 : null
+  const dteLabel =
+    dteDelta == null
+      ? 'DTE -'
+      : dteDelta === 0
+        ? 'DTE 維持'
+        : dteDelta > 0
+          ? `DTE + ${dteDelta}`
+          : `DTE - ${-dteDelta}`
   // 展 0 天 + 追 0 點 ⇒ the target leg equals the source: not a roll, just a
   // "hold and re-check tomorrow". Show it as A → 暫停一天 and drop the roll
   // metrics, quote, and ✓ (there's no trade to place).
@@ -180,7 +192,8 @@ export default function RollWatchChunk({
           <>
             <span className="roll-watch-sep">·</span>
             <span className="roll-watch-delta">
-              展 {days != null ? days : '-'} 天<span className="roll-watch-sep">·</span>
+              {dteLabel}
+              <span className="roll-watch-sep">·</span>
               {ptsVerb} {ptsStr} 點
             </span>
           </>
