@@ -406,6 +406,11 @@ export default function AccountOverview({
   // MUST stay in the top hook cluster (before any early return) — React's
   // hook-order rule.
   const [showYesterdayFills, setShowYesterdayFills] = useState(false)
+  // 昨日成交: which groups are expanded. Keys are 標的 signatures in 標的 mode,
+  // or `acct:<id>` in 帳戶 mode.
+  const [expandedFillSigs, setExpandedFillSigs] = useState<Set<string>>(new Set())
+  // 昨日成交: group rows by 帳戶 instead of by 標的 (A→B).
+  const [fillGroupByAccount, setFillGroupByAccount] = useState(false)
   const yesterdayFillRows = useMemo(() => {
     const filtered = yesterdayFills.filter((e) => {
       if (e.secType === 'OPT') {
@@ -3649,11 +3654,53 @@ export default function AccountOverview({
             <div className="account-card" style={{ marginBottom: 16 }}>
               <div
                 className="account-header"
-                style={{ cursor: 'pointer', userSelect: 'none' }}
+                style={{
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  // Collapsed: drop the bottom margin so the card's 16px padding is
+                  // equal top/bottom and the title sits centred.
+                  marginBottom: showYesterdayFills ? 12 : 0
+                }}
                 onClick={() => setShowYesterdayFills((v) => !v)}
               >
-                <span className="account-id">
-                  昨日成交 ({yesterdayFillRows.length}) {showYesterdayFills ? '−' : '+'}
+                <span className="account-id" style={{ background: 'transparent', padding: 0 }}>
+                  昨日{(() => {
+                    // Date of the fills (YYYYMMDD prefix on each fill's time) → M/D.
+                    const t = yesterdayFillRows[0]?.time || ''
+                    const mm = parseInt(t.slice(4, 6), 10)
+                    const dd = parseInt(t.slice(6, 8), 10)
+                    return Number.isFinite(mm) && Number.isFinite(dd) ? ` ${mm}/${dd}` : ''
+                  })()} 成交記錄：
+                  {(() => {
+                    // Per-underlying fill counts (QQQ→TQQQ→A–Z), e.g. QQQ (5筆)、TQQQ (45筆).
+                    const bySym = new Map<string, number>()
+                    for (const e of yesterdayFillRows)
+                      bySym.set(e.symbol, (bySym.get(e.symbol) || 0) + 1)
+                    return Array.from(bySym.entries())
+                      .sort((a, b) => compareSymbols(a[0], b[0]))
+                      .map(([sym, n]) => `${sym} (${n}筆)`)
+                      .join('、')
+                  })()}
+                  {showYesterdayFills && (
+                    <button
+                      className="yfill-toggle-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFillGroupByAccount((v) => !v)
+                      }}
+                    >
+                      {fillGroupByAccount ? '以標的分類' : '以帳戶分類'}
+                    </button>
+                  )}
+                  <button
+                    className="yfill-toggle-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowYesterdayFills((v) => !v)
+                    }}
+                  >
+                    {showYesterdayFills ? '收合' : '展開'}
+                  </button>
                 </span>
               </div>
               {showYesterdayFills && (
@@ -3664,155 +3711,332 @@ export default function AccountOverview({
                   <table className="positions-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '14%', textAlign: 'left' }}>帳戶</th>
-                        <th style={{ width: '33%', textAlign: 'left' }}>標的</th>
-                        <th style={{ width: '11%' }}>方向</th>
-                        <th style={{ width: '11%' }}>數量</th>
-                        <th style={{ width: '16%' }}>成交價</th>
+                        <th style={{ width: '13%', textAlign: 'left' }}></th>
+                        <th style={{ width: '29%', textAlign: 'left' }}>標的</th>
+                        <th style={{ width: '9%' }}>方向</th>
+                        <th style={{ width: '10%' }}>數量</th>
+                        <th style={{ width: '12%' }}>成交價</th>
+                        <th style={{ width: '12%' }}>佣金</th>
                         <th style={{ width: '15%' }}>時間</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {yesterdayFillRows.map((exec) => {
-                        const acctExecs = yesterdayFills.filter((e) => e.account === exec.account)
-                        let desc: React.ReactNode
-                        if (exec.secType === 'OPT') {
-                          desc = formatOptionLabel(exec.symbol, exec.expiry, exec.strike, exec.right)
-                        } else if (exec.secType === 'BAG') {
-                          const legs = acctExecs.filter(
-                            (e) =>
-                              e.orderId === exec.orderId &&
-                              e.secType === 'OPT' &&
-                              e.symbol === exec.symbol
-                          )
-                          if (legs.length > 0) {
-                            const seen = new Set<string>()
-                            const legDescs: string[] = []
-                            for (const l of legs) {
-                              const exp = l.expiry
-                                ? (() => {
-                                    const yy = l.expiry.slice(2, 4)
-                                    const mm = parseInt(l.expiry.slice(4, 6), 10) - 1
-                                    const dd = l.expiry.slice(6, 8).replace(/^0/, '')
-                                    return `${MONTHS[mm]}${dd}'${yy}`
-                                  })()
-                                : ''
-                              const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
-                              const sign = l.side === 'BOT' ? '+' : '-'
-                              const k = `${sign}${exp} ${l.strike}${r}`
-                              if (!seen.has(k)) {
-                                seen.add(k)
-                                legDescs.push(k)
+                      {(() => {
+                        const fmtExp = (exp?: string): string => {
+                          if (!exp || exp.length < 8) return ''
+                          const yy = exp.slice(2, 4)
+                          const mm = parseInt(exp.slice(4, 6), 10) - 1
+                          const dd = exp.slice(6, 8).replace(/^0/, '')
+                          return `${MONTHS[mm]}${dd}'${yy}`
+                        }
+                        // A fill's grouping signature (string) + its display node. The
+                        // signature ignores account, so the same A→B roll across many
+                        // accounts collapses into one group.
+                        const buildDesc = (
+                          exec: (typeof yesterdayFillRows)[number]
+                        ): { sig: string; node: React.ReactNode } => {
+                          if (exec.secType === 'OPT') {
+                            const s = formatOptionLabel(
+                              exec.symbol,
+                              exec.expiry,
+                              exec.strike,
+                              exec.right
+                            )
+                            return { sig: s, node: s }
+                          }
+                          if (exec.secType === 'BAG') {
+                            const legs = yesterdayFills.filter(
+                              (e) =>
+                                e.account === exec.account &&
+                                e.orderId === exec.orderId &&
+                                e.secType === 'OPT' &&
+                                e.symbol === exec.symbol
+                            )
+                            if (legs.length > 0) {
+                              const seen = new Set<string>()
+                              const legDescs: string[] = []
+                              for (const l of legs) {
+                                const r = l.right === 'C' || l.right === 'CALL' ? 'C' : 'P'
+                                const sign = l.side === 'BOT' ? '+' : '-'
+                                const k = `${sign}${fmtExp(l.expiry)} ${l.strike}${r}`
+                                if (!seen.has(k)) {
+                                  seen.add(k)
+                                  legDescs.push(k)
+                                }
+                              }
+                              legDescs.sort(
+                                (a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1)
+                              )
+                              return {
+                                sig: `${exec.symbol} ${legDescs.join(' > ')}`,
+                                node: (
+                                  <>
+                                    {exec.symbol}{' '}
+                                    {legDescs.map((l, i) => (
+                                      <React.Fragment key={i}>
+                                        {i > 0 && (
+                                          <span
+                                            style={{
+                                              color: '#956b3a',
+                                              fontWeight: 400,
+                                              margin: '0 3px'
+                                            }}
+                                          >
+                                            →
+                                          </span>
+                                        )}
+                                        {l}
+                                      </React.Fragment>
+                                    ))}
+                                  </>
+                                )
                               }
                             }
-                            legDescs.sort((a, b) => (a[0] === '+' ? 0 : 1) - (b[0] === '+' ? 0 : 1))
-                            const arrow = (
-                              <span style={{ color: '#956b3a', fontWeight: 400, margin: '0 3px' }}>
-                                →
-                              </span>
-                            )
-                            desc = (
-                              <>
-                                {exec.symbol}{' '}
-                                {legDescs.map((l, i) => (
-                                  <React.Fragment key={i}>
-                                    {i > 0 && arrow}
-                                    {l}
-                                  </React.Fragment>
-                                ))}
-                              </>
-                            )
-                          } else {
-                            desc = `${exec.symbol} COMBO`
+                            return { sig: `${exec.symbol} COMBO`, node: `${exec.symbol} COMBO` }
                           }
-                        } else {
-                          desc = exec.symbol
+                          return { sig: exec.symbol, node: exec.symbol }
                         }
-                        const isOptionExpiry =
-                          exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
-                        const isAssigned =
-                          isOptionExpiry &&
-                          acctExecs.some(
-                            (e) =>
-                              e.secType === 'STK' &&
-                              e.symbol === exec.symbol &&
-                              Math.abs(e.avgPrice - (exec.strike || 0)) < 0.01
-                          )
-                        const fmtTime = (() => {
-                          const m = exec.time.match(
+                        const fmtTime = (t: string): string => {
+                          const m = t.match(
                             /^(\d{4})(\d{2})(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\s+(.+)$/
                           )
-                          if (!m)
-                            return exec.time.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
+                          if (!m) return t.replace(/^\d{4}\d{2}\d{2}\s+(\d{2}:\d{2}).*$/, '$1')
                           const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
-                          const d = new Date(
-                            new Date(iso).toLocaleString('en-US', { timeZone: m[7] })
-                          )
+                          const d = new Date(new Date(iso).toLocaleString('en-US', { timeZone: m[7] }))
                           return d.toLocaleTimeString('en-US', {
                             timeZone: 'America/New_York',
                             hour: '2-digit',
                             minute: '2-digit',
                             hour12: false
                           })
-                        })()
-                        return (
-                          <tr key={exec.execId}>
-                            <td
-                              style={{ textAlign: 'left', fontSize: '13px', whiteSpace: 'nowrap' }}
+                        }
+                        // One fill's 7-cell data row. In 標的 mode the 帳戶 column
+                        // carries the account; in 帳戶 mode the 標的 column carries the
+                        // roll desc instead (the account is already in the group header).
+                        const memberRow = (
+                          exec: (typeof yesterdayFillRows)[number],
+                          byAccount: boolean
+                        ): React.ReactNode => {
+                          const acctExecs = yesterdayFills.filter(
+                            (e) => e.account === exec.account
+                          )
+                          const commission = yesterdayFills
+                            .filter(
+                              (e) => e.account === exec.account && e.orderId === exec.orderId
+                            )
+                            .reduce((s, e) => s + (e.commission || 0), 0)
+                          const isOptionExpiry =
+                            exec.orderId === 0 && exec.price === 0 && exec.secType === 'OPT'
+                          const isAssigned =
+                            isOptionExpiry &&
+                            acctExecs.some(
+                              (e) =>
+                                e.secType === 'STK' &&
+                                e.symbol === exec.symbol &&
+                                Math.abs(e.avgPrice - (exec.strike || 0)) < 0.01
+                            )
+                          const acctName = formatAccountName(
+                            accounts.find((a) => a.accountId === exec.account)?.alias ||
+                              exec.account
+                          )
+                          const badge = isOptionExpiry ? (
+                            <span
+                              style={
+                                isAssigned
+                                  ? {
+                                      color: '#fff',
+                                      backgroundColor: '#d35400',
+                                      fontWeight: 600,
+                                      padding: '4px 6px',
+                                      marginLeft: byAccount ? 6 : 0
+                                    }
+                                  : {
+                                      color: '#1a6baa',
+                                      fontWeight: 600,
+                                      fontSize: '0.92em',
+                                      marginLeft: byAccount ? 6 : 0
+                                    }
+                              }
                             >
-                              {formatAccountName(
-                                accounts.find((a) => a.accountId === exec.account)?.alias ||
-                                  exec.account
-                              )}
-                            </td>
-                            <td className="pos-symbol">
-                              {desc}
-                              {isOptionExpiry && (
-                                <span
-                                  style={
-                                    isAssigned
-                                      ? {
-                                          color: '#fff',
-                                          backgroundColor: '#d35400',
-                                          fontWeight: 600,
-                                          marginLeft: 6,
-                                          padding: '4px 6px',
-                                          margin: '-4px 0 -4px 6px'
-                                        }
-                                      : {
-                                          color: '#1a6baa',
-                                          fontWeight: 600,
-                                          marginLeft: 6,
-                                          fontSize: '0.92em'
-                                        }
-                                  }
+                              {isAssigned ? '被行權' : '(到期)'}
+                            </span>
+                          ) : null
+                          return (
+                            <tr key={exec.execId}>
+                              {byAccount ? (
+                                // 帳戶 mode: 標的 spans the (blank) 帳戶 column too, so it
+                                // sits just under the account name instead of way right.
+                                <td
+                                  colSpan={2}
+                                  className="pos-symbol"
+                                  style={{ textAlign: 'left', paddingLeft: 22 }}
                                 >
-                                  {isAssigned ? '被行權' : '(到期)'}
-                                </span>
+                                  {buildDesc(exec).node}
+                                  {badge}
+                                </td>
+                              ) : (
+                                <>
+                                  <td
+                                    style={{
+                                      textAlign: 'left',
+                                      fontSize: '13px',
+                                      whiteSpace: 'nowrap',
+                                      paddingLeft: 22
+                                    }}
+                                  >
+                                    {acctName}
+                                  </td>
+                                  <td className="pos-symbol">{badge}</td>
+                                </>
                               )}
-                            </td>
-                            <td
-                              style={{
-                                color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a',
-                                fontWeight: 600
-                              }}
-                            >
-                              {exec.side === 'BOT' ? '買' : '賣'}
-                            </td>
-                            <td
-                              style={{
-                                color: '#fff',
-                                fontWeight: 500,
-                                backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626'
-                              }}
-                            >
-                              {exec.quantity}
-                            </td>
-                            <td>{exec.avgPrice.toFixed(2)}</td>
-                            <td style={{ whiteSpace: 'nowrap' }}>{fmtTime}</td>
-                          </tr>
+                              <td
+                                style={{
+                                  color: exec.side === 'BOT' ? '#1a6b3a' : '#8b1a1a',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {exec.side === 'BOT' ? '買' : '賣'}
+                              </td>
+                              <td
+                                style={{
+                                  color: '#fff',
+                                  fontWeight: 500,
+                                  backgroundColor: exec.side === 'BOT' ? '#1a6b3a' : '#dc2626'
+                                }}
+                              >
+                                {exec.quantity}
+                              </td>
+                              <td>{exec.avgPrice.toFixed(2)}</td>
+                              <td>{commission ? commission.toFixed(2) : '-'}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(exec.time)}</td>
+                            </tr>
+                          )
+                        }
+                        const toggle = (key: string): void =>
+                          setExpandedFillSigs((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(key)) next.delete(key)
+                            else next.add(key)
+                            return next
+                          })
+                        const headerRowStyle: React.CSSProperties = {
+                          cursor: 'pointer',
+                          background: '#ececec',
+                          userSelect: 'none'
+                        }
+                        const caret = (open: boolean): React.ReactNode => (
+                          <span style={{ display: 'inline-block', width: 14, color: '#888' }}>
+                            {open ? '−' : '+'}
+                          </span>
                         )
-                      })}
+                        const subInfo = (text: string): React.ReactNode => (
+                          <span
+                            style={{
+                              color: '#333',
+                              fontWeight: 400,
+                              marginLeft: 6,
+                              fontSize: 'calc(1em + 1px)'
+                            }}
+                          >
+                            {text}
+                          </span>
+                        )
+
+                        if (fillGroupByAccount) {
+                          // ----- group by 帳戶 -----
+                          const aGroups: {
+                            account: string
+                            rows: typeof yesterdayFillRows
+                          }[] = []
+                          const aByKey = new Map<string, (typeof aGroups)[number]>()
+                          for (const exec of yesterdayFillRows) {
+                            const g = aByKey.get(exec.account)
+                            if (g) g.rows.push(exec)
+                            else {
+                              const ng = { account: exec.account, rows: [exec] }
+                              aByKey.set(exec.account, ng)
+                              aGroups.push(ng)
+                            }
+                          }
+                          const nameOf = (acct: string): string =>
+                            formatAccountName(
+                              accounts.find((x) => x.accountId === acct)?.alias || acct
+                            )
+                          aGroups.sort((a, b) =>
+                            nameOf(a.account).localeCompare(nameOf(b.account))
+                          )
+                          return aGroups.map((g) => {
+                            const key = `acct:${g.account}`
+                            const open = expandedFillSigs.has(key)
+                            return (
+                              <React.Fragment key={key}>
+                                <tr onClick={() => toggle(key)} style={headerRowStyle}>
+                                  <td
+                                    colSpan={7}
+                                    className="pos-symbol"
+                                    style={{ textAlign: 'left' }}
+                                  >
+                                    {caret(open)}
+                                    {nameOf(g.account)}
+                                    {subInfo(`(${g.rows.length} 筆)`)}
+                                  </td>
+                                </tr>
+                                {open && g.rows.map((exec) => memberRow(exec, true))}
+                              </React.Fragment>
+                            )
+                          })
+                        }
+
+                        // ----- group by 標的 (A→B), default -----
+                        const groups: {
+                          sig: string
+                          node: React.ReactNode
+                          rows: typeof yesterdayFillRows
+                        }[] = []
+                        const byKey = new Map<string, (typeof groups)[number]>()
+                        for (const exec of yesterdayFillRows) {
+                          const { sig, node } = buildDesc(exec)
+                          const g = byKey.get(sig)
+                          if (g) g.rows.push(exec)
+                          else {
+                            const ng = { sig, node, rows: [exec] }
+                            byKey.set(sig, ng)
+                            groups.push(ng)
+                          }
+                        }
+                        // Order groups by 標的 (QQQ→QLD→TQQQ→A–Z); stable sort keeps
+                        // the time order within each symbol.
+                        groups.sort((a, b) =>
+                          compareSymbols(a.rows[0].symbol, b.rows[0].symbol)
+                        )
+                        return groups.map((g) => {
+                          const open = expandedFillSigs.has(g.sig)
+                          // Quantity-weighted average fill price across the group's
+                          // accounts (e.g. a roll's net credit/debit).
+                          const totalQty = g.rows.reduce((s, e) => s + Math.abs(e.quantity), 0)
+                          const avgPrice =
+                            totalQty > 0
+                              ? g.rows.reduce(
+                                  (s, e) => s + e.avgPrice * Math.abs(e.quantity),
+                                  0
+                                ) / totalQty
+                              : 0
+                          return (
+                            <React.Fragment key={g.sig}>
+                              <tr onClick={() => toggle(g.sig)} style={headerRowStyle}>
+                                <td colSpan={7} className="pos-symbol" style={{ textAlign: 'left' }}>
+                                  {caret(open)}
+                                  {g.node}
+                                  {subInfo(
+                                    `(${g.rows.length} 個帳戶，均價 ${avgPrice.toFixed(2)})`
+                                  )}
+                                </td>
+                              </tr>
+                              {open && g.rows.map((exec) => memberRow(exec, false))}
+                            </React.Fragment>
+                          )
+                        })
+                      })()}
                     </tbody>
                   </table>
                 </div>

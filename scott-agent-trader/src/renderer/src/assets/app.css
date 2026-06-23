@@ -390,6 +390,24 @@ body {
   border-color: #9ca3af;
 }
 
+/* 昨日成交 collapse/expand toggle — compact, same hover as .select-toggle-btn. */
+.yfill-toggle-btn {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 0.82em;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.yfill-toggle-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 /* Collapse/expand toggle for a same-batch order group (委託單 card). */
 .batch-toggle-btn {
   display: inline-flex;
