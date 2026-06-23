@@ -17,12 +17,14 @@ interface BatchOrderFormProps {
   connected: boolean
   accounts: AccountData[]
   positions: PositionData[]
+  onClose: () => void
 }
 
 export default function BatchOrderForm({
   connected,
   accounts,
-  positions
+  positions,
+  onClose
 }: BatchOrderFormProps): React.JSX.Element {
   const [symbol, setSymbol] = useState('')
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
@@ -36,7 +38,6 @@ export default function BatchOrderForm({
 
   const [orderResults, setOrderResults] = useState<OrderResult[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [checkedAccounts, setCheckedAccounts] = useState<Set<string>>(new Set())
   const [tif, setTif] = useState<'DAY' | 'GTC'>('DAY')
   const [outsideRth, setOutsideRth] = useState(false)
@@ -145,12 +146,14 @@ export default function BatchOrderForm({
 
       const results = await window.ibApi.placeBatchOrders(request, allocations)
       setOrderResults(results)
+      // Orders placed — close the dialog. Status/fills show in the 委託單 card.
+      onClose()
     } catch (err: unknown) {
       console.error('Batch order failed:', err)
     } finally {
       setSubmitting(false)
     }
-  }, [symbol, action, limitPrice, allocations, totalAllocated, outsideRth, tif])
+  }, [symbol, action, limitPrice, allocations, totalAllocated, outsideRth, tif, onClose])
 
   if (!connected) {
     return (
@@ -165,7 +168,7 @@ export default function BatchOrderForm({
       {/* Order Form */}
       <div
         className="order-form"
-        style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}
+        style={orderResults.length > 0 ? { pointerEvents: 'none', opacity: 0.5 } : {}}
       >
         <div className="form-row">
           <div className="form-group">
@@ -276,7 +279,7 @@ export default function BatchOrderForm({
       {targetAccounts.length > 0 && (
         <div
           className="allocation-section"
-          style={showConfirm ? { pointerEvents: 'none', opacity: 0.5 } : {}}
+          style={orderResults.length > 0 ? { pointerEvents: 'none', opacity: 0.5 } : {}}
         >
           <table className="allocation-table">
             <thead>
@@ -453,19 +456,17 @@ export default function BatchOrderForm({
         className="order-actions"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
       >
-        {!showConfirm ? (
+        {orderResults.length === 0 ? (
           <button
-            onClick={() => setShowConfirm(true)}
+            onClick={handleSubmit}
             className="btn btn-primary"
             disabled={!symbol.trim() || totalAllocated === 0 || submitting}
           >
-            預覽下單
+            {submitting ? '下單中...' : '確認下單'}
           </button>
         ) : (
           <div className="confirm-section">
-            <div className="confirm-summary">
-              {orderResults.length > 0 ? '下單結果' : '確定要下單？'}
-            </div>
+            <div className="confirm-summary">下單結果</div>
             <table className="allocation-table">
               <thead>
                 <tr>
@@ -544,29 +545,16 @@ export default function BatchOrderForm({
               </tbody>
             </table>
             <div className="confirm-buttons">
-              {orderResults.length === 0 && (
-                <>
-                  <button onClick={handleSubmit} className="btn btn-danger" disabled={submitting}>
-                    {submitting ? '下單中...' : '確認下單'}
-                  </button>
-                  <button onClick={() => setShowConfirm(false)} className="btn btn-secondary">
-                    取消
-                  </button>
-                </>
-              )}
-              {orderResults.length > 0 && (
-                <button
-                  onClick={() => {
-                    setShowConfirm(false)
-                    setOrderResults([])
-                    setCheckedAccounts(new Set())
-                    setQuantities({})
-                  }}
-                  className="btn btn-secondary"
-                >
-                  重新下單
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  setOrderResults([])
+                  setCheckedAccounts(new Set())
+                  setQuantities({})
+                }}
+                className="btn btn-secondary"
+              >
+                重新下單
+              </button>
             </div>
           </div>
         )}

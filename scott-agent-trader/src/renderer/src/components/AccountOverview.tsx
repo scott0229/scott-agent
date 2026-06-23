@@ -5634,7 +5634,12 @@ export default function AccountOverview({
               </button>
             </div>
             <div className="stock-order-dialog-body">
-              <BatchOrderForm connected={connected} accounts={accounts} positions={positions} />
+              <BatchOrderForm
+                connected={connected}
+                accounts={accounts}
+                positions={positions}
+                onClose={() => setShowBatchOrder(false)}
+              />
             </div>
           </div>
         </div>
