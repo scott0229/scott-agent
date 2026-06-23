@@ -1523,6 +1523,10 @@ export default function AccountOverview({
     const acctName = formatAccountName(
       accounts.find((a) => a.accountId === order.account)?.alias || order.account
     )
+    // A collapsed batch's representative row shows the group's Σ quantity, so
+    // its 數量 cell must not be individually editable (it would edit only the
+    // first order behind a misleading total).
+    const batchCollapsed = !!batchToggle?.collapsed
     const desc: React.ReactNode =
       order.secType === 'OPT' ? (
         formatOptionLabel(order.symbol, order.expiry, order.strike, order.right)
@@ -1602,9 +1606,20 @@ export default function AccountOverview({
             const chasePts = spec.right === 'C' ? spec.pts : -spec.pts
             // Match the 展期觀察 chunk: no "+" prefix for positives (e.g. 追 2 點).
             const ptsStr = `${chasePts}`
+            // Show 展 N 天 as a DTE delta — acting next session costs 1 DTE, so
+            // delta = days − 1 (展 1 天 → 維持, 展 2 天 → +1, 展 0 天 → −1).
+            const dteDelta = spec.days != null ? spec.days - 1 : null
+            const dteLabel =
+              dteDelta == null
+                ? 'DTE -'
+                : dteDelta === 0
+                  ? 'DTE 維持'
+                  : dteDelta > 0
+                    ? `DTE + ${dteDelta}`
+                    : `DTE - ${-dteDelta}`
             return (
               <>
-                展 {spec.days != null ? spec.days : '-'} 天
+                {dteLabel}
                 <span className="roll-watch-sep">·</span>追 {ptsStr} 點
               </>
             )
@@ -1619,52 +1634,6 @@ export default function AccountOverview({
           }}
         >
           {order.action === 'BUY' ? '買' : '賣'}
-        </td>
-        <td
-          className="editable-cell"
-          title="雙擊修改數量"
-          style={
-            editingQty
-              ? { cursor: 'pointer' }
-              : { cursor: 'pointer', fontWeight: 500 }
-          }
-          onDoubleClick={(e) => {
-            e.stopPropagation()
-            startEdit(order, 'quantity')
-          }}
-        >
-          {editingQty ? (
-            <input
-              ref={editInputRef}
-              type="number"
-              step="1"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') submitEdit(order, 'quantity', editValue)
-                if (e.key === 'Escape') cancelEdit()
-              }}
-              onBlur={() => cancelEdit()}
-              style={{
-                width: '52px',
-                padding: '2px 4px',
-                fontSize: '13px',
-                background: 'transparent',
-                border: '1px solid #94a3b8',
-                borderRadius: '3px',
-                color: 'inherit',
-                outline: 'none',
-                textAlign: 'center'
-              }}
-            />
-          ) : (
-            // TWS-style "filled / total" — direction is conveyed by the
-            // green/red cell background, so we drop the explicit +/- sign.
-            <>
-              {(order.filled ?? 0).toLocaleString('en-US')}/
-              {Math.abs(order.quantity).toLocaleString('en-US')}
-            </>
-          )}
         </td>
         {(() => {
           const oq = orderQuotes[`${order.account}|${order.permId}`]
@@ -1743,6 +1712,64 @@ export default function AccountOverview({
             (order.limitPrice ?? 0).toFixed(2)
           ) : (
             '市價'
+          )}
+        </td>
+        <td
+          className={batchCollapsed ? undefined : 'editable-cell'}
+          title={batchCollapsed ? undefined : '雙擊修改數量'}
+          style={
+            batchCollapsed
+              ? { fontWeight: 500 }
+              : { cursor: 'pointer', fontWeight: 500 }
+          }
+          onDoubleClick={
+            batchCollapsed
+              ? undefined
+              : (e) => {
+                  e.stopPropagation()
+                  startEdit(order, 'quantity')
+                }
+          }
+        >
+          {editingQty && !batchCollapsed ? (
+            <input
+              ref={editInputRef}
+              type="number"
+              step="1"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitEdit(order, 'quantity', editValue)
+                if (e.key === 'Escape') cancelEdit()
+              }}
+              onBlur={() => cancelEdit()}
+              style={{
+                width: '52px',
+                padding: '2px 4px',
+                fontSize: '13px',
+                background: 'transparent',
+                border: '1px solid #94a3b8',
+                borderRadius: '3px',
+                color: 'inherit',
+                outline: 'none',
+                textAlign: 'center'
+              }}
+            />
+          ) : (
+            // TWS-style "filled / total" — direction is conveyed by the
+            // green/red cell background, so we drop the explicit +/- sign.
+            // A collapsed batch's representative row shows the whole group's
+            // totals (Σ filled / Σ quantity), not just its own.
+            (() => {
+              const rows = batchToggle?.collapsed ? batchToggle.orders : [order]
+              const filled = rows.reduce((s, o) => s + (o.filled ?? 0), 0)
+              const total = rows.reduce((s, o) => s + Math.abs(o.quantity), 0)
+              return (
+                <>
+                  {filled.toLocaleString('en-US')}/{total.toLocaleString('en-US')}
+                </>
+              )
+            })()
           )}
         </td>
         <td style={{ fontWeight: 600, color: '#1a3a6b' }}>
@@ -3425,7 +3452,7 @@ export default function AccountOverview({
                       <path d="M12 9v4" />
                       <path d="M12 17h.01" />
                     </svg>
-                    中間價在買、賣價差過大時並不可信，請小心調價。
+                    買、賣價差過大時成交價不一定是在中間，請小心調價。
                   </span>
                   <button
                     type="button"
@@ -3559,11 +3586,11 @@ export default function AccountOverview({
                       <th style={{ width: '16%', textAlign: 'left' }}>標的</th>
                       <th style={{ width: '11%', textAlign: 'left' }}>說明</th>
                       <th style={{ width: '6%' }}>行動</th>
-                      <th style={{ width: '8%' }}>數量</th>
                       <th style={{ width: '8%' }}>買價</th>
                       <th style={{ width: '8%' }}>賣價</th>
                       <th style={{ width: '7%' }}>中間</th>
                       <th style={{ width: '7%' }}>限價</th>
+                      <th style={{ width: '8%' }}>數量</th>
                       <th style={{ width: '8%' }}>成交價</th>
                       <th style={{ width: '7%' }}>傭金</th>
                       <th style={{ width: '8%' }}>狀態</th>
@@ -3681,17 +3708,6 @@ export default function AccountOverview({
                       .map(([sym, n]) => `${sym} (${n}筆)`)
                       .join('、')
                   })()}
-                  {showYesterdayFills && (
-                    <button
-                      className="yfill-toggle-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setFillGroupByAccount((v) => !v)
-                      }}
-                    >
-                      {fillGroupByAccount ? '以標的分類' : '以帳戶分類'}
-                    </button>
-                  )}
                   <button
                     className="yfill-toggle-btn"
                     onClick={(e) => {
@@ -3700,6 +3716,15 @@ export default function AccountOverview({
                     }}
                   >
                     {showYesterdayFills ? '收合' : '展開'}
+                  </button>
+                  <button
+                    className="yfill-toggle-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFillGroupByAccount((v) => !v)
+                    }}
+                  >
+                    {fillGroupByAccount ? '以標的分類' : '以帳戶分類'}
                   </button>
                 </span>
               </div>
@@ -5641,6 +5666,7 @@ export default function AccountOverview({
         open={showOptionOrder}
         onClose={() => setShowOptionOrder(false)}
         accounts={accounts}
+        positions={positions}
         initialSymbol={optOrderInitialSymbol}
         initialAccountId={optOrderInitialAccountId}
         initialRight={optOrderInitialRight}

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useState, useEffect, useMemo, useRef } from 'react'
 
-import type { AccountData } from '../hooks/useAccountStore'
+import type { AccountData, PositionData } from '../hooks/useAccountStore'
 import { useOptionChain, formatExpiry, formatPrice } from '../hooks/useOptionChain'
 import OptionChainTable from './OptionChainTable'
 
@@ -9,6 +9,7 @@ interface OptionOrderDialogProps {
   open: boolean
   onClose: () => void
   accounts: AccountData[]
+  positions: PositionData[]
   /** Pre-fill symbol when opened from a context (e.g. clicking a symbol) */
   initialSymbol?: string
   /** Pre-fill account when opened from a context */
@@ -21,6 +22,7 @@ export default function OptionOrderDialog({
   open,
   onClose,
   accounts: allAccounts,
+  positions,
   initialSymbol = 'QQQ',
   initialAccountId,
   initialRight
@@ -55,15 +57,11 @@ export default function OptionOrderDialog({
 
   // ── Account quantities ───────────────────────────────────────────────────
   const [qtys, setQtys] = useState<Record<string, string>>({})
-  const [checkedAccounts, setCheckedAccounts] = useState<Record<string, boolean>>({})
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>({})
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false)
   const [orderSubmitted, setOrderSubmitted] = useState(false)
-
-  // ── Master Quantity ──────────────────────────────────────────────────────
-  const [masterQty, setMasterQty] = useState('')
 
   // ── Reset on open ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -79,14 +77,10 @@ export default function OptionOrderDialog({
     chain.setErrorMsg('')
     setAction('SELL')
     const initQty: Record<string, string> = {}
-    const initChecked: Record<string, boolean> = {}
     accounts.forEach((a) => {
       initQty[a.accountId] = ''
-      if (accounts.length === 1) initChecked[a.accountId] = true
     })
     setQtys(initQty)
-    setMasterQty('')
-    setCheckedAccounts(initChecked)
     setOrderStatuses({})
     setOrderSubmitted(false)
     userEditedPriceRef.current = false
@@ -158,7 +152,6 @@ export default function OptionOrderDialog({
     if (!selExpiry || selStrike === null || selRight === null || !limitPrice) return
     const accountQuantities: Record<string, number> = {}
     Object.entries(qtys).forEach(([acctId, q]) => {
-      if (checkedAccounts[acctId] !== true) return
       const n = parseInt(q)
       if (!isNaN(n) && n > 0) accountQuantities[acctId] = n
     })
@@ -198,6 +191,9 @@ export default function OptionOrderDialog({
     } finally {
       setSubmitting(false)
       setOrderSubmitted(true)
+      // Orders are placed — close the dialog. Per-account status/fills are
+      // visible in the 委託單 card, so we don't keep the dialog open.
+      onClose()
     }
   }
 
@@ -408,11 +404,6 @@ export default function OptionOrderDialog({
                   )}
                 </div>
               )}
-              {chain.stockPrice !== null && (
-                <span className="roll-stock-price" style={{ marginRight: 8 }}>
-                  股價 {chain.stockPrice.toFixed(2)}
-                </span>
-              )}
               <button
                 className="roll-expiry-dropdown-btn"
                 onClick={() => chain.setChainHidden((v) => !v)}
@@ -454,11 +445,11 @@ export default function OptionOrderDialog({
                   }}
                 >
                   {action === 'BUY' ? (
-                    <span style={{ color: '#15803d', fontWeight: 600 }}>買</span>
+                    <span style={{ color: '#15803d', fontWeight: 600, fontSize: 14 }}>買</span>
                   ) : (
-                    <span style={{ color: '#b91c1c', fontWeight: 600 }}>賣</span>
+                    <span style={{ color: '#b91c1c', fontWeight: 600, fontSize: 14 }}>賣</span>
                   )}
-                  <span style={{ whiteSpace: 'nowrap' }}>
+                  <span style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
                     {symbol} {formatExpiry(selExpiry)} {selStrike}{' '}
                     {selRight === 'C' ? 'CALL' : 'PUT'}
                   </span>
@@ -474,191 +465,164 @@ export default function OptionOrderDialog({
                 />
               </>
             )}
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
-              買
-            </span>
-            <span className="roll-order-value roll-order-bid" style={{ whiteSpace: 'nowrap' }}>
-              {selGreek ? formatPrice(selGreek.bid) : '-'}
-            </span>
             <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-            />
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
-              賣
-            </span>
-            <span className="roll-order-value roll-order-ask" style={{ whiteSpace: 'nowrap' }}>
-              {selGreek ? formatPrice(selGreek.ask) : '-'}
-            </span>
-            <span
-              style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 6px' }}
-            />
-            <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
-              中間
-            </span>{' '}
-            <span className="roll-order-value roll-order-mid" style={{ whiteSpace: 'nowrap' }}>
-              {selGreek && selGreek.bid > 0 && selGreek.ask > 0
-                ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
-                : '-'}
-            </span>
-            {selExpiry && selStrike !== null && selRight !== null && (
-              <>
-                <span
-                  style={{
-                    width: 1,
-                    height: 16,
-                    background: '#ccc',
-                    flexShrink: 0,
-                    margin: '0 6px'
-                  }}
-                />
-                <span style={{ marginRight: 'auto' }} />
-                <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
-                  限價
-                </span>
-                <div className="roll-limit-wrapper" ref={limitInputRef}>
-                  <input
-                    type="text"
-                    className="roll-order-input"
-                    style={{ width: 55, padding: '2px 6px' }}
-                    value={limitPrice}
-                    onChange={(e) => {
-                      userEditedPriceRef.current = true
-                      setLimitPrice(e.target.value)
+              className="roll-order-chunk"
+              style={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              <span className="roll-order-label" style={{ whiteSpace: 'nowrap' }}>
+                買
+              </span>
+              <span className="roll-order-value roll-order-bid" style={{ marginLeft: 4 }}>
+                {selGreek ? formatPrice(selGreek.bid) : '-'}
+              </span>
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
+              />
+              <span className="roll-order-label">賣</span>
+              <span className="roll-order-value roll-order-ask" style={{ marginLeft: 4 }}>
+                {selGreek ? formatPrice(selGreek.ask) : '-'}
+              </span>
+              <span
+                style={{ width: 1, height: 16, background: '#ccc', flexShrink: 0, margin: '0 10px' }}
+              />
+              <span className="roll-order-label">中間</span>
+              <span className="roll-order-value roll-order-mid" style={{ marginLeft: 4 }}>
+                {selGreek && selGreek.bid > 0 && selGreek.ask > 0
+                  ? ((selGreek.bid + selGreek.ask) / 2).toFixed(2)
+                  : '-'}
+              </span>
+              {selExpiry && selStrike !== null && selRight !== null && (
+                <>
+                  <span
+                    style={{
+                      width: 1,
+                      height: 16,
+                      background: '#ccc',
+                      flexShrink: 0,
+                      margin: '0 10px'
                     }}
-                    placeholder="0.00"
                   />
-                </div>
-
-                <span style={{ marginLeft: 12, whiteSpace: 'nowrap' }} className="roll-order-label">
-                  口數
-                </span>
-                <div className="roll-limit-wrapper">
-                  <input
-                    type="number"
-                    min={0}
-                    className="roll-order-input"
-                    style={{ width: 45, padding: '2px 6px' }}
-                    value={masterQty}
-                    onChange={(e) => {
-                      setMasterQty(e.target.value)
-                      const newQtys = { ...qtys }
-                      sortedAccounts.forEach((a) => {
-                        newQtys[a.accountId] = e.target.value
-                      })
-                      setQtys(newQtys)
-                    }}
-                    placeholder=""
-                  />
-                </div>
-                <div style={{ width: 12, flexShrink: 0 }}></div>
-              </>
-            )}
+                  <span
+                    className="roll-order-label"
+                    style={{ whiteSpace: 'nowrap', fontSize: 12 }}
+                  >
+                    限價
+                  </span>
+                  <div
+                    className="roll-limit-wrapper"
+                    ref={limitInputRef}
+                    style={{ marginLeft: 8 }}
+                  >
+                    <input
+                      type="text"
+                      className="roll-order-input"
+                      style={{ width: 55, padding: '0 6px', height: 22, fontSize: 12 }}
+                      value={limitPrice}
+                      onChange={(e) => {
+                        userEditedPriceRef.current = true
+                        setLimitPrice(e.target.value)
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </>
+              )}
+            </span>
           </div>
 
           {/* Account quantity table */}
           {!initialAccountId && (
             <div className="roll-dialog-table-wrapper">
-              <table className="roll-dialog-table roll-positions-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: 30 }}></th>
-                    <th style={{ width: 200 }}>帳戶</th>
-                    <th style={{ width: 90, textAlign: 'center' }}>現金</th>
-                    <th style={{ width: 90, textAlign: 'center' }}>成本基礎</th>
-                    <th style={{ textAlign: 'center', width: 90 }}>口數</th>
-                    <th style={{ textAlign: 'center', width: 70 }}>狀態</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedAccounts.map((acct) => {
-                    const qty = qtys[acct.accountId] ?? ''
-                    return (
-                      <tr key={acct.accountId} style={{ height: 36 }}>
-                        <td style={{ textAlign: 'center', width: '30px' }}>
-                          <input
-                            type="checkbox"
-                            checked={checkedAccounts[acct.accountId] === true}
-                            onChange={(e) =>
-                              setCheckedAccounts((prev) => ({
-                                ...prev,
-                                [acct.accountId]: e.target.checked
-                              }))
-                            }
-                            style={{ cursor: 'pointer' }}
-                          />
-                        </td>
-                        <td
-                          style={{
-                            fontWeight: 'bold',
-                            overflow: 'visible',
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() =>
-                            setCheckedAccounts((prev) => ({
-                              ...prev,
-                              [acct.accountId]: !prev[acct.accountId]
-                            }))
-                          }
-                        >
-                          {getAlias(acct.accountId)}
-                        </td>
-                        <td
-                          style={{
-                            fontSize: 13,
-                            whiteSpace: 'nowrap',
-                            textAlign: 'center',
-                            color: acct.totalCashValue < 0 ? '#8b1a1a' : undefined
-                          }}
-                        >
-                          {acct.totalCashValue.toLocaleString('en-US', {
-                            maximumFractionDigits: 0
-                          })}
-                        </td>
-                        <td style={{ fontSize: 13, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                          {(() => {
-                            const price = parseFloat(limitPrice)
-                            if (!price || price <= 0) return '-'
-                            const cost = price * 100
-                            return action === 'SELL' ? (-cost).toFixed(2) : cost.toFixed(2)
-                          })()}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {checkedAccounts[acct.accountId] === true && (
-                            <input
-                              type="number"
-                              min={0}
-                              value={qty}
-                              onChange={(e) =>
-                                setQtys((prev) => ({ ...prev, [acct.accountId]: e.target.value }))
-                              }
-                              className="input-field input-small"
-                              style={{ height: 24, padding: '2px 8px', textAlign: 'center' }}
-                            />
-                          )}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: 'center',
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color:
-                              orderStatuses[acct.accountId] === '已送出'
-                                ? '#15803d'
-                                : orderStatuses[acct.accountId] === '失敗'
-                                  ? '#b91c1c'
-                                  : orderStatuses[acct.accountId] === '送出中...'
-                                    ? '#b45309'
-                                    : '#666'
-                          }}
-                        >
-                          {orderStatuses[acct.accountId] || ''}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              {sortedAccounts.map((acct, idx, arr) => {
+                const qty = qtys[acct.accountId] ?? ''
+                const status = orderStatuses[acct.accountId]
+                return (
+                  <div
+                    key={acct.accountId}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '2px 4px',
+                      borderBottom: '1px solid #f0f0f0',
+                      fontSize: 13,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <span
+                      style={{ color: '#333', minWidth: 26, textAlign: 'right', flexShrink: 0 }}
+                    >
+                      {`${arr.length - idx}.`}
+                    </span>
+                    <span style={{ minWidth: 110, marginLeft: 12 }}>
+                      {getAlias(acct.accountId)}
+                    </span>
+                    <span style={{ color: '#333', marginLeft: 8 }}>現金</span>
+                    <span style={{ minWidth: 60, textAlign: 'right', color: '#333' }}>
+                      <span style={{ color: acct.totalCashValue < 0 ? '#8b1a1a' : undefined }}>
+                        {acct.totalCashValue.toLocaleString('en-US', {
+                          maximumFractionDigits: 0
+                        })}
+                      </span>
+                      ，
+                    </span>
+                    <span style={{ color: '#333' }}>潛在融資</span>
+                    <span style={{ minWidth: 44, textAlign: 'right' }}>
+                      {(() => {
+                        // Match the 帳戶卡 metric exactly:
+                        // 潛在融資 = (賣方 PUT 承接金額 − 現金) ÷ 淨值.
+                        if (acct.netLiquidation <= 0) return '-'
+                        const putTotal = positions
+                          .filter(
+                            (p) =>
+                              p.account === acct.accountId &&
+                              p.secType === 'OPT' &&
+                              (p.right === 'P' || p.right === 'PUT') &&
+                              p.quantity < 0
+                          )
+                          .reduce(
+                            (s, p) => s + (p.strike || 0) * 100 * Math.abs(p.quantity),
+                            0
+                          )
+                        const potentialPct =
+                          (putTotal - acct.totalCashValue) / acct.netLiquidation
+                        return `${(potentialPct * 100).toFixed(0)}%`
+                      })()}
+                      ，
+                    </span>
+                    <span style={{ color: '#333' }}>口數</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={qty}
+                      onChange={(e) =>
+                        setQtys((prev) => ({ ...prev, [acct.accountId]: e.target.value }))
+                      }
+                      className="input-field input-small"
+                      style={{ width: 52, height: 20, padding: '0 6px', textAlign: 'center' }}
+                    />
+                    {status && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color:
+                            status === '已送出'
+                              ? '#15803d'
+                              : status === '失敗'
+                                ? '#b91c1c'
+                                : status === '送出中...'
+                                  ? '#b45309'
+                                  : '#666'
+                        }}
+                      >
+                        {status}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -703,7 +667,6 @@ export default function OptionOrderDialog({
                   initQty[a.accountId] = ''
                 })
                 setQtys(initQty)
-                setCheckedAccounts({})
                 setOrderStatuses({})
                 setOrderSubmitted(false)
               }}
@@ -725,7 +688,6 @@ export default function OptionOrderDialog({
                         initQty[a.accountId] = ''
                       })
                       setQtys(initQty)
-                      setCheckedAccounts({})
                       setOrderStatuses({})
                       setOrderSubmitted(false)
                     }
