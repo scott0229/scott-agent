@@ -1788,8 +1788,17 @@ export default function AccountOverview({
           )
         })()}
         <td style={{ whiteSpace: 'nowrap', fontSize: '13px' }}>
-          {(
-            {
+          {(() => {
+            // Fill-based status: a collapsed batch reports its aggregate fill,
+            // a single row its own. IB keeps a partial fill as 'Submitted', so
+            // derive 已成交 / 部份成交 from filled vs total.
+            const rows = batchToggle?.collapsed ? batchToggle.orders : [order]
+            const total = rows.reduce((s, o) => s + Math.abs(o.quantity), 0)
+            const filled = rows.reduce((s, o) => s + (o.filled ?? 0), 0)
+            if (rows.every((o) => o.status === 'Cancelled')) return '已取消'
+            if (total > 0 && filled >= total) return '已成交'
+            if (filled > 0) return '部份成交'
+            const labels: Record<string, string> = {
               Submitted: '已送出',
               PendingSubmit: '待送出',
               PreSubmitted: '預送出',
@@ -1797,8 +1806,9 @@ export default function AccountOverview({
               Filled: '已成交',
               Cancelled: '已取消',
               Inactive: '未啟用'
-            } as Record<string, string>
-          )[order.status] || order.status}
+            }
+            return labels[order.status] || order.status
+          })()}
         </td>
         <td style={{ textAlign: 'center' }}>
           {(() => {
@@ -1964,7 +1974,7 @@ export default function AccountOverview({
                     : ''}
                 </button>
                 <CustomSelect
-                  className={`group-filter-select${filterSymbol ? ' active' : ''}`}
+                  className={`group-filter-select dropdown-no-scroll${filterSymbol ? ' active' : ''}`}
                   value={filterSymbol}
                   onChange={(v) => {
                     setFilterSymbol(v)
@@ -3115,7 +3125,7 @@ export default function AccountOverview({
                                       <th style={{ width: '12%', textAlign: 'left' }}></th>
                                       <th style={{ width: '26%', textAlign: 'left' }}>股票</th>
                                       <th style={{ width: '9%' }}>持倉</th>
-                                      <th style={{ width: '12%' }}>成本</th>
+                                      <th style={{ width: '12%' }}>均價</th>
                                       <th style={{ width: '13%' }}>現價</th>
                                       <th style={{ width: '11%' }}>盈虧</th>
                                     </tr>
@@ -3342,7 +3352,7 @@ export default function AccountOverview({
                                 <th style={{ width: '14%', textAlign: 'left' }}></th>
                                 <th style={{ width: '18%', textAlign: 'left' }}>股票</th>
                                 <th style={{ width: '10%' }}>持倉</th>
-                                <th style={{ width: '11%' }}>成本</th>
+                                <th style={{ width: '11%' }}>均價</th>
                                 <th style={{ width: '11%' }}>調整後</th>
                                 <th style={{ width: '13%' }}>現價</th>
                                 <th style={{ width: '13%' }}>盈虧</th>
@@ -4409,7 +4419,7 @@ export default function AccountOverview({
                           <tr>
                             <th style={{ width: '32%', textAlign: 'left' }}></th>
                             <th style={{ width: '11%' }}>持倉</th>
-                            <th style={{ width: '16%' }}>成本</th>
+                            <th style={{ width: '16%' }}>均價</th>
                             <th style={{ width: '16%' }}>現價</th>
                             <th style={{ width: '14%' }}>盈虧</th>
                           </tr>
@@ -4465,7 +4475,10 @@ export default function AccountOverview({
                                 {(() => {
                                   const icKey = `${pos.account}|${pos.symbol}`
                                   const ic = initialCosts[icKey]
-                                  return <td>{ic != null ? ic.toFixed(2) : '-'}</td>
+                                  // Manual initial cost overrides; otherwise fall back
+                                  // to IB's per-share average cost for the position.
+                                  const avg = ic != null ? ic : pos.avgCost
+                                  return <td>{avg ? avg.toFixed(2) : '-'}</td>
                                 })()}
                                 <td>{quotes[pos.symbol] ? quotes[pos.symbol].toFixed(2) : '-'}</td>
                                 {(() => {
