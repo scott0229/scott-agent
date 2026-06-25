@@ -810,6 +810,15 @@ export default function AccountOverview({
           ? activeEl.closest<HTMLElement>('.account-card')
           : null
       const cards = grid.querySelectorAll<HTMLElement>('.account-card')
+      // Pin the grid's height for the duration of the collapse+remeasure so the
+      // document never shrinks. A shrinking document clamps the page scroll, and
+      // (because the scroller detected above isn't always the element that
+      // actually scrolls) restoring scrollTop on it can miss — so the page snaps
+      // toward the top on every live price/position tick. Keeping the grid box at
+      // its current height means nothing clamps in the first place. Released once
+      // the final spans are applied.
+      const pinnedHeight = grid.offsetHeight
+      grid.style.minHeight = `${pinnedHeight}px`
       cards.forEach((card) => {
         if (card === activeCard) return
         card.style.gridRowEnd = ''
@@ -825,8 +834,8 @@ export default function AccountOverview({
         }
         card.style.gridRowEnd = `span ${spanFor(card.scrollHeight)}`
       })
-      // Final layout is back to full height — pin the scroll back so the reflow
-      // is invisible to the user (all of this runs in one frame before paint).
+      grid.style.minHeight = ''
+      // Belt-and-suspenders: if anything still clamped the scroll, restore it.
       if (scroller.scrollTop !== savedScrollTop) scroller.scrollTop = savedScrollTop
     })
     return () => cancelAnimationFrame(rafId)
