@@ -382,6 +382,8 @@ export default function AccountOverview({
 
   const [showBatchOrder, setShowBatchOrder] = useState(false)
   const [ordersCollapsed, setOrdersCollapsed] = useState(false)
+  // 委託單: group rows by 帳戶 instead of by 標的/batch (same 標的+行動 across accounts).
+  const [ordersByAccount, setOrdersByAccount] = useState(false)
   // Same-batch order groups that the user has expanded (keyed by batch
   // signature). A batch placed across many accounts collapses to its first
   // row by default; clicking the ＋ reveals the rest.
@@ -3726,15 +3728,11 @@ export default function AccountOverview({
                   />
                 <button
                   className="select-toggle-btn"
-                  style={{
-                    height: 30,
-                    padding: '0 12px',
-                    fontSize: '13px'
-                  }}
-                  title="取消所有工作中委託(含 TWS 手動下的)"
-                  onClick={() => setCancelAllConfirm(true)}
+                  style={{ height: 30, padding: '0 12px', fontSize: '13px' }}
+                  title={ordersByAccount ? '改為以標的(批次)分類' : '改為以帳戶分類'}
+                  onClick={() => setOrdersByAccount((v) => !v)}
                 >
-                  取消全部委託
+                  {ordersByAccount ? '以標的分類' : '以帳戶分類'}
                 </button>
                 <button
                   type="button"
@@ -3823,10 +3821,15 @@ export default function AccountOverview({
                       // order. A multi-order group collapses to its first row.
                       const batchKey = (o: OpenOrderData): string =>
                         `${o.symbol}|${o.secType}|${o.comboDescription || ''}|${o.expiry || ''}|${o.strike || ''}|${o.right || ''}|${o.action}|${o.orderType}`
+                      // 以帳戶分類: one group per 帳戶; otherwise one per batch
+                      // (same 標的+行動 across accounts).
+                      const keyFn = ordersByAccount
+                        ? (o: OpenOrderData) => `acct:${o.account}`
+                        : batchKey
                       const groups: { key: string; orders: OpenOrderData[] }[] = []
                       const idxByKey = new Map<string, number>()
                       for (const o of sorted) {
-                        const k = batchKey(o)
+                        const k = keyFn(o)
                         let gi = idxByKey.get(k)
                         if (gi === undefined) {
                           gi = groups.length
@@ -3844,7 +3847,12 @@ export default function AccountOverview({
                           accounts.find((x) => x.accountId === o.account)?.alias || o.account
                         )
                       for (const g of groups) {
-                        g.orders.sort((a, b) => aliasOf(a).localeCompare(aliasOf(b)))
+                        g.orders.sort((a, b) =>
+                          ordersByAccount
+                            ? (a.symbol || '').localeCompare(b.symbol || '') ||
+                              (a.comboDescription || '').localeCompare(b.comboDescription || '')
+                            : aliasOf(a).localeCompare(aliasOf(b))
+                        )
                       }
 
                       return groups.flatMap((g) => {
