@@ -5,6 +5,9 @@ import {
   hasUserPrefs,
   onPrefChange
 } from '../lib/prefsSync'
+import { posKeysFromLegs, type GroupLeg } from '../lib/groupLegs'
+
+export type { GroupLeg }
 
 // How long after a local symbol_groups write to ignore refetched values, so a
 // stale D1 read-replica can't overwrite a fresh local edit (e.g. the post-roll
@@ -15,7 +18,14 @@ export interface SymbolGroup {
   id: string
   name: string
   symbol: string
+  // Legacy membership: contract identities (no quantity). Now DERIVED from
+  // `legs` (dual-written) for back-compat so an older app instance still
+  // reads the group. New code should read `legs` for manual groups.
   posKeys: string[]
+  // Quantity-allocation membership for MANUAL groups: each leg is a claim of
+  // a signed quantity on an (account, contract). Lets two groups split one
+  // aggregated IB position. Auto groups (autoParams) have no legs.
+  legs?: GroupLeg[]
   createdAt: number
   completedDate?: string // YYYY-MM-DD format, marks "今日已完成操作"
   // Free-form note shown above the batch-card body, edited inline.
@@ -309,10 +319,15 @@ export function useTraderSettings() {
     flush(1)
   }, [])
 
+  // Dual-write: when a (manual) group carries `legs`, keep `posKeys` in sync
+  // so an older app instance still reads the group correctly.
+  const normalizeGroup = (g: SymbolGroup): SymbolGroup =>
+    g.legs ? { ...g, posKeys: posKeysFromLegs(g.legs) } : g
+
   const addSymbolGroup = useCallback(
     (group: SymbolGroup) => {
       setSymbolGroupsState((prev) => {
-        const next = [...prev, group]
+        const next = [...prev, normalizeGroup(group)]
         persistSymbolGroups(next)
         return next
       })
@@ -334,7 +349,8 @@ export function useTraderSettings() {
   const updateSymbolGroup = useCallback(
     (updated: SymbolGroup) => {
       setSymbolGroupsState((prev) => {
-        const next = prev.map((g) => (g.id === updated.id ? updated : g))
+        const norm = normalizeGroup(updated)
+        const next = prev.map((g) => (g.id === norm.id ? norm : g))
         persistSymbolGroups(next)
         return next
       })
@@ -344,8 +360,9 @@ export function useTraderSettings() {
 
   const reorderSymbolGroups = useCallback(
     (reordered: SymbolGroup[]) => {
-      setSymbolGroupsState(reordered)
-      persistSymbolGroups(reordered)
+      const next = reordered.map(normalizeGroup)
+      setSymbolGroupsState(next)
+      persistSymbolGroups(next)
     },
     [persistSymbolGroups]
   )

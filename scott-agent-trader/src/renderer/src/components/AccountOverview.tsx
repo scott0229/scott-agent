@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { SymbolGroup } from '../hooks/useTraderSettings'
+import {
+  posKey,
+  legKey,
+  legContractKey,
+  posContractKey,
+  type GroupLeg
+} from '../lib/groupLegs'
 import type {
   AccountData,
   PositionData,
@@ -81,8 +88,8 @@ interface AccountOverviewProps {
   orderQuotes: Record<string, { bid: number; ask: number }>
   executions: ExecutionDataItem[]
   // Yesterday's fills, loaded from D1 (recent_fills) — shown in a collapsible
-  // 昨日成交 section under the 委託單 card.
-  yesterdayFills?: ExecutionDataItem[]
+  // 最近一日成交 section under the 委託單 card.
+  recentFills?: ExecutionDataItem[]
   loading: boolean
   refresh?: () => void
   accountTypes?: Record<string, string>
@@ -112,8 +119,44 @@ interface AccountOverviewProps {
   prefsVersion?: number
 }
 
-const posKey = (pos: PositionData): string =>
-  `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+// posKey/legKey/etc. are imported from ../lib/groupLegs (shared with AddGroupDialog).
+
+// Does a position match an auto group's rules?
+const autoGroupMatches = (autoParams: NonNullable<SymbolGroup['autoParams']>, p: PositionData): boolean => {
+  if (!autoParams.symbols.includes(p.symbol)) return false
+  const rights = autoParams.rights || (autoParams.right ? [autoParams.right] : [])
+  const rightMatch =
+    (rights.includes('STK') && p.secType === 'STK') ||
+    (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
+    (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
+  if (!rightMatch) return false
+  return !!(autoParams.accounts && autoParams.accounts.includes(p.account))
+}
+
+// The display rows for a group, BEFORE sorting/filtering:
+//  - auto group: rule-matched live positions (full IB qty).
+//  - manual group with legs: one synthetic row per non-zero leg that has a
+//    matching live position, with `quantity` OVERRIDDEN to the leg's claimed
+//    amount so two groups can split one aggregated IB row. Legs with no live
+//    match are dropped (the contract is gone) → drives the empty state.
+//  - manual group without legs (not yet migrated): legacy posKeys filter.
+const computeGroupRows = (g: SymbolGroup, positions: PositionData[]): PositionData[] => {
+  if (g.autoParams) {
+    return positions.filter((p) => autoGroupMatches(g.autoParams!, p))
+  }
+  if (g.legs && g.legs.length) {
+    const rows: PositionData[] = []
+    for (const leg of g.legs) {
+      if (leg.quantity === 0) continue
+      const ck = legContractKey(leg)
+      const match = positions.find((p) => posContractKey(p) === ck)
+      if (match) rows.push({ ...match, quantity: leg.quantity })
+    }
+    return rows
+  }
+  const keys = new Set(g.posKeys)
+  return positions.filter((p) => keys.has(posKey(p)))
+}
 
 // The account card no longer renders its own 今日成交 table — the 委託單 (open
 // orders) section already surfaces today's fills. Typed `boolean` (not a `false`
@@ -237,7 +280,7 @@ export default function AccountOverview({
   openOrders,
   orderQuotes,
   executions,
-  yesterdayFills = [],
+  recentFills = [],
   loading,
   refresh,
   accountTypes,
@@ -395,26 +438,35 @@ export default function AccountOverview({
   // overwrote a single pendingRollUpdate, so every roll but the last never had
   // its group posKeys swapped to the new leg — those groups emptied
   // ("無匹配持倉") the instant their old leg closed.
+  // A queued roll carries the SOURCE GROUP (so the leg move is scoped to the
+  // group that was actually rolled — never clobbering a same-content sibling)
+  // plus the signed rolled qty per source leg (so partial fills move the right
+  // amount). `rolled` legs are the A-side contracts; `target` is the B-side.
   const [pendingRolls, setPendingRolls] = useState<
     Array<{
-      rolledPositions: PositionData[]
+      sourceGroupId?: string
+      rolled: GroupLeg[]
       target: { expiry: string; strike: number; right: 'C' | 'P' }
     }>
   >([])
-  // 昨日成交: collapsed by default. Aggregate partial fills (and hide a combo's
+  // Set by a CARD-initiated roll (the group is known); read once by
+  // onRollComplete then cleared. Toolbar/selection rolls leave it undefined
+  // and the source group is resolved by leg coverage (or skipped if ambiguous).
+  const rollSourceGroupIdRef = useRef<string | undefined>(undefined)
+  // 最近一日成交: collapsed by default. Aggregate partial fills (and hide a combo's
   // OPT legs) like the 今日成交 table, but consolidated across all accounts.
   // MUST stay in the top hook cluster (before any early return) — React's
   // hook-order rule.
-  const [showYesterdayFills, setShowYesterdayFills] = useState(false)
-  // 昨日成交: which groups are expanded. Keys are 標的 signatures in 標的 mode,
+  const [showRecentFills, setShowRecentFills] = useState(false)
+  // 最近一日成交: which groups are expanded. Keys are 標的 signatures in 標的 mode,
   // or `acct:<id>` in 帳戶 mode.
   const [expandedFillSigs, setExpandedFillSigs] = useState<Set<string>>(new Set())
-  // 昨日成交: group rows by 帳戶 instead of by 標的 (A→B).
+  // 最近一日成交: group rows by 帳戶 instead of by 標的 (A→B).
   const [fillGroupByAccount, setFillGroupByAccount] = useState(false)
-  const yesterdayFillRows = useMemo(() => {
-    const filtered = yesterdayFills.filter((e) => {
+  const recentFillRows = useMemo(() => {
+    const filtered = recentFills.filter((e) => {
       if (e.secType === 'OPT') {
-        const hasCombo = yesterdayFills.some(
+        const hasCombo = recentFills.some(
           (b) => b.account === e.account && b.orderId === e.orderId && b.secType === 'BAG'
         )
         if (hasCombo) return false
@@ -433,9 +485,10 @@ export default function AccountOverview({
       }
     }
     return Array.from(grouped.values()).sort((a, b) => b.time.localeCompare(a.time))
-  }, [yesterdayFills])
+  }, [recentFills])
   // Pending transfer update: wait for IB to confirm fill before updating group posKeys
   const [pendingTransferUpdate, setPendingTransferUpdate] = useState<{
+    sourceGroupId?: string
     ops: {
       account: string
       sourceSymbol: string
@@ -446,6 +499,8 @@ export default function AccountOverview({
     }[]
     targetSymbol: string
   } | null>(null)
+  // Card-initiated transfer remembers its group (read once on enqueue).
+  const transferSourceGroupIdRef = useRef<string | undefined>(undefined)
 
   // Inline editing state: tracks which cell is being edited
   const [editingCell, setEditingCell] = useState<{
@@ -616,34 +671,45 @@ export default function AccountOverview({
     }
   }, [filteredAlias, d1Target, groupViewMode])
 
-  // Compute positions not belonging to any group
+  // Compute positions not belonging to any group — QUANTITY-AWARE. A contract
+  // can be partly claimed (group A claims -4 of an IB -8 → -4 remains
+  // uncategorized). Auto groups and legacy manual groups (posKeys, no legs)
+  // cover a contract WHOLLY; manual groups with legs cover by signed quantity.
   const uncategorizedPositions = useMemo(() => {
     if (!groupViewMode) return []
-    const allGroupedKeys = new Set<string>()
+    const fullyCovered = new Set<string>() // posContractKey covered wholly
+    const claimed = new Map<string, number>() // posContractKey -> signed claimed qty
     symbolGroups.forEach((g) => {
       if (g.autoParams) {
         positions.forEach((p) => {
-          const symbolMatch = g.autoParams!.symbols.includes(p.symbol)
-          if (symbolMatch) {
-            const rights = g.autoParams!.rights || (g.autoParams!.right ? [g.autoParams!.right] : [])
-            const rightMatch =
-              (rights.includes('STK') && p.secType === 'STK') ||
-              (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
-              (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
-            const accountMatch =
-              g.autoParams!.accounts && g.autoParams!.accounts.includes(p.account)
-
-            if (rightMatch && accountMatch) {
-              allGroupedKeys.add(posKey(p))
-            }
-          }
+          if (autoGroupMatches(g.autoParams!, p)) fullyCovered.add(posContractKey(p))
+        })
+      } else if (g.legs && g.legs.length) {
+        g.legs.forEach((l) => {
+          if (l.quantity === 0) return
+          const ck = legContractKey(l)
+          claimed.set(ck, (claimed.get(ck) || 0) + l.quantity)
         })
       } else {
-        g.posKeys.forEach((k) => allGroupedKeys.add(k))
+        // Legacy manual group without legs: cover its posKey contracts wholly.
+        g.posKeys.forEach((k) => {
+          const match = positions.find((p) => posKey(p) === k)
+          if (match) fullyCovered.add(posContractKey(match))
+        })
       }
     })
-    return positions
-      .filter((p) => !allGroupedKeys.has(posKey(p)))
+    const rows: PositionData[] = []
+    for (const p of positions) {
+      const ck = posContractKey(p)
+      if (fullyCovered.has(ck)) continue
+      let remaining = p.quantity - (claimed.get(ck) || 0)
+      // Over-claim guard: if legs claim more than IB holds, remaining flips
+      // sign — clamp toward 0 so we never render a phantom opposite position.
+      if (remaining !== 0 && Math.sign(remaining) !== Math.sign(p.quantity)) remaining = 0
+      if (remaining === 0) continue
+      rows.push({ ...p, quantity: remaining })
+    }
+    return rows
       .sort((a, b) => {
         if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
         if (a.secType === 'OPT' && b.secType === 'OPT') {
@@ -671,22 +737,11 @@ export default function AccountOverview({
     if (!groupViewMode) return ''
     const groupPart = symbolGroups
       .map((g) => {
-        const groupPosKeys = new Set(g.posKeys)
-        const count = positions.filter((p) => {
-          if (g.autoParams) {
-            const symbolMatch = g.autoParams.symbols.includes(p.symbol)
-            if (!symbolMatch) return false
-            const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
-            const rightMatch =
-              p.secType === 'STK' ||
-              (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
-              (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
-            if (!rightMatch) return false
-            const accountMatch = g.autoParams.accounts && g.autoParams.accounts.includes(p.account)
-            return !!accountMatch
-          }
-          return groupPosKeys.has(posKey(p))
-        }).length
+        const count = computeGroupRows(g, positions).length
+        // Legs signature so the card re-measures when a leg's claimed qty
+        // changes (the rendered row count can stay the same while heights
+        // shift) — otherwise overflow:hidden clips.
+        const legsSig = (g.legs || []).map((l) => `${legKey(l)}:${l.quantity}`).join(',')
         // Include the note (its length) and the 展期觀察 target so the card
         // re-measures when either is added/edited/removed — otherwise
         // overflow:hidden clips the extra row.
@@ -696,7 +751,7 @@ export default function AccountOverview({
             ? [g.rollWatch]
             : []
         const rw = rwArr.map((w) => `${w.expiry}:${w.strike}${w.right}`).join(',')
-        return `${g.id}:${count}:n${(g.note || '').length}:rw${rw}`
+        return `${g.id}:${count}:n${(g.note || '').length}:rw${rw}:L${legsSig.length}`
       })
       .join('|')
     // NOTE: checkModeGroups intentionally NOT in masonryKey. Toggling check
@@ -799,97 +854,143 @@ export default function AccountOverview({
     }
   }, [groupViewMode, masonryKey, bumpMasonry])
 
-  // Watch positions: when pending roll's new positions appear,
-  // update group posKeys using the actual new posKey reported by IB.
-  // NOTE: We no longer require old positions to disappear first, because with
-  // partial fills the old posKey stays present (reduced qty) since posKey
-  // doesn't include quantity.
+  // One-time migration: upgrade legacy manual groups (posKeys, no legs) to the
+  // quantity-allocation model. Runs once positions are available so each leg
+  // can take the full signed qty of its matching IB position — preserving
+  // today's exact display (two same-content groups each show the full
+  // position) until the user splits them. A group migrates only once ALL its
+  // posKeys resolve to a live position; unresolved groups retry on later ticks
+  // and keep rendering via the posKeys fallback meanwhile.
+  const migratedGroupIds = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!positions.length) return
+    for (const g of symbolGroups) {
+      if (g.autoParams) continue
+      if (g.legs && g.legs.length) continue
+      if (!g.posKeys || !g.posKeys.length) continue
+      if (migratedGroupIds.current.has(g.id)) continue
+      const legs: GroupLeg[] = []
+      let allResolved = true
+      for (const k of g.posKeys) {
+        const match = positions.find((p) => posKey(p) === k)
+        if (!match) {
+          allResolved = false
+          break
+        }
+        legs.push({
+          account: match.account,
+          symbol: match.symbol,
+          secType: match.secType,
+          expiry: match.expiry,
+          strike: match.strike,
+          right: match.right,
+          quantity: match.quantity
+        })
+      }
+      if (!allResolved) continue
+      migratedGroupIds.current.add(g.id)
+      onUpdateSymbolGroup?.({ ...g, legs })
+    }
+  }, [positions, symbolGroups, onUpdateSymbolGroup])
+
+  // Watch positions: when a queued roll's NEW leg appears, move that quantity
+  // from the source contract to the target contract — but ONLY inside the
+  // group that was actually rolled (`sourceGroupId`). This is the core fix:
+  // a same-content sibling group is never touched. Each rolled leg resolves
+  // once (it's dropped from the queue the moment its new position appears),
+  // so partial-/staggered-account fills each move the moment they land.
   useEffect(() => {
     if (pendingRolls.length === 0) return
 
-    // Process EVERY queued roll independently. For each, resolve whatever new
-    // legs have appeared and collect the rest as still-pending. Replacements are
-    // applied incrementally (a multi-account roll that fills at staggered times
-    // updates each leg the moment it fills). The queue means simultaneous rolls
-    // across different groups no longer clobber one another.
-    const replacements = new Map<string, string>()
     const nextPending: typeof pendingRolls = []
     const unresolved: Array<{
       target: { expiry: string; strike: number; right: 'C' | 'P' }
-      pending: PositionData[]
+      pending: GroupLeg[]
     }> = []
+    // groupId -> list of leg moves to apply
+    const movesByGroup = new Map<string, Array<{ src: GroupLeg; target: typeof pendingRolls[number]['target'] }>>()
     let resolvedAny = false
 
     for (const roll of pendingRolls) {
-      const { rolledPositions, target } = roll
-      const stillPending: PositionData[] = []
-      for (const oldPos of rolledPositions) {
+      const { sourceGroupId, rolled, target } = roll
+      const stillPending: GroupLeg[] = []
+      for (const srcLeg of rolled) {
         const newPos = positions.find(
           (p) =>
-            p.account === oldPos.account &&
-            p.symbol === oldPos.symbol &&
+            p.account === srcLeg.account &&
+            p.symbol === srcLeg.symbol &&
             p.secType === 'OPT' &&
             p.expiry === target.expiry &&
             p.strike === target.strike &&
             (p.right === target.right || p.right === (target.right === 'C' ? 'CALL' : 'PUT'))
         )
         if (newPos) {
-          replacements.set(posKey(oldPos), posKey(newPos))
           resolvedAny = true
+          if (sourceGroupId) {
+            if (!movesByGroup.has(sourceGroupId)) movesByGroup.set(sourceGroupId, [])
+            movesByGroup.get(sourceGroupId)!.push({ src: srcLeg, target })
+          }
         } else {
-          stillPending.push(oldPos)
+          stillPending.push(srcLeg)
         }
       }
       if (stillPending.length > 0) {
-        nextPending.push({ rolledPositions: stillPending, target })
+        nextPending.push({ sourceGroupId, rolled: stillPending, target })
         unresolved.push({ target, pending: stillPending })
       }
     }
 
-    if (replacements.size > 0) {
-      const repl = Object.fromEntries(replacements)
-      console.log('[ROLL] Applying posKey replacements', repl)
-      window.ibApi.debugLog('[ROLL] applying ' + JSON.stringify(repl))
-      for (const g of symbolGroups) {
-        if (g.autoParams) continue
-        if (!g.posKeys.some((k) => replacements.has(k))) continue
-        const newPosKeys = g.posKeys.map((k) => replacements.get(k) ?? k)
-        const finalPosKeys = Array.from(new Set(newPosKeys))
-        if (
-          finalPosKeys.length !== g.posKeys.length ||
-          finalPosKeys.some((k, i) => k !== g.posKeys[i])
-        ) {
-          onUpdateSymbolGroup?.({ ...g, posKeys: finalPosKeys })
+    if (movesByGroup.size > 0) {
+      for (const [gid, moves] of movesByGroup.entries()) {
+        const g = symbolGroups.find((x) => x.id === gid)
+        if (!g || g.autoParams) continue
+        let legs: GroupLeg[] = (g.legs || []).map((l) => ({ ...l }))
+        for (const mv of moves) {
+          const srcCK = legContractKey(mv.src)
+          const src = legs.find((l) => legContractKey(l) === srcCK)
+          if (!src) continue // group doesn't claim this source leg — nothing to move
+          // Cap the move at what this group actually claims, so an over-roll on
+          // a shared contract can't flip the leg's sign. Same sign as the leg.
+          const moveQty =
+            Math.sign(mv.src.quantity) === Math.sign(src.quantity)
+              ? Math.sign(src.quantity) * Math.min(Math.abs(mv.src.quantity), Math.abs(src.quantity))
+              : 0
+          if (moveQty === 0) continue
+          src.quantity -= moveQty
+          const tgt: GroupLeg = {
+            account: mv.src.account,
+            symbol: mv.src.symbol,
+            secType: 'OPT',
+            expiry: mv.target.expiry,
+            strike: mv.target.strike,
+            right: mv.target.right,
+            quantity: 0
+          }
+          const tgtCK = legContractKey(tgt)
+          const existing = legs.find((l) => legContractKey(l) === tgtCK)
+          if (existing) existing.quantity += moveQty
+          else legs.push({ ...tgt, quantity: moveQty })
         }
+        legs = legs.filter((l) => l.quantity !== 0)
+        console.log('[ROLL] moving legs for group', g.name, legs)
+        window.ibApi.debugLog('[ROLL] legs ' + JSON.stringify({ group: g.name, legs }))
+        onUpdateSymbolGroup?.({ ...g, legs }) // normalizeGroup dual-writes posKeys
       }
     }
 
-    // Diagnostic: legs still unmatched across any queued roll. Compare each
-    // target against the candidates (what IB actually reports) to see why a new
-    // leg isn't matched, plus the affected groups' stored posKeys.
+    // Diagnostic: legs still unmatched — compare each target against what IB
+    // actually reports, plus the source group's stored legs.
     if (unresolved.length > 0) {
       const allPending = unresolved.flatMap((u) => u.pending)
       const diag = {
         targets: unresolved.map((u) => u.target),
-        pending: allPending.map(
-          (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}`
-        ),
+        pending: allPending.map((l) => legKey(l) + `|q${l.quantity}`),
+        sourceGroupIds: pendingRolls.map((r) => r.sourceGroupId),
         candidates: allPending.flatMap((op) =>
           positions
-            .filter(
-              (p) => p.account === op.account && p.symbol === op.symbol && p.secType === 'OPT'
-            )
-            .map(
-              (p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}|q${p.quantity}`
-            )
-        ),
-        affectedGroups: symbolGroups
-          .filter(
-            (g) =>
-              !g.autoParams &&
-              g.posKeys.some((k) => allPending.some((op) => posKey(op) === k))
-          )
-          .map((g) => ({ name: g.name, posKeys: g.posKeys }))
+            .filter((p) => p.account === op.account && p.symbol === op.symbol && p.secType === 'OPT')
+            .map((p) => `${p.account}|${p.symbol}|${p.expiry}|${p.strike}|${p.right}|q${p.quantity}`)
+        )
       }
       console.warn('[ROLL] Legs still unmatched — 無匹配持倉 until resolved', diag)
       window.ibApi.debugLog('[ROLL] unmatched ' + JSON.stringify(diag))
@@ -964,36 +1065,66 @@ export default function AccountOverview({
       if (op.targetShares > 0 && currentTgt < op.originalTargetQty + op.targetShares) return
     }
 
-    // 2. Conditions met. Apply group updates.
-    // Build vanished keys (where stock went to 0)
-    const vanishedKeys = new Set<string>()
-    for (const op of ops) {
-      const currentSrc =
-        positions.find(
-          (p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK'
-        )?.quantity ?? 0
-      if (currentSrc === 0) {
-        vanishedKeys.add(`${op.account}|${op.sourceSymbol}|STK|||`)
-      }
-    }
-
-    for (const g of symbolGroups) {
-      if (g.autoParams) continue
-      // Find ops that apply to this group (i.e. group holds the source stock limit)
-      const opsInGroup = ops.filter((op) =>
-        g.posKeys.includes(`${op.account}|${op.sourceSymbol}|STK|||`)
-      )
-      if (opsInGroup.length === 0) continue
-
-      const newKeys = g.posKeys.filter((k) => !vanishedKeys.has(k))
-      for (const op of opsInGroup) {
-        if (op.targetShares > 0) {
-          newKeys.push(`${op.account}|${targetSymbol}|STK|||`)
+    // 2. Conditions met. Apply the leg move to ONLY the source group (the one
+    //    the transfer was launched from). Move stock-leg quantity from the
+    //    source symbol to the target symbol per account; never touch a
+    //    same-content sibling group.
+    const gid = pendingTransferUpdate.sourceGroupId
+    if (gid) {
+      const g = symbolGroups.find((x) => x.id === gid)
+      if (g && !g.autoParams) {
+        if (g.legs && g.legs.length) {
+          let legs: GroupLeg[] = g.legs.map((l) => ({ ...l }))
+          for (const op of ops) {
+            const srcCK = legContractKey({
+              account: op.account,
+              symbol: op.sourceSymbol,
+              secType: 'STK'
+            })
+            const src = legs.find((l) => legContractKey(l) === srcCK)
+            if (!src) continue // group doesn't claim this account's source stock
+            src.quantity -= op.soldShares // long shares are positive
+            if (op.targetShares > 0) {
+              const tgtCK = legContractKey({
+                account: op.account,
+                symbol: targetSymbol,
+                secType: 'STK'
+              })
+              const existing = legs.find((l) => legContractKey(l) === tgtCK)
+              if (existing) existing.quantity += op.targetShares
+              else
+                legs.push({
+                  account: op.account,
+                  symbol: targetSymbol,
+                  secType: 'STK',
+                  quantity: op.targetShares
+                })
+            }
+          }
+          legs = legs.filter((l) => l.quantity !== 0)
+          onUpdateSymbolGroup?.({ ...g, legs })
+        } else {
+          // Legacy fallback (group not yet migrated): scoped posKey swap.
+          const vanished = new Set<string>()
+          for (const op of ops) {
+            const cur =
+              positions.find(
+                (p) => p.account === op.account && p.symbol === op.sourceSymbol && p.secType === 'STK'
+              )?.quantity ?? 0
+            if (cur === 0) vanished.add(`${op.account}|${op.sourceSymbol}|STK|||`)
+          }
+          const newKeys = g.posKeys.filter((k) => !vanished.has(k))
+          for (const op of ops) {
+            if (op.targetShares > 0) newKeys.push(`${op.account}|${targetSymbol}|STK|||`)
+          }
+          const uniqueKeys = Array.from(new Set(newKeys))
+          if (
+            uniqueKeys.length !== g.posKeys.length ||
+            uniqueKeys.some((k, i) => k !== g.posKeys[i])
+          ) {
+            onUpdateSymbolGroup?.({ ...g, posKeys: uniqueKeys })
+          }
         }
-      }
-      const uniqueKeys = Array.from(new Set(newKeys))
-      if (uniqueKeys.length !== g.posKeys.length || uniqueKeys.some((k, i) => k !== g.posKeys[i])) {
-        onUpdateSymbolGroup?.({ ...g, posKeys: uniqueKeys })
       }
     }
     setPendingTransferUpdate(null)
@@ -1183,7 +1314,8 @@ export default function AccountOverview({
     return selected.every((p) => p.secType === 'STK' && p.quantity > 0)
   }, [selectedPositions, positions])
 
-  const attemptRoll = (rollPositions?: PositionData[]): void => {
+  const attemptRoll = (rollPositions?: PositionData[], sourceGroupId?: string): void => {
+    rollSourceGroupIdRef.current = sourceGroupId
     const targets =
       rollPositions ?? positions.filter((p) => selectedPositions.has(posKey(p)))
     const strikes = targets
@@ -2127,23 +2259,7 @@ export default function AccountOverview({
               {symbolGroups.map((g, gIdx) => {
                 if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
-                const groupPosKeys = new Set(g.posKeys)
-                const groupPositionsAll = positions
-                  .filter((p) => {
-                    if (g.autoParams) {
-                      const symbolMatch = g.autoParams.symbols.includes(p.symbol)
-                      if (!symbolMatch) return false
-                      const rights = g.autoParams.rights || (g.autoParams.right ? [g.autoParams.right] : [])
-                      const rightMatch =
-                        (rights.includes('STK') && p.secType === 'STK') ||
-                        (rights.includes('C') && p.secType === 'OPT' && (p.right === 'C' || p.right === 'CALL')) ||
-                        (rights.includes('P') && p.secType === 'OPT' && (p.right === 'P' || p.right === 'PUT'))
-                      if (!rightMatch) return false
-                      const accountMatch = g.autoParams.accounts && g.autoParams.accounts.includes(p.account)
-                      return !!accountMatch
-                    }
-                    return groupPosKeys.has(posKey(p))
-                  })
+                const groupPositionsAll = computeGroupRows(g, positions)
                   .sort((a, b) => {
                     if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
                     if (a.secType === 'OPT' && b.secType === 'OPT') {
@@ -2590,6 +2706,7 @@ export default function AccountOverview({
                                 .map((p) => posKey(p))
                               setSelectedPositions(new Set(optKeys))
                               setObserveGroupId(null)
+                              rollSourceGroupIdRef.current = g.id
                               setRollInitialTarget(target)
                               setShowRollDialog(true)
                             }}
@@ -2690,6 +2807,7 @@ export default function AccountOverview({
                                     .map((p) => posKey(p))
                                   setSelectedPositions(new Set(optKeys))
                                   setObserveGroupId(null)
+                                  rollSourceGroupIdRef.current = g.id
                                   setRollInitialTarget({
                                     expiry: watch.expiry,
                                     strike: watch.strike,
@@ -2759,7 +2877,10 @@ export default function AccountOverview({
                                     lineHeight: '1.4'
                                   }}
                                   onClick={() => {
-                                    attemptRoll(effectivePositions.filter((p) => p.secType === 'OPT'))
+                                    attemptRoll(
+                                      effectivePositions.filter((p) => p.secType === 'OPT'),
+                                      g.id
+                                    )
                                   }}
                                 >
                                   展期{checkedLabel}
@@ -2786,6 +2907,7 @@ export default function AccountOverview({
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
                                 onClick={() => {
                                   setGroupKeys()
+                                  transferSourceGroupIdRef.current = g.id
                                   setShowTransferDialog(true)
                                 }}
                               >
@@ -2835,7 +2957,7 @@ export default function AccountOverview({
                                 className="select-toggle-btn"
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
                                 onClick={() => {
-                                  attemptRoll(optPositions)
+                                  attemptRoll(optPositions, g.id)
                                 }}
                               >
                                 展期{checkedLabel}
@@ -2847,6 +2969,7 @@ export default function AccountOverview({
                                 style={{ fontSize: '13px', padding: '2px 10px', lineHeight: '1.4' }}
                                 onClick={() => {
                                   setStkKeys()
+                                  transferSourceGroupIdRef.current = g.id
                                   setShowTransferDialog(true)
                                 }}
                               >
@@ -3685,9 +3808,9 @@ export default function AccountOverview({
               )}
             </div>
           )}
-          {/* 昨日成交 — consolidated across accounts, collapsible (default
+          {/* 最近一日成交 — consolidated across accounts, collapsible (default
               collapsed), sourced from D1 recent_fills (immediate, no Flex lag). */}
-          {!selectMode && yesterdayFillRows.length > 0 && (
+          {!selectMode && recentFillRows.length > 0 && (
             <div className="account-card" style={{ marginBottom: 16 }}>
               <div
                 className="account-header"
@@ -3696,14 +3819,14 @@ export default function AccountOverview({
                   userSelect: 'none',
                   // Collapsed: drop the bottom margin so the card's 16px padding is
                   // equal top/bottom and the title sits centred.
-                  marginBottom: showYesterdayFills ? 12 : 0
+                  marginBottom: showRecentFills ? 12 : 0
                 }}
-                onClick={() => setShowYesterdayFills((v) => !v)}
+                onClick={() => setShowRecentFills((v) => !v)}
               >
                 <span className="account-id" style={{ background: 'transparent', padding: 0 }}>
-                  昨日{(() => {
+                  最近一日{(() => {
                     // Date of the fills (YYYYMMDD prefix on each fill's time) → M/D.
-                    const t = yesterdayFillRows[0]?.time || ''
+                    const t = recentFillRows[0]?.time || ''
                     const mm = parseInt(t.slice(4, 6), 10)
                     const dd = parseInt(t.slice(6, 8), 10)
                     return Number.isFinite(mm) && Number.isFinite(dd) ? ` ${mm}/${dd}` : ''
@@ -3711,7 +3834,7 @@ export default function AccountOverview({
                   {(() => {
                     // Per-underlying fill counts (QQQ→TQQQ→A–Z), e.g. QQQ (5筆)、TQQQ (45筆).
                     const bySym = new Map<string, number>()
-                    for (const e of yesterdayFillRows)
+                    for (const e of recentFillRows)
                       bySym.set(e.symbol, (bySym.get(e.symbol) || 0) + 1)
                     return Array.from(bySym.entries())
                       .sort((a, b) => compareSymbols(a[0], b[0]))
@@ -3722,10 +3845,10 @@ export default function AccountOverview({
                     className="yfill-toggle-btn"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setShowYesterdayFills((v) => !v)
+                      setShowRecentFills((v) => !v)
                     }}
                   >
-                    {showYesterdayFills ? '收合' : '展開'}
+                    {showRecentFills ? '收合' : '展開'}
                   </button>
                   <button
                     className="yfill-toggle-btn"
@@ -3738,7 +3861,7 @@ export default function AccountOverview({
                   </button>
                 </span>
               </div>
-              {showYesterdayFills && (
+              {showRecentFills && (
                 <div
                   className="positions-section"
                   style={{ background: '#f5f5f5', borderRadius: 6, padding: 8 }}
@@ -3768,7 +3891,7 @@ export default function AccountOverview({
                         // signature ignores account, so the same A→B roll across many
                         // accounts collapses into one group.
                         const buildDesc = (
-                          exec: (typeof yesterdayFillRows)[number]
+                          exec: (typeof recentFillRows)[number]
                         ): { sig: string; node: React.ReactNode } => {
                           if (exec.secType === 'OPT') {
                             const s = formatOptionLabel(
@@ -3780,7 +3903,7 @@ export default function AccountOverview({
                             return { sig: s, node: s }
                           }
                           if (exec.secType === 'BAG') {
-                            const legs = yesterdayFills.filter(
+                            const legs = recentFills.filter(
                               (e) =>
                                 e.account === exec.account &&
                                 e.orderId === exec.orderId &&
@@ -3849,13 +3972,13 @@ export default function AccountOverview({
                         // carries the account; in 帳戶 mode the 標的 column carries the
                         // roll desc instead (the account is already in the group header).
                         const memberRow = (
-                          exec: (typeof yesterdayFillRows)[number],
+                          exec: (typeof recentFillRows)[number],
                           byAccount: boolean
                         ): React.ReactNode => {
-                          const acctExecs = yesterdayFills.filter(
+                          const acctExecs = recentFills.filter(
                             (e) => e.account === exec.account
                           )
-                          const commission = yesterdayFills
+                          const commission = recentFills
                             .filter(
                               (e) => e.account === exec.account && e.orderId === exec.orderId
                             )
@@ -3981,10 +4104,10 @@ export default function AccountOverview({
                           // ----- group by 帳戶 -----
                           const aGroups: {
                             account: string
-                            rows: typeof yesterdayFillRows
+                            rows: typeof recentFillRows
                           }[] = []
                           const aByKey = new Map<string, (typeof aGroups)[number]>()
-                          for (const exec of yesterdayFillRows) {
+                          for (const exec of recentFillRows) {
                             const g = aByKey.get(exec.account)
                             if (g) g.rows.push(exec)
                             else {
@@ -4026,10 +4149,10 @@ export default function AccountOverview({
                         const groups: {
                           sig: string
                           node: React.ReactNode
-                          rows: typeof yesterdayFillRows
+                          rows: typeof recentFillRows
                         }[] = []
                         const byKey = new Map<string, (typeof groups)[number]>()
-                        for (const exec of yesterdayFillRows) {
+                        for (const exec of recentFillRows) {
                           const { sig, node } = buildDesc(exec)
                           const g = byKey.get(sig)
                           if (g) g.rows.push(exec)
@@ -5363,11 +5486,36 @@ export default function AccountOverview({
           }
           setObserveGroupId(null)
         }}
-        onRollComplete={(rolledPositions, target) => {
+        onRollComplete={(rolled, target) => {
+          // Resolve which group this roll belongs to. A card-initiated roll set
+          // rollSourceGroupId. A toolbar/selection roll didn't — try to resolve
+          // a UNIQUE manual group whose legs cover all rolled contracts; if the
+          // contract is shared by multiple groups (ambiguous) leave it
+          // undefined → the effect won't move legs (safe; logged).
+          let sourceGroupId = rollSourceGroupIdRef.current
+          if (!sourceGroupId) {
+            const covering = symbolGroups.filter(
+              (g) =>
+                !g.autoParams &&
+                (g.legs || []).some((l) =>
+                  rolled.some((r) => legContractKey(l) === legContractKey(r))
+                )
+            )
+            if (covering.length === 1) sourceGroupId = covering[0].id
+            else if (covering.length > 1)
+              window.ibApi.debugLog(
+                '[ROLL] ambiguous source group — leg move skipped ' +
+                  JSON.stringify({ groups: covering.map((g) => g.name) })
+              )
+          }
+          rollSourceGroupIdRef.current = undefined
           // Queue the intent (append, don't overwrite) — applied once IB confirms
           // each leg's fill via position updates. Appending lets several rolls
           // placed back-to-back all resolve independently.
-          setPendingRolls((prev) => [...prev, { rolledPositions, target }])
+          setPendingRolls((prev) => [
+            ...prev,
+            { sourceGroupId, rolled: rolled as GroupLeg[], target }
+          ])
         }}
       />
       {marginExplain &&
@@ -5669,7 +5817,9 @@ export default function AccountOverview({
               originalTargetQty: currentTgt
             }
           })
-          setPendingTransferUpdate({ ops, targetSymbol })
+          const sourceGroupId = transferSourceGroupIdRef.current
+          transferSourceGroupIdRef.current = undefined
+          setPendingTransferUpdate({ sourceGroupId, ops, targetSymbol })
         }}
       />
       <ClosePositionDialog
@@ -5821,6 +5971,22 @@ export default function AccountOverview({
         positions={positions}
         accounts={accounts}
         uncategorizedKeys={new Set(uncategorizedPositions.map(posKey))}
+        claimedByOthers={(() => {
+          // Signed qty claimed by every OTHER manual group's legs, keyed by
+          // legContractKey — lets the dialog default a new selection to the
+          // remaining unclaimed amount so two same-content groups split.
+          const m = new Map<string, number>()
+          for (const g of symbolGroups) {
+            if (g.autoParams) continue
+            if (editingGroup && g.id === editingGroup.id) continue
+            for (const l of g.legs || []) {
+              if (l.quantity === 0) continue
+              const ck = legContractKey(l)
+              m.set(ck, (m.get(ck) || 0) + l.quantity)
+            }
+          }
+          return m
+        })()}
         onAddGroup={onAddSymbolGroup!}
         editGroup={editingGroup}
         onUpdateGroup={onUpdateSymbolGroup}
