@@ -499,6 +499,19 @@ export default function AdminUsersPage() {
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
         report += `夏普比率 : ${data.sharpeRatio.toFixed(2)}\n`;
+        // Option-income metrics share this block with the performance metrics
+        // above (no divider between them). 含/不含平倉費用 numerators come
+        // straight from the report API (mode-independent: realized + open
+        // premium, minus breach-aware close cost; identical when nothing is
+        // breached).
+        if (data.premiumExCloseCost != null && data.premiumIncCloseCost != null) {
+            report += `期權收益率 (含平倉費用) : ${calculatePremiumRate(data.premiumIncCloseCost, costBase).toFixed(2)}%\n`;
+            report += `期權收益率 (不含平倉費用) : ${calculatePremiumRate(data.premiumExCloseCost, costBase).toFixed(2)}%\n`;
+        }
+        if (data.last25TradingDaysPremium != null) {
+            const v = Math.round(data.last25TradingDaysPremium);
+            report += `近25交易日現金流 : $${formatMoney(v)}\n`;
+        }
         report += `----------------------------------------\n`;
 
         // Stock positions
@@ -537,19 +550,6 @@ export default function AdminUsersPage() {
         const tradingDays = countWeekdays(userStartDate);
         const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
 
-        // Premium section
-        // 含/不含平倉費用 — numerators come straight from the report API
-        // (mode-independent: realized + open premium, minus breach-aware
-        // close cost). When nothing is breached they read identical.
-        if (data.premiumExCloseCost != null && data.premiumIncCloseCost != null) {
-            report += `期權收益率 (含平倉費用) : ${calculatePremiumRate(data.premiumIncCloseCost, costBase).toFixed(2)}%\n`;
-            report += `期權收益率 (不含平倉費用) : ${calculatePremiumRate(data.premiumExCloseCost, costBase).toFixed(2)}%\n`;
-        }
-        if (data.last25TradingDaysPremium != null) {
-            const v = Math.round(data.last25TradingDaysPremium);
-            report += `近25交易日現金流 : $${formatMoney(v)}\n`;
-        }
-        report += `----------------------------------------\n`;
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
 
         // Open options
