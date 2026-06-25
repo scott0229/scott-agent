@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 //   2. Upload the .zip to R2 (apps/scott-agent-trader-setup.zip)
 //   3. Bump LATEST_VERSION below and redeploy this Worker
 // The version comparison in the desktop app is numeric per `a.b.c` segment.
-const LATEST_VERSION = '1.2.45';
+const LATEST_VERSION = '1.2.46';
 
 const R2_ACCOUNT_ID = '9946dede036802fcd2a0b9cef8e13574';
 const R2_BUCKET = 'scott-agent-production';
