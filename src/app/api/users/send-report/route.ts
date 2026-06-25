@@ -105,26 +105,45 @@ export async function POST(req: NextRequest) {
             return { ok: res.ok, data };
         };
 
-        // When the admin opted in to BCC extras (trade advice / daily ops),
-        // split into two sends so the customer doesn't see internal notes:
-        //   - customer gets the original `report`
-        //   - BCC list gets `report + extras` via a self-addressed envelope
-        if (hasBccList && hasExtras) {
-            const customerPayload = {
-                from: 'Scott Agent <reports@scott-agent.com>',
-                reply_to: 'reports@scott-agent.com',
-                to: [recipientEmail],
-                subject,
-                text: report,
-                html: buildHtml(report),
-            };
+        // The customer-facing report omits the internal 潛在融資 / 持倉 /
+        // 未平倉選擇權 block (advisor-only). It's always the LAST section, so
+        // cut from the divider just above 潛在融資 to the end. The BCC/同步報表
+        // copy (advisor) keeps the full report.
+        const stripInternalSection = (body: string): string => {
+            const lines = body.split('\n');
+            const idx = lines.findIndex((l) => l.startsWith('潛在融資 :'));
+            if (idx === -1) return body;
+            let cut = idx;
+            // Drop the section divider(s) directly above so the mail doesn't end
+            // on a dangling rule.
+            while (cut > 0 && /^-{4,}$/.test(lines[cut - 1].trim())) cut--;
+            return lines.slice(0, cut).join('\n').replace(/\n+$/, '') + '\n';
+        };
+        const customerReport = stripInternalSection(report);
+
+        const customerPayload = {
+            from: 'Scott Agent <reports@scott-agent.com>',
+            reply_to: 'reports@scott-agent.com',
+            to: [recipientEmail],
+            subject,
+            text: customerReport,
+            html: buildHtml(customerReport),
+        };
+
+        // With any BCC recipient the customer and the advisor copy now get
+        // DIFFERENT bodies (customer omits the internal section; the BCC/同步報表
+        // copy keeps the full report plus optional 交易建議/當日操作 extras), so
+        // send two separate envelopes.
+        if (hasBccList) {
             const customerRes = await sendEmail(customerPayload);
             if (!customerRes.ok) {
                 console.error('Resend API error (customer email):', customerRes.data);
                 return NextResponse.json({ error: customerRes.data.message || '客戶寄送失敗' }, { status: 500 });
             }
 
-            const bccBody = `${report}\n\n----------------------------------------\n${bccExtraReport.trim()}`;
+            const bccBody = hasExtras
+                ? `${report}\n\n----------------------------------------\n${bccExtraReport.trim()}`
+                : report;
             const bccPayload = {
                 from: 'Scott Agent <reports@scott-agent.com>',
                 reply_to: 'reports@scott-agent.com',
@@ -148,18 +167,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, emailId: customerRes.data.id, bccEmailId: bccRes.data.id });
         }
 
-        // Single-email path: no extras, optionally BCC the same content.
-        const payload: any = {
-            from: 'Scott Agent <reports@scott-agent.com>',
-            reply_to: 'reports@scott-agent.com',
-            to: [recipientEmail],
-            subject,
-            text: report,
-            html: buildHtml(report),
-        };
-        if (hasBccList) payload.bcc = ccEmails;
-
-        const { ok, data } = await sendEmail(payload);
+        // No BCC: single email to the customer only (internal section stripped).
+        const { ok, data } = await sendEmail(customerPayload);
         if (!ok) {
             console.error('Resend API error:', data);
             return NextResponse.json({ error: data.message || '發送失敗' }, { status: 500 });
