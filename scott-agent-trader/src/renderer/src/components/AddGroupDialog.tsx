@@ -2,6 +2,14 @@ import React, { useEffect } from 'react'
 import { useState, useMemo, useCallback } from 'react'
 import type { AccountData, PositionData } from '../hooks/useAccountStore'
 import type { SymbolGroup } from '../hooks/useTraderSettings'
+import {
+  posKey,
+  legKey,
+  legContractKey,
+  posKeysFromLegs,
+  legFromKeyAndPos,
+  type GroupLeg
+} from '../lib/groupLegs'
 import CustomSelect from './CustomSelect'
 
 function CustomMultiSelect({
@@ -105,14 +113,16 @@ interface AddGroupDialogProps {
   accounts: AccountData[]
   // posKeys of positions not belonging to any group — shown with a "(未歸類)" tag.
   uncategorizedKeys?: Set<string>
+  // Signed qty already claimed by OTHER groups, keyed by legContractKey. Used
+  // to default a newly-selected contract's qty to the REMAINING unclaimed
+  // amount so a 2nd same-content group splits naturally.
+  claimedByOthers?: Map<string, number>
   onAddGroup: (group: SymbolGroup) => void
   editGroup?: SymbolGroup | null
   onUpdateGroup?: (group: SymbolGroup) => void
 }
 
-// Same key format used in AccountOverview
-const posKey = (pos: PositionData): string =>
-  `${pos.account}|${pos.symbol}|${pos.secType}|${pos.expiry || ''}|${pos.strike || ''}|${pos.right || ''}`
+// posKey/legKey/etc. imported from ../lib/groupLegs (shared with AccountOverview).
 
 // Format option description, e.g. "SOFI Sep18'26 25C"
 function formatOptionLabel(pos: PositionData): string {
@@ -150,14 +160,28 @@ export default function AddGroupDialog({
   positions,
   accounts,
   uncategorizedKeys,
+  claimedByOthers,
   onAddGroup,
   editGroup,
   onUpdateGroup
 }: AddGroupDialogProps): React.JSX.Element | null {
   const [groupName, setGroupName] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // posKey -> signed claimed qty for this group's manual legs.
+  const [legQty, setLegQty] = useState<Map<string, number>>(new Map())
   const [filterSymbol, setFilterSymbol] = useState('')
   const [filterRight, setFilterRight] = useState('')
+
+  // Default claimed qty for a contract = its remaining unclaimed amount
+  // (position qty minus what other groups already claim). Falls back to the
+  // full position qty when nothing remains, so an explicit selection is never
+  // silently empty. Always same sign as the position.
+  const defaultQtyFor = (pos: PositionData): number => {
+    const others = claimedByOthers?.get(legContractKey(pos)) || 0
+    const remaining = pos.quantity - others
+    if (remaining !== 0 && Math.sign(remaining) === Math.sign(pos.quantity)) return remaining
+    return pos.quantity
+  }
 
   // Auto Mode States
   const [isAutoMode, setIsAutoMode] = useState(true)
@@ -179,9 +203,24 @@ export default function AddGroupDialog({
           setAutoAccounts(editGroup.autoParams.accounts || [])
           setAutoRights(editGroup.autoParams.rights || (editGroup.autoParams.right ? [editGroup.autoParams.right] : []))
           setSelected(new Set())
+          setLegQty(new Map())
         } else {
           setIsAutoMode(false)
-          setSelected(new Set(editGroup.posKeys))
+          const qty = new Map<string, number>()
+          if (editGroup.legs && editGroup.legs.length) {
+            // Preferred: per-leg claimed quantities.
+            editGroup.legs.forEach((l) => {
+              if (l.quantity !== 0) qty.set(legKey(l), l.quantity)
+            })
+          } else {
+            // Legacy fallback: posKeys at full matching position qty.
+            editGroup.posKeys.forEach((k) => {
+              const match = positions.find((p) => posKey(p) === k)
+              qty.set(k, match ? match.quantity : 0)
+            })
+          }
+          setSelected(new Set(qty.keys()))
+          setLegQty(qty)
           setAutoSymbols([])
           setAutoAccounts([])
           setAutoRights([])
@@ -189,6 +228,7 @@ export default function AddGroupDialog({
       } else {
         setGroupName('')
         setSelected(new Set())
+        setLegQty(new Map())
         setIsAutoMode(true)
         setAutoSymbols([])
         setAutoAccounts([])
@@ -272,10 +312,21 @@ export default function AddGroupDialog({
 
   const togglePos = (key: string): void => {
     if (isAutoMode) return
+    const adding = !selected.has(key)
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
+      return next
+    })
+    setLegQty((prev) => {
+      const next = new Map(prev)
+      if (adding) {
+        const pos = positions.find((p) => posKey(p) === key)
+        next.set(key, pos ? defaultQtyFor(pos) : 0)
+      } else {
+        next.delete(key)
+      }
       return next
     })
   }
@@ -283,15 +334,40 @@ export default function AddGroupDialog({
   const toggleAll = (): void => {
     if (isAutoMode) return
     const allKeys = displayPositions.map((p) => posKey(p))
+    const allSelected = allKeys.every((k) => selected.has(k))
     setSelected((prev) => {
-      const allSelected = allKeys.every((k) => prev.has(k))
       if (allSelected) {
         const next = new Set(prev)
         allKeys.forEach((k) => next.delete(k))
         return next
-      } else {
-        return new Set([...prev, ...allKeys])
       }
+      return new Set([...prev, ...allKeys])
+    })
+    setLegQty((prev) => {
+      const next = new Map(prev)
+      if (allSelected) {
+        allKeys.forEach((k) => next.delete(k))
+      } else {
+        for (const p of displayPositions) {
+          const k = posKey(p)
+          if (!next.has(k)) next.set(k, defaultQtyFor(p))
+        }
+      }
+      return next
+    })
+  }
+
+  // Set a leg's claimed qty from a user-typed magnitude; clamp magnitude to the
+  // live position size and keep the position's sign.
+  const setLegMagnitude = (key: string, magnitude: number): void => {
+    const pos = positions.find((p) => posKey(p) === key)
+    const sign = pos ? Math.sign(pos.quantity) || 1 : 1
+    const cap = pos ? Math.abs(pos.quantity) : magnitude
+    const mag = Math.max(0, Math.min(cap, Math.abs(magnitude)))
+    setLegQty((prev) => {
+      const next = new Map(prev)
+      next.set(key, sign * mag)
+      return next
     })
   }
 
@@ -315,11 +391,19 @@ export default function AddGroupDialog({
     // For manual mode, symbol is extracted from the first position. For auto mode, we can omit it or take the first autoSymbol.
     const symbol = isAutoMode ? (autoSymbols[0] || '') : (selectedPositions[0]?.symbol || '')
 
+    // Build legs from the per-contract claimed quantities (drop any 0).
+    const legs: GroupLeg[] = isAutoMode
+      ? []
+      : Array.from(legQty.entries())
+          .filter(([key, qty]) => qty !== 0 && selected.has(key))
+          .map(([key, qty]) => legFromKeyAndPos(key, qty, positions))
+
     const newGroup: SymbolGroup = {
       id: editGroup ? editGroup.id : crypto.randomUUID(),
       name: groupName.trim(),
       symbol,
-      posKeys: isAutoMode ? [] : selectedPositions.map((p) => posKey(p)),
+      legs: isAutoMode ? undefined : legs,
+      posKeys: isAutoMode ? [] : posKeysFromLegs(legs),
       createdAt: editGroup ? editGroup.createdAt : Date.now(),
       autoParams: isAutoMode ? {
         symbols: autoSymbols,
@@ -339,6 +423,7 @@ export default function AddGroupDialog({
   const handleClose = (): void => {
     setGroupName('')
     setSelected(new Set())
+    setLegQty(new Map())
     setFilterSymbol('')
     setFilterRight('')
     onClose()
@@ -576,18 +661,53 @@ export default function AddGroupDialog({
                       <span style={{ color: '#555' }}> (未歸類)</span>
                     )}
                   </span>
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: '#333',
-                      minWidth: '52px',
-                      textAlign: 'right',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {pos.quantity.toLocaleString()}
-                    {pos.secType === 'STK' ? '股' : '口'}
-                  </span>
+                  {isSelected ? (
+                    // Per-leg claimed qty (magnitude). Lets two same-content
+                    // groups split one IB position. Sign is fixed by the
+                    // underlying; magnitude is capped at the position size.
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.abs(pos.quantity)}
+                        value={Math.abs(legQty.get(key) ?? pos.quantity)}
+                        onChange={(e) => setLegMagnitude(key, parseInt(e.target.value, 10) || 0)}
+                        style={{
+                          width: '48px',
+                          fontSize: '12px',
+                          textAlign: 'right',
+                          padding: '1px 4px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px'
+                        }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#333' }}>
+                        / {Math.abs(pos.quantity)}
+                        {pos.secType === 'STK' ? '股' : '口'}
+                      </span>
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: '#333',
+                        minWidth: '52px',
+                        textAlign: 'right',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {pos.quantity.toLocaleString()}
+                      {pos.secType === 'STK' ? '股' : '口'}
+                    </span>
+                  )}
                 </div>
               )
             })}

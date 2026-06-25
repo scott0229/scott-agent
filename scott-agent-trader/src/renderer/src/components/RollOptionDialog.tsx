@@ -13,8 +13,18 @@ interface RollOptionDialogProps {
   onClose: () => void
   selectedPositions: PositionData[]
   accounts: AccountData[]
+  // Emits the SIGNED rolled quantity per source leg (negative = short), so the
+  // parent can move exactly that much between contracts in the source group.
   onRollComplete?: (
-    rolledPositions: PositionData[],
+    rolled: Array<{
+      account: string
+      symbol: string
+      secType: string
+      expiry?: string
+      strike?: number
+      right?: string
+      quantity: number
+    }>,
     target: { expiry: string; strike: number; right: 'C' | 'P' }
   ) => void
   initialTarget?: { expiry: string; strike: number; right: 'C' | 'P' }
@@ -343,6 +353,15 @@ export default function RollOptionDialog({
     try {
       const targetTotalQty = parseInt(rollQty, 10) || 0
 
+      const rolled: Array<{
+        account: string
+        symbol: string
+        secType: string
+        expiry?: string
+        strike?: number
+        right?: string
+        quantity: number
+      }> = []
       for (const pos of positions) {
         const originalQty = Math.abs(pos.quantity)
         // Single account → the global 口數 input. Multi → the per-account edited
@@ -368,8 +387,17 @@ export default function RollOptionDialog({
           },
           { [pos.account]: qty }
         )
+        rolled.push({
+          account: pos.account,
+          symbol: pos.symbol,
+          secType: 'OPT',
+          expiry: pos.expiry,
+          strike: pos.strike,
+          right: pos.right,
+          quantity: isShort ? -qty : qty // signed rolled qty
+        })
       }
-      onRollComplete?.(positions, {
+      onRollComplete?.(rolled, {
         expiry: targetExpiry,
         strike: targetStrike,
         right: targetRight

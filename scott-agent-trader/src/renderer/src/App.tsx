@@ -76,13 +76,28 @@ function trimFillsMap<T>(map: Record<string, T>): Record<string, T> {
   if (prev && map[prev] !== undefined) out[prev] = map[prev]
   return out
 }
-function pickYesterdayFills<T>(map: Record<string, T[]>): T[] {
+// US equity post-market ends 20:00 ET. 「最近一日」 = the most recent FULLY-CLOSED
+// session: a date earlier than today's ET date, or today itself once ET wall-clock
+// is past post-market close. So during a live session it shows the prior closed
+// day, and after 20:00 ET it rolls forward to that day's own fills.
+const POST_MARKET_CLOSE_ET_HOUR = 20
+function etHourNow(now: Date): number {
+  return Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      hourCycle: 'h23'
+    }).format(now)
+  )
+}
+function pickRecentClosedFills<T>(map: Record<string, T[]>, now: Date): T[] {
   const today = etDateStr()
-  const prev = Object.keys(map)
-    .filter((d) => d < today)
+  const includeToday = etHourNow(now) >= POST_MARKET_CLOSE_ET_HOUR
+  const pick = Object.keys(map)
+    .filter((d) => (map[d]?.length ?? 0) > 0 && (d < today || (d === today && includeToday)))
     .sort()
     .pop()
-  return prev ? map[prev] || [] : []
+  return pick ? map[pick] || [] : []
 }
 
 function App(): React.JSX.Element {
@@ -159,15 +174,22 @@ function App(): React.JSX.Element {
 
   // 昨日成交: persist today's fills to D1 (recent_fills) so they survive an app
   // restart, and read yesterday's immediately (no Flex T+1 lag).
-  const [yesterdayFills, setYesterdayFills] = useState<typeof executions>([])
+  const [recentFillsMap, setRecentFillsMap] = useState<Record<string, typeof executions>>({})
   const recentFillsRef = useRef<Record<string, typeof executions>>({})
+  // Ticks every minute so 「最近一日」 rolls forward to today right after post-market
+  // close (20:00 ET) without needing an app restart.
+  const [nowTick, setNowTick] = useState<number>(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
   useEffect(() => {
     window.ibApi
       .getSettings(d1Target)
       .then((data) => {
         const rf = (data.settings?.recent_fills as Record<string, typeof executions>) || {}
         recentFillsRef.current = rf
-        setYesterdayFills(pickYesterdayFills(rf))
+        setRecentFillsMap(rf)
       })
       .catch(() => {})
   }, [])
@@ -176,11 +198,18 @@ function App(): React.JSX.Element {
     // `executions` is already today-only and IB-reconciled → source of truth.
     const next = trimFillsMap({ ...recentFillsRef.current, [etDateStr()]: executions })
     recentFillsRef.current = next
+    setRecentFillsMap(next)
     const t = setTimeout(() => {
       window.ibApi.putSettings('recent_fills', next, d1Target).catch(() => {})
     }, 1500)
     return () => clearTimeout(t)
   }, [executions, connected])
+  // 「最近一日」 = most recent fully-closed session; re-evaluated as data loads, new
+  // fills stream in, and the minute ticks past post-market close.
+  const recentClosedFills = useMemo(
+    () => pickRecentClosedFills(recentFillsMap, new Date(nowTick)),
+    [recentFillsMap, nowTick]
+  )
 
   // Stable key that only changes when the set of account IDs changes (not on every poll)
   const accountIdsKey = useMemo(
@@ -565,7 +594,7 @@ function App(): React.JSX.Element {
               openOrders={visibleOpenOrders}
               orderQuotes={orderQuotes}
               executions={visibleExecutions}
-              yesterdayFills={yesterdayFills}
+              recentFills={recentClosedFills}
               loading={loading}
               refresh={refresh}
               accountTypes={accountTypes}
