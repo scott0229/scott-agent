@@ -5539,18 +5539,23 @@ export default function AccountOverview({
         onRollComplete={(rolled, target) => {
           // Resolve which group this roll belongs to. A card-initiated roll set
           // rollSourceGroupId. A toolbar/selection roll didn't — try to resolve
-          // a UNIQUE manual group whose legs cover all rolled contracts; if the
-          // contract is shared by multiple groups (ambiguous) leave it
-          // undefined → the effect won't move legs (safe; logged).
+          // a UNIQUE manual group that covers a rolled contract; if the contract
+          // is shared by multiple groups (ambiguous) leave it undefined → the
+          // effect won't move anything (safe; logged). A group covers a rolled
+          // contract via its legs (migrated) OR its posKeys (legacy, not yet
+          // migrated) — so an unmigrated group can still be resolved here.
           let sourceGroupId = rollSourceGroupIdRef.current
           if (!sourceGroupId) {
-            const covering = symbolGroups.filter(
-              (g) =>
-                !g.autoParams &&
-                (g.legs || []).some((l) =>
+            const covering = symbolGroups.filter((g) => {
+              if (g.autoParams) return false
+              if (g.legs && g.legs.length)
+                return g.legs.some((l) =>
                   rolled.some((r) => legContractKey(l) === legContractKey(r))
                 )
-            )
+              return (g.posKeys || []).some((k) =>
+                rolled.some((r) => legContractKey(parsePosKey(k)) === legContractKey(r))
+              )
+            })
             if (covering.length === 1) sourceGroupId = covering[0].id
             else if (covering.length > 1)
               window.ibApi.debugLog(
