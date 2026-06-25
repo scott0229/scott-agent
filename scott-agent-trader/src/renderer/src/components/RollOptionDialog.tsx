@@ -948,10 +948,20 @@ export default function RollOptionDialog({
                             const pd = strikeDelta === null ? null : isCall ? strikeDelta : -strikeDelta
                             const pdStr =
                               pd === null ? '-' : Number.isInteger(pd) ? `${pd}` : pd.toFixed(1)
+                            // 展 N 天 shown as a DTE delta — acting next session costs
+                            // 1 DTE, so delta = rd − 1 (展 1 天 → 維持, 展 2 天 → +1).
+                            const dteLabel =
+                              rd === null
+                                ? '-'
+                                : rd - 1 === 0
+                                  ? 'DTE 維持'
+                                  : rd - 1 > 0
+                                    ? `DTE + ${rd - 1}`
+                                    : `DTE - ${1 - rd}`
                             return (
                               <>
                                 <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                  {rd !== null ? `展 ${rd} 天` : '-'}
+                                  {dteLabel}
                                 </td>
                                 <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                   {pd !== null ? `追 ${pdStr} 點` : '-'}

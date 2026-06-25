@@ -1986,19 +1986,26 @@ export default function AccountOverview({
             const rows = batchToggle?.collapsed ? batchToggle.orders : [order]
             const total = rows.reduce((s, o) => s + Math.abs(o.quantity), 0)
             const filled = rows.reduce((s, o) => s + (o.filled ?? 0), 0)
-            if (rows.every((o) => o.status === 'Cancelled')) return '已取消'
-            if (total > 0 && filled >= total) return '已成交'
-            if (filled > 0) return '部份成交'
-            const labels: Record<string, string> = {
-              Submitted: '已送出',
-              PendingSubmit: '待送出',
-              PreSubmitted: '預送出',
-              PendingCancel: '取消中',
-              Filled: '已成交',
-              Cancelled: '已取消',
-              Inactive: '未啟用'
+            let label: string
+            if (rows.every((o) => o.status === 'Cancelled')) label = '已取消'
+            else if (total > 0 && filled >= total) label = '已成交'
+            else if (filled > 0) label = '部份成交'
+            else {
+              const labels: Record<string, string> = {
+                Submitted: '已送出',
+                PendingSubmit: '待送出',
+                PreSubmitted: '預送出',
+                PendingCancel: '取消中',
+                Filled: '已成交',
+                Cancelled: '已取消',
+                Inactive: '未啟用'
+              }
+              label = labels[order.status] || order.status
             }
-            return labels[order.status] || order.status
+            // 已成交 → green bold, 部份成交 → orange bold; others plain.
+            const color =
+              label === '已成交' ? '#1a6b3a' : label === '部份成交' ? '#d35400' : undefined
+            return color ? <span style={{ color, fontWeight: 700 }}>{label}</span> : label
           })()}
         </td>
         <td style={{ textAlign: 'center' }}>
