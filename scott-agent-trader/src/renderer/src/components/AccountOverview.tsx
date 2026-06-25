@@ -5,6 +5,7 @@ import {
   legKey,
   legContractKey,
   posContractKey,
+  parsePosKey,
   type GroupLeg
 } from '../lib/groupLegs'
 import type {
@@ -908,7 +909,10 @@ export default function AccountOverview({
       pending: GroupLeg[]
     }> = []
     // groupId -> list of leg moves to apply
-    const movesByGroup = new Map<string, Array<{ src: GroupLeg; target: typeof pendingRolls[number]['target'] }>>()
+    const movesByGroup = new Map<
+      string,
+      Array<{ src: GroupLeg; target: typeof pendingRolls[number]['target']; newPos: PositionData }>
+    >()
     let resolvedAny = false
 
     for (const roll of pendingRolls) {
@@ -928,7 +932,7 @@ export default function AccountOverview({
           resolvedAny = true
           if (sourceGroupId) {
             if (!movesByGroup.has(sourceGroupId)) movesByGroup.set(sourceGroupId, [])
-            movesByGroup.get(sourceGroupId)!.push({ src: srcLeg, target })
+            movesByGroup.get(sourceGroupId)!.push({ src: srcLeg, target, newPos })
           }
         } else {
           stillPending.push(srcLeg)
@@ -944,7 +948,43 @@ export default function AccountOverview({
       for (const [gid, moves] of movesByGroup.entries()) {
         const g = symbolGroups.find((x) => x.id === gid)
         if (!g || g.autoParams) continue
-        let legs: GroupLeg[] = (g.legs || []).map((l) => ({ ...l }))
+
+        // Legacy group (posKeys, no legs yet): do the roll at the posKey level —
+        // swap the rolled contract's key for the new leg's. We can't build legs
+        // here (a posKey carries no quantity, and the old contract may already
+        // be closed so it has no live position to read the qty from), and
+        // building empty legs would dual-write posKeys:[] and WIPE the card
+        // ("展期後群組被清空"). The new key MUST equal posKey(newPos) exactly
+        // (CALL/PUT form) so the legacy exact-match filter in computeGroupRows
+        // picks up the new position. Other (incl. stale) posKeys are untouched.
+        if (!g.legs || !g.legs.length) {
+          const posKeys = [...(g.posKeys || [])]
+          let swapped = false
+          for (const mv of moves) {
+            const srcCK = legContractKey(mv.src)
+            const idx = posKeys.findIndex((k) => legContractKey(parsePosKey(k)) === srcCK)
+            if (idx === -1) continue // group doesn't hold the rolled contract
+            const newKey = posKey(mv.newPos)
+            posKeys.splice(idx, 1)
+            if (!posKeys.includes(newKey)) posKeys.push(newKey)
+            swapped = true
+          }
+          if (!swapped) {
+            window.ibApi.debugLog(
+              '[ROLL] skip posKey swap — rolled contract not in group ' +
+                JSON.stringify({ group: g.name })
+            )
+            continue
+          }
+          console.log('[ROLL] swapping posKeys for legacy group', g.name, posKeys)
+          window.ibApi.debugLog('[ROLL] posKeys ' + JSON.stringify({ group: g.name, posKeys }))
+          onUpdateSymbolGroup?.({ ...g, posKeys })
+          continue
+        }
+
+        // Leg-model group: move the rolled quantity from old to new contract.
+        let legs: GroupLeg[] = g.legs.map((l) => ({ ...l }))
+        let moved = false
         for (const mv of moves) {
           const srcCK = legContractKey(mv.src)
           const src = legs.find((l) => legContractKey(l) === srcCK)
@@ -956,6 +996,7 @@ export default function AccountOverview({
               ? Math.sign(src.quantity) * Math.min(Math.abs(mv.src.quantity), Math.abs(src.quantity))
               : 0
           if (moveQty === 0) continue
+          moved = true
           src.quantity -= moveQty
           const tgt: GroupLeg = {
             account: mv.src.account,
@@ -972,6 +1013,15 @@ export default function AccountOverview({
           else legs.push({ ...tgt, quantity: moveQty })
         }
         legs = legs.filter((l) => l.quantity !== 0)
+        // Never persist a group emptied by a roll that moved nothing (the source
+        // leg isn't actually claimed here) — writing legs:[] would dual-write
+        // posKeys:[] and wipe the card, which the reliable writer would keep.
+        if (!moved) {
+          window.ibApi.debugLog(
+            '[ROLL] skip update — no leg moved ' + JSON.stringify({ group: g.name })
+          )
+          continue
+        }
         console.log('[ROLL] moving legs for group', g.name, legs)
         window.ibApi.debugLog('[ROLL] legs ' + JSON.stringify({ group: g.name, legs }))
         onUpdateSymbolGroup?.({ ...g, legs }) // normalizeGroup dual-writes posKeys
