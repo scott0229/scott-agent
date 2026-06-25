@@ -514,24 +514,6 @@ export default function AdminUsersPage() {
         }
         report += `----------------------------------------\n`;
 
-        // Stock positions
-        if (data.stockPositions && data.stockPositions.length > 0) {
-            data.stockPositions.forEach((pos: any) => {
-                let extraInfo = [];
-                if (pos.avg_cost) {
-                    extraInfo.push(`成本 ${pos.avg_cost}`);
-                }
-                if ((pos.symbol === 'QQQ' || pos.symbol === 'QLD') && pos.current_price && data.accountNetWorth > 0) {
-                    const positionValue = pos.quantity * pos.current_price;
-                    const allocation = Math.round((positionValue / data.accountNetWorth) * 100);
-                    extraInfo.push(`佔比 ${allocation}%`);
-                }
-                const infoStr = extraInfo.length > 0 ? ` (${extraInfo.join('，')})` : '';
-                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${infoStr}\n`;
-            });
-            report += `----------------------------------------\n`;
-        }
-
         // Calculate daily premium using user's start_date
         const countWeekdays = (start: Date): number => {
             const end = new Date();
@@ -551,6 +533,24 @@ export default function AdminUsersPage() {
         const dailyPremium = tradingDays > 0 ? annualPremium / tradingDays : 0;
 
         report += `潛在融資 : ${formatPercent(data.marginRate)}\n`;
+
+        // Stock positions — same block as 潛在融資 above and the open options
+        // below (no dividers between them).
+        if (data.stockPositions && data.stockPositions.length > 0) {
+            data.stockPositions.forEach((pos: any) => {
+                let extraInfo = [];
+                if (pos.avg_cost) {
+                    extraInfo.push(`成本 ${pos.avg_cost}`);
+                }
+                if ((pos.symbol === 'QQQ' || pos.symbol === 'QLD') && pos.current_price && data.accountNetWorth > 0) {
+                    const positionValue = pos.quantity * pos.current_price;
+                    const allocation = Math.round((positionValue / data.accountNetWorth) * 100);
+                    extraInfo.push(`佔比 ${allocation}%`);
+                }
+                const infoStr = extraInfo.length > 0 ? ` (${extraInfo.join('，')})` : '';
+                report += `${pos.symbol} ${formatMoney(pos.quantity)} 股${infoStr}\n`;
+            });
+        }
 
         // Open options
         if (data.openOptions && data.openOptions.length > 0) {
