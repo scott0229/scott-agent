@@ -67,6 +67,10 @@ export function useTraderSettings() {
   // replication lag so a getSettings firing right after a putSettings can't
   // read the pre-write value and overwrite the local one.
   const lastGroupWriteRef = useRef(0)
+  // Coalescing/retrying writer state for symbol_groups (see persistSymbolGroups).
+  // pendingGroupsRef = latest value still to write; inFlight = a writer loop runs.
+  const pendingGroupsRef = useRef<SymbolGroup[] | null>(null)
+  const groupWriteInFlightRef = useRef(false)
 
   const applySettings = useCallback((data: { settings?: Record<string, unknown> }) => {
     if (!data.settings) return
@@ -253,38 +257,98 @@ export function useTraderSettings() {
     window.ibApi.putSettings('d1_target', v, v).catch(() => {})
   }, [])
 
-  const addSymbolGroup = useCallback((group: SymbolGroup) => {
+  // Reliable, coalescing writer for symbol_groups. A silently-dropped or
+  // out-of-order putSettings used to leave D1 holding stale groups, so a later
+  // refetch reverted local edits — most damagingly the post-roll posKey swap,
+  // emptying the card ("展期後群組被清空"). This always writes the LATEST value
+  // through a single in-flight loop (no out-of-order races), RETRIES on failure
+  // with backoff, and re-stamps the local-write guard on every attempt so a
+  // stale replica can't win while the write is still settling.
+  const persistSymbolGroups = useCallback((next: SymbolGroup[]) => {
     lastGroupWriteRef.current = Date.now()
-    setSymbolGroupsState((prev) => {
-      const next = [...prev, group]
-      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
-      return next
-    })
+    pendingGroupsRef.current = next
+    if (groupWriteInFlightRef.current) return
+    groupWriteInFlightRef.current = true
+    const target = d1TargetRef.current
+    const flush = (attempt: number): void => {
+      const value = pendingGroupsRef.current
+      if (value === null) {
+        groupWriteInFlightRef.current = false
+        return
+      }
+      pendingGroupsRef.current = null
+      lastGroupWriteRef.current = Date.now()
+      window.ibApi
+        .putSettings('symbol_groups', value, target)
+        .then(() => {
+          lastGroupWriteRef.current = Date.now()
+          // Log every successful write so a debug log can correlate "wrote N
+          // groups" against any subsequent refetch (applying/skipped) — this is
+          // how we tell whether a later clear came from a dropped write, a
+          // stale-replica overwrite, or something else.
+          const okMsg = `[settings] symbol_groups write OK (count=${value.length}, attempt ${attempt})`
+          console.log(okMsg)
+          window.ibApi.debugLog?.(okMsg)
+          flush(1) // pick up anything queued while this write was in flight
+        })
+        .catch((err: unknown) => {
+          lastGroupWriteRef.current = Date.now()
+          const msg = `[settings] symbol_groups write failed (attempt ${attempt}): ${String(err)}`
+          console.warn(msg)
+          window.ibApi.debugLog?.(msg)
+          // Re-queue this value (unless a newer edit already did) and retry — a
+          // dropped write must not leave D1 stale and revert the local edit.
+          if (pendingGroupsRef.current === null) pendingGroupsRef.current = value
+          if (attempt < 6) {
+            setTimeout(() => flush(attempt + 1), Math.min(1000 * 2 ** (attempt - 1), 15000))
+          } else {
+            groupWriteInFlightRef.current = false
+          }
+        })
+    }
+    flush(1)
   }, [])
 
-  const deleteSymbolGroup = useCallback((groupId: string) => {
-    lastGroupWriteRef.current = Date.now()
-    setSymbolGroupsState((prev) => {
-      const next = prev.filter((g) => g.id !== groupId)
-      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
-      return next
-    })
-  }, [])
+  const addSymbolGroup = useCallback(
+    (group: SymbolGroup) => {
+      setSymbolGroupsState((prev) => {
+        const next = [...prev, group]
+        persistSymbolGroups(next)
+        return next
+      })
+    },
+    [persistSymbolGroups]
+  )
 
-  const updateSymbolGroup = useCallback((updated: SymbolGroup) => {
-    lastGroupWriteRef.current = Date.now()
-    setSymbolGroupsState((prev) => {
-      const next = prev.map((g) => (g.id === updated.id ? updated : g))
-      window.ibApi.putSettings('symbol_groups', next, d1TargetRef.current).catch(() => {})
-      return next
-    })
-  }, [])
+  const deleteSymbolGroup = useCallback(
+    (groupId: string) => {
+      setSymbolGroupsState((prev) => {
+        const next = prev.filter((g) => g.id !== groupId)
+        persistSymbolGroups(next)
+        return next
+      })
+    },
+    [persistSymbolGroups]
+  )
 
-  const reorderSymbolGroups = useCallback((reordered: SymbolGroup[]) => {
-    lastGroupWriteRef.current = Date.now()
-    setSymbolGroupsState(reordered)
-    window.ibApi.putSettings('symbol_groups', reordered, d1TargetRef.current).catch(() => {})
-  }, [])
+  const updateSymbolGroup = useCallback(
+    (updated: SymbolGroup) => {
+      setSymbolGroupsState((prev) => {
+        const next = prev.map((g) => (g.id === updated.id ? updated : g))
+        persistSymbolGroups(next)
+        return next
+      })
+    },
+    [persistSymbolGroups]
+  )
+
+  const reorderSymbolGroups = useCallback(
+    (reordered: SymbolGroup[]) => {
+      setSymbolGroupsState(reordered)
+      persistSymbolGroups(reordered)
+    },
+    [persistSymbolGroups]
+  )
 
   const setShowOperationMode = useCallback((v: boolean) => setShowOperationModeState(v), [])
   const setShowAccountType = useCallback((v: boolean) => setShowAccountTypeState(v), [])
