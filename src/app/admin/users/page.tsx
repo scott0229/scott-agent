@@ -493,7 +493,6 @@ export default function AdminUsersPage() {
         report += `${yearLabel}成本 : ${formatMoney(data.cost2026)}\n`;
         report += `${yearLabel}淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
-        report += `當日利息 : ${data.dailyInterest ? (Number(data.dailyInterest.toFixed(1)) === 0 ? '0' : data.dailyInterest.toFixed(1)) : '0'}\n`;
         report += `歷史最高 : ${formatMoney(highestNetWorth)}\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
