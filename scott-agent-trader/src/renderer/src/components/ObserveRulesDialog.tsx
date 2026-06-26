@@ -184,6 +184,7 @@ export default function ObserveRulesDialog({
           options={[
             { value: 'gt3', label: '> 3' },
             { value: 'high', label: '≥ 3' },
+            { value: 'gte2', label: '≥ 2' },
             { value: 'eq23', label: '2, 3' },
             { value: 'eq123', label: '1, 2, 3' },
             { value: 'eq2', label: '2' },

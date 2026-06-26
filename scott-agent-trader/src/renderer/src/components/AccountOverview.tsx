@@ -2725,6 +2725,7 @@ export default function AccountOverview({
                           // computed per-row inside RollWatchChunk (via minCredit).
                           if (rule.dteMode === 'gt3') return curDte > 3
                           if (rule.dteMode === 'high') return curDte >= DTE_HIGH_THRESHOLD
+                          if (rule.dteMode === 'gte2') return curDte >= 2
                           if (rule.dteMode === 'low') return curDte < DTE_HIGH_THRESHOLD
                           if (rule.dteMode === 'eq2') return curDte === 2
                           if (rule.dteMode === 'eq23') return curDte === 2 || curDte === 3

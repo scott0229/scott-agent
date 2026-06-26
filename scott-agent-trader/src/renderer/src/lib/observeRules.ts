@@ -27,7 +27,7 @@ export type DteOp = '>' | '<'
 // Per-rule DTE gate selector: 'gt3' = remaining DTE > 3, 'high' = ≥
 // DTE_HIGH_THRESHOLD (3), 'low' = below it (1 or 2), 'eq2' = exactly 2, 'eq23' =
 // 2 or 3, 'eq123' = 1, 2 or 3, 'eq1' = exactly 1, 'any' = no DTE gate.
-export type DteMode = 'gt3' | 'high' | 'low' | 'eq2' | 'eq23' | 'eq123' | 'eq1' | 'any'
+export type DteMode = 'gt3' | 'high' | 'gte2' | 'low' | 'eq2' | 'eq23' | 'eq123' | 'eq1' | 'any'
 // Per-rule 收益 gate shown as a 無關 / > 0 / > 0.1 / > 0.3 / > 0.5 / > 0.7 / > 1
 // selector, gating on the roll's credit (= −中間): 'positive' = > 0, 'pos01' =
 // > 0.1, 'pos03' = > 0.3, 'pos05' = > 0.5, 'pos07' = > 0.7, 'pos1' = > 1,
@@ -698,6 +698,7 @@ export const getObserveDteMode = (r: ObserveRuleDef): DteMode => {
   const raw = localStorage.getItem(dteModeKeyOf(r))
   return raw === 'gt3' ||
     raw === 'high' ||
+    raw === 'gte2' ||
     raw === 'low' ||
     raw === 'eq2' ||
     raw === 'eq23' ||
