@@ -1710,7 +1710,8 @@ export default function AccountOverview({
       collapsed: boolean
       onToggle: () => void
       orders: OpenOrderData[]
-    }
+    },
+    expandedGroup?: { tint: string }
   ): React.ReactNode => {
     const arrow = <span style={{ color: '#956b3a', margin: '0 3px' }}>→</span>
     const acctName = formatAccountName(
@@ -1749,10 +1750,16 @@ export default function AccountOverview({
       editingCell?.orderId === order.orderId && editingCell.field === 'quantity'
     const editingPrice =
       editingCell?.orderId === order.orderId && editingCell.field === 'price'
+    // Tint an expanded batch group so the whole block reads as one unit and
+    // doesn't blend into adjacent rows.
+    const trStyle: React.CSSProperties | undefined = expandedGroup
+      ? { background: expandedGroup.tint }
+      : undefined
     return (
       <tr
         key={`${order.account}-${order.permId}`}
         className={contextMenu?.order.orderId === order.orderId ? 'force-active' : ''}
+        style={trStyle}
         onContextMenu={(e) => {
           e.preventDefault()
           if (order.status !== 'PendingCancel')
@@ -1765,8 +1772,10 @@ export default function AccountOverview({
             fontSize: '12px',
             color: '#333',
             paddingLeft: 8,
-            textAlign: 'left'
+            textAlign: 'left',
+            cursor: batchToggle ? 'pointer' : undefined
           }}
+          onClick={batchToggle ? () => batchToggle.onToggle() : undefined}
         >
           {batchToggle && (
             <button
@@ -1788,7 +1797,13 @@ export default function AccountOverview({
             </span>
           )}
         </td>
-        <td className="pos-symbol">{desc}</td>
+        <td
+          className="pos-symbol"
+          style={{ cursor: batchToggle ? 'pointer' : undefined }}
+          onClick={batchToggle ? () => batchToggle.onToggle() : undefined}
+        >
+          {desc}
+        </td>
         <td style={{ textAlign: 'left', fontSize: '12px', color: '#333', whiteSpace: 'nowrap', fontWeight: 600 }}>
           {(() => {
             const spec = parseRollSpec(order.comboDescription)
@@ -3855,6 +3870,7 @@ export default function AccountOverview({
                         )
                       }
 
+                      let expandedSeq = 0
                       return groups.flatMap((g) => {
                         if (g.orders.length === 1) return [renderOrderRow(g.orders[0])]
                         const collapsed = !expandedBatches.has(g.key)
@@ -3871,8 +3887,11 @@ export default function AccountOverview({
                             })
                         }
                         if (collapsed) return [renderOrderRow(g.orders[0], toggle)]
+                        // Alternate expanded-group tint (1st → pink, 2nd → green, …)
+                        // so two consecutive expanded groups stay visually distinct.
+                        const tint = expandedSeq++ % 2 === 0 ? '#fce4ec' : '#e8f5e9'
                         return g.orders.map((o, i) =>
-                          renderOrderRow(o, i === 0 ? toggle : undefined)
+                          renderOrderRow(o, i === 0 ? toggle : undefined, { tint })
                         )
                       })
                     })()}

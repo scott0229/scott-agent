@@ -20,6 +20,7 @@ interface SettingsPanelProps {
   onSetShowOperationMode: (v: boolean) => void
   showAccountType: boolean
   onSetShowAccountType: (v: boolean) => void
+  accountGroupLabel?: string | null
 }
 
 function SectionHeader({
@@ -77,7 +78,8 @@ export default function SettingsPanel({
   showOperationMode,
   onSetShowOperationMode,
   showAccountType,
-  onSetShowAccountType
+  onSetShowAccountType,
+  accountGroupLabel
 }: SettingsPanelProps): React.JSX.Element | null {
   const [limitInput, setLimitInput] = useState(String(marginLimit))
   useEffect(() => {
@@ -112,7 +114,12 @@ export default function SettingsPanel({
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
-          <h2>設定</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h2 style={{ margin: 0 }}>設定</h2>
+            {accountGroupLabel && (
+              <span className="account-group-badge">{accountGroupLabel}</span>
+            )}
+          </div>
           <button className="settings-close-btn" onClick={onClose}>
             ✕
           </button>

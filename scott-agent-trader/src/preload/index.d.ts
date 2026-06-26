@@ -373,6 +373,7 @@ interface IBApi {
     orders?: unknown[]
   ) => Promise<{
     quotes: Record<string, number>
+    closes: Record<string, number>
     optionQuotes: Record<string, number>
     orderQuotes: Record<string, { bid: number; ask: number }>
   }>
@@ -380,6 +381,7 @@ interface IBApi {
   onQuoteUpdate: (
     callback: (data: {
       quotes: Record<string, number>
+      closes: Record<string, number>
       optionQuotes: Record<string, number>
       orderQuotes: Record<string, { bid: number; ask: number }>
     }) => void

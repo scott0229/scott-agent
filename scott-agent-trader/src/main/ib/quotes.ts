@@ -323,6 +323,7 @@ type OrderBidAsk = { bid: number; ask: number }
 
 type QuoteUpdateCallback = (data: {
   quotes: Record<string, number>
+  closes: Record<string, number>
   optionQuotes: Record<string, number>
   orderQuotes: Record<string, OrderBidAsk>
 }) => void
@@ -341,6 +342,8 @@ export interface OrderQuoteRequest {
 
 // Live price maps — updated on every tick
 const liveStockPrices: Record<string, number> = {}
+// Prior-session close per stock symbol (tick 9/75), for the day-change %.
+const liveStockCloses: Record<string, number> = {}
 const liveOptionPrices: Record<string, number> = {}
 // Order bid/ask. NaN = not yet received (renderer shows '-'). Combos can go
 // negative (net credit), so we do NOT clamp these to >= 0.
@@ -364,6 +367,7 @@ function emitUpdate(): void {
     if (streamCallback) {
       streamCallback({
         quotes: { ...liveStockPrices },
+        closes: { ...liveStockCloses },
         optionQuotes: { ...liveOptionPrices },
         orderQuotes: { ...liveOrderQuotes }
       })
@@ -431,10 +435,9 @@ export function subscribeStockQuotes(symbols: string[], callback: QuoteUpdateCal
           }
           emitUpdate()
         } else if (tickType === 9 || tickType === 75) {
-          if (!liveStockPrices[stockSym]) {
-            liveStockPrices[stockSym] = value
-            emitUpdate()
-          }
+          liveStockCloses[stockSym] = value
+          if (!liveStockPrices[stockSym]) liveStockPrices[stockSym] = value
+          emitUpdate()
         } else if (tickType === 1 || tickType === 68) {
           // bid — use mid if we have ask
           const entry = stockPriceCache.get(stockSym)
@@ -678,11 +681,13 @@ export function unsubscribeAllQuotes(): void {
  */
 export function getLiveQuotes(): {
   quotes: Record<string, number>
+  closes: Record<string, number>
   optionQuotes: Record<string, number>
   orderQuotes: Record<string, OrderBidAsk>
 } {
   return {
     quotes: { ...liveStockPrices },
+    closes: { ...liveStockCloses },
     optionQuotes: { ...liveOptionPrices },
     orderQuotes: { ...liveOrderQuotes }
   }

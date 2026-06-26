@@ -64,6 +64,7 @@ interface AccountStore {
   accounts: AccountData[]
   positions: PositionData[]
   quotes: Record<string, number>
+  stockCloses: Record<string, number>
   optionQuotes: Record<string, number>
   openOrders: OpenOrderData[]
   orderQuotes: Record<string, { bid: number; ask: number }>
@@ -109,6 +110,8 @@ export function useAccountStore(
   const [accounts, setAccounts] = useState<AccountData[]>([])
   const [positions, setPositions] = useState<PositionData[]>([])
   const [quotes, setQuotes] = useState<Record<string, number>>({})
+  // Prior-session close per stock symbol → day-change % in the header pills.
+  const [stockCloses, setStockCloses] = useState<Record<string, number>>({})
   const [optionQuotes, setOptionQuotes] = useState<Record<string, number>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrderData[]>([])
   const [orderQuotes, setOrderQuotes] = useState<Record<string, { bid: number; ask: number }>>({})
@@ -337,6 +340,15 @@ export function useAccountStore(
               return merged
             })
           }
+          if (data.closes && Object.keys(data.closes).length > 0) {
+            setStockCloses((prev) => {
+              const merged = { ...prev }
+              for (const [sym, c] of Object.entries(data.closes)) {
+                if ((c as number) > 0) merged[sym] = c as number
+              }
+              return merged
+            })
+          }
           if (data.optionQuotes && Object.keys(data.optionQuotes).length > 0) {
             setOptionQuotes((prev) => {
               const merged = { ...prev }
@@ -363,6 +375,15 @@ export function useAccountStore(
                 const merged = { ...prev }
                 for (const [sym, price] of Object.entries(initial.quotes)) {
                   if ((price as number) > 0) merged[sym] = price as number
+                }
+                return merged
+              })
+            }
+            if (initial.closes && Object.keys(initial.closes).length > 0) {
+              setStockCloses((prev) => {
+                const merged = { ...prev }
+                for (const [sym, c] of Object.entries(initial.closes)) {
+                  if ((c as number) > 0) merged[sym] = c as number
                 }
                 return merged
               })
@@ -547,6 +568,7 @@ export function useAccountStore(
   }, [fetchAssets, fetchHistory])
 
   return {
+    stockCloses,
     accounts,
     positions,
     quotes,

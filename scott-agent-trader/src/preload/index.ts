@@ -147,6 +147,7 @@ const ibApi = {
     orders?: unknown[]
   ): Promise<{
     quotes: Record<string, number>
+    closes: Record<string, number>
     optionQuotes: Record<string, number>
     orderQuotes: Record<string, { bid: number; ask: number }>
   }> => ipcRenderer.invoke('ib:subscribeQuotes', symbols, optionContracts, orders || []),
@@ -154,6 +155,7 @@ const ibApi = {
   onQuoteUpdate: (
     callback: (data: {
       quotes: Record<string, number>
+      closes: Record<string, number>
       optionQuotes: Record<string, number>
       orderQuotes: Record<string, { bid: number; ask: number }>
     }) => void

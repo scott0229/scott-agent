@@ -164,6 +164,7 @@ function App(): React.JSX.Element {
     accounts,
     positions,
     quotes,
+    stockCloses,
     optionQuotes,
     openOrders,
     orderQuotes,
@@ -442,42 +443,29 @@ function App(): React.JSX.Element {
           {optionUnderlyings
             .filter((sym) => quotes[sym] > 0)
             .slice(0, 5)
-            .map((sym) => (
-              <span key={sym} className="stock-price-pill" title={`${sym} 即時股價`}>
-                <span className="stock-price-label">{sym}</span>
-                {quotes[sym].toFixed(2)}
-              </span>
-            ))}
-          {taiwanIndex && (
-            <span
-              className={`stock-price-pill twx-pill ${
-                taiwanIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
-              }`}
-              title={`台股加權指數 收盤 ${taiwanIndex.close.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}`}
-            >
-              <span className="stock-price-label">台股</span>
-              {taiwanIndex.change >= 0 ? '+' : ''}
-              {taiwanIndex.changePercent.toFixed(2)}%
-            </span>
-          )}
-          {koreaIndex && (
-            <span
-              className={`stock-price-pill twx-pill ${
-                koreaIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
-              }`}
-              title={`韓國綜合股價指數 (KOSPI) 收盤 ${koreaIndex.close.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}`}
-            >
-              <span className="stock-price-label">韓股</span>
-              {koreaIndex.change >= 0 ? '+' : ''}
-              {koreaIndex.changePercent.toFixed(2)}%
-            </span>
-          )}
+            .map((sym) => {
+              const close = stockCloses[sym]
+              const pct = close > 0 ? ((quotes[sym] - close) / close) * 100 : null
+              return (
+                <span key={sym} className="stock-price-pill" title={`${sym} 即時股價`}>
+                  <span className="stock-price-label">{sym}</span>
+                  {quotes[sym].toFixed(2)}
+                  {pct != null && (
+                    <span
+                      style={{
+                        marginLeft: 0,
+                        fontSize: '0.92em',
+                        fontWeight: 600,
+                        color: pct >= 0 ? '#1a6b3a' : '#c0392b'
+                      }}
+                    >
+                      {pct >= 0 ? '+' : ''}
+                      {pct.toFixed(2)}%
+                    </span>
+                  )}
+                </span>
+              )
+            })}
         </div>
         <nav className="tab-nav-inline">
           <button
@@ -566,6 +554,36 @@ function App(): React.JSX.Element {
           </button>
         </nav>
         <div className="header-actions">
+          {taiwanIndex && (
+            <span
+              className={`stock-price-pill twx-pill ${
+                taiwanIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
+              }`}
+              title={`台股加權指數 收盤 ${taiwanIndex.close.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`}
+            >
+              <span className="stock-price-label">台股</span>
+              {taiwanIndex.change >= 0 ? '+' : ''}
+              {taiwanIndex.changePercent.toFixed(2)}%
+            </span>
+          )}
+          {koreaIndex && (
+            <span
+              className={`stock-price-pill twx-pill ${
+                koreaIndex.change >= 0 ? 'twx-pos' : 'twx-neg'
+              }`}
+              title={`韓國綜合股價指數 (KOSPI) 收盤 ${koreaIndex.close.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`}
+            >
+              <span className="stock-price-label">韓股</span>
+              {koreaIndex.change >= 0 ? '+' : ''}
+              {koreaIndex.changePercent.toFixed(2)}%
+            </span>
+          )}
           {updateInfo && (
             <button
               type="button"
@@ -577,7 +595,6 @@ function App(): React.JSX.Element {
             </button>
           )}
           <EtClock />
-          {accountGroupLabel && <span className="account-group-badge">{accountGroupLabel}</span>}
           <ConnectionStatus />
         </div>
       </header>
@@ -659,6 +676,7 @@ function App(): React.JSX.Element {
         onSetShowOperationMode={setShowOperationMode}
         showAccountType={showAccountType}
         onSetShowAccountType={setShowAccountType}
+        accountGroupLabel={accountGroupLabel}
       />
       {updateDialogOpen && updateInfo && (
         <div
