@@ -137,11 +137,17 @@ const autoGroupMatches = (autoParams: NonNullable<SymbolGroup['autoParams']>, p:
 // The display rows for a group, BEFORE sorting/filtering:
 //  - auto group: rule-matched live positions (full IB qty).
 //  - manual group with legs: one synthetic row per non-zero leg that has a
-//    matching live position, with `quantity` OVERRIDDEN to the leg's claimed
-//    amount so two groups can split one aggregated IB row. Legs with no live
-//    match are dropped (the contract is gone) → drives the empty state.
+//    matching live position. A SOLE claimer tracks the LIVE position size, so a
+//    trade (roll / partial close / assignment) updates the card automatically
+//    with no re-entry. Only when ≥2 groups share one contract (claimCount > 1)
+//    is the leg's stored split quantity used. Legs with no live match are
+//    dropped (the contract is gone) → drives the empty state.
 //  - manual group without legs (not yet migrated): legacy posKeys filter.
-const computeGroupRows = (g: SymbolGroup, positions: PositionData[]): PositionData[] => {
+const computeGroupRows = (
+  g: SymbolGroup,
+  positions: PositionData[],
+  claimCount?: Map<string, number>
+): PositionData[] => {
   if (g.autoParams) {
     return positions.filter((p) => autoGroupMatches(g.autoParams!, p))
   }
@@ -151,7 +157,9 @@ const computeGroupRows = (g: SymbolGroup, positions: PositionData[]): PositionDa
       if (leg.quantity === 0) continue
       const ck = legContractKey(leg)
       const match = positions.find((p) => posContractKey(p) === ck)
-      if (match) rows.push({ ...match, quantity: leg.quantity })
+      if (!match) continue
+      const shared = (claimCount?.get(ck) || 0) > 1
+      rows.push({ ...match, quantity: shared ? leg.quantity : match.quantity })
     }
     return rows
   }
@@ -734,13 +742,32 @@ export default function AccountOverview({
       })
   }, [groupViewMode, symbolGroups, positions, accounts])
 
+  // contractKey → how many manual groups claim it. Lets computeGroupRows give a
+  // sole claimer the live position size (auto-tracking) while a shared contract
+  // keeps each leg's stored split quantity.
+  const legClaimCount = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const g of symbolGroups) {
+      if (g.autoParams || !g.legs) continue
+      const seen = new Set<string>()
+      for (const l of g.legs) {
+        if (l.quantity === 0) continue
+        const ck = legContractKey(l)
+        if (seen.has(ck)) continue
+        seen.add(ck)
+        m.set(ck, (m.get(ck) || 0) + 1)
+      }
+    }
+    return m
+  }, [symbolGroups])
+
   // Masonry layout: measure each card and set grid-row span
   // Only recalculate when actual data changes (not on every poll-triggered render)
   const masonryKey = useMemo(() => {
     if (!groupViewMode) return ''
     const groupPart = symbolGroups
       .map((g) => {
-        const count = computeGroupRows(g, positions).length
+        const count = computeGroupRows(g, positions, legClaimCount).length
         // Legs signature so the card re-measures when a leg's claimed qty
         // changes (the rendered row count can stay the same while heights
         // shift) — otherwise overflow:hidden clips.
@@ -2342,7 +2369,7 @@ export default function AccountOverview({
               {symbolGroups.map((g, gIdx) => {
                 if (filterGroupIndex !== '' && String(gIdx) !== filterGroupIndex) return null
                 if (filterGroupSymbol !== '' && g.symbol !== filterGroupSymbol) return null
-                const groupPositionsAll = computeGroupRows(g, positions)
+                const groupPositionsAll = computeGroupRows(g, positions, legClaimCount)
                   .sort((a, b) => {
                     if (a.secType !== b.secType) return a.secType === 'STK' ? -1 : 1
                     if (a.secType === 'OPT' && b.secType === 'OPT') {
