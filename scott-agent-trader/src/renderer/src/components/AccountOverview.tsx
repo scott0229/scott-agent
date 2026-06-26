@@ -4161,19 +4161,6 @@ export default function AccountOverview({
                             {open ? '−' : '+'}
                           </span>
                         )
-                        const subInfo = (text: string): React.ReactNode => (
-                          <span
-                            style={{
-                              color: '#333',
-                              fontWeight: 400,
-                              marginLeft: 6,
-                              fontSize: 'calc(1em + 1px)'
-                            }}
-                          >
-                            {text}
-                          </span>
-                        )
-
                         if (fillGroupByAccount) {
                           // ----- group by 帳戶 -----
                           const aGroups: {
@@ -4210,7 +4197,45 @@ export default function AccountOverview({
                                   >
                                     {caret(open)}
                                     {nameOf(g.account)}
-                                    {subInfo(`(${g.rows.length} 筆)`)}
+                                    {(() => {
+                                      // 收益 = 收入 − 該帳戶傭金. A roll's BAG row stores the
+                                      // NET price with credits as NEGATIVE, so negate it →
+                                      // a net credit becomes positive income. Options ×100
+                                      // (contract multiplier), stock ×1.
+                                      const income = g.rows.reduce(
+                                        (s, e) =>
+                                          s -
+                                          e.avgPrice *
+                                            e.quantity *
+                                            (e.secType === 'STK' ? 1 : 100),
+                                        0
+                                      )
+                                      const comm = recentFills
+                                        .filter((x) => x.account === g.account)
+                                        .reduce((c, x) => c + (x.commission || 0), 0)
+                                      const proceeds = income - comm
+                                      return (
+                                        <span
+                                          style={{
+                                            color: '#333',
+                                            fontWeight: 400,
+                                            marginLeft: 6,
+                                            fontSize: 'calc(1em + 1px)'
+                                          }}
+                                        >
+                                          ({g.rows.length} 筆，收益{' '}
+                                          <span
+                                            style={{
+                                              color: proceeds >= 0 ? '#1a6b3a' : '#c0392b',
+                                              fontWeight: 400
+                                            }}
+                                          >
+                                            {Math.round(proceeds).toLocaleString('en-US')}
+                                          </span>
+                                          )
+                                        </span>
+                                      )
+                                    })()}
                                   </td>
                                 </tr>
                                 {open && g.rows.map((exec) => memberRow(exec, true))}
@@ -4253,15 +4278,41 @@ export default function AccountOverview({
                                   0
                                 ) / totalQty
                               : 0
+                          // 收益 across this group's accounts. Same convention as the
+                          // per-account header: −成交價×數量×乘數 (net credit positive),
+                          // minus each fill's order commission. Options ×100, stock ×1.
+                          const proceeds = g.rows.reduce((s, e) => {
+                            const mult = e.secType === 'STK' ? 1 : 100
+                            const comm = recentFills
+                              .filter((x) => x.account === e.account && x.orderId === e.orderId)
+                              .reduce((c, x) => c + (x.commission || 0), 0)
+                            return s - e.avgPrice * e.quantity * mult - comm
+                          }, 0)
                           return (
                             <React.Fragment key={g.sig}>
                               <tr onClick={() => toggle(g.sig)} style={headerRowStyle}>
                                 <td colSpan={7} className="pos-symbol" style={{ textAlign: 'left' }}>
                                   {caret(open)}
                                   {g.node}
-                                  {subInfo(
-                                    `(${g.rows.length} 個帳戶，均價 ${avgPrice.toFixed(2)})`
-                                  )}
+                                  <span
+                                    style={{
+                                      color: '#333',
+                                      fontWeight: 400,
+                                      marginLeft: 6,
+                                      fontSize: 'calc(1em + 1px)'
+                                    }}
+                                  >
+                                    ({g.rows.length} 個帳戶，均價 {avgPrice.toFixed(2)}，收益{' '}
+                                    <span
+                                      style={{
+                                        color: proceeds >= 0 ? '#1a6b3a' : '#c0392b',
+                                        fontWeight: 400
+                                      }}
+                                    >
+                                      {Math.round(proceeds).toLocaleString('en-US')}
+                                    </span>
+                                    )
+                                  </span>
                                 </td>
                               </tr>
                               {open && g.rows.map((exec) => memberRow(exec, false))}
