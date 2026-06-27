@@ -224,6 +224,36 @@ export function generateDailyTradesText(
                 return;
             }
 
+            // Single-contract roll that filled in pieces: ALL closes share one
+            // contract AND ALL opens share one contract (e.g. a -3 roll whose
+            // close filled as -1 + -2 and open filled as -2 + -1). The greedy
+            // 1-to-1 pass below would split this into two sections by quantity
+            // (a 1↔1 and a 2↔2). Bundle it into ONE roll group so the report
+            // shows a single "展期 … -3口" section. Distinct from the two-
+            // independent-rolls case (which spans MORE than one contract on a
+            // side), so that case still falls through to 1-to-1.
+            const distinctCloseKeys = new Set(matchedC.map(legKey));
+            const distinctOpenKeys = new Set(matchedO.map(legKey));
+            if (
+                distinctCloseKeys.size === 1 &&
+                distinctOpenKeys.size === 1 &&
+                sumC === sumO &&
+                sumC !== 0
+            ) {
+                matchedC.forEach(t => matchedCloseIds.add(t.id));
+                matchedO.forEach(t => matchedOpenIds.add(t.id));
+                const earliestOpen = matchedO.reduce(
+                    (acc, o) => ((o.open_date ?? Infinity) < (acc.open_date ?? Infinity) ? o : acc),
+                    matchedO[0]
+                );
+                if (earliestOpen.open_date != null) {
+                    matchedO.forEach(o => timeMap.set(o.id, earliestOpen.open_date!));
+                    matchedC.forEach(c => timeMap.set(c.id, earliestOpen.open_date!));
+                }
+                rollGroups.push({ closed: matchedC, opened: matchedO });
+                return;
+            }
+
             // Non-chained: greedy 1-to-1 pairing by quantity. Catches the
             // common case of two independent rolls of different positions
             // sharing the same underlying/type/group_id on the same day
