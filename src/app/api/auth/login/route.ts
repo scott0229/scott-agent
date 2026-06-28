@@ -11,6 +11,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '請輸入帳號和密碼' }, { status: 400 });
     }
 
+    // The website is locked to the single `scottagent` account. Reject any other
+    // login identifier up front — crucially including the legacy "admin", which
+    // is still this account's EMAIL, so the email-based lookup below would
+    // otherwise resolve "admin" to the scottagent account and let it in. Same
+    // generic error as a bad credential so we don't disclose which identifier
+    // works. Relax/remove to allow other logins again.
+    if (String(account).trim().toLowerCase() !== 'scottagent') {
+      return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
+    }
+
     const db = await getDb(group);
 
     // Prioritize user_id match first, then fall back to email
