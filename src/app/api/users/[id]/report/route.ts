@@ -34,7 +34,7 @@ export async function GET(
 
         // 1. Get user profile
         const user = await db.prepare(`
-            SELECT id, user_id, email, initial_cost, year, start_date
+            SELECT id, user_id, email, initial_cost, year, start_date, ib_account
             FROM USERS
             WHERE id = ?
         `).bind(userId).first();
@@ -69,6 +69,20 @@ export async function GET(
         `).bind(userId, currentYear).first();
 
         const totalDeposit = depositsResult?.total_deposit || 0;
+
+        // 3b. Lifetime 總入金 — net deposits across ALL years for this account
+        // (an IB account has one USERS row per year). Falls back to the
+        // year-scoped sum when the account has no ib_account to span on.
+        let lifetimeDeposit = totalDeposit;
+        if (user.ib_account) {
+            const lifeRes = await db.prepare(`
+                SELECT COALESCE(SUM(d.deposit), 0) as lifetime_deposit
+                FROM DAILY_NET_EQUITY d
+                JOIN USERS u ON u.id = d.user_id
+                WHERE u.ib_account = ?
+            `).bind(user.ib_account).first();
+            lifetimeDeposit = lifeRes?.lifetime_deposit ?? totalDeposit;
+        }
 
         // 4. Calculate cost and profit
         const cost2026 = (user.initial_cost || 0) + totalDeposit;
@@ -543,6 +557,7 @@ export async function GET(
                 dailyInterest,
                 marginRate,
                 highestNetWorth,
+                lifetimeDeposit,
                 ytdReturn,
                 maxDrawdown,
                 sharpeRatio,

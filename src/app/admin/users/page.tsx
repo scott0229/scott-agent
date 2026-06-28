@@ -494,6 +494,9 @@ export default function AdminUsersPage() {
         report += `${yearLabel}淨利 : ${formatMoney(data.netProfit2026)}\n`;
         report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `歷史最高 : ${formatMoney(highestNetWorth)}\n`;
+        if (data.lifetimeDeposit != null) {
+            report += `總入金 : ${formatMoney(data.lifetimeDeposit)}\n`;
+        }
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
