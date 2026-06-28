@@ -30,13 +30,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
     }
 
-    // The `admin` account is disabled for login (security: replaced by the
-    // `scottagent` account). Use scottagent for admin access. Matched on the
-    // resolved user so logging in via either the user_id or the account's
-    // email is blocked. Return the SAME generic error as a bad credential so we
-    // don't disclose that the account exists or is disabled. Remove this guard
-    // to re-enable.
-    if (user.user_id === 'admin') {
+    // The website is locked down to the single `scottagent` admin account —
+    // every other account (including the old `admin`) is blocked from login.
+    // Matched on the resolved user (so the account's email can't be used to log
+    // in either) and compared case-insensitively to avoid a casing typo locking
+    // everyone out. Returns the SAME generic error as a bad credential so we
+    // don't disclose which account is permitted. Relax/remove this guard to
+    // allow other logins again.
+    if (String(user.user_id).toLowerCase() !== 'scottagent') {
       return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
     }
 
