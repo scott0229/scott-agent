@@ -24,7 +24,29 @@ export async function GET(request: NextRequest) {
             LIMIT ?
         `).bind(limit).all();
 
-        return NextResponse.json({ reports: results.results });
+        // 總入金 per IB account, summed straight from DAILY_NET_EQUITY.deposit
+        // (already in D1 — parsed once at statement import). One account maps to
+        // several USERS rows (one per year), so we sum across all of them. This
+        // is a tiny aggregate (a handful of deposit rows per account), not a
+        // re-parse of the archived .htm files, so there's no cached column to
+        // maintain. Net of withdrawals, matching the 成本/net_deposit convention.
+        const deposits: Record<string, number> = {};
+        try {
+            const depRows = await db.prepare(`
+                SELECT u.ib_account AS ib_account, COALESCE(SUM(d.deposit), 0) AS total_deposit
+                FROM DAILY_NET_EQUITY d
+                JOIN USERS u ON u.id = d.user_id
+                WHERE u.ib_account IS NOT NULL AND u.ib_account != ''
+                GROUP BY u.ib_account
+            `).all<{ ib_account: string; total_deposit: number }>();
+            (depRows.results || []).forEach((r: { ib_account: string; total_deposit: number }) => {
+                deposits[r.ib_account] = r.total_deposit;
+            });
+        } catch (e) {
+            console.warn('deposit sum failed (non-fatal):', e);
+        }
+
+        return NextResponse.json({ reports: results.results, deposits });
 
     } catch (error: any) {
         console.error('Fetch reports failed:', error);

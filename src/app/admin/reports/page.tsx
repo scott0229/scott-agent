@@ -41,6 +41,8 @@ interface ReportArchive {
 
 export default function HistoricalReportsPage() {
     const [reports, setReports] = useState<ReportArchive[]>([]);
+    // 總入金 per IB account (ib_account → net deposit), from /api/reports.
+    const [deposits, setDeposits] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [previewId, setPreviewId] = useState<number | null>(null);
@@ -78,6 +80,7 @@ export default function HistoricalReportsPage() {
             if (resReports.ok) {
                 const data = await resReports.json();
                 setReports(data.reports || []);
+                setDeposits(data.deposits || {});
             }
             if (resUsers.ok) {
                 const data = await resUsers.json();
@@ -567,9 +570,15 @@ export default function HistoricalReportsPage() {
                                   };
                                   const latest = accountReports[0].statement_date;
                                   const earliest = accountReports[accountReports.length - 1].statement_date;
+                                  const totalDeposit = deposits[accountId];
                                   return (
-                                      <div className="text-sm mt-1">
-                                          時間範圍：{fmt(earliest)} ~ {fmt(latest)}
+                                      <div className="text-sm mt-1 flex items-center gap-3 flex-wrap">
+                                          <span>時間範圍：{fmt(earliest)} ~ {fmt(latest)}</span>
+                                          {totalDeposit != null && (
+                                              <span className="text-muted-foreground">
+                                                  總入金：{new Intl.NumberFormat('en-US').format(Math.round(totalDeposit))}
+                                              </span>
+                                          )}
                                       </div>
                                   );
                               })()}
