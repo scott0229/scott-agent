@@ -131,11 +131,16 @@ export async function GET(
         }
 
         //  Call the SHARED calculation function - guarantees matching performance overview!
+        //  Benchmark start = the account's first equity record date, matching the
+        //  net-equity (績效分析) page so the QQQ 同期績效 figure agrees exactly;
+        //  falls back to prev-year Dec 31. This only sets the QQQ/QLD benchmark
+        //  base price — the account's own TWR (年初至今/夏普/最大跌幅) is unchanged.
+        const benchStartDate = (uEq.length > 0 ? (uEq[0] as any).date : prevYearDec31) || prevYearDec31;
         const twrResult = calculateUserTwr(
             uEq as any,
             uDep as any,
             user.initial_cost || 0,
-            prevYearDec31,
+            benchStartDate,
             qqqData,
             qldData
         );
