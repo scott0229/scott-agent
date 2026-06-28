@@ -517,6 +517,13 @@ export default function AdminUsersPage() {
             const v = Math.round(data.last25TradingDaysPremium);
             report += `近25交易日現金流 : $${formatMoney(v)}\n`;
         }
+        // QQQ對比績效: outperformance (年初至今 − QQQ 同期報酬) plus QQQ's raw return
+        // in parentheses, so the line shows both how we did vs QQQ and QQQ itself.
+        if (data.qqqReturn != null) {
+            const outperformance = data.ytdReturn - data.qqqReturn;
+            const sign = outperformance >= 0 ? '+' : '';
+            report += `QQQ對比績效 : ${sign}${(outperformance * 100).toFixed(1)}% (QQQ ${(data.qqqReturn * 100).toFixed(1)}%)\n`;
+        }
         report += `----------------------------------------\n`;
 
         // Calculate daily premium using user's start_date

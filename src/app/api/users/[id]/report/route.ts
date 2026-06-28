@@ -146,6 +146,20 @@ export async function GET(
         const sharpeRatio = twrResult.summary.stats?.sharpeRatio || 0;
         const annualStdDev = twrResult.summary.stats?.annualizedStdDev || 0;
 
+        // QQQ 同期報酬率 (TWR) for the 對比績效 line — the hypothetical "same cash
+        // flows into QQQ" return that calculateUserTwr already computed per day.
+        // Take the last day with a defined qqq_rate (% → fraction); null when no
+        // QQQ market data was available.
+        let qqqReturn: number | null = null;
+        const twrHistory = twrResult.summary.equity_history || [];
+        for (let i = twrHistory.length - 1; i >= 0; i--) {
+            const r = (twrHistory[i] as any).qqq_rate;
+            if (typeof r === 'number' && !Number.isNaN(r)) {
+                qqqReturn = r / 100;
+                break;
+            }
+        }
+
         // 6. Get stock positions
         const { results: stockPositions } = await db.prepare(`
             SELECT symbol, SUM(quantity) as quantity,
@@ -559,6 +573,7 @@ export async function GET(
                 highestNetWorth,
                 lifetimeDeposit,
                 ytdReturn,
+                qqqReturn,
                 maxDrawdown,
                 sharpeRatio,
                 annualStdDev,
