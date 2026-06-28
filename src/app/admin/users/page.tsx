@@ -495,7 +495,6 @@ export default function AdminUsersPage() {
         report += `帳戶淨值 : ${formatMoney(data.accountNetWorth)}${isNewHigh ? ' (新高)' : ''}\n`;
         report += `${yearLabel}成本 : ${formatMoney(data.cost2026)}\n`;
         report += `${yearLabel}淨利 : ${formatMoney(data.netProfit2026)}\n`;
-        report += `帳上現金 : ${formatMoney(data.cashBalance)}\n`;
         report += `歷史最高 : ${formatMoney(highestNetWorth)}\n`;
         if (data.lifetimeDeposit != null) {
             report += `總入金 : ${formatMoney(data.lifetimeDeposit)}\n`;
