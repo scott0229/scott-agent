@@ -26,6 +26,11 @@ interface AdminSettings {
      *  only count it for options the spot has breached the strike on
      *  ("只計入被突破") — OTM positions contribute 0. */
     closeCostOnlyBreached?: boolean;
+    /** Show the 收費資訊 columns (管理費率 / 費用免除 / 管理費預估) in the user
+     *  table. Off by default; enabling it in the settings dialog requires a
+     *  password (client-side gate — the fee data itself is already behind the
+     *  admin-only login). */
+    showFeeInfo?: boolean;
 }
 
 interface AdminSettingsContextType {
@@ -54,6 +59,7 @@ const defaultSettings: AdminSettings = {
     bccIncludeTradeAdvice: true,
     bccIncludeDailyOps: true,
     closeCostOnlyBreached: false,
+    showFeeInfo: false,
 };
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);

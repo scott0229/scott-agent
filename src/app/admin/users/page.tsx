@@ -1718,9 +1718,13 @@ export default function AdminUsersPage() {
                                 <TableHead className="text-center">IB 帳戶</TableHead>
                                 <TableHead className="text-center">帳戶能力</TableHead>
                                 <TableHead className="text-center">起始日期</TableHead>
-                                <TableHead className="text-center">管理費率</TableHead>
-                                <TableHead className="text-center">費用免除</TableHead>
-                                <TableHead className="text-center">管理費預估</TableHead>
+                                {settings.showFeeInfo && (
+                                    <>
+                                        <TableHead className="text-center">管理費率</TableHead>
+                                        <TableHead className="text-center">費用免除</TableHead>
+                                        <TableHead className="text-center">管理費預估</TableHead>
+                                    </>
+                                )}
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 {settings.showPhone && <TableHead className="text-center">手機號碼</TableHead>}
                                 {settings.showEmail && <TableHead>郵件地址</TableHead>}
@@ -1811,19 +1815,23 @@ export default function AdminUsersPage() {
                                                         return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                                                     })() : '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-note-badge text-foreground' : ''}`}>
-                                                    {user.role === 'customer' ? (
-                                                        user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-note-badge text-foreground' : ''}`}>
-                                                    {user.role === 'customer' ? (
-                                                        (user.fee_exempt_months ?? 0) > 0 ? `${user.fee_exempt_months}個月` : '-'
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell className="text-center py-1">
-                                                    {user.role === 'customer' ? formatMoney(estimatedFee) : '-'}
-                                                </TableCell>
+                                                {settings.showFeeInfo && (
+                                                    <>
+                                                        <TableCell className={`text-center py-1 ${user.role === 'customer' && user.management_fee === 0 ? 'bg-note-badge text-foreground' : ''}`}>
+                                                            {user.role === 'customer' ? (
+                                                                user.management_fee === 0 ? '不收費' : `${user.management_fee}%`
+                                                            ) : '-'}
+                                                        </TableCell>
+                                                        <TableCell className={`text-center py-1 ${user.role === 'customer' && (user.fee_exempt_months ?? 0) > 0 ? 'bg-note-badge text-foreground' : ''}`}>
+                                                            {user.role === 'customer' ? (
+                                                                (user.fee_exempt_months ?? 0) > 0 ? `${user.fee_exempt_months}個月` : '-'
+                                                            ) : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-center py-1">
+                                                            {user.role === 'customer' ? formatMoney(estimatedFee) : '-'}
+                                                        </TableCell>
+                                                    </>
+                                                )}
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
                                                 {settings.showEmail && <TableCell className="py-1">{user.email}</TableCell>}
@@ -1871,8 +1879,12 @@ export default function AdminUsersPage() {
                                     // Summary row
                                     <TableRow key="summary" className="bg-secondary/50 border-t-2">
                                         <TableCell className="text-center py-1">總計</TableCell>
-                                        <TableCell colSpan={7} className="text-center py-1"></TableCell>
-                                        <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
+                                        {/* Empty span up to 當前淨值. Covers 帳號→起始日期 (5),
+                                            plus 管理費率+費用免除 (2 more) when 收費資訊 is shown. */}
+                                        <TableCell colSpan={settings.showFeeInfo ? 7 : 5} className="text-center py-1"></TableCell>
+                                        {settings.showFeeInfo && (
+                                            <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
+                                        )}
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>

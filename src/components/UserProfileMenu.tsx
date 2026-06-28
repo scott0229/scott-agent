@@ -37,6 +37,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSettings } from "@/contexts/AdminSettingsContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
+// Password required to enable the 收費資訊 columns. Client-side gate: it hides
+// the 管理費 columns from over-the-shoulder view; the fee data itself is already
+// behind the admin-only login.
+const FEE_INFO_PASSWORD = 'nicolo971231';
+
 interface User {
     id: number;
     email: string;
@@ -59,6 +64,11 @@ export function UserProfileMenu() {
     const [isUpdating, setIsUpdating] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
+    // 收費資訊 toggle: turning it ON reveals an inline password prompt; only the
+    // correct password actually enables it. Turning OFF is free.
+    const [feeInfoPrompt, setFeeInfoPrompt] = useState(false);
+    const [feeInfoPassword, setFeeInfoPassword] = useState('');
+    const [feeInfoError, setFeeInfoError] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const { toast } = useToast();
@@ -207,6 +217,18 @@ export function UserProfileMenu() {
         }
     };
 
+    // Validate the 收費資訊 password and enable the columns on success.
+    const confirmFeeInfo = () => {
+        if (feeInfoPassword === FEE_INFO_PASSWORD) {
+            updateSetting('showFeeInfo', true);
+            setFeeInfoPrompt(false);
+            setFeeInfoPassword('');
+            setFeeInfoError('');
+        } else {
+            setFeeInfoError('密碼錯誤');
+        }
+    };
+
     if (loading) return <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />;
     if (!user) return null;
 
@@ -225,7 +247,7 @@ export function UserProfileMenu() {
                     </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuItem onClick={() => setIsEditOpen(true)} className="cursor-pointer">
+                    <DropdownMenuItem onClick={() => { setFeeInfoPrompt(false); setFeeInfoPassword(''); setFeeInfoError(''); setIsEditOpen(true); }} className="cursor-pointer">
                         <Edit className="mr-2 h-4 w-4" />
                         <span>設定</span>
                     </DropdownMenuItem>
@@ -350,6 +372,54 @@ export function UserProfileMenu() {
                                             </DropdownMenuCheckboxItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
+                                </div>
+                            )}
+
+                            {/* 收費資訊 toggle - Admin Only. Enabling (showing the
+                                管理費 columns) requires a password; disabling is free. */}
+                            {user.role === 'admin' && (
+                                <div className="grid grid-cols-[100px_1fr] items-start gap-4">
+                                    <Label htmlFor="fee-info-toggle" className="pt-1">收費資訊</Label>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-muted-foreground">
+                                                {settings.showFeeInfo ? '顯示管理費欄位' : '隱藏管理費欄位'}
+                                            </span>
+                                            <Switch
+                                                id="fee-info-toggle"
+                                                className="ml-auto"
+                                                checked={!!settings.showFeeInfo}
+                                                onCheckedChange={(v) => {
+                                                    if (v) {
+                                                        // Require the password before enabling.
+                                                        setFeeInfoPrompt(true);
+                                                        setFeeInfoPassword('');
+                                                        setFeeInfoError('');
+                                                    } else {
+                                                        updateSetting('showFeeInfo', false);
+                                                        setFeeInfoPrompt(false);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        {feeInfoPrompt && !settings.showFeeInfo && (
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="password"
+                                                    autoComplete="new-password"
+                                                    value={feeInfoPassword}
+                                                    onChange={(e) => { setFeeInfoPassword(e.target.value); setFeeInfoError(''); }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') { e.preventDefault(); confirmFeeInfo(); }
+                                                    }}
+                                                    placeholder="輸入密碼以開啟"
+                                                    className="h-8"
+                                                />
+                                                <Button type="button" size="sm" variant="outline" onClick={confirmFeeInfo}>確認</Button>
+                                            </div>
+                                        )}
+                                        {feeInfoError && <span className="text-xs text-destructive">{feeInfoError}</span>}
+                                    </div>
                                 </div>
                             )}
 
