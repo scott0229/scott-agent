@@ -174,6 +174,23 @@ export function UserProfileMenu() {
             }
         }
 
+        // 收費資訊: if the toggle was switched on, validate its password here (on
+        // 儲存變更) and enable the columns. A wrong password aborts the save so the
+        // user can correct it; an empty one just cancels the toggle.
+        if (feeInfoPrompt && !settings.showFeeInfo) {
+            if (feeInfoPassword === FEE_INFO_PASSWORD) {
+                updateSetting('showFeeInfo', true);
+                setFeeInfoPrompt(false);
+                setFeeInfoPassword('');
+                setFeeInfoError('');
+            } else if (feeInfoPassword.length > 0) {
+                setFeeInfoError('密碼錯誤');
+                return;
+            } else {
+                setFeeInfoPrompt(false);
+            }
+        }
+
         setIsUpdating(true);
 
         try {
@@ -214,18 +231,6 @@ export function UserProfileMenu() {
             setError(err.message);
         } finally {
             setIsUpdating(false);
-        }
-    };
-
-    // Validate the 收費資訊 password and enable the columns on success.
-    const confirmFeeInfo = () => {
-        if (feeInfoPassword === FEE_INFO_PASSWORD) {
-            updateSetting('showFeeInfo', true);
-            setFeeInfoPrompt(false);
-            setFeeInfoPassword('');
-            setFeeInfoError('');
-        } else {
-            setFeeInfoError('密碼錯誤');
         }
     };
 
@@ -403,20 +408,14 @@ export function UserProfileMenu() {
                                             />
                                         </div>
                                         {feeInfoPrompt && !settings.showFeeInfo && (
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    type="password"
-                                                    autoComplete="new-password"
-                                                    value={feeInfoPassword}
-                                                    onChange={(e) => { setFeeInfoPassword(e.target.value); setFeeInfoError(''); }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') { e.preventDefault(); confirmFeeInfo(); }
-                                                    }}
-                                                    placeholder="輸入密碼以開啟"
-                                                    className="h-8"
-                                                />
-                                                <Button type="button" size="sm" variant="outline" onClick={confirmFeeInfo}>確認</Button>
-                                            </div>
+                                            <Input
+                                                type="password"
+                                                autoComplete="new-password"
+                                                value={feeInfoPassword}
+                                                onChange={(e) => { setFeeInfoPassword(e.target.value); setFeeInfoError(''); }}
+                                                placeholder="輸入密碼後按「儲存變更」開啟"
+                                                className="h-8 w-full"
+                                            />
                                         )}
                                         {feeInfoError && <span className="text-xs text-destructive">{feeInfoError}</span>}
                                     </div>
