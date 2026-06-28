@@ -69,7 +69,10 @@ function loadSettings(): AdminSettings {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-            return { ...defaultSettings, ...JSON.parse(stored) };
+            // showFeeInfo is intentionally NOT restored — it always starts off
+            // on a fresh page load, so reopening the site re-hides the 管理費
+            // columns and requires the password again.
+            return { ...defaultSettings, ...JSON.parse(stored), showFeeInfo: false };
         }
     } catch (e) {
         // ignore parse errors
@@ -92,7 +95,9 @@ export function AdminSettingsProvider({ children }: { children: ReactNode }) {
 
     const setAllSettings = (newSettings: Partial<AdminSettings>) => {
         setSettings(prev => {
-            const next = { ...prev, ...newSettings };
+            // Keep showFeeInfo off when hydrating from saved preferences — it's
+            // session-only and must be re-enabled (with the password) each load.
+            const next = { ...prev, ...newSettings, showFeeInfo: false };
             if (typeof window !== 'undefined') {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
             }
