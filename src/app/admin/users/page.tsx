@@ -95,6 +95,9 @@ interface User {
     options_count?: number;
     open_count?: number;
     net_deposit?: number;
+    /** 總入金 — lifetime net deposits across all years for this IB account
+     *  (sum of DAILY_NET_EQUITY.deposit by ib_account), matching the report. */
+    lifetime_deposit?: number;
     created_at: number;
     deposits_count?: number;
     interest_count?: number;
@@ -1725,6 +1728,7 @@ export default function AdminUsersPage() {
                                         <TableHead className="text-center">管理費預估</TableHead>
                                     </>
                                 )}
+                                <TableHead className="text-center">總入金</TableHead>
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 {settings.showPhone && <TableHead className="text-center">手機號碼</TableHead>}
                                 {settings.showEmail && <TableHead>郵件地址</TableHead>}
@@ -1783,9 +1787,19 @@ export default function AdminUsersPage() {
                                     return sum;
                                 }, 0);
 
+                                // 總入金 total — lifetime deposit (by ib_account) for customers,
+                                // falling back to the year-scoped net_deposit when no ib_account.
+                                const totalDeposit = sortedUsers.reduce((sum, user) => {
+                                    if (user.role === 'customer') {
+                                        return sum + (user.ib_account ? (user.lifetime_deposit ?? 0) : (user.net_deposit ?? 0));
+                                    }
+                                    return sum;
+                                }, 0);
+
                                 return [
                                     ...sortedUsers.map((user, index) => {
                                         const currentEquity = user.current_net_equity || 0;
+                                        const depositValue = user.ib_account ? (user.lifetime_deposit ?? 0) : (user.net_deposit ?? 0);
                                         let feeRatio = 1;
                                         if (user.start_date) {
                                             const start = new Date(user.start_date);
@@ -1832,6 +1846,7 @@ export default function AdminUsersPage() {
                                                         </TableCell>
                                                     </>
                                                 )}
+                                                <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(depositValue) : '-'}</TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
                                                 {settings.showEmail && <TableCell className="py-1">{user.email}</TableCell>}
@@ -1885,6 +1900,7 @@ export default function AdminUsersPage() {
                                         {settings.showFeeInfo && (
                                             <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         )}
+                                        <TableCell className="text-center py-1">{formatMoney(totalDeposit)}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>

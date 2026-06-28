@@ -528,6 +528,7 @@ export async function GET(req: NextRequest) {
             // Add counts and net_deposit for specific year
             additionalSelects = `, 
                 (SELECT COALESCE(SUM(deposit), 0) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ?) as net_deposit,
+                (SELECT COALESCE(SUM(d.deposit), 0) FROM DAILY_NET_EQUITY d JOIN USERS u2 ON u2.id = d.user_id WHERE u2.ib_account = USERS.ib_account) as lifetime_deposit,
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND year = ? AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id AND OPTIONS.year = ?) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id AND STOCK_TRADES.year = ?) as stock_trades_count,
@@ -545,6 +546,7 @@ export async function GET(req: NextRequest) {
             // General counts for All years
             additionalSelects = `, 
                 (SELECT COALESCE(SUM(deposit), 0) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id) as net_deposit,
+                (SELECT COALESCE(SUM(d.deposit), 0) FROM DAILY_NET_EQUITY d JOIN USERS u2 ON u2.id = d.user_id WHERE u2.ib_account = USERS.ib_account) as lifetime_deposit,
                 (SELECT COUNT(*) FROM DAILY_NET_EQUITY WHERE user_id = USERS.id AND deposit != 0) as deposits_count,
                 (SELECT COUNT(*) FROM OPTIONS WHERE OPTIONS.owner_id = USERS.id) as options_count,
                 (SELECT COUNT(*) FROM STOCK_TRADES WHERE STOCK_TRADES.owner_id = USERS.id) as stock_trades_count,
