@@ -30,6 +30,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
     }
 
+    // The `admin` account is disabled for login (security: replaced by the
+    // `scottagent` account). Use scottagent for admin access. Matched on the
+    // resolved user so logging in via either the user_id or the account's
+    // email is blocked. Return the SAME generic error as a bad credential so we
+    // don't disclose that the account exists or is disabled. Remove this guard
+    // to re-enable.
+    if (user.user_id === 'admin') {
+      return NextResponse.json({ error: '帳號或密碼錯誤' }, { status: 401 });
+    }
+
     const isValid = await verifyPassword(password, user.password as string);
 
     if (!isValid) {
