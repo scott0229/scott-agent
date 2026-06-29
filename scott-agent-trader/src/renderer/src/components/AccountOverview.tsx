@@ -682,10 +682,31 @@ export default function AccountOverview({
     }
   }, [filteredAlias, d1Target, groupViewMode])
 
-  // Compute positions not belonging to any group — QUANTITY-AWARE. A contract
-  // can be partly claimed (group A claims -4 of an IB -8 → -4 remains
-  // uncategorized). Auto groups and legacy manual groups (posKeys, no legs)
-  // cover a contract WHOLLY; manual groups with legs cover by signed quantity.
+  // contractKey → how many manual groups claim it. A sole claimer owns the whole
+  // live position (auto-tracking); shared contracts (≥2 groups) split by stored
+  // leg quantity. Used by both computeGroupRows and uncategorizedPositions so the
+  // group card and the 未歸類 card agree.
+  const legClaimCount = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const g of symbolGroups) {
+      if (g.autoParams || !g.legs) continue
+      const seen = new Set<string>()
+      for (const l of g.legs) {
+        if (l.quantity === 0) continue
+        const ck = legContractKey(l)
+        if (seen.has(ck)) continue
+        seen.add(ck)
+        m.set(ck, (m.get(ck) || 0) + 1)
+      }
+    }
+    return m
+  }, [symbolGroups])
+
+  // Compute positions not belonging to any group — QUANTITY-AWARE. A SHARED
+  // contract can be partly claimed (group A claims -4 of an IB -8 → -4 remains
+  // uncategorized). A SOLE claimer owns the whole live position (matching the
+  // group card), so it's fully covered with no leftover. Auto / legacy posKey
+  // groups also cover a contract wholly.
   const uncategorizedPositions = useMemo(() => {
     if (!groupViewMode) return []
     const fullyCovered = new Set<string>() // posContractKey covered wholly
@@ -699,7 +720,10 @@ export default function AccountOverview({
         g.legs.forEach((l) => {
           if (l.quantity === 0) return
           const ck = legContractKey(l)
-          claimed.set(ck, (claimed.get(ck) || 0) + l.quantity)
+          // Sole claimer covers the whole live position (no leftover); only a
+          // contract shared by ≥2 groups splits by claimed quantity.
+          if ((legClaimCount.get(ck) || 0) <= 1) fullyCovered.add(ck)
+          else claimed.set(ck, (claimed.get(ck) || 0) + l.quantity)
         })
       } else {
         // Legacy manual group without legs: cover its posKey contracts wholly.
@@ -740,26 +764,7 @@ export default function AccountOverview({
         const bAlias = formatAccountName(accounts.find((x) => x.accountId === b.account)?.alias || b.account)
         return aAlias.localeCompare(bAlias)
       })
-  }, [groupViewMode, symbolGroups, positions, accounts])
-
-  // contractKey → how many manual groups claim it. Lets computeGroupRows give a
-  // sole claimer the live position size (auto-tracking) while a shared contract
-  // keeps each leg's stored split quantity.
-  const legClaimCount = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const g of symbolGroups) {
-      if (g.autoParams || !g.legs) continue
-      const seen = new Set<string>()
-      for (const l of g.legs) {
-        if (l.quantity === 0) continue
-        const ck = legContractKey(l)
-        if (seen.has(ck)) continue
-        seen.add(ck)
-        m.set(ck, (m.get(ck) || 0) + 1)
-      }
-    }
-    return m
-  }, [symbolGroups])
+  }, [groupViewMode, symbolGroups, positions, accounts, legClaimCount])
 
   // Masonry layout: measure each card and set grid-row span
   // Only recalculate when actual data changes (not on every poll-triggered render)
@@ -848,20 +853,28 @@ export default function AccountOverview({
       // the final spans are applied.
       const pinnedHeight = grid.offsetHeight
       grid.style.minHeight = `${pinnedHeight}px`
+      // Collapse every (non-editing) card so scrollHeight reports true content
+      // height. The active note card is left alone → its scrollHeight stays at
+      // its current (≥ content) box, giving grow-only behaviour for the IME.
       cards.forEach((card) => {
         if (card === activeCard) return
-        card.style.gridRowEnd = ''
+        card.style.gridRow = ''
+        card.style.gridColumn = ''
       })
       void grid.offsetHeight
-      cards.forEach((card) => {
-        if (card === activeCard) {
-          // Grow-only, no reset: keeps the textarea/IME stable while typing.
-          const current = parseInt(card.style.gridRowEnd.replace(/\D/g, ''), 10) || 0
-          const span = spanFor(card.scrollHeight)
-          if (span > current) card.style.gridRowEnd = `span ${span}`
-          return
-        }
-        card.style.gridRowEnd = `span ${spanFor(card.scrollHeight)}`
+      // Fixed round-robin column assignment: card i always lives in column
+      // (i % colCount). A live 交易建議 changing a card's height then only shifts
+      // cards BELOW it in the SAME column — cards never jump columns/positions
+      // the way browser grid auto-placement made them.
+      const colCount =
+        getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1
+      const colRows = new Array(colCount).fill(0) // grid rows consumed per column
+      Array.from(cards).forEach((card, i) => {
+        const col = i % colCount
+        const span = spanFor(card.scrollHeight)
+        card.style.gridColumn = String(col + 1)
+        card.style.gridRow = `${colRows[col] + 1} / span ${span}`
+        colRows[col] += span
       })
       grid.style.minHeight = ''
       // Belt-and-suspenders: if anything still clamped the scroll, restore it.
