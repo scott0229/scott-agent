@@ -556,7 +556,7 @@ export async function GET(req: NextRequest) {
         }
 
         let query = `
-            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, operation_mode, report_note${additionalSelects}
+            SELECT id, email, user_id, role, management_fee, ib_account, phone, created_at, initial_cost, initial_cash, initial_management_fee, initial_deposit, initial_interest, start_date, fee_exempt_months, account_capability, operation_mode, deposit_limit, report_note${additionalSelects}
             FROM USERS 
         `;
         let whereClauses = [];
@@ -681,7 +681,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate, feeExemptMonths, operationMode } = await req.json() as {
+        const { email, userId, password, role, managementFee, ibAccount, phone, year, initialCost, startDate, feeExemptMonths, operationMode, depositLimit } = await req.json() as {
             email?: string;
             userId?: string;
             password?: string;
@@ -694,6 +694,7 @@ export async function POST(req: NextRequest) {
             startDate?: string;
             feeExemptMonths?: number;
             operationMode?: string;
+            depositLimit?: number | string | null;
         };
 
         if (!email || !userId || !role) {
@@ -724,9 +725,11 @@ export async function POST(req: NextRequest) {
         const initCost = role === 'customer' ? (initialCost || 0) : 0;
         const exemptMonths = role === 'customer' ? (feeExemptMonths || 0) : 0;
         const opMode = role === 'customer' ? (operationMode || null) : null;
+        const depLimitNum = depositLimit === '' || depositLimit == null ? null : Number(depositLimit);
+        const depLimit = role === 'customer' && depLimitNum != null && Number.isFinite(depLimitNum) ? depLimitNum : null;
 
-        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, operation_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, unixepoch(), unixepoch())')
-            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null, exemptMonths, opMode)
+        await db.prepare('INSERT INTO USERS (email, user_id, password, role, management_fee, ib_account, phone, year, initial_cost, initial_cash, initial_management_fee, initial_deposit, start_date, fee_exempt_months, operation_mode, deposit_limit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, unixepoch(), unixepoch())')
+            .bind(email, userId, hashedPassword, role, fee, ib, phone || null, userYear, initCost, startDate || null, exemptMonths, opMode, depLimit)
             .run();
 
         return NextResponse.json({ success: true });
@@ -846,7 +849,7 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: '權限不足' }, { status: 403 });
         }
 
-        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, startDate, feeExemptMonths, operationMode } = await req.json() as {
+        const { id, email, userId, password, role, managementFee, ibAccount, phone, initialCost, initialCash, initialManagementFee, initialDeposit, startDate, feeExemptMonths, operationMode, depositLimit } = await req.json() as {
             id: number;
             email?: string;
             userId?: string;
@@ -863,6 +866,7 @@ export async function PUT(req: NextRequest) {
             startDate?: string;
             feeExemptMonths?: number;
             operationMode?: string;
+            depositLimit?: number | string | null;
         };
 
         if (!id) {
@@ -966,6 +970,13 @@ export async function PUT(req: NextRequest) {
         if (typeof operationMode !== 'undefined') {
             updateQuery += ', operation_mode = ?';
             params.push(operationMode || null);
+        }
+
+        if (typeof depositLimit !== 'undefined') {
+            // Empty string / null clears the cap (NULL = no limit).
+            updateQuery += ', deposit_limit = ?';
+            const n = depositLimit === '' || depositLimit === null ? null : Number(depositLimit);
+            params.push(n != null && Number.isFinite(n) ? n : null);
         }
 
         if (password && password.trim() !== '') {

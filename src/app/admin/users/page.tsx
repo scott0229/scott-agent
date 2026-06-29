@@ -111,6 +111,8 @@ interface User {
     fee_exempt_months?: number;
     account_capability?: string;
     operation_mode?: string;
+    /** 入金上限 — per-account deposit cap (NULL = no limit). Editable. */
+    deposit_limit?: number | null;
     open_otm_premium?: number;
     open_itm_final_profit?: number;
     open_all_final_profit?: number;
@@ -1733,6 +1735,7 @@ export default function AdminUsersPage() {
                                     </>
                                 )}
                                 <TableHead className="text-center">總入金</TableHead>
+                                <TableHead className="text-center">入金上限</TableHead>
                                 <TableHead className="text-center">當前淨值</TableHead>
                                 {settings.showPhone && <TableHead className="text-center">手機號碼</TableHead>}
                                 {settings.showEmail && <TableHead>郵件地址</TableHead>}
@@ -1748,7 +1751,7 @@ export default function AdminUsersPage() {
                                 if (filteredUsers.length === 0) {
                                     return (
                                         <TableRow className="hover:bg-transparent">
-                                            <TableCell colSpan={12} className="p-4">
+                                            <TableCell colSpan={13} className="p-4">
                                                 <div className="text-center py-12 text-muted-foreground bg-secondary/10 rounded-lg border border-dashed">
                                                     尚無客戶資料
                                                 </div>
@@ -1796,6 +1799,14 @@ export default function AdminUsersPage() {
                                 const totalDeposit = sortedUsers.reduce((sum, user) => {
                                     if (user.role === 'customer') {
                                         return sum + (user.ib_account ? (user.lifetime_deposit ?? 0) : (user.net_deposit ?? 0));
+                                    }
+                                    return sum;
+                                }, 0);
+
+                                // 入金上限 total — sum of set caps (accounts with no cap don't count).
+                                const totalDepositLimit = sortedUsers.reduce((sum, user) => {
+                                    if (user.role === 'customer' && user.deposit_limit != null) {
+                                        return sum + (user.deposit_limit as number);
                                     }
                                     return sum;
                                 }, 0);
@@ -1851,6 +1862,9 @@ export default function AdminUsersPage() {
                                                     </>
                                                 )}
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(depositValue) : '-'}</TableCell>
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.deposit_limit != null && depositValue > (user.deposit_limit as number) ? 'text-destructive' : ''}`}>
+                                                    {user.role === 'customer' && user.deposit_limit != null ? formatMoney(user.deposit_limit) : '-'}
+                                                </TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
                                                 {settings.showEmail && <TableCell className="py-1">{user.email}</TableCell>}
@@ -1905,6 +1919,7 @@ export default function AdminUsersPage() {
                                             <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         )}
                                         <TableCell className="text-center py-1">{formatMoney(totalDeposit)}</TableCell>
+                                        <TableCell className="text-center py-1">{totalDepositLimit > 0 ? formatMoney(totalDepositLimit) : ''}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>

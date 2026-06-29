@@ -25,7 +25,7 @@ interface AdminUserDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
-    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string; fee_exempt_months?: number; operation_mode?: string } | null;
+    userToEdit?: { id: number; email: string; user_id: string | null; role: string; management_fee?: number; ib_account?: string; phone?: string; start_date?: string; fee_exempt_months?: number; operation_mode?: string; deposit_limit?: number | null } | null;
 }
 
 
@@ -43,6 +43,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
         phone: '',
         startDate: '',
         operationMode: '',
+        depositLimit: '',
     });
 
     // Reset or populate form when opening
@@ -58,6 +59,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
                 operationMode: userToEdit.operation_mode || '',
+                depositLimit: userToEdit.deposit_limit != null ? String(userToEdit.deposit_limit) : '',
             });
         }
     });
@@ -77,9 +79,10 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                 phone: userToEdit.phone || '',
                 startDate: userToEdit.start_date || '',
                 operationMode: userToEdit.operation_mode || '',
+                depositLimit: userToEdit.deposit_limit != null ? String(userToEdit.deposit_limit) : '',
             });
         } else {
-            setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '' });
+            setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '', depositLimit: '' });
         }
     }
 
@@ -112,7 +115,7 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
             onSuccess();
             onOpenChange(false);
             if (!userToEdit) {
-                setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '' });
+                setFormData({ email: '', userId: '', role: 'customer', managementFee: '4.0', feeExemptMonths: '0', ibAccount: '', phone: '', startDate: '', operationMode: '', depositLimit: '' });
             }
         } catch (error: any) {
             toast({
@@ -290,6 +293,22 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                         <SelectItem value="權利金為主">權利金為主</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="grid grid-cols-3 items-center gap-4">
+                                <Label htmlFor="depositLimit" className="text-right">
+                                    入金上限
+                                </Label>
+                                <Input
+                                    id="depositLimit"
+                                    type="number"
+                                    min="0"
+                                    step="1000"
+                                    placeholder="無上限"
+                                    value={formData.depositLimit}
+                                    onChange={(e) => setFormData({ ...formData, depositLimit: e.target.value })}
+                                    className="col-span-2"
+                                    autoComplete="off"
+                                />
                             </div>
 
                         </>
