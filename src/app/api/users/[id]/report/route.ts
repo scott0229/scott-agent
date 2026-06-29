@@ -34,7 +34,7 @@ export async function GET(
 
         // 1. Get user profile
         const user = await db.prepare(`
-            SELECT id, user_id, email, initial_cost, year, start_date, ib_account
+            SELECT id, user_id, email, initial_cost, year, start_date, ib_account, deposit_limit
             FROM USERS
             WHERE id = ?
         `).bind(userId).first();
@@ -577,6 +577,9 @@ export async function GET(
                 marginRate,
                 highestNetWorth,
                 lifetimeDeposit,
+                // 入金上限 stored in 萬 (null = no limit); formatted to dollars
+                // in the report for direct comparison with 總入金.
+                depositLimit: user.deposit_limit ?? null,
                 ytdReturn,
                 qqqReturn,
                 maxDrawdown,
