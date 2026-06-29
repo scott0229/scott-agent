@@ -1804,14 +1804,6 @@ export default function AdminUsersPage() {
                                     return sum;
                                 }, 0);
 
-                                // 入金上限 total — sum of set caps (accounts with no cap don't count).
-                                const totalDepositLimit = sortedUsers.reduce((sum, user) => {
-                                    if (user.role === 'customer' && user.deposit_limit != null) {
-                                        return sum + (user.deposit_limit as number);
-                                    }
-                                    return sum;
-                                }, 0);
-
                                 return [
                                     ...sortedUsers.map((user, index) => {
                                         const currentEquity = user.current_net_equity || 0;
@@ -1926,7 +1918,7 @@ export default function AdminUsersPage() {
                                             <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         )}
                                         <TableCell className="text-center py-1">{formatMoney(totalDeposit)}</TableCell>
-                                        <TableCell className="text-center py-1">{totalDepositLimit > 0 ? `${formatMoney(totalDepositLimit)} 萬` : ''}</TableCell>
+                                        <TableCell className="text-center py-1"></TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>
