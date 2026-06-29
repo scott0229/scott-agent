@@ -502,9 +502,8 @@ export default function AdminUsersPage() {
         if (data.lifetimeDeposit != null) {
             report += `總入金 : ${formatMoney(data.lifetimeDeposit)}\n`;
         }
-        // 入金上限 stored in 萬 → show in dollars (×10000) to compare with 總入金;
-        // null means no cap is set.
-        report += `入金上限 : ${data.depositLimit != null ? formatMoney(data.depositLimit * 10000) : '無上限'}\n`;
+        // 入金上限 stored in 萬 → show as "N 萬美元"; null means no cap is set.
+        report += `入金上限 : ${data.depositLimit != null ? `${formatMoney(data.depositLimit)} 萬美元` : '無上限'}\n`;
         report += `----------------------------------------\n`;
         report += `年初至今 : ${formatPercent(data.ytdReturn)}\n`;
         report += `最大跌幅 : ${formatPercent(data.maxDrawdown)}\n`;
