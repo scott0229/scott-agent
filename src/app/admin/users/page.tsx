@@ -111,7 +111,8 @@ interface User {
     fee_exempt_months?: number;
     account_capability?: string;
     operation_mode?: string;
-    /** 入金上限 — per-account deposit cap (NULL = no limit). Editable. */
+    /** 入金上限 — per-account deposit cap in 萬 (50 = 50萬 = 500,000).
+     *  NULL = no limit. Editable. */
     deposit_limit?: number | null;
     open_otm_premium?: number;
     open_itm_final_profit?: number;
@@ -1862,8 +1863,8 @@ export default function AdminUsersPage() {
                                                     </>
                                                 )}
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(depositValue) : '-'}</TableCell>
-                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.deposit_limit != null && depositValue > (user.deposit_limit as number) ? 'text-destructive' : ''}`}>
-                                                    {user.role === 'customer' && user.deposit_limit != null ? formatMoney(user.deposit_limit) : '-'}
+                                                <TableCell className={`text-center py-1 ${user.role === 'customer' && user.deposit_limit != null && depositValue > (user.deposit_limit as number) * 10000 ? 'text-destructive' : ''}`}>
+                                                    {user.role === 'customer' && user.deposit_limit != null ? `${formatMoney(user.deposit_limit)} 萬` : '-'}
                                                 </TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
@@ -1919,7 +1920,7 @@ export default function AdminUsersPage() {
                                             <TableCell className="text-center py-1">{formatMoney(totalEstimatedFee)}</TableCell>
                                         )}
                                         <TableCell className="text-center py-1">{formatMoney(totalDeposit)}</TableCell>
-                                        <TableCell className="text-center py-1">{totalDepositLimit > 0 ? formatMoney(totalDepositLimit) : ''}</TableCell>
+                                        <TableCell className="text-center py-1">{totalDepositLimit > 0 ? `${formatMoney(totalDepositLimit)} 萬` : ''}</TableCell>
                                         <TableCell className="text-center py-1">{formatMoney(totalCurrentEquity)}</TableCell>
                                         <TableCell colSpan={1 + (settings.showPhone ? 1 : 0) + (settings.showEmail ? 1 : 0)} className="py-1"></TableCell>
                                     </TableRow>

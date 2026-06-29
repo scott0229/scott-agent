@@ -298,17 +298,22 @@ export function AdminUserDialog({ open, onOpenChange, onSuccess, userToEdit }: A
                                 <Label htmlFor="depositLimit" className="text-right">
                                     入金上限
                                 </Label>
-                                <Input
-                                    id="depositLimit"
-                                    type="number"
-                                    min="0"
-                                    step="1000"
-                                    placeholder="無上限"
-                                    value={formData.depositLimit}
-                                    onChange={(e) => setFormData({ ...formData, depositLimit: e.target.value })}
-                                    className="col-span-2"
-                                    autoComplete="off"
-                                />
+                                <div className="col-span-2 relative">
+                                    <Input
+                                        id="depositLimit"
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        placeholder="無上限"
+                                        value={formData.depositLimit}
+                                        onChange={(e) => setFormData({ ...formData, depositLimit: e.target.value })}
+                                        className="pr-10"
+                                        autoComplete="off"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                        萬
+                                    </span>
+                                </div>
                             </div>
 
                         </>
