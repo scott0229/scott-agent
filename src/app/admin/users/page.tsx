@@ -1864,7 +1864,9 @@ export default function AdminUsersPage() {
                                                 )}
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(depositValue) : '-'}</TableCell>
                                                 <TableCell className={`text-center py-1 ${user.role === 'customer' && user.deposit_limit != null && depositValue > (user.deposit_limit as number) * 10000 ? 'text-destructive' : ''}`}>
-                                                    {user.role === 'customer' && user.deposit_limit != null ? `${formatMoney(user.deposit_limit)} 萬` : '-'}
+                                                    {user.role === 'customer'
+                                                        ? (user.deposit_limit != null ? `${formatMoney(user.deposit_limit)} 萬` : '無上限')
+                                                        : '-'}
                                                 </TableCell>
                                                 <TableCell className="text-center py-1">{user.role === 'customer' ? formatMoney(currentEquity) : '-'}</TableCell>
                                                 {settings.showPhone && <TableCell className="text-center py-1">{formatPhoneNumber(user.phone)}</TableCell>}
