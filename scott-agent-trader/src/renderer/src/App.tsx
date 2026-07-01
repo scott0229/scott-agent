@@ -442,7 +442,7 @@ function App(): React.JSX.Element {
           </button>
           {optionUnderlyings
             .filter((sym) => quotes[sym] > 0)
-            .slice(0, 5)
+            .slice(0, 4)
             .map((sym) => {
               const close = stockCloses[sym]
               const pct = close > 0 ? ((quotes[sym] - close) / close) * 100 : null
