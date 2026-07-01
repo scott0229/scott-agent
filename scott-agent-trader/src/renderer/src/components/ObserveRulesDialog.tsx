@@ -137,7 +137,7 @@ export default function ObserveRulesDialog({
       padding: '0 4px',
       border: '1px solid #ccc',
       borderRadius: 5,
-      fontSize: '0.88em',
+      fontSize: 'calc(0.88em + 1px)',
       textAlign: 'center',
       flexShrink: 0,
       margin: '0 5px'
@@ -154,10 +154,10 @@ export default function ObserveRulesDialog({
           // No flex gap — spacing comes from the boxes' own margins so the 「，」
           // separators sit tight against the boxes/labels (like normal text).
           gap: 0,
-          marginBottom: 12,
+          marginBottom: 5,
           padding: '3px 8px',
           borderRadius: 5,
-          fontSize: '0.88em',
+          fontSize: 'calc(0.88em - 1px)',
           color: '#555',
           // 當天不操作 rows get a faint yellow band.
           background: isNoAction ? '#ffeeba' : undefined

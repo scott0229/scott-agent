@@ -2908,8 +2908,8 @@ input[type='number']::-webkit-outer-spin-button {
   white-space: nowrap;
   gap: 0;
   justify-content: center;
-  /* Match the row's "點 / 天" label size + colour. */
-  font-size: 0.88em;
+  /* Slightly larger than the row's label text so the values stand out. */
+  font-size: calc(0.88em + 1px);
   background: #fff;
   border-color: #ccc;
   border-radius: 5px;

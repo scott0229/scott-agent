@@ -41,7 +41,8 @@ import {
   subscribeOptionQuotes,
   subscribeOrderQuotes,
   unsubscribeAllQuotes,
-  getLiveQuotes
+  getLiveQuotes,
+  seedStockCloses
 } from './ib/quotes'
 import type { OrderQuoteRequest } from './ib/quotes'
 import { getHistoricalData } from './ib/historical'
@@ -353,6 +354,12 @@ function setupIpcHandlers(): void {
 
       if (symbols.length > 0) {
         subscribeStockQuotes(symbols, pushUpdate)
+        // Streaming close ticks (type 9) are unreliable for some symbols
+        // (QQQ/QLD). After a beat, seed any still-missing prior close from a
+        // daily historical bar so the header day-change % renders.
+        setTimeout(() => {
+          seedStockCloses(symbols).catch(() => {})
+        }, 4000)
       }
       if (optionContracts.length > 0) {
         subscribeOptionQuotes(optionContracts, pushUpdate)

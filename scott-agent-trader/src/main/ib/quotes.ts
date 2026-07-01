@@ -1,5 +1,6 @@
 import { Contract, EventName, OptionType, SecType } from '@stoqey/ib'
 import { getIBApi } from './connection'
+import { getHistoricalData } from './historical'
 
 let reqIdCounter = 80000
 
@@ -690,5 +691,38 @@ export function getLiveQuotes(): {
     closes: { ...liveStockCloses },
     optionQuotes: { ...liveOptionPrices },
     orderQuotes: { ...liveOrderQuotes }
+  }
+}
+
+/**
+ * Seed the prior-session close for any subscribed stock that didn't get a
+ * streaming close tick (IB's tick 9 is unreliable for some high-subscription
+ * symbols, e.g. QQQ/QLD). Pulls the previous daily bar's close from historical
+ * data so the header pill's day-change % can render. Best-effort and skipped
+ * for symbols already filled by the live stream.
+ */
+export async function seedStockCloses(symbols: string[]): Promise<void> {
+  for (const raw of symbols) {
+    const sym = raw.toUpperCase()
+    if (liveStockCloses[sym] > 0) continue
+    try {
+      const bars = await getHistoricalData({
+        symbol: sym,
+        secType: 'STK',
+        durationString: '4 D',
+        barSizeSetting: '1 day',
+        whatToShow: 'TRADES'
+      })
+      // Stream may have filled it while we awaited; don't clobber.
+      if (liveStockCloses[sym] > 0) continue
+      // Last bar is today (forming); the one before it is the prior close.
+      if (bars.length >= 2) {
+        liveStockCloses[sym] = bars[bars.length - 2].close
+        console.log(`[IB] seeded prior close ${sym} = ${liveStockCloses[sym]} (historical)`)
+        emitUpdate()
+      }
+    } catch {
+      // Best-effort — the pill just omits the % for this symbol.
+    }
   }
 }
