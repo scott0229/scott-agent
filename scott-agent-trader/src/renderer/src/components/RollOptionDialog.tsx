@@ -32,6 +32,9 @@ interface RollOptionDialogProps {
   // just hands the target back (used by 展期觀察).
   observeMode?: boolean
   onObserve?: (target: { expiry: string; strike: number; right: 'C' | 'P' }) => void
+  // Batch-group id of the group being rolled — stamped into each order's IB
+  // orderRef so 委託單 keeps different groups' rolls in separate collapse groups.
+  sourceGroupId?: string
 }
 
 function midPrice(greek: OptionGreek | undefined): number | null {
@@ -49,7 +52,8 @@ export default function RollOptionDialog({
   onRollComplete,
   initialTarget,
   observeMode,
-  onObserve
+  onObserve,
+  sourceGroupId
 }: RollOptionDialogProps): React.JSX.Element | null {
   // Snapshot positions on open so parent re-renders don't cause re-fetches.
   // The snapshot is taken synchronously DURING the render where open flips
@@ -383,7 +387,8 @@ export default function RollOptionDialog({
             openRight: targetRight,
             action: closeAction,
             limitPrice: parseFloat(limitPrice),
-            outsideRth: true
+            outsideRth: true,
+            orderRef: sourceGroupId
           },
           { [pos.account]: qty }
         )

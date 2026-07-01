@@ -3875,8 +3875,13 @@ export default function AccountOverview({
                       // Group orders that share the same 標的 + 行動 (i.e. one
                       // batch placed across many accounts), preserving sort
                       // order. A multi-order group collapses to its first row.
+                      // Prefix with the placing batch-group (orderRef) so two
+                      // DIFFERENT groups' identical rolls stay in separate collapse
+                      // groups. Same group across accounts (same orderRef + same
+                      // signature) still collapses to one row. TWS-placed orders
+                      // (no orderRef) keep the plain contract-signature grouping.
                       const batchKey = (o: OpenOrderData): string =>
-                        `${o.symbol}|${o.secType}|${o.comboDescription || ''}|${o.expiry || ''}|${o.strike || ''}|${o.right || ''}|${o.action}|${o.orderType}`
+                        `${o.orderRef || ''}|${o.symbol}|${o.secType}|${o.comboDescription || ''}|${o.expiry || ''}|${o.strike || ''}|${o.right || ''}|${o.action}|${o.orderType}`
                       // 以帳戶分類: one group per 帳戶; otherwise one per batch
                       // (same 標的+行動 across accounts).
                       const keyFn = ordersByAccount
@@ -5662,6 +5667,7 @@ export default function AccountOverview({
         accounts={accounts}
         observeMode={observeGroupId !== null}
         initialTarget={rollInitialTarget ?? undefined}
+        sourceGroupId={rollSourceGroupIdRef.current ?? undefined}
         onObserve={(target) => {
           const g = symbolGroups.find((x) => x.id === observeGroupId)
           if (g) {

@@ -38,6 +38,9 @@ export interface OpenOrderData {
   right?: string
   comboDescription?: string
   comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
+  // Batch-group id we stamped at placement (empty for TWS orders). Used to keep
+  // different groups' orders in separate 委託單 collapse groups.
+  orderRef?: string
   filled?: number
   avgFillPrice?: number
 }

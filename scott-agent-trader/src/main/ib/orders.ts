@@ -206,6 +206,11 @@ export interface RollOrderRequest {
   action: 'BUY' | 'SELL' // action on the CLOSE leg (BUY to close short, SELL to close long)
   limitPrice: number // net combo limit price
   outsideRth?: boolean
+  // Batch-group id stamped into IB's orderRef so the 委託單 view can group these
+  // orders by the group that placed them (different groups don't collapse
+  // together even when the roll is identical). IB stores & returns orderRef on
+  // every open-order snapshot, so it survives reconnect/restart.
+  orderRef?: string
 }
 
 // Cache of resolved option-leg details, keyed by conId (globally unique — the
@@ -459,7 +464,9 @@ export async function placeRollOrder(
       lmtPrice: request.limitPrice,
       account: accountId,
       outsideRth: request.outsideRth ?? false,
-      transmit: true
+      transmit: true,
+      // Tag with the batch-group id so 委託單 can keep different groups' rolls apart.
+      ...(request.orderRef ? { orderRef: request.orderRef } : {})
     }
 
     results.push({
@@ -632,6 +639,9 @@ export interface OpenOrder {
   right?: string
   comboDescription?: string
   comboLegs?: Array<{ conId: number; ratio: number; action: string; exchange: string }>
+  // Client tag we stamped at placement (= batch-group id) so the 委託單 view can
+  // group orders by the group that placed them. Empty for TWS-placed orders.
+  orderRef?: string
   // Fill progress from IB orderStatus (for partially-filled working orders).
   filled?: number
   avgFillPrice?: number
@@ -706,7 +716,8 @@ export async function requestOpenOrders(): Promise<OpenOrder[]> {
         right: contract.right || undefined,
         comboDescription:
           contract.secType === 'BAG' ? comboDescriptionForOrder(permId, comboLegs) : undefined,
-        comboLegs
+        comboLegs,
+        orderRef: order.orderRef || undefined
       }
 
       // Deduplicate by permId (globally unique). orderId alone collapses
@@ -1000,7 +1011,8 @@ export function setupOpenOrderListener(callback: (order: OpenOrder) => void): vo
           contract.secType === 'BAG'
             ? comboDescriptionForOrder(order.permId || 0, comboLegs)
             : undefined,
-        comboLegs
+        comboLegs,
+        orderRef: order.orderRef || undefined
       }
 
       callback(orderEntry)
